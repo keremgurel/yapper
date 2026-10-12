@@ -6,31 +6,9 @@ import {
   InsufficientCreditsError,
 } from "@/lib/db/credits";
 import { ensureUser } from "@/lib/db/users";
+import { PAID_ACTIONS, type PaidAction } from "./paid-actions";
 
-export const PAID_ACTIONS = {
-  chirpy_plan: { credits: 6, label: "Chirpy action planning" },
-  transcribe: { credits: 4, label: "Transcription per three minutes" },
-  /** Per three minutes of one of the creator's own videos. */
-  voice_sample: { credits: 1, label: "Voice sample transcription" },
-  clean_transcript: { credits: 8, label: "AI edit cleanup" },
-  place_overlays: { credits: 4, label: "AI media placement" },
-  reference_analysis: { credits: 8, label: "Reference analysis" },
-  creator_analysis: { credits: 20, label: "Creator feed analysis" },
-  capture_idea: { credits: 1, label: "Idea capture" },
-  expand_idea: { credits: 8, label: "Idea expansion" },
-  brainstorm: { credits: 1, label: "Idea brainstorm" },
-  publish_caption: { credits: 1, label: "Publish copy" },
-  publish_thumbnail: { credits: 12, label: "AI thumbnail" },
-  brain_setup: { credits: 8, label: "Brain setup" },
-  ingest_context: { credits: 1, label: "Context import" },
-  direct_overlays: { credits: 20, label: "AI overlay planning" },
-  design_overlay: { credits: 60, label: "AI overlay design" },
-  scene_image: { credits: 8, label: "AI overlay picture" },
-  revise_overlay: { credits: 60, label: "AI overlay revision" },
-  retime_overlay: { credits: 20, label: "AI overlay retiming" },
-} as const;
-
-export type PaidAction = keyof typeof PAID_ACTIONS;
+export { PAID_ACTIONS, type PaidAction };
 
 /**
  * How many of the action one request pays for at once. The overlay designer

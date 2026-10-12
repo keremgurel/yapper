@@ -2,45 +2,52 @@
 
 import { ImageIcon, Captions, Mic } from "lucide-react";
 import MarketingLayout from "@/components/marketing/marketing-layout";
-import CreditPacks from "@/components/billing/credit-packs";
+import CreditTopUp from "@/components/billing/top-up/credit-top-up";
 import CurrentPlanBanner from "@/components/billing/current-plan-banner";
 import StudioPlanCards from "@/components/billing/studio-plan-cards";
 import CheckoutError from "@/components/billing/checkout-error";
 import PricingFaq from "@/components/billing/pricing-faq";
 import { useCheckout } from "@/hooks/use-checkout";
-import { TRIAL_DAYS, TRIAL_CREDITS, packsFor } from "@/lib/billing/plans";
+import { PAID_ACTIONS } from "@/lib/billing/paid-actions";
+import {
+  STUDIO_PLANS,
+  TRIAL_DAYS,
+  TRIAL_CREDITS,
+  packsFor,
+} from "@/lib/billing/plans";
 import styles from "./pricing.module.css";
 
-// What Studio's paid actions cost. These mirror the charges in
-// src/lib/billing/actions.ts.
+const credits = (n: number) => `${n.toLocaleString()} credits`;
+const monthly = STUDIO_PLANS.find((plan) => plan.cadence === "month")!;
+const yearly = STUDIO_PLANS.find((plan) => plan.cadence === "year")!;
+
+// What Studio's paid actions cost, read from the live catalog.
 const costs = [
   {
     icon: Mic,
     title: "Transcribe a recording",
-    cost: "4 credits per 3 minutes",
+    cost: `${credits(PAID_ACTIONS.transcribe.credits)} per 3 minutes`,
     detail:
       "Duration is checked before transcription, and partial blocks round up.",
   },
   {
     icon: ImageIcon,
     title: "Generate a thumbnail",
-    cost: "12 credits",
+    cost: credits(PAID_ACTIONS.publish_thumbnail.credits),
     detail: "Choosing a frame from your video uses no credits.",
   },
   {
     icon: Captions,
     title: "Design an AI overlay",
-    cost: "60 credits",
-    detail:
-      "Design or revise one overlay, including up to three automatic quality checks. Generated pictures cost 8 credits each.",
+    cost: credits(PAID_ACTIONS.design_overlay.credits),
+    detail: `Design or revise one overlay, including up to three automatic quality checks. Generated pictures cost ${credits(PAID_ACTIONS.scene_image.credits)} each.`,
   },
 ];
 
 const questions = [
   {
     question: "What changes when I pay yearly?",
-    answer:
-      "You get the same tools and 5 GB temporary workspace. Monthly billing is $24.99 with 500 credits per payment. Yearly billing is $199.99 with all 6,000 credits delivered after the annual payment, saving 33% compared with paying monthly for a year.",
+    answer: `You get the same tools and 5 GB temporary workspace. Monthly billing is ${monthly.priceLabel} with ${credits(monthly.includedCredits)} per payment. Yearly billing is ${yearly.priceLabel} with all ${credits(yearly.includedCredits)} delivered after the annual payment, saving 33% compared with paying monthly for a year.`,
   },
   {
     question: "What can I do without spending credits?",
@@ -119,11 +126,15 @@ export default function StudioPricingPage() {
       </section>
       <section id="credits" className={styles.section}>
         <div className="marketing-container">
-          <CreditPacks
+          <div className={styles.sectionHeading}>
+            <h2 className="type-h2">Top up anytime</h2>
+            <p>
+              Running low before your next payment? Add a pack to your Studio
+              balance.
+            </p>
+          </div>
+          <CreditTopUp
             packs={packsFor("studio")}
-            heading="Add credits when you need them"
-            note="A one-time pack for Studio subscribers. It doesn’t start a new subscription or renew, and unused credits stay in your Studio balance."
-            action="Buy credits"
             pending={pending}
             onStart={startPack}
           />

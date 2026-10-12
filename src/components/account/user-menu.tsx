@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { useBillingStatus } from "@/hooks/use-billing-status";
 import { creditMeterFor } from "@/lib/billing/credit-meter";
 import CreditAvatar, { creditMeterStyle } from "./credit-avatar";
+import QuickTopUp from "./quick-top-up";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { LogOut, Settings, HardDrive } from "lucide-react";
 import {
@@ -118,14 +119,13 @@ export default function UserMenu() {
               credits count too.
             </p>
           )}
+          {status?.entitled && <QuickTopUp />}
           <DropdownMenuItem
             asChild
-            className="mt-3 justify-center rounded-lg border px-3 py-2 text-xs font-semibold"
+            className={`justify-center rounded-lg px-3 py-2 text-xs font-semibold ${status?.entitled ? "text-muted-foreground mt-1.5" : "mt-3 border"}`}
           >
             <Link href="/pricing">
-              {status?.entitled
-                ? "Manage membership & credits"
-                : "Explore membership"}
+              {status?.entitled ? "Manage membership" : "Explore membership"}
             </Link>
           </DropdownMenuItem>
         </div>

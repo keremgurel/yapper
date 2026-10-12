@@ -82,7 +82,7 @@ struct AssistantComposer: View {
         HStack(spacing: 8) {
             Text(session.assistantUsesStudioBrain && IdeaCanvasFocus.shared.runner != nil
                  ? "1 credit per idea edit"
-                 : "6 credits to plan · generation costs extra")
+                 : "2 credits to plan · generation costs extra")
                 .font(.system(size: 10.5))
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -117,7 +117,7 @@ struct AssistantComposer: View {
         .help(
             !session.assistantUsesStudioBrain && session.project.clips.isEmpty
                 ? "Import a video first"
-                : "Send · ⏎ · 6 credits to plan. Generation workflows have their usual additional charges."
+                : "Send · ⏎ · 2 credits to plan. Generation workflows have their usual additional charges."
         )
         .animation(.easeOut(duration: 0.14), value: canSend)
     }

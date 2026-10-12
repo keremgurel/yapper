@@ -110,11 +110,22 @@ private struct WorkspaceProfileMenu: View {
                     Text("\(allowance.formatted()) included per \(snapshot?.creditMeter?.planLabel == "Studio trial" ? "trial" : "billing period"). Extra credits count too.")
                         .font(.system(size: 10)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
-                Button(snapshot?.entitled == true ? "Manage membership & credits" : "Explore membership") {
-                    openURL(URL(string: "https://ypr.app/pricing")!)
+                if snapshot?.entitled == true, let packs = snapshot?.packs, !packs.isEmpty {
+                    QuickTopUpRow(packs: packs)
+                    Button("Manage membership") {
+                        openURL(URL(string: "https://ypr.app/pricing")!)
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                } else {
+                    Button(snapshot?.entitled == true ? "Manage membership & credits" : "Explore membership") {
+                        openURL(URL(string: "https://ypr.app/pricing")!)
+                    }
+                    .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+                    .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(EditorSecondaryButtonStyle(size: .small))
-                .frame(maxWidth: .infinity)
             }
             .padding(12)
             .background(Color.studioFaintFill, in: RoundedRectangle(cornerRadius: 12))
@@ -152,6 +163,55 @@ private struct WorkspaceProfileMenu: View {
         _ destination: StudioDestination
     ) -> some View {
         WorkspaceMenuRow(title: title, icon: icon) { onNavigate(destination) }
+    }
+}
+
+/// Credit packs as one-click buttons. Each opens that pack's checkout on the
+/// pricing page, which starts Stripe straight away for a signed-in member.
+private struct QuickTopUpRow: View {
+    let packs: [StudioCreditPack]
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Add credits").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
+            HStack(spacing: 6) {
+                ForEach(packs) { pack in
+                    Button {
+                        if let url = pack.checkoutURL { openURL(url) }
+                    } label: {
+                        VStack(spacing: 1) {
+                            Text("+\(pack.credits.formatted())")
+                                .font(.system(size: 12, weight: .semibold)).monospacedDigit()
+                            Text(pack.priceLabel)
+                                .font(.system(size: 10)).foregroundStyle(.secondary).monospacedDigit()
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 38)
+                        .contentShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                    .buttonStyle(QuickTopUpButtonStyle())
+                    .help("Buy \(pack.credits.formatted()) credits for \(pack.priceLabel)")
+                    .accessibilityLabel("Buy \(pack.credits.formatted()) credits for \(pack.priceLabel)")
+                }
+            }
+        }
+    }
+}
+
+private struct QuickTopUpButtonStyle: ButtonStyle {
+    @State private var hovering = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.primary.opacity(configuration.isPressed ? 0.1 : hovering ? 0.06 : 0))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+            )
+            .onHover { hovering = $0 }
     }
 }
 

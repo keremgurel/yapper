@@ -56,12 +56,17 @@ describe("GET /api/billing/status", () => {
       plan: "creator_monthly",
       balance: 88,
       creditMeter: {
-        allowance: 500,
-        fraction: 0.176,
+        allowance: 1000,
+        fraction: 0.088,
         planLabel: "Studio Creator · monthly",
       },
       storageBytes: 3 * 1024 * 1024 * 1024,
       storageQuotaBytes: 5 * 1024 * 1024 * 1024,
+      packs: [
+        { key: "credits_100", credits: 100, priceLabel: "$9" },
+        { key: "credits_300", credits: 300, priceLabel: "$19" },
+        { key: "credits_1000", credits: 1000, priceLabel: "$49" },
+      ],
     });
   });
 

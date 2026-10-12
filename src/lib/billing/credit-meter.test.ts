@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { creditMeterFor } from "./credit-meter";
 
 const monthly = {
-  balance: 500,
+  balance: 1000,
   plan: "creator_monthly",
   trialing: false,
   entitled: true,
@@ -12,13 +12,13 @@ describe("account credit indicator", () => {
   it("uses the plan's actual payment allocation, including annual and legacy plans", () => {
     expect(creditMeterFor(monthly)).toMatchObject({
       fraction: 1,
-      allowance: 500,
+      allowance: 1000,
       lightColor: "#0e9f6e",
       darkColor: "#34d399",
     });
     expect(
-      creditMeterFor({ ...monthly, plan: "creator_yearly", balance: 3000 }),
-    ).toMatchObject({ fraction: 0.5, allowance: 6000, darkColor: "#ffc247" });
+      creditMeterFor({ ...monthly, plan: "creator_yearly", balance: 6000 }),
+    ).toMatchObject({ fraction: 0.5, allowance: 12000, darkColor: "#ffc247" });
     expect(
       creditMeterFor({ ...monthly, plan: "creator_weekly", balance: 10 })
         .fraction,
@@ -26,9 +26,9 @@ describe("account credit indicator", () => {
   });
   it("uses the trial grant instead of the future paid allocation", () => {
     expect(
-      creditMeterFor({ ...monthly, trialing: true, balance: 15 }),
+      creditMeterFor({ ...monthly, trialing: true, balance: 50 }),
     ).toMatchObject({
-      allowance: 30,
+      allowance: 100,
       fraction: 0.5,
       planLabel: "Studio trial",
     });
@@ -48,10 +48,10 @@ describe("account credit indicator", () => {
     expect(creditMeterFor({ ...monthly, balance: NaN }).fraction).toBeNull();
   });
   it("blends continuously on either side of amber", () => {
-    expect(creditMeterFor({ ...monthly, balance: 125 }).darkColor).toBe(
+    expect(creditMeterFor({ ...monthly, balance: 250 }).darkColor).toBe(
       "#ff9759",
     );
-    expect(creditMeterFor({ ...monthly, balance: 375 }).darkColor).toBe(
+    expect(creditMeterFor({ ...monthly, balance: 750 }).darkColor).toBe(
       "#9acb70",
     );
   });

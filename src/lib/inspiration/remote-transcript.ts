@@ -40,9 +40,6 @@ export async function transcribeRemoteMedia(
   endpoint.searchParams.set("smart_format", "true");
   endpoint.searchParams.set("punctuate", "true");
   endpoint.searchParams.set("filler_words", "true");
-  for (const term of ["CELPIP", "Yapper"]) {
-    endpoint.searchParams.append("keyterm", term);
-  }
 
   const { response, data } = await fetchBoundedJson<unknown>(
     endpoint,
