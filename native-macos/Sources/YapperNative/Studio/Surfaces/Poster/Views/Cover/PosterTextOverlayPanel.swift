@@ -19,18 +19,16 @@ struct PosterTextOverlayPanel: View {
                 ))
                 .textFieldStyle(.native)
                 HStack(spacing: 12) {
-                    Picker("Style", selection: binding(\.textStyle)) {
-                        ForEach(PosterCoverDraft.TextStyle.allCases, id: \.self) { Text($0.rawValue.capitalized).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .fixedSize()
-                    .clickableCursor()
-                    Picker("Position", selection: binding(\.position)) {
-                        ForEach(PosterCoverDraft.Position.allCases, id: \.self) { Text($0.rawValue.capitalized).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .fixedSize()
-                    .clickableCursor()
+                    NativeSegmented(
+                        options: PosterCoverDraft.TextStyle.allCases.map { .init(value: $0, label: $0.rawValue.capitalized) },
+                        selection: binding(\.textStyle)
+                    )
+                    .accessibilityLabel("Style")
+                    NativeSegmented(
+                        options: PosterCoverDraft.Position.allCases.map { .init(value: $0, label: $0.rawValue.capitalized) },
+                        selection: binding(\.position)
+                    )
+                    .accessibilityLabel("Position")
                 }
                 .font(.system(size: 12))
             }

@@ -28,6 +28,7 @@ final class PosterScheduleModel: ObservableObject {
     func schedule(
         _ targets: [PosterPublishTarget],
         to platforms: [PublishPlatform],
+        youtube: PosterYouTubeSettings,
         connections: PosterConnectionStore
     ) async -> Bool {
         let count = targets.count * platforms.count
@@ -48,7 +49,7 @@ final class PosterScheduleModel: ObservableObject {
                 [
                     "platform": platform.rawValue,
                     "expectedAccountId": connections.accountID(for: platform) ?? "",
-                    "input": Dictionary.compact(Self.input(target, platform)),
+                    "input": Dictionary.compact(Self.input(target, platform, youtube: youtube)),
                 ] as [String: Any]
             }
         }
@@ -69,7 +70,7 @@ final class PosterScheduleModel: ObservableObject {
         return false
     }
 
-    private static func input(_ target: PosterPublishTarget, _ platform: PublishPlatform) -> [String: Any?] {
+    private static func input(_ target: PosterPublishTarget, _ platform: PublishPlatform, youtube: PosterYouTubeSettings) -> [String: Any?] {
         var input = target.sourceBody
         input["thumbnailKey"] = target.thumbnailKey
         let copy = target.copy(for: platform)
@@ -77,7 +78,7 @@ final class PosterScheduleModel: ObservableObject {
         case .youtube:
             input["title"] = copy.title
             input["description"] = copy.body
-            input["privacyStatus"] = "public"
+            input.merge(youtube.body) { _, chosen in chosen }
         case .instagram, .facebook:
             input["caption"] = copy.body.isEmpty ? copy.title : copy.body
         case .tiktok:

@@ -1,3 +1,4 @@
+import type { VersionFormat } from "@/lib/content/formats";
 import type { BrainSurface } from "@/lib/db/schema";
 
 /** One skill, as the page sees it. */
@@ -10,6 +11,8 @@ export interface BrainSkill {
   instructions: string;
   /** Empty means every surface. */
   surfaces: BrainSurface[];
+  /** Version formats it is limited to; empty or absent means every format. */
+  formats?: VersionFormat[];
   enabled: boolean;
   /** Set once the creator has edited an installed copy. */
   customized: boolean;
@@ -19,7 +22,7 @@ export interface BrainSkill {
 export type BrainSkillPatch = Partial<
   Pick<
     BrainSkill,
-    "name" | "whenToUse" | "instructions" | "surfaces" | "enabled"
+    "name" | "whenToUse" | "instructions" | "surfaces" | "formats" | "enabled"
   >
 >;
 

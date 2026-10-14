@@ -73,8 +73,8 @@ private struct AutomationNotices: View {
         if !response.available {
             AutomationNote(
                 text: response.setupAvailable == false
-                    ? "Automation setup isn't available on this server yet."
-                    : "New video checks are paused on this server. Prepared deliveries may still send; pause the rule below to cancel waiting work.",
+                    ? "Automations aren’t available yet."
+                    : "Automations are paused, so new Instagram videos aren’t being checked right now. Posts already prepared may still send. Pause the rule below to stop them.",
                 size: 13
             )
             .padding(.horizontal, 16).padding(.vertical, 12)

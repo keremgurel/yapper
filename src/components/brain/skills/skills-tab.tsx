@@ -1,9 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { Loader2, Plus, Search, Wand2 } from "lucide-react";
+import FormatPicker from "@/components/brain/essentials/format-picker";
 import SkillCard from "@/components/brain/skills/skill-card";
 import { Button } from "@/components/ui/button";
 import type { useBrainSkills } from "@/hooks/use-brain-skills";
+import { skillApplies } from "@/lib/brain/skill-formats";
+import { CONTENT_FORMATS, type VersionFormat } from "@/lib/content/formats";
 
 type Skills = ReturnType<typeof useBrainSkills>;
 
@@ -30,6 +34,14 @@ export default function SkillsTab({
   onRemove: (id: string) => void;
 }) {
   const active = skills.filter((skill) => skill.enabled).length;
+  // Show only the skills that shape one format; null shows them all.
+  const [format, setFormat] = useState<VersionFormat | null>(null);
+  const shown = format
+    ? skills.filter((skill) => skillApplies(skill.formats, format))
+    : skills;
+  const formatLabel = CONTENT_FORMATS.find(
+    (entry) => entry.id === format,
+  )?.label;
   return (
     <section>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
@@ -38,7 +50,9 @@ export default function SkillsTab({
             Skills
           </h2>
           <p className="text-muted-foreground mt-1 max-w-[60ch] text-sm">
-            Reusable methods Yapper follows when it writes with you.
+            {formatLabel
+              ? `Skills for ${formatLabel}, plus the ones for every format.`
+              : "Reusable methods Yapper follows when it writes with you."}
             {available && skills.length
               ? ` ${active} of ${skills.length} active.`
               : ""}
@@ -53,6 +67,19 @@ export default function SkillsTab({
           </Button>
         </div>
       </div>
+      {available && skills.length ? (
+        <div className="mb-4">
+          <span id="skills-format-filter" className="sr-only">
+            Show skills for
+          </span>
+          <FormatPicker
+            labelledBy="skills-format-filter"
+            allLabel="All"
+            value={format}
+            onChange={setFormat}
+          />
+        </div>
+      ) : null}
       {saveState === "error" ? (
         <p className="text-destructive mb-3 text-xs" role="alert">
           A skill could not be saved. Your next edit retries it.
@@ -69,7 +96,7 @@ export default function SkillsTab({
         </p>
       ) : skills.length ? (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {skills.map((skill) => (
+          {shown.map((skill) => (
             <SkillCard
               key={skill.id}
               skill={skill}

@@ -34,7 +34,7 @@ struct ScheduledPublishingSection: View {
                 }
             } else {
                 if !response.enabled {
-                    message("Scheduled publishing is paused on this server. Your saved posts remain here, and you can cancel them before sending resumes.")
+                    message("Scheduled publishing is paused, so these posts won’t send on their own yet. They stay here, and you can cancel any of them.")
                 }
                 VStack(spacing: 0) {
                     ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in

@@ -11,7 +11,7 @@ struct CalendarPage: View {
         NativePage {
             NativePageHeader(
                 title: "Calendar",
-                description: "Planning dates organize ideas. Scheduled posts are sent by Poster."
+                description: "Plan your content dates and see what’s coming next."
             ) {
                 Button("Plan content", systemImage: "calendar.badge.plus") { StudioNavigation.shared.goTo(.ideas) }
                     .buttonStyle(EditorSecondaryButtonStyle())
@@ -20,11 +20,13 @@ struct CalendarPage: View {
             ContentCalendarView(store: calendar)
         }
         .task { await calendar.refresh() }
+        .task { await HomeChannelsStore.shared.refresh(maxAge: 60) }
         .task { await pollSchedules() }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
             Task {
                 await calendar.refresh()
                 await schedules.refresh()
+                await HomeChannelsStore.shared.refresh(maxAge: 60)
             }
         }
     }

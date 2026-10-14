@@ -1,11 +1,14 @@
 "use client";
 
+import EssentialsFitNote from "@/components/brain/essentials/essentials-fit-note";
+import FormatPicker from "@/components/brain/essentials/format-picker";
 import PillarEditor from "@/components/project/pillar-editor";
 import ProjectField from "@/components/project/project-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { SaveState } from "@/hooks/use-autosave";
 import type { useProject } from "@/hooks/use-project";
+import { ESSENTIAL_FIELD_CAPS } from "@/lib/brain/context/field-caps";
 import { PROJECT_FIELDS, type ProjectPatch } from "@/lib/project/client";
 
 function saveLabel(state: SaveState): string | null {
@@ -39,6 +42,7 @@ export default function EssentialsFields({
           <p className="text-muted-foreground mt-1 text-sm">
             Read before anything is written for you. Plain sentences are fine.
           </p>
+          <EssentialsFitNote project={project} />
         </div>
         {saved ? (
           <span
@@ -67,6 +71,23 @@ export default function EssentialsFields({
             onChange={(event) => onUpdate({ name: event.target.value })}
           />
         </div>
+        <div className="space-y-1.5 lg:col-span-2">
+          <p
+            id="brain-default-format"
+            className="text-foreground text-[13px] font-medium"
+          >
+            Default format
+          </p>
+          <FormatPicker
+            labelledBy="brain-default-format"
+            value={project.defaultFormat ?? "short"}
+            onChange={(defaultFormat) => onUpdate({ defaultFormat })}
+          />
+          <p className="text-muted-foreground text-xs">
+            New ideas start in this format. You can make the other formats from
+            any idea later.
+          </p>
+        </div>
         {PROJECT_FIELDS.map((field) => (
           <ProjectField
             key={field.key}
@@ -75,6 +96,7 @@ export default function EssentialsFields({
             placeholder={field.placeholder}
             rows={field.rows}
             value={project[field.key]}
+            limit={ESSENTIAL_FIELD_CAPS[field.key]}
             onChange={(value) => onUpdate({ [field.key]: value })}
           />
         ))}

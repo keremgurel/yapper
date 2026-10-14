@@ -1,3 +1,5 @@
+import type { VersionFormat } from "@/lib/content/formats";
+
 /** One content pillar as the client sees it. */
 export interface Pillar {
   id: string;
@@ -20,6 +22,8 @@ export interface Project {
   links: string[];
   brandColors: string[];
   contextVersion: number;
+  /** Where a new idea starts. Absent on an older reply, which reads as short. */
+  defaultFormat?: VersionFormat;
 }
 
 /** A pillar being edited. New rows have no id until the server assigns one. */
@@ -41,6 +45,7 @@ export interface ProjectPatch {
   links?: string[];
   brandColors?: string[];
   pillars?: PillarDraft[];
+  defaultFormat?: VersionFormat;
 }
 
 export interface ProjectPayload {

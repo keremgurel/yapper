@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, RotateCcw } from "lucide-react";
-import { Chip } from "@/components/studio-ui";
+import { Chip, formatTone } from "@/components/studio-ui";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -16,6 +16,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { brainSurfaces, type BrainSurface } from "@/lib/db/schema";
 import { isStarterSkill } from "@/lib/brain/default-skills";
+import { toggleSkillFormat } from "@/lib/brain/skill-formats";
+import { CONTENT_FORMATS, VERSION_FORMATS } from "@/lib/content/formats";
 import type { BrainSkill, BrainSkillPatch } from "@/lib/brain/skills-client";
 
 const SURFACE_LABELS: Record<BrainSurface, string> = {
@@ -147,6 +149,38 @@ export default function SkillEditorSheet({
               {skill.surfaces.length
                 ? "Only considered on these."
                 : "Nothing picked, so it is considered everywhere."}
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <span className="sg-field-label">Use for</span>
+            <div className="flex flex-wrap gap-1.5">
+              {VERSION_FORMATS.map((format) => {
+                const on = skill.formats?.includes(format) ?? false;
+                return (
+                  <button
+                    key={format}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() =>
+                      onEdit({
+                        formats: toggleSkillFormat(skill.formats, format),
+                      })
+                    }
+                    className="focus-visible:ring-ring/50 rounded-md focus-visible:ring-2 focus-visible:outline-none"
+                  >
+                    <Chip tone={on ? formatTone(format) : "neutral"}>
+                      {CONTENT_FORMATS.find((entry) => entry.id === format)
+                        ?.label ?? format}
+                    </Chip>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-muted-foreground text-xs">
+              {skill.formats?.length
+                ? "Only shapes these formats."
+                : "Nothing picked, so it shapes every format."}
             </p>
           </div>
 

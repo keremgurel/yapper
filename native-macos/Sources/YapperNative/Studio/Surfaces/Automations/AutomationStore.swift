@@ -6,6 +6,10 @@ import Foundation
 @MainActor
 final class AutomationStore: ObservableObject {
     static let shared = AutomationStore()
+    /// Whether this server runs automations at all, kept between launches so
+    /// the sidebar knows before the first read answers. The web leaves the
+    /// tab out while it is off rather than invite a rule that never fires.
+    static let availableKey = "studioAutomationsAvailable"
 
     @Published private(set) var response: AutomationResponse?
     /// The first read failed and there is nothing to show.
@@ -38,6 +42,7 @@ final class AutomationStore: ObservableObject {
             let result: AutomationResponse = try await StudioJSONClient.get("api/publish/automations")
             guard current == revision else { return nil }
             response = result
+            UserDefaults.standard.set(result.available, forKey: Self.availableKey)
             loadFailed = false
             refreshFailed = false
             return result
