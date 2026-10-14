@@ -253,10 +253,21 @@ struct AppShellView: View {
 
 private struct StudioSidebar: View {
     @ObservedObject private var auth = StudioAuth.shared
+    @AppStorage(AutomationStore.availableKey) private var automationsAvailable = false
     let destination: StudioDestination
     let expanded: Bool
     let selectionNamespace: Namespace.ID
     let onNavigate: (StudioDestination) -> Void
+
+    /// The groups minus what this server cannot run. Automations stays out
+    /// while it is off, as on the web, unless it is the page already open.
+    private var visibleGroups: [(String, [StudioDestination])] {
+        StudioDestination.groups
+            .map { group, items in
+                (group, items.filter { $0 != .automations || automationsAvailable || destination == .automations })
+            }
+            .filter { !$0.1.isEmpty }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -277,12 +288,11 @@ private struct StudioSidebar: View {
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 4) {
-                    ForEach(StudioDestination.groups, id: \.0) { group, items in
+                    ForEach(visibleGroups, id: \.0) { group, items in
                         if !group.isEmpty, expanded {
-                            Text(group.uppercased())
-                                .font(.system(size: 10, weight: .bold))
-                                .tracking(1.15)
-                                .foregroundStyle(Color.secondary.opacity(0.72))
+                            Text(group)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(Color.secondary.opacity(0.8))
                                 .padding(.top, 14)
                                 .padding(.horizontal, 12)
                                 .transition(.opacity)

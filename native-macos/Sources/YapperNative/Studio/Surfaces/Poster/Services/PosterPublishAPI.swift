@@ -9,6 +9,7 @@ enum PosterPublishAPI {
         to platform: PublishPlatform,
         key: String,
         tiktok: PosterTikTokReview?,
+        youtube: PosterYouTubeSettings,
         accountID: String?
     ) async throws -> PosterPublishResult {
         let copy = target.copy(for: platform)
@@ -19,7 +20,7 @@ enum PosterPublishAPI {
             body["title"] = copy.title
             body["description"] = copy.body.isEmpty ? nil : copy.body
             body["thumbnailKey"] = target.thumbnailKey
-            body["privacyStatus"] = "public"
+            body.merge(youtube.body) { _, chosen in chosen }
             return try await PosterHTTP.post("api/publish/youtube", body: .compact(body), headers: headers)
         case .instagram:
             return try await PosterHTTP.post("api/publish/instagram", body: .compact(captionBody(target, copy)), headers: headers)

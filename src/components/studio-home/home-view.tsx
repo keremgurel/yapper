@@ -64,10 +64,14 @@ export default function HomeView({
         <h1 className="font-display text-foreground min-h-8 text-[22px] font-bold tracking-[-0.01em]">
           {title}
         </h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          {ideas.items?.length
-            ? "Get a thought down, or pick up where you left off."
-            : "Start with an idea. Type it, or press ⌘D and say it."}
+        {/* Blank while ideas load, so a returning creator is not greeted
+            as new for a moment. */}
+        <p className="text-muted-foreground mt-1 min-h-5 text-sm">
+          {ideas.items === null
+            ? null
+            : ideas.items.length
+              ? "Get a thought down, or pick up where you left off."
+              : "Start with an idea. Type it, or press ⌘D and say it."}
         </p>
       </header>
 

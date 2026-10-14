@@ -69,10 +69,8 @@ struct BrainSkillsTab: View {
     }
 
     private var subtitle: String {
-        if let format {
-            return "What shapes your \(format.noun): skills for it, plus the ones for every format."
-        }
-        let base = "Reusable methods Yapper follows when it writes with you."
+        let base = format.map { "Skills for \($0.label), plus the ones for every format." }
+            ?? "Reusable methods Yapper follows when it writes with you."
         guard let skills = store.skills, !skills.isEmpty else { return base }
         return "\(base) \(store.activeCount) of \(skills.count) active."
     }

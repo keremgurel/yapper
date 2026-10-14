@@ -13,6 +13,7 @@ enum StudioPrefetch {
         async let poster: Void = PosterLibraryStore.shared.refresh()
         async let connections: Void = PosterConnectionStore.shared.refresh()
         async let project: Void = BrainProjectStore.shared.refresh()
-        _ = await (home, ideas, poster, connections, project)
+        async let automations: Void = AutomationStore.shared.refresh()
+        _ = await (home, ideas, poster, connections, project, automations)
     }
 }

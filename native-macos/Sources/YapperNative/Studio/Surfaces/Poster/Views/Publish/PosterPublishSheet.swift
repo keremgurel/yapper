@@ -53,13 +53,20 @@ struct PosterPublishSheet: View {
                         }
                     }
                 }
+                if chosen.contains(.youtube) {
+                    PosterYouTubeSettingsView(
+                        settings: $session.youtube,
+                        descriptionTooLong: session.youtubeDescriptionTooLong,
+                        disabled: busy
+                    )
+                }
                 if chosen.contains(.facebook) {
                     note("Facebook Reels are public on your selected Page. Use vertical videos, 3 to 90 seconds, at least 540 by 960 pixels.")
                 }
                 if session.outcomes.isEmpty && !chosen.contains(.tiktok) {
                     PosterSchedulePanel(
                         model: schedule, count: session.targets.count * chosen.count, includesTikTok: false,
-                        disabled: session.posting || session.scheduling || chosen.isEmpty,
+                        disabled: session.posting || session.scheduling || chosen.isEmpty || !session.youtubeReady(chosen),
                         onSchedule: { scheduleNow(chosen) },
                         onCalendar: {
                             onClose()
@@ -81,7 +88,9 @@ struct PosterPublishSheet: View {
             if !session.done(chosen) || session.failures > 0 || session.outcomes.contains(where: { $0.status == .pending }) {
                 publishButton(chosen: chosen)
             }
-            note("YouTube posts go out as public. TikTok follows the review above.")
+            if chosen.contains(.tiktok) {
+                note("For TikTok, review the audience and posting method above.")
+            }
         }
         .task { if connections.response == nil { await connections.refresh() } }
     }
@@ -133,7 +142,8 @@ struct PosterPublishSheet: View {
     private func publishButton(chosen: [PublishPlatform]) -> some View {
         let videos = session.targets.count
         let done = session.done(chosen)
-        let blocked = session.posting || !session.tiktokReady(chosen) || session.scheduling || chosen.isEmpty || session.scheduled
+        let blocked = session.posting || !session.tiktokReady(chosen) || !session.youtubeReady(chosen)
+            || session.scheduling || chosen.isEmpty || session.scheduled
         return Button { Task { await session.publish(to: chosen, connections: connections, drafts: drafts) } } label: {
             HStack(spacing: 6) {
                 if session.posting { ProgressView().controlSize(.mini) }
@@ -151,7 +161,7 @@ struct PosterPublishSheet: View {
     private func scheduleNow(_ chosen: [PublishPlatform]) {
         session.scheduling = true
         Task {
-            let saved = await schedule.schedule(session.targets, to: chosen, connections: connections)
+            let saved = await schedule.schedule(session.targets, to: chosen, youtube: session.youtube, connections: connections)
             session.scheduling = false
             guard saved else { return }
             session.scheduled = true

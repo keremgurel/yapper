@@ -49,13 +49,14 @@ struct BrainSetupReview: View {
                 Text("Pillars").font(.nativeLabel).foregroundStyle(.secondary)
                 Spacer()
                 if existingPillars > 0 {
-                    Picker("What to do with the current pillars", selection: $selection.pillarMode) {
-                        Text("Replace the \(existingPillars) current").tag(BrainSetupSelection.PillarMode.replace)
-                        Text("Add to them").tag(BrainSetupSelection.PillarMode.add)
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .fixedSize()
+                    NativeSegmented(
+                        options: [
+                            .init(value: BrainSetupSelection.PillarMode.replace, label: "Replace the \(existingPillars) current"),
+                            .init(value: BrainSetupSelection.PillarMode.add, label: "Add to them"),
+                        ],
+                        selection: $selection.pillarMode
+                    )
+                    .accessibilityLabel("What to do with the current pillars")
                 }
             }
             ForEach(proposal.pillars, id: \.name) { pillar in

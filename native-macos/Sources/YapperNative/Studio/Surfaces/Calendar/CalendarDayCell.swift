@@ -1,11 +1,12 @@
 import SwiftUI
 
-/// One day in the grid: its date, its posts, and a drop target for
-/// drag-to-reschedule. Month cells cap the chips at three; week cells show
-/// all of them and leave the date to the column header.
+/// One day in the grid: its date, its posts, what already went out that day,
+/// and a drop target for drag-to-reschedule. Month cells cap the chips at
+/// three; week cells show all of them and leave the date to the column header.
 struct CalendarDayCell: View {
     let day: Date
     let items: [CalendarItem]
+    var posted: [CalendarPostedGroup] = []
     var inMonth = true
     var isToday = false
     var dense = true
@@ -25,6 +26,7 @@ struct CalendarDayCell: View {
                 CalendarPostChip(item: item) { onOpen(item.id) }
             }
             if items.count > shown.count { moreLink }
+            CalendarPostedList(groups: posted, dense: dense)
             Spacer(minLength: 0)
         }
         .padding(6)
@@ -49,9 +51,9 @@ struct CalendarDayCell: View {
             .font(.system(size: 11, weight: .semibold).monospacedDigit())
         if isToday {
             number
-                .foregroundStyle(Color.editorBackground)
+                .foregroundStyle(.white)
                 .frame(width: 20, height: 20)
-                .background(Circle().fill(Color.primary))
+                .background(Circle().fill(Color.yapperOrange))
                 .accessibilityLabel("Today, \(day.formatted(date: .complete, time: .omitted))")
         } else {
             number

@@ -27,12 +27,10 @@ struct BrainVideoPicker: View {
                     .disabled(picker.busy)
                 Spacer()
                 if platforms.count > 1 {
-                    Picker("Channel", selection: $platform) {
-                        ForEach(platforms, id: \.self) { Text(BrainVoiceFormat.platformLabel($0)).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .fixedSize()
+                    NativeSegmented(
+                        options: platforms.map { .init(value: $0, label: BrainVoiceFormat.platformLabel($0)) },
+                        selection: $platform
+                    )
                     .disabled(picker.busy)
                 }
             }

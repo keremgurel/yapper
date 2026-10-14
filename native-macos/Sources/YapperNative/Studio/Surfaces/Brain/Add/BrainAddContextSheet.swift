@@ -23,12 +23,11 @@ struct BrainAddContextSheet: View {
             description: "Anything you know that should shape what gets written. There is no fixed set of things this can be.",
             onClose: onClose
         ) {
-            Picker("How to add context", selection: $mode) {
-                ForEach(Mode.allCases) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
+            NativeSegmented(
+                options: Mode.allCases.map { .init(value: $0, label: $0.rawValue) },
+                selection: $mode
+            )
+            .accessibilityLabel("How to add context")
             .onChange(of: mode) { _, _ in ingest.reset() }
 
             switch mode {

@@ -26,15 +26,10 @@ struct CalendarHeaderBar: View {
             Button("Today") { navigator.today() }
                 .buttonStyle(EditorSecondaryButtonStyle(size: .small))
             Spacer(minLength: 12)
-            Picker("View", selection: $navigator.mode) {
-                ForEach(CalendarViewMode.allCases) { mode in
-                    Text(mode.label).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
-            .clickableCursor()
+            NativeSegmented(
+                options: CalendarViewMode.allCases.map { .init(value: $0, label: $0.label) },
+                selection: $navigator.mode
+            )
         }
         .padding(.bottom, 16)
     }

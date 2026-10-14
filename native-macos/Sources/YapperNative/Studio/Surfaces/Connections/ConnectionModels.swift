@@ -16,7 +16,7 @@ enum PublishPlatform: String, Codable, CaseIterable, Identifiable {
     /// What connecting lets Yapper do there, shown until it is connected.
     var postMeaning: String {
         switch self {
-        case .youtube: "Posts a public Short."
+        case .youtube: "Uploads a video with the visibility and audience you choose."
         case .tiktok: "Posts to TikTok with the audience and settings you choose."
         case .instagram: "Posts a Reel (needs a Business or Creator account)."
         case .facebook: "Posts a public Reel to the Facebook Page you choose."

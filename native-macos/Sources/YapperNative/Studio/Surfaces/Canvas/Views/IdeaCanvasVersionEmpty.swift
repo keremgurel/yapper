@@ -46,12 +46,10 @@ struct IdeaCanvasVersionEmpty: View {
             if sources.count > 1 {
                 HStack(spacing: 10) {
                     Text("Write it from").font(.system(size: 13)).foregroundStyle(.secondary)
-                    Picker("Write it from", selection: Binding(get: { chosen ?? .short }, set: { from = $0 })) {
-                        ForEach(sources) { Text($0.label).tag($0) }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.segmented)
-                    .fixedSize()
+                    NativeSegmented(
+                        options: sources.map { .init(value: $0, label: $0.label) },
+                        selection: Binding(get: { chosen ?? .short }, set: { from = $0 })
+                    )
                 }
             } else if let chosen {
                 Text("Written from the \(chosen.label.lowercased()) version.")

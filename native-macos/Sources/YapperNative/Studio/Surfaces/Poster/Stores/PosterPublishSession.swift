@@ -14,6 +14,7 @@ final class PosterPublishSession: ObservableObject {
     @Published var scheduled = false
     @Published var scheduling = false
     @Published var tiktokReviews: [String: PosterTikTokReview] = [:]
+    @Published var youtube = PosterYouTubeSettings()
     private var keys: [String: String] = [:]
 
     init(_ request: PosterPublishSheetRequest) {
@@ -33,6 +34,16 @@ final class PosterPublishSession: ObservableObject {
         !chosen.contains(.tiktok) || targets.allSatisfy { tiktokReviews[$0.id]?.ready == true }
     }
 
+    /// Any YouTube description past YouTube's byte limit.
+    var youtubeDescriptionTooLong: Bool {
+        targets.contains { PosterYouTubeSettings.descriptionTooLong($0.copy(for: .youtube).body) }
+    }
+
+    /// YouTube needs an audience declared and a description it will take.
+    func youtubeReady(_ chosen: [PublishPlatform]) -> Bool {
+        !chosen.contains(.youtube) || (youtube.madeForKids != nil && !youtubeDescriptionTooLong)
+    }
+
     func done(_ chosen: [PublishPlatform]) -> Bool {
         !outcomes.isEmpty && outcomes.count == targets.count * chosen.count
     }
@@ -40,7 +51,7 @@ final class PosterPublishSession: ObservableObject {
     var failures: Int { outcomes.filter { $0.status == .failed }.count }
 
     func publish(to chosen: [PublishPlatform], connections: PosterConnectionStore, drafts: PosterDraftStore) async {
-        guard !posting, !scheduled, !targets.isEmpty, !chosen.isEmpty, tiktokReady(chosen) else { return }
+        guard !posting, !scheduled, !targets.isEmpty, !chosen.isEmpty, tiktokReady(chosen), youtubeReady(chosen) else { return }
         posting = true
         outcomes = []
         defer { posting = false }
@@ -49,8 +60,9 @@ final class PosterPublishSession: ObservableObject {
                 for platform in chosen {
                     let key = attemptKey("\(target.id):\(platform.rawValue)")
                     let review = tiktokReviews[target.id]
+                    let youtube = youtube
                     let account = connections.accountID(for: platform)
-                    group.addTask { await Self.send(target, platform, key: key, review: review, account: account) }
+                    group.addTask { await Self.send(target, platform, key: key, review: review, youtube: youtube, account: account) }
                 }
                 for await outcome in group {
                     outcomes.append(outcome)
@@ -76,10 +88,11 @@ final class PosterPublishSession: ObservableObject {
     }
 
     private nonisolated static func send(
-        _ target: PosterPublishTarget, _ platform: PublishPlatform, key: String, review: PosterTikTokReview?, account: String?
+        _ target: PosterPublishTarget, _ platform: PublishPlatform, key: String,
+        review: PosterTikTokReview?, youtube: PosterYouTubeSettings, account: String?
     ) async -> PosterOutcome {
         do {
-            let result = try await PosterPublishAPI.post(target, to: platform, key: key, tiktok: review, accountID: account)
+            let result = try await PosterPublishAPI.post(target, to: platform, key: key, tiktok: review, youtube: youtube, accountID: account)
             return PosterOutcome(videoID: target.id, videoTitle: target.title, platform: platform,
                                  status: result.draft == true ? .draft : .posted, url: result.url.flatMap(URL.init(string:)))
         } catch {

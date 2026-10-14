@@ -25,14 +25,14 @@ extension Font {
 }
 
 /// The surface ramp, taken value for value from the web design system's
-/// semantic tokens in `src/app/globals.css`. The dark side is a cool graphite
-/// ramp, deliberately not black: long stretches of text on true black are
-/// punishing to read, and the two apps have to look like one product.
+/// semantic tokens in `src/app/globals.css`, so the two apps look like one
+/// product. Light is a neutral gray, dark sits on true black with graphite
+/// panels; when the web's tokens change, these change with them.
 extension Color {
     /// `--sg-bg`
     static let editorBackground = adaptive(
-        light: NSColor(hex: 0xF4F3F1),
-        dark: NSColor(hex: 0x0A0A0B)
+        light: NSColor(hex: 0xFAFAFA),
+        dark: NSColor(hex: 0x000000)
     )
     /// `--sg-surface` — the panels that carry text
     static let panelBackground = adaptive(
@@ -42,27 +42,27 @@ extension Color {
     /// `--sg-surface-raised`
     static let raisedBackground = adaptive(
         light: NSColor(hex: 0xFFFFFF),
-        dark: NSColor(hex: 0x202023)
+        dark: NSColor(hex: 0x222225)
     )
     /// `--sg-bg-2`
     static let sidebarBackground = adaptive(
-        light: NSColor(hex: 0xEDEAE6),
-        dark: NSColor(hex: 0x101012)
+        light: NSColor(hex: 0xF0F0F2),
+        dark: NSColor(hex: 0x111113)
     )
     /// `--sg-surface-sunken` — wells, inputs, segmented tracks
     static let studioInputBackground = adaptive(
-        light: NSColor(hex: 0xF0EEEB),
-        dark: NSColor(hex: 0x101012)
+        light: NSColor(hex: 0xF2F2F4),
+        dark: NSColor(hex: 0x111113)
     )
     /// `--sg-border`
     static let studioLine = adaptive(
-        light: NSColor(red: 0.125, green: 0.114, blue: 0.114, alpha: 0.10),
-        dark: NSColor.white.withAlphaComponent(0.08)
+        light: NSColor(red: 27 / 255, green: 24 / 255, blue: 28 / 255, alpha: 0.10),
+        dark: NSColor.white.withAlphaComponent(0.09)
     )
     /// `--sg-border-strong`
     static let studioLineStrong = adaptive(
-        light: NSColor(red: 0.125, green: 0.114, blue: 0.114, alpha: 0.18),
-        dark: NSColor.white.withAlphaComponent(0.15)
+        light: NSColor(red: 27 / 255, green: 24 / 255, blue: 28 / 255, alpha: 0.18),
+        dark: NSColor.white.withAlphaComponent(0.16)
     )
     /// The selected segment inside a control: lifted off the sunken track it
     /// sits in, rather than coloured. See `InspectorSegmentedControl`.

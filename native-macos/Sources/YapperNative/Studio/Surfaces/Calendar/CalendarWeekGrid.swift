@@ -4,6 +4,7 @@ import SwiftUI
 struct CalendarWeekGrid: View {
     let focus: Date
     let byDay: [String: [CalendarItem]]
+    var postedByDay: [String: [CalendarPostedGroup]] = [:]
     let dates: CalendarDates
     let onOpen: (String) -> Void
     let onDrop: (String, Date) -> Void
@@ -20,9 +21,9 @@ struct CalendarWeekGrid: View {
                             .foregroundStyle(.secondary)
                         Text(day.formatted(.dateTime.day()))
                             .font(.system(size: 13, weight: isToday ? .semibold : .regular).monospacedDigit())
-                            .foregroundStyle(isToday ? Color.editorBackground : Color.primary)
+                            .foregroundStyle(isToday ? Color.white : Color.primary)
                             .frame(minWidth: 22, minHeight: 22)
-                            .background { if isToday { Circle().fill(Color.primary) } }
+                            .background { if isToday { Circle().fill(Color.yapperOrange) } }
                     }
                     .padding(.vertical, 8)
                     .frame(maxWidth: .infinity)
@@ -31,6 +32,7 @@ struct CalendarWeekGrid: View {
                     CalendarDayCell(
                         day: day,
                         items: byDay[dates.dayKey(day)] ?? [],
+                        posted: postedByDay[dates.dayKey(day)] ?? [],
                         isToday: isToday,
                         dense: false,
                         showDate: false,

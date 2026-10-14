@@ -4,6 +4,7 @@ import SwiftUI
 struct CalendarMonthGrid: View {
     let focus: Date
     let byDay: [String: [CalendarItem]]
+    var postedByDay: [String: [CalendarPostedGroup]] = [:]
     let dates: CalendarDates
     let onOpen: (String) -> Void
     let onDrop: (String, Date) -> Void
@@ -29,6 +30,7 @@ struct CalendarMonthGrid: View {
                         CalendarDayCell(
                             day: day,
                             items: byDay[dates.dayKey(day)] ?? [],
+                            posted: postedByDay[dates.dayKey(day)] ?? [],
                             inMonth: dates.sameMonth(day, as: focus),
                             isToday: dates.sameDay(day, today),
                             onOpen: onOpen,
