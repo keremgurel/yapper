@@ -1394,3 +1394,30 @@ export const scrapeCache = pgTable(
   },
   (t) => [index("scrape_cache_created_idx").on(t.createdAt)],
 );
+
+/**
+ * One successful 1-Click Edit: how much footage it read and what it cut. Home
+ * adds these up into the time a creator saved against cutting by hand. Keyed
+ * by the credit reservation it was paid with, so a request is counted once.
+ */
+export const editRuns = pgTable(
+  "edit_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    usageId: text("usage_id").notNull(),
+    footageSeconds: real("footage_seconds").notNull(),
+    cutCount: integer("cut_count").notNull(),
+    cutSeconds: real("cut_seconds").notNull(),
+    wordCount: integer("word_count").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("edit_runs_user_idx").on(t.userId, t.createdAt),
+    uniqueIndex("edit_runs_usage_unique").on(t.usageId),
+  ],
+);

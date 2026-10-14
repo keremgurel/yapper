@@ -2,10 +2,11 @@ import { BarChart3 } from "lucide-react";
 import { EmptyState } from "@/components/studio-ui";
 import type { ItemSummary } from "@/lib/ideas/client";
 import HomeCapture from "@/components/studio-home/home-capture";
-import PostingRhythm from "@/components/studio-home/posting-rhythm";
 import PostsRail from "@/components/studio-home/posts-rail";
 import SetupTrack from "@/components/studio-home/setup-track";
 import StatsBand from "@/components/studio-home/stats-band";
+import TimeSavedCard from "@/components/studio-home/time-saved-card";
+import type { TimeSaved } from "@/components/studio-home/use-time-saved";
 import UpNextSection from "@/components/studio-home/up-next-section";
 import type { ChannelStats } from "@/components/studio-home/channel-stats";
 import type { RankedVideo } from "@/components/studio-home/rank-videos";
@@ -15,7 +16,6 @@ export interface HomeChannels {
   /** Null while channel history loads. */
   ranked: RankedVideo[] | null;
   stats: ChannelStats | null;
-  weeks: number[] | null;
   missing: string;
 }
 
@@ -32,6 +32,7 @@ export default function HomeView({
   setup,
   ideas,
   channels,
+  timeSaved,
 }: {
   title: string;
   onCapture: (text: string) => Promise<void>;
@@ -45,6 +46,8 @@ export default function HomeView({
   };
   /** Null until a channel is connected. */
   channels: HomeChannels | null;
+  /** `data` is null while it loads. */
+  timeSaved: { data: TimeSaved | null; failed: boolean };
 }) {
   // A brand-new creator's empty queue would only repeat setup's first step.
   const queue =
@@ -56,7 +59,12 @@ export default function HomeView({
         onRetry={ideas.onRetry}
       />
     );
-  const posted = Boolean(channels?.ranked?.length);
+  // A creator still on setup has nothing edited to count, so the card waits
+  // for their first 1-Click Edit; a read that failed with nothing to show
+  // leaves it out rather than spin.
+  const hideSaved =
+    (setup && !timeSaved.data?.edits) || (timeSaved.failed && !timeSaved.data);
+  const saved = hideSaved ? null : <TimeSavedCard saved={timeSaved.data} />;
 
   return (
     <div className="w-full space-y-8 pb-24">
@@ -84,16 +92,19 @@ export default function HomeView({
           {channels.ranked?.length === 0 ? (
             // Connected, nothing posted yet: a row of zeros would read as
             // failure, so say where the numbers will come from.
-            <div className="bg-card border-border min-w-0 self-start rounded-xl border">
-              <EmptyState
-                icon={BarChart3}
-                title="Your numbers start with your first post"
-                description={
-                  channels.missing
-                    ? `${channels.missing} didn’t load. Refresh to try again.`
-                    : "Views, your typical post and your posting rhythm show up here once you publish."
-                }
-              />
+            <div className="min-w-0 space-y-8 self-start">
+              <div className="bg-card border-border rounded-xl border">
+                <EmptyState
+                  icon={BarChart3}
+                  title="Your numbers start with your first post"
+                  description={
+                    channels.missing
+                      ? `${channels.missing} didn’t load. Refresh to try again.`
+                      : "Views and your typical post show up here once you publish."
+                  }
+                />
+              </div>
+              {saved}
             </div>
           ) : (
             <div className="min-w-0 space-y-8">
@@ -102,19 +113,16 @@ export default function HomeView({
                 ranked={channels.ranked}
                 typical={channels.stats?.typical ?? 0}
               />
-              {posted && channels.stats && channels.weeks ? (
-                <PostingRhythm
-                  weeks={channels.weeks}
-                  thisWeek={channels.stats.postsThisWeek}
-                  usual={channels.stats.usualPerWeek}
-                />
-              ) : null}
+              {saved}
             </div>
           )}
           <div className="min-w-0">{queue}</div>
         </div>
       ) : (
-        queue
+        <>
+          {queue}
+          {saved}
+        </>
       )}
     </div>
   );

@@ -116,6 +116,20 @@ struct HomeDecodingTests {
         #expect(HomeGreeting.text(hour: 23, firstName: " ") == "Working late")
     }
 
+    @Test func durationsReadLikeTheWeb() {
+        #expect(HomeDuration.text(Double((72 * 60 + 3) * 60)) == "72 hr 3 min")
+        #expect(HomeDuration.text(7200) == "2 hr")
+        #expect(HomeDuration.text(2700) == "45 min")
+        #expect(HomeDuration.text(20) == "Under a minute")
+        #expect(HomeDuration.text(0) == "0 min")
+    }
+
+    @Test func decodesTimeSaved() throws {
+        let saved = try decode(#"{"edits":3,"footageSeconds":540.5,"cutCount":41,"cutSeconds":96,"since":"2026-10-15T00:00:00.000Z","savedSeconds":1360.5}"#, as: HomeTimeSaved.self)
+        #expect(saved.edits == 3)
+        #expect(saved.savedSeconds == 1360.5)
+    }
+
     @Test func compactNumbers() {
         #expect(HomeNumber.compact(999) == 999.formatted(.number))
         #expect(HomeNumber.compact(1_234).hasSuffix("K"))

@@ -12,6 +12,7 @@ struct HomePage: View {
     @ObservedObject private var connections: ConnectionsStore = .shared
     @ObservedObject private var brain: BrainProjectStore = .shared
     @ObservedObject private var auth: StudioAuth = .shared
+    @ObservedObject private var timeSaved: HomeTimeSavedStore = .shared
     @Namespace private var composerSpace
     @State private var expanded = false
     /// One clock per visit, so the numbers do not shift while the page is open.
@@ -48,11 +49,12 @@ struct HomePage: View {
                     if let steps = dashboard.setup { HomeSetupTrack(steps: steps) }
                     if let channels = dashboard.channels {
                         HomeSplitLayout {
-                            HomeChannelsColumn(channels: channels)
+                            HomeChannelsColumn(channels: channels) { saved(dashboard) }
                             queue(dashboard)
                         }
                     } else {
                         queue(dashboard)
+                        saved(dashboard)
                     }
                 }
                 .padding(.top, 24)
@@ -81,6 +83,17 @@ struct HomePage: View {
         }
     }
 
+    /// A creator still on setup has nothing edited to count, so the card
+    /// waits for their first 1-Click Edit; a read that failed with nothing to
+    /// show leaves it out rather than spin.
+    @ViewBuilder
+    private func saved(_ dashboard: HomeDashboard) -> some View {
+        let onSetup = dashboard.setup != nil && (timeSaved.saved?.edits ?? 0) == 0
+        if !onSetup && !timeSaved.failed {
+            HomeTimeSavedCard(saved: timeSaved.saved)
+        }
+    }
+
     private func toggleExpanded() {
         withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) { expanded.toggle() }
     }
@@ -90,6 +103,7 @@ struct HomePage: View {
         async let items: Void = ideas.refresh()
         async let links: Void = connections.refresh()
         async let project: Void = brain.refresh()
-        _ = await (channels, items, links, project)
+        async let saved: Void = timeSaved.refresh()
+        _ = await (channels, items, links, project, saved)
     }
 }
