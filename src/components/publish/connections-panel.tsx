@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import {
@@ -34,11 +34,17 @@ const ICON: Record<PublishPlatform, typeof Video> = {
  * it, but the current render keeps the notice visible. */
 function useConnectNotice(): { ok?: PublishPlatform; error?: string } {
   const params = useSearchParams();
-  const raw = params.get("connected");
-  const ok = publishPlatforms.includes(raw as PublishPlatform)
-    ? (raw as PublishPlatform)
-    : undefined;
-  const error = params.get("connect_error") ?? undefined;
+  // Next's patched replaceState updates useSearchParams. Keep the callback
+  // result for this visit before cleaning the URL, or it disappears at once.
+  const [{ ok, error }] = useState(() => {
+    const raw = params.get("connected");
+    return {
+      ok: publishPlatforms.includes(raw as PublishPlatform)
+        ? (raw as PublishPlatform)
+        : undefined,
+      error: params.get("connect_error") ?? undefined,
+    };
+  });
   useEffect(() => {
     if (ok || error) {
       window.history.replaceState({}, "", window.location.pathname);
@@ -70,13 +76,21 @@ export default function ConnectionsPanel() {
   return (
     <div>
       {notice.ok && (
-        <p className="mb-4 rounded-lg bg-[color:var(--sg-green-500)]/12 px-4 py-2.5 text-sm font-bold text-[color:var(--sg-green-500)]">
+        <p
+          role="status"
+          className="mb-4 rounded-lg bg-[color:var(--sg-green-500)]/12 px-4 py-2.5 text-sm font-bold text-[color:var(--sg-green-500)]"
+        >
           Connected {PLATFORMS[notice.ok].label}.
         </p>
       )}
       {notice.error && (
-        <p className="mb-4 rounded-lg bg-[color:var(--sg-pink-500)]/12 px-4 py-2.5 text-sm font-bold text-[color:var(--sg-pink-500)]">
-          Couldn&apos;t connect ({notice.error}). Try again.
+        <p
+          role="alert"
+          className="mb-4 rounded-lg bg-[color:var(--sg-pink-500)]/12 px-4 py-2.5 text-sm font-bold text-[color:var(--sg-pink-500)]"
+        >
+          {notice.error === "tiktok_configuration"
+            ? "TikTok couldn’t connect because Yapper’s TikTok configuration needs fixing. Contact support; signing in again won’t resolve this."
+            : `Couldn’t connect (${notice.error}). Try again.`}
         </p>
       )}
 

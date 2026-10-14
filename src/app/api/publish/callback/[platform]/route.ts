@@ -72,7 +72,15 @@ export async function GET(req: Request, { params }: Params): Promise<Response> {
     return res;
   } catch (e) {
     console.error(`[publish] ${p} connect failed`, e);
-    const res = back(origin, { connect_error: "exchange_failed" });
+    const configurationError =
+      p === "tiktok" &&
+      e instanceof Error &&
+      e.message === "oauth_exchange_invalid_client";
+    const res = back(origin, {
+      connect_error: configurationError
+        ? "tiktok_configuration"
+        : "exchange_failed",
+    });
     res.cookies.delete(cookieName);
     return res;
   }

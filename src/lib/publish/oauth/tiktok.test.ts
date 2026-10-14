@@ -25,6 +25,74 @@ describe("tiktok.buildAuthUrl", () => {
   });
 });
 
+describe("tiktok.exchangeCode", () => {
+  it("identifies a client configuration failure even with HTTP 200", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          error: "invalid_client",
+          error_description: "private details",
+        }),
+      })),
+    );
+    await expect(
+      tiktok.exchangeCode(
+        { id: "client", secret: "secret" },
+        "code",
+        "https://ypr.app/api/publish/callback/tiktok",
+      ),
+    ).rejects.toThrow("oauth_exchange_invalid_client");
+  });
+
+  it("does not copy unrecognized provider error text into logs", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          error: "secret-from-provider",
+          error_description: "private details",
+        }),
+      })),
+    );
+    await expect(
+      tiktok.exchangeCode(
+        { id: "client", secret: "secret" },
+        "code",
+        "https://ypr.app/api/publish/callback/tiktok",
+      ),
+    ).rejects.toThrow(/^oauth_exchange_failed$/);
+  });
+
+  it("returns the granted scopes and tokens for a successful connection", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          access_token: "access",
+          refresh_token: "refresh",
+          expires_in: 86400,
+          scope: "user.info.basic,video.publish",
+        }),
+      })),
+    );
+    const tokens = await tiktok.exchangeCode(
+      { id: "client", secret: "secret" },
+      "code",
+      "https://ypr.app/api/publish/callback/tiktok",
+    );
+    expect(tokens).toMatchObject({
+      accessToken: "access",
+      refreshToken: "refresh",
+      scope: "user.info.basic,video.publish",
+    });
+    expect(tokens.expiresAt).toBeInstanceOf(Date);
+  });
+});
+
 describe("tiktok.refreshAccessToken", () => {
   it("returns the rotated refresh token so it can be persisted", async () => {
     // TikTok's refresh grant returns a fresh refresh_token each time; dropping
