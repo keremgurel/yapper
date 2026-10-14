@@ -1,7 +1,8 @@
 "use client";
 
 import { fetchPlatformVideos, type PlatformVideo } from "@/lib/publish/client";
-import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
+import type { PublishPlatform } from "@/lib/db/schema";
+import { enabledPublishPlatforms } from "@/lib/publish/availability";
 import { useClientResource } from "@/hooks/use-client-resource";
 
 export type ChannelResult = {
@@ -18,21 +19,23 @@ export function useChannelVideos(enabled: boolean) {
     enabled,
     () =>
       Promise.all(
-        publishPlatforms.map(async (platform): Promise<ChannelResult> => {
-          try {
-            return { platform, ...(await fetchPlatformVideos(platform)) };
-          } catch (error) {
-            return {
-              platform,
-              connected: false,
-              videos: [],
-              error:
-                error instanceof Error && error.message
-                  ? error.message
-                  : "videos_unavailable",
-            };
-          }
-        }),
+        enabledPublishPlatforms.map(
+          async (platform): Promise<ChannelResult> => {
+            try {
+              return { platform, ...(await fetchPlatformVideos(platform)) };
+            } catch (error) {
+              return {
+                platform,
+                connected: false,
+                videos: [],
+                error:
+                  error instanceof Error && error.message
+                    ? error.message
+                    : "videos_unavailable",
+              };
+            }
+          },
+        ),
       ),
     60_000,
   );

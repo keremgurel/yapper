@@ -6,7 +6,7 @@ import CaptionLine from "@/components/publish/captions/caption-line";
 import CopyCaptionButton from "@/components/publish/captions/copy-caption-button";
 import { hasCaptionText } from "@/components/publish/captions/caption-draft";
 import type { CrossPostTarget } from "@/components/publish/compose/types";
-import { publishPlatforms } from "@/lib/db/schema";
+import { enabledPublishPlatforms } from "@/lib/publish/availability";
 import { captionSpec } from "@/lib/publish/caption-specs";
 
 /**
@@ -22,7 +22,7 @@ export default function PreparedCaptions({
   return (
     <div className="flex flex-col gap-5">
       {sources.map((source) => {
-        const written = publishPlatforms.filter((platform) => {
+        const written = enabledPublishPlatforms.filter((platform) => {
           const caption = source.captions?.[platform];
           return caption && hasCaptionText(caption);
         });

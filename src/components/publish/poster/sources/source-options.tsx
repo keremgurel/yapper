@@ -3,7 +3,8 @@
 import { Check, Upload } from "lucide-react";
 import PlatformIcon from "@/components/publish/platform-icon";
 import { PLATFORMS } from "@/lib/publish/platforms";
-import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
+import type { PublishPlatform } from "@/lib/db/schema";
+import { enabledPublishPlatforms } from "@/lib/publish/availability";
 import type { PosterSource } from "./use-source-videos";
 
 export default function SourceOptions({
@@ -20,7 +21,7 @@ export default function SourceOptions({
       aria-label="Video sources"
       className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5"
     >
-      {(["uploads", ...publishPlatforms] as const).map((source) => (
+      {(["uploads", ...enabledPublishPlatforms] as const).map((source) => (
         <button
           key={source}
           type="button"

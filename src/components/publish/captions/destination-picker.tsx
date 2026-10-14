@@ -2,7 +2,8 @@
 
 import { Chip } from "@/components/studio-ui";
 import PlatformIcon from "@/components/publish/platform-icon";
-import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
+import type { PublishPlatform } from "@/lib/db/schema";
+import { enabledPublishPlatforms } from "@/lib/publish/availability";
 import { captionSpec } from "@/lib/publish/caption-specs";
 
 /**
@@ -28,7 +29,7 @@ export default function DestinationPicker({
 }) {
   return (
     <div className="grid gap-2 sm:grid-cols-3">
-      {publishPlatforms.map((platform) => {
+      {enabledPublishPlatforms.map((platform) => {
         const active = selected.has(platform);
         return (
           <button

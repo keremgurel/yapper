@@ -63,6 +63,8 @@ describe("configuration gating", () => {
     }
     expect(configuredPlatforms()).toEqual([]);
 
+    process.env.FACEBOOK_APP_ID = "configured-but-paused";
+    process.env.FACEBOOK_APP_SECRET = "secret";
     process.env.TIKTOK_CLIENT_KEY = "k";
     process.env.TIKTOK_CLIENT_SECRET = "s";
     expect(configuredPlatforms()).toEqual(["tiktok"]);

@@ -8,7 +8,7 @@ struct PosterPreparedCaptions: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             ForEach(targets) { target in
-                let written = PublishPlatform.allCases.filter { target.captions[$0]?.hasText == true }
+                let written = PublishPlatform.enabledCases.filter { target.captions[$0]?.hasText == true }
                 VStack(alignment: .leading, spacing: 10) {
                     if targets.count > 1 { Text(target.title).font(.system(size: 13, weight: .medium)).lineLimit(1) }
                     if written.isEmpty {

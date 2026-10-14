@@ -1,3 +1,7 @@
+import {
+  isPlatformEnabled,
+  platformPausedResponse,
+} from "@/lib/publish/availability";
 import { auth } from "@clerk/nextjs/server";
 import { getConnectionRow, archivedMediaKeysForPosts } from "@/lib/db/publish";
 import { withServerTiming } from "@/lib/http/server-timing";
@@ -11,6 +15,7 @@ export const runtime = "nodejs";
 export const GET = withServerTiming(async (req: Request) => {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!isPlatformEnabled("facebook")) return platformPausedResponse();
   const row = await getConnectionRow(userId, "facebook");
   if (!row?.externalAccountId)
     return Response.json({ connected: false, videos: [] });

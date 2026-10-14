@@ -98,7 +98,7 @@ final class PosterDraftStore: ObservableObject {
     private func sourceCaptions(_ video: PosterVideo) -> PosterCaptionSet {
         guard let original = video.sourceCaption else { return [:] }
         var set: PosterCaptionSet = [:]
-        for platform in PublishPlatform.allCases {
+        for platform in PublishPlatform.enabledCases {
             set[platform] = PosterCaption(platform: platform.rawValue, title: "", body: original, hashtags: [])
         }
         return set

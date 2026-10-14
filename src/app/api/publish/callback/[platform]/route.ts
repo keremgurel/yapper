@@ -1,3 +1,4 @@
+import { isPlatformEnabled } from "@/lib/publish/availability";
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { ensureUser } from "@/lib/db/users";
@@ -35,6 +36,11 @@ export async function GET(req: Request, { params }: Params): Promise<Response> {
     return back(origin, { connect_error: "unknown_platform" });
   }
   const p = platform as PublishPlatform;
+  if (!isPlatformEnabled(p)) {
+    const res = back(origin, { connect_error: "platform_paused" });
+    res.cookies.delete(`publish_state_${p}`);
+    return res;
+  }
 
   const providerError = url.searchParams.get("error");
   if (providerError) return back(origin, { connect_error: providerError });

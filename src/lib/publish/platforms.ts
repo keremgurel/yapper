@@ -1,4 +1,5 @@
-import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
+import { enabledPublishPlatforms } from "./availability";
+import type { PublishPlatform } from "@/lib/db/schema";
 
 /**
  * What "post" actually does on a platform, because it is not the same promise
@@ -118,5 +119,5 @@ export function isPlatformConfigured(platform: PublishPlatform): boolean {
 
 /** The platforms a user could actually connect right now, given the env. */
 export function configuredPlatforms(): PublishPlatform[] {
-  return publishPlatforms.filter(isPlatformConfigured);
+  return enabledPublishPlatforms.filter(isPlatformConfigured);
 }

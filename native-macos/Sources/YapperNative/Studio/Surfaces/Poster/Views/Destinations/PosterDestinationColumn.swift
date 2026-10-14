@@ -17,7 +17,7 @@ struct PosterDestinationColumn: View {
         let chosen = drafts.destinations(video, connected: connected)
         let captions = drafts.captions(video)
         let cover = drafts.cover(video)
-        let readiness = PublishPlatform.allCases.filter(chosen.contains).map { platform in
+        let readiness = PublishPlatform.enabledCases.filter(chosen.contains).map { platform in
             PosterReadiness(platform: platform, connected: connected.contains(platform), caption: captions.caption(for: platform),
                             hasCover: cover.image != nil, outcome: drafts.outcome(video, platform))
         }
@@ -45,7 +45,7 @@ struct PosterDestinationColumn: View {
                     canReuse: chosen.count > 1 && !generator.generating,
                     onCopy: { drafts.copyCaption(from: item.platform, to: chosen, for: video) },
                     onGenerateOthers: {
-                        generate(PublishPlatform.allCases.filter { chosen.contains($0) && $0 != item.platform },
+                        generate(PublishPlatform.enabledCases.filter { chosen.contains($0) && $0 != item.platform },
                                  titleOnly: false, reference: captions.caption(for: item.platform).rendered)
                     }
                 )
@@ -100,7 +100,7 @@ struct PosterDestinationColumn: View {
                     }
                 }
             }
-            Button { generate(PublishPlatform.allCases.filter(chosen.contains), titleOnly: false) } label: {
+            Button { generate(PublishPlatform.enabledCases.filter(chosen.contains), titleOnly: false) } label: {
                 HStack(spacing: 6) {
                     if generator.generating || reading { ProgressView().controlSize(.mini) } else { Image(systemName: "sparkles") }
                     Text(reading ? "Reading what the video says" : generator.generating ? "Writing"

@@ -12,7 +12,7 @@ final class PosterConnectionStore: ObservableObject {
     /// Active connections in the app's platform order.
     var connected: [PublishPlatform] {
         let active = Set((response?.connections ?? []).filter { $0.status == "active" }.map(\.platform))
-        return PublishPlatform.allCases.filter { active.contains($0.rawValue) }
+        return PublishPlatform.enabledCases.filter { active.contains($0.rawValue) }
     }
 
     /// What the publish sheet may post to: Facebook also needs its Page.

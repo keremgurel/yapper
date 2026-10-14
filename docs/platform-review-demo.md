@@ -1,6 +1,6 @@
 # Yapper review demos — one recording per platform
 
-Four platform scripts: TikTok, Instagram, Facebook, and YouTube. The TikTok recording has already been submitted; record another only if its review requests updated evidence. Each starts with the same short app overview, then shows only that platform's complete integration. This replaces the earlier six-recording plan.
+Active review scripts: TikTok, Instagram, and YouTube. Facebook is paused; its script is retained for a future rollout. The TikTok recording has already been submitted; record another only if its review requests updated evidence. Each starts with the same short app overview, then shows only that platform's complete integration. This replaces the earlier six-recording plan.
 
 ## Shared opening — about 20 seconds
 
@@ -26,13 +26,12 @@ Four platform scripts: TikTok, Instagram, Facebook, and YouTube. The TikTok reco
 
 Use “Instagram” or “Facebook” in the last sentence when addressing Meta. Reuse the app footage; change the greeting and destination sentence. These are brief glimpses of prepared screens, not live creation/rendering demonstrations.
 
-## Four complete scripts
+## Active scripts
 
 | Recording | Suggested length | Script                                               |
 | --------- | ---------------- | ---------------------------------------------------- |
 | TikTok    | 3–4 minutes      | [TikTok](platform-review-recordings/tiktok.md)       |
 | Instagram | 2–3 minutes      | [Instagram](platform-review-recordings/instagram.md) |
-| Facebook  | 2–3 minutes      | [Facebook](platform-review-recordings/facebook.md)   |
 | YouTube   | 2–3 minutes      | [YouTube](platform-review-recordings/youtube.md)     |
 
 Allow extra time for consent and processing; readability matters more than a time target. Each file pairs exact actions with short narration. TikTok includes Direct Post and the inbox option in the same recording because both permissions are requested.
@@ -41,9 +40,9 @@ The main sequence is: connect → show the account and relevant data → preview
 
 ## Before filming
 
-Use the original camera-check sample and preparation notes in [Setup](platform-review-recordings/00-setup.md). Facebook authorization now opens, but Page selection and a successful end-to-end test remain pending. TikTok needs the sandbox and a private test account for Direct Post. Rehearse each actual publish; no successful authenticated end-to-end publication has been confirmed in this work yet.
+Use the original camera-check sample and preparation notes in [Setup](platform-review-recordings/00-setup.md). YouTube and Instagram recordings do not exist yet (confirmed October 15, 2026). See [rollout status](publishing-rollout.md) for the live review gates. TikTok needs the sandbox and a private test account for Direct Post. Rehearse each actual publish; no successful authenticated end-to-end publication has been confirmed in this work yet.
 
-Use the deployed web Poster for YouTube: select visibility and audience before uploading, then verify the actual result in YouTube Studio. The native Mac Poster still needs equivalent controls; do not use it for this review demonstration. Keep failures and pending results out of success narration, and label processing time cuts.
+Use the deployed web Poster for YouTube: select visibility and audience before uploading, then verify the actual result in YouTube Studio. The current native source also includes equivalent controls; confirm your installed build has them before filming the Mac flow. Keep failures and pending results out of success narration, and label processing time cuts.
 
 One complete TikTok demo is permitted; multiple files are optional. Its requested products/scopes still need visible demonstrations. [TikTok review guidelines](https://developers.tiktok.com/docs/en/our-guidelines-app-review-guidelines)
 

@@ -11,7 +11,7 @@ struct PosterSourceOptions: View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: min(6, max(1, Int(availableWidth / 200)))), spacing: 8) {
             choice(.yapper, title: "Made in Yapper", detail: "Latest edited projects", icon: "film.stack")
             choice(.uploads, title: "Uploads", detail: "Ready to post", icon: "square.and.arrow.up")
-            ForEach(PublishPlatform.allCases) { platform in
+            ForEach(PublishPlatform.enabledCases) { platform in
                 choice(.platform(platform), title: platform.label,
                        detail: connected.contains(platform) ? "Connected" : "Connect account", icon: platform.symbol)
             }

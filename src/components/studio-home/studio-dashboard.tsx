@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useConnections } from "@/hooks/use-connections";
 import { useIdeaBank } from "@/hooks/use-idea-bank";
-import { publishPlatforms } from "@/lib/db/schema";
+import { enabledPublishPlatforms } from "@/lib/publish/availability";
 import HomeView from "@/components/studio-home/home-view";
 import { greeting } from "@/components/studio-home/greeting";
 import { rankVideos } from "@/components/studio-home/rank-videos";
@@ -58,7 +58,7 @@ export default function StudioDashboard() {
     () => (shown === null ? null : channelStats(shown, now)),
     [shown, now],
   );
-  const connectedCount = publishPlatforms.filter((platform) =>
+  const connectedCount = enabledPublishPlatforms.filter((platform) =>
     isChannelConnected(platform, channels, connections),
   ).length;
   const items = ideas.loading || ideas.loadFailed ? null : ideas.bank;

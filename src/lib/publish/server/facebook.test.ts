@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { publishFacebook } from "./facebook";
 import { createPublishWorkflow } from "../workflow";
 const mocks = vi.hoisted(() => ({
+  enabled: vi.fn(),
   prior: vi.fn(),
   claim: vi.fn(),
   complete: vi.fn(),
@@ -64,8 +65,13 @@ function run(expectedAccountId = "123") {
     createPublishWorkflow(request.signal),
   );
 }
+vi.mock("../availability", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../availability")>()),
+  isPlatformEnabled: mocks.enabled,
+}));
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.enabled.mockReturnValue(true);
   mocks.prior.mockResolvedValue(null);
   mocks.claim.mockResolvedValue({ kind: "created", jobId: "job-1" });
   mocks.token.mockResolvedValue("page-token");
@@ -126,4 +132,26 @@ describe("Facebook publishing confirmation", () => {
     });
     expect(mocks.complete).not.toHaveBeenCalled();
   });
+});
+
+it("blocks new Facebook posts while paused without calling the provider", async () => {
+  mocks.enabled.mockReturnValue(false);
+  const response = await run();
+  expect(response.status).toBe(409);
+  expect(await response.json()).toEqual({ error: "platform_paused" });
+  expect(mocks.claim).not.toHaveBeenCalled();
+  expect(mocks.post).not.toHaveBeenCalled();
+  expect(mocks.token).not.toHaveBeenCalled();
+});
+
+it("still reconciles an already sent Facebook post while paused", async () => {
+  mocks.enabled.mockReturnValue(false);
+  mocks.prior.mockResolvedValue({
+    kind: "existing",
+    jobId: "job-1",
+    status: "published",
+    externalUrl: "https://www.facebook.com/reel/456",
+  });
+  expect((await run()).status).toBe(200);
+  expect(mocks.post).not.toHaveBeenCalled();
 });
