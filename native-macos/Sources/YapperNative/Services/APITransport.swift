@@ -26,7 +26,10 @@ enum APITransport {
             let (data, response) = try await URLSession.shared.data(for: request)
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             PerfLog.logger.debug("http \(PerfLog.milliseconds(since: started))ms \(status) \(data.count)B \(method, privacy: .public) \(path, privacy: .public)")
-            guard (200..<300).contains(status) else { throw Failure(status: status, body: data) }
+            guard (200..<300).contains(status) else {
+                logRefusal(status: status, body: data, path: path)
+                throw Failure(status: status, body: data)
+            }
             return data
         }
         guard method == "GET" else {
@@ -38,5 +41,15 @@ enum APITransport {
             return data
         }
         return try await APIReadCache.shared.data(for: path, fetch: fetch)
+    }
+
+    /// The route's own error code and reason for a refused call, so a failure
+    /// in the field can be read from the perf log. Only those two short
+    /// fields are logged, never the rest of the body.
+    private static func logRefusal(status: Int, body: Data, path: String) {
+        let json = (try? JSONSerialization.jsonObject(with: body)) as? [String: Any]
+        let code = (json?["error"] as? String).map { String($0.prefix(60)) } ?? "-"
+        let reason = (json?["reason"] as? String).map { String($0.prefix(60)) } ?? "-"
+        PerfLog.logger.debug("http refused \(status) \(code, privacy: .public) \(reason, privacy: .public) \(path, privacy: .public)")
     }
 }
