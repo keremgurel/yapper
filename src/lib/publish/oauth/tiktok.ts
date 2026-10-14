@@ -50,7 +50,25 @@ export const tiktok: OAuthProvider = {
       refresh_token?: string;
       expires_in?: number;
       scope?: string;
+      error?: string;
     };
+    // TikTok may return HTTP 200 for a refused token exchange. Keep a bounded
+    // error code for diagnosis, never its description (which can contain data).
+    if (json.error) {
+      const code = [
+        "invalid_client",
+        "invalid_grant",
+        "invalid_request",
+        "invalid_scope",
+        "unauthorized_client",
+        "access_denied",
+        "server_error",
+        "temporarily_unavailable",
+      ].includes(json.error)
+        ? json.error
+        : "failed";
+      throw new Error(`oauth_exchange_${code}`);
+    }
     if (!json.access_token) throw new Error("oauth_no_access_token");
     return {
       accessToken: json.access_token,
