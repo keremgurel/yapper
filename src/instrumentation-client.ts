@@ -12,15 +12,22 @@ if (key) {
     capture_exceptions: true,
     before_send: (event) => {
       if (event)
-        for (const key of [
-          "$current_url",
-          "$initial_current_url",
-          "$referrer",
-          "$initial_referrer",
+        for (const bag of [
+          event.properties,
+          event.properties.$set,
+          event.properties.$set_once,
         ]) {
-          const value = event.properties[key];
-          if (typeof value === "string" && value.startsWith("http"))
-            event.properties[key] = analyticsURL(value);
+          if (!bag || typeof bag !== "object") continue;
+          for (const key of [
+            "$current_url",
+            "$initial_current_url",
+            "$referrer",
+            "$initial_referrer",
+          ]) {
+            const value = bag[key];
+            if (typeof value === "string" && value.startsWith("http"))
+              bag[key] = analyticsURL(value);
+          }
         }
       return event;
     },

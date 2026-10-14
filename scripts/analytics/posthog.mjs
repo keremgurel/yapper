@@ -43,7 +43,11 @@ export function posthogAPI(env) {
         },
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
-      if (![429, 502, 503, 504].includes(response.status) || attempt === 3)
+      if (
+        !(method === "GET" || method === "PATCH" || path === "/query/") ||
+        ![429, 502, 503, 504].includes(response.status) ||
+        attempt === 3
+      )
         break;
       await response.arrayBuffer();
       await new Promise((resolve) =>

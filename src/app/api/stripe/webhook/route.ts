@@ -45,7 +45,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     switch (event.type) {
       case "checkout.session.completed":
       case "checkout.session.async_payment_succeeded":
-        await onCheckoutCompleted(event.data.object);
+        await onCheckoutCompleted(event.data.object, event.created);
         break;
       case "customer.subscription.created":
       case "customer.subscription.updated":
@@ -68,7 +68,10 @@ export async function POST(req: NextRequest): Promise<Response> {
 }
 
 /** Link the customer; grant a limited trial or a paid credit pack. */
-async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
+async function onCheckoutCompleted(
+  session: Stripe.Checkout.Session,
+  eventCreated: number,
+) {
   const userId = session.client_reference_id ?? session.metadata?.userId;
   if (!userId) return;
   const customerId =
@@ -101,7 +104,7 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
               livemode: session.livemode,
               plan: session.metadata?.plan,
             },
-            new Date(session.created * 1000),
+            new Date(eventCreated * 1000),
           );
         }
       }
@@ -140,7 +143,7 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
         livemode: session.livemode,
         verification_source: "stripe_webhook",
       },
-      new Date(session.created * 1000),
+      new Date(eventCreated * 1000),
     );
   }
 }

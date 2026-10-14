@@ -47,7 +47,11 @@ beforeEach(() => {
   mocks.retrieve.mockResolvedValue({ status: "trialing" });
 });
 async function send(type: string, object: unknown) {
-  mocks.construct.mockReturnValue({ type, data: { object } });
+  mocks.construct.mockReturnValue({
+    type,
+    created: 1792022400,
+    data: { object },
+  });
   return POST(
     new NextRequest("https://example.test/api/stripe/webhook", {
       method: "POST",
