@@ -8,10 +8,7 @@ import { publishPlatforms } from "@/lib/db/schema";
 import HomeView from "@/components/studio-home/home-view";
 import { greeting } from "@/components/studio-home/greeting";
 import { rankVideos } from "@/components/studio-home/rank-videos";
-import {
-  channelStats,
-  weeklyPosts,
-} from "@/components/studio-home/channel-stats";
+import { channelStats } from "@/components/studio-home/channel-stats";
 import { setupSteps } from "@/components/studio-home/setup-steps";
 import { isChannelConnected } from "@/components/studio-home/connection-state";
 import {
@@ -22,6 +19,7 @@ import {
 import { useBrainStarted } from "@/components/studio-home/use-brain-started";
 import { useChannelVideos } from "@/components/studio-home/use-channel-videos";
 import { useLocalHour } from "@/components/studio-home/use-local-hour";
+import { useTimeSaved } from "@/components/studio-home/use-time-saved";
 
 /**
  * Home: capture first, then what to work on, then how the posts are doing.
@@ -41,6 +39,7 @@ export default function StudioDashboard() {
   const channelResource = useChannelVideos(!!isSignedIn);
   const channels = channelResource.data;
   const brain = useBrainStarted(!!isSignedIn);
+  const timeSaved = useTimeSaved(!!isSignedIn);
 
   // One clock per visit, so the numbers do not shift while the page is open.
   const [now] = useState(() => Date.now());
@@ -95,11 +94,14 @@ export default function StudioDashboard() {
           ? {
               ranked: shown,
               stats,
-              weeks: shown === null ? null : weeklyPosts(shown, now),
               missing: joinPlatformNames(failed),
             }
           : null
       }
+      timeSaved={{
+        data: timeSaved.data ?? null,
+        failed: Boolean(timeSaved.error),
+      }}
     />
   );
 }

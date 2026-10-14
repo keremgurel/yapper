@@ -10,6 +10,8 @@ import {
 } from "@/lib/studio/retake-clusters";
 import { clippedRetakeOpenings } from "@/lib/studio/retake-boundaries";
 import { cutsFromKeptSpans } from "@/lib/studio/retake-keep-spans";
+import { measureEditRun } from "@/lib/studio/edit-run";
+import { recordEditRun } from "@/lib/db/edit-runs";
 import {
   guardProviderIngress,
   guardProviderSpend,
@@ -218,6 +220,13 @@ export async function POST(req: Request): Promise<Response> {
       await refundCreditReservation(userId, reservation, "unreadable_edit");
       return Response.json({ error: "unreadable_edit" }, { status: 502 });
     }
+    // Counted for the time-saved card on Home. A failed write never costs
+    // the creator their edit.
+    await recordEditRun(
+      userId,
+      reservation.usageId,
+      measureEditRun(words, cuts),
+    ).catch((error) => console.error("[clean] edit run not recorded", error));
     return Response.json({ cuts, balance: reservation.balance });
   } catch (e) {
     await refundCreditReservation(

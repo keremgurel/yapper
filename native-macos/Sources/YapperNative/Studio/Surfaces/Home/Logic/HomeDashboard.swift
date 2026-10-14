@@ -8,7 +8,6 @@ struct HomeDashboard {
         /// Nil while channel history loads.
         let ranked: [HomeRankedVideo]?
         let stats: HomeChannelStats?
-        let weeks: [Int]?
         /// Channels whose history failed, named for the numbers card.
         let missing: String
     }
@@ -48,7 +47,6 @@ struct HomeDashboard {
             ? Channels(
                 ranked: ranked,
                 stats: ranked.map { HomeChannelMath.stats($0, now: now) },
-                weeks: ranked.map { HomeChannelMath.weeklyPosts($0, now: now) },
                 missing: HomeChannelHealth.names(HomeChannelHealth.failed(loaded))
             )
             : nil
