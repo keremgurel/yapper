@@ -31,3 +31,6 @@ CLAUDE.md
 
 # shell scripts (Prettier has no parser for them)
 *.sh
+
+# Private analytics dashboard backups
+.analytics-private

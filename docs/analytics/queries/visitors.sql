@@ -1,0 +1,1 @@
+SELECT uniqExact(person_id) AS Total FROM events WHERE event = '$pageview' AND (properties.surface IS NULL OR properties.surface = 'web') AND (properties.environment IS NULL OR properties.environment = 'production') AND match(toString(properties.$current_url), '^https://(www[.])?ypr[.]app(/|$)') AND {filters}

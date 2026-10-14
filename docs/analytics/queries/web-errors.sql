@@ -1,0 +1,1 @@
+SELECT coalesce(toString(properties.$browser),'Unknown') AS Browser,uniqExact(person_id) AS People,count() AS Exceptions FROM events WHERE event='$exception' AND (properties.environment IS NULL OR properties.environment='production') AND match(toString(properties.$current_url),'^https://(www[.])?ypr[.]app(/|$)') AND {filters} GROUP BY Browser ORDER BY Exceptions DESC LIMIT 30

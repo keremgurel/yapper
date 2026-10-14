@@ -54,6 +54,8 @@ enum YapperAPI {
         // megabytes of audio is exactly the traffic an edge bot filter is built
         // to stop, and the server already knows this client by this token.
         request.setValue(NativeUserAgent.token, forHTTPHeaderField: "User-Agent")
+        request.setValue(Bundle.main.object(forInfoDictionaryKey: "YapperAnalyticsEnvironment") as? String ?? "development", forHTTPHeaderField: "X-Yapper-Environment")
+        request.setValue(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "development", forHTTPHeaderField: "X-Yapper-Build")
         return request
     }
 

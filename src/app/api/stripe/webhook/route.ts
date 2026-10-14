@@ -1,3 +1,4 @@
+import { captureVerifiedEvent } from "@/lib/analytics/server";
 import type Stripe from "stripe";
 import type { NextRequest } from "next/server";
 import { grantCreditsIdempotent, grantTrialCredits } from "@/lib/db/credits";
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     switch (event.type) {
       case "checkout.session.completed":
       case "checkout.session.async_payment_succeeded":
-        await onCheckoutCompleted(event.data.object);
+        await onCheckoutCompleted(event.data.object, event.created);
         break;
       case "customer.subscription.created":
       case "customer.subscription.updated":
@@ -67,7 +68,10 @@ export async function POST(req: NextRequest): Promise<Response> {
 }
 
 /** Link the customer; grant a limited trial or a paid credit pack. */
-async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
+async function onCheckoutCompleted(
+  session: Stripe.Checkout.Session,
+  eventCreated: number,
+) {
   const userId = session.client_reference_id ?? session.metadata?.userId;
   if (!userId) return;
   const customerId =
@@ -89,8 +93,20 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
       if (subscriptionId) {
         const subscription =
           await getStripe().subscriptions.retrieve(subscriptionId);
-        if (subscription.status === "trialing")
+        if (subscription.status === "trialing") {
           await grantTrialCredits(userId, TRIAL_CREDITS);
+          await captureVerifiedEvent(
+            userId,
+            "trial_started",
+            {
+              $insert_id: `trial:${subscriptionId}`,
+              subscription_id: subscriptionId,
+              livemode: session.livemode,
+              plan: session.metadata?.plan,
+            },
+            new Date(eventCreated * 1000),
+          );
+        }
       }
     }
     return;
@@ -113,6 +129,21 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
       `sess_${session.id}`,
       { pack: pack.key },
       pack.product,
+    );
+    await captureVerifiedEvent(
+      userId,
+      "purchase_verified",
+      {
+        $insert_id: `stripe:${session.id}`,
+        transaction_id: session.id,
+        amount_minor: session.amount_total,
+        currency: session.currency,
+        purchase_type: "credit_pack",
+        product: pack.product,
+        livemode: session.livemode,
+        verification_source: "stripe_webhook",
+      },
+      new Date(eventCreated * 1000),
     );
   }
 }
@@ -140,6 +171,14 @@ async function onSubscriptionChange(sub: Stripe.Subscription) {
     },
     subscriptionProduct(sub, plan?.product),
   );
+  await captureVerifiedEvent(userId, "subscription_state_changed", {
+    subscription_id: sub.id,
+    status: sub.status,
+    plan: plan?.key,
+    cancel_at_period_end: sub.cancel_at_period_end,
+    livemode: sub.livemode,
+    product: subscriptionProduct(sub, plan?.product),
+  });
 }
 
 /** Which product's mirror a subscription event writes. The price is the best
@@ -181,6 +220,26 @@ async function onInvoicePaid(invoice: Stripe.Invoice) {
       break;
     }
   }
+  if (plan)
+    await captureVerifiedEvent(
+      userId,
+      "purchase_verified",
+      {
+        $insert_id: `stripe:${invoice.id}`,
+        transaction_id: invoice.id,
+        amount_minor: invoice.amount_paid,
+        currency: invoice.currency,
+        purchase_type:
+          invoice.billing_reason === "subscription_cycle"
+            ? "renewal"
+            : "subscription",
+        product: plan.product,
+        plan: plan.key,
+        livemode: invoice.livemode,
+        verification_source: "stripe_webhook",
+      },
+      new Date((invoice.status_transitions?.paid_at ?? invoice.created) * 1000),
+    );
   // An unlimited plan (Train Plus) carries no allowance. Its entitlement is
   // the subscription state mirrored by onSubscriptionChange.
   if (!plan || plan.includedCredits <= 0) return;

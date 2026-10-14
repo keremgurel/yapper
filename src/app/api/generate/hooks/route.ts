@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import { getBrainContextSafe } from "@/lib/brain/context/server";
@@ -36,7 +37,7 @@ export const maxDuration = 60;
  * Charge-on-success, like the other generate routes: generate first, deduct
  * after, so a failure never costs a credit.
  */
-export async function POST(req: NextRequest): Promise<Response> {
+async function trackedPOST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const ingressLimited = await guardProviderIngress(req);
@@ -112,3 +113,5 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   return Response.json({ hooks, balance, used: brain.used });
 }
+
+export const POST = withProductAnalytics("hooks_generated", trackedPOST);

@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import {
   readBoundedJson,
@@ -17,7 +18,7 @@ import { planChirpy } from "@/lib/chirpy/planner";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-export async function POST(req: Request): Promise<Response> {
+async function trackedPOST(req: Request): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const ingress = await guardProviderIngress(req);
@@ -53,3 +54,5 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "planning_failed" }, { status: 502 });
   }
 }
+
+export const POST = withProductAnalytics("chirpy_plan_created", trackedPOST);

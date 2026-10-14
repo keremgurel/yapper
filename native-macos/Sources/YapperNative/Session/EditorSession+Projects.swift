@@ -55,6 +55,7 @@ extension EditorSession {
     func createProject(named name: String) async {
         do {
             let package = try await library.create(named: name)
+            NativeAnalytics.shared.capture("native_project_created")
             projectNavigation.noteLibraryChanged()
             await openProject(package)
         } catch {

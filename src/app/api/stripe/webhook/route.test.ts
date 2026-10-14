@@ -1,6 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 const mocks = vi.hoisted(() => ({
+  analytics: vi.fn(),
   construct: vi.fn(),
   grant: vi.fn(),
   trial: vi.fn(),
@@ -8,6 +9,9 @@ const mocks = vi.hoisted(() => ({
   sessions: vi.fn(),
   apply: vi.fn(),
   link: vi.fn(),
+}));
+vi.mock("@/lib/analytics/server", () => ({
+  captureVerifiedEvent: mocks.analytics,
 }));
 vi.mock("@/lib/db/credits", () => ({
   grantCreditsIdempotent: mocks.grant,
@@ -43,7 +47,11 @@ beforeEach(() => {
   mocks.retrieve.mockResolvedValue({ status: "trialing" });
 });
 async function send(type: string, object: unknown) {
-  mocks.construct.mockReturnValue({ type, data: { object } });
+  mocks.construct.mockReturnValue({
+    type,
+    created: 1792022400,
+    data: { object },
+  });
   return POST(
     new NextRequest("https://example.test/api/stripe/webhook", {
       method: "POST",
@@ -227,4 +235,33 @@ it("continues granting credits to an existing weekly subscriber on renewal", asy
     "studio",
   );
   spy.mockRestore();
+});
+
+it("analytics uses paid invoice identity and live mode, never a trial invoice or checkout", async () => {
+  await send("invoice.paid", { ...invoice, amount_paid: 0 });
+  expect(mocks.analytics).not.toHaveBeenCalled();
+  const paid = {
+    ...invoice,
+    livemode: true,
+    currency: "usd",
+    created: 1792022400,
+    status_transitions: { paid_at: 1792022410 },
+  };
+  await send("invoice.paid", paid);
+  await send("invoice.paid", paid);
+  for (const call of mocks.analytics.mock.calls) {
+    expect(call).toEqual([
+      "owner",
+      "purchase_verified",
+      expect.objectContaining({
+        $insert_id: "stripe:in_1",
+        transaction_id: "in_1",
+        amount_minor: 19999,
+        currency: "usd",
+        livemode: true,
+        product: "studio",
+      }),
+      new Date(1792022410000),
+    ]);
+  }
 });

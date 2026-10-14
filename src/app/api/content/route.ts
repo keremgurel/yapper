@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { after } from "next/server";
 import { repairPostedRecordings } from "@/lib/content/recording-memory";
 import { auth } from "@clerk/nextjs/server";
@@ -30,7 +31,7 @@ export const GET = withServerTiming(
 
 /** Create a library item (a drafted idea). Body fields are clamped; status
  * defaults to drafted at the DB. */
-export async function POST(req: NextRequest): Promise<Response> {
+async function trackedPOST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   await ensureUser(userId);
@@ -70,3 +71,5 @@ export async function POST(req: NextRequest): Promise<Response> {
   const item = await createContentItem(userId, { ...input, stage: "library" });
   return Response.json({ item }, { status: 201 });
 }
+
+export const POST = withProductAnalytics("content_created", trackedPOST);

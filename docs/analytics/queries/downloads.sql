@@ -1,0 +1,1 @@
+SELECT toString(properties.release_version) AS Version,toString(properties.asset_name) AS Asset,argMax(toFloat(properties.download_count),timestamp) AS Downloads,max(timestamp) AS Checked FROM events WHERE event='release_download_snapshot' AND properties.environment='production' GROUP BY Version,Asset ORDER BY Checked DESC LIMIT 100

@@ -1,0 +1,1 @@
+SELECT toString(properties.action) AS Action,toString(properties.surface) AS Surface,toInt(properties.status) AS Status,uniqExact(person_id) AS People,count() AS Failures FROM events WHERE event='product_action_failed' AND (properties.environment = 'production' AND properties.product = 'studio') AND {filters} GROUP BY Action,Surface,Status ORDER BY Failures DESC LIMIT 100

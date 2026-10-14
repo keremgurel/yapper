@@ -1,0 +1,1 @@
+SELECT uniqExact(distinct_id) AS Total FROM events WHERE event='purchase_verified' AND properties.livemode=true AND toFloat(properties.amount_minor)>0 AND (properties.environment = 'production' AND properties.product = 'studio') AND {filters}

@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import { getBrainContextSafe } from "@/lib/brain/context/server";
 import type { NextRequest } from "next/server";
@@ -36,7 +37,7 @@ export const maxDuration = 60;
  * Charge-on-success (like idea generation): generate first, then deduct, so a
  * failure never costs a credit and there's no stranded state to reconcile.
  */
-export async function POST(req: NextRequest): Promise<Response> {
+async function trackedPOST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const ingressLimited = await guardProviderIngress(req);
@@ -123,3 +124,5 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   return Response.json({ script, balance, used: brain.used });
 }
+
+export const POST = withProductAnalytics("script_generated", trackedPOST);

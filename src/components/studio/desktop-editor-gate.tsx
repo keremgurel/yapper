@@ -16,6 +16,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { track } from "@/lib/analytics";
 import { desktopEditorUrl } from "@/lib/studio/editor-handoff";
 
 const BENEFITS = [
@@ -59,6 +60,10 @@ export default function DesktopEditorGate({
   }, [itemId]);
 
   function openDesktopEditor() {
+    track("desktop_handoff_requested", {
+      source_page: "/studio/editor",
+      has_recording: !!itemId,
+    });
     setOpening(true);
     window.location.assign(desktopEditorUrl(itemId));
     window.setTimeout(() => setOpening(false), 1800);

@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { after } from "next/server";
 import { repairPostedRecordings } from "@/lib/content/recording-memory";
 import { auth } from "@clerk/nextjs/server";
@@ -26,7 +27,7 @@ export const GET = withServerTiming(async (): Promise<Response> => {
  * exact words immediately and returns, so nothing is ever lost while the
  * (slower, fallible) reference resolution and AI expansion run afterwards.
  */
-export async function POST(req: NextRequest): Promise<Response> {
+async function trackedPOST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
@@ -54,3 +55,5 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   return Response.json({ item });
 }
+
+export const POST = withProductAnalytics("idea_created", trackedPOST);

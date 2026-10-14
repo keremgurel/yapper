@@ -1,3 +1,4 @@
+import { captureVerifiedEvent } from "@/lib/analytics/server";
 import { verifyWebhook } from "@clerk/nextjs/webhooks";
 import type { NextRequest } from "next/server";
 import { deleteUser, ensureUser } from "@/lib/db/users";
@@ -29,6 +30,17 @@ export async function POST(req: NextRequest): Promise<Response> {
   try {
     if (evt.type === "user.created" || evt.type === "user.updated") {
       await ensureUser(evt.data.id, primaryEmail(evt.data));
+      if (evt.type === "user.created") {
+        await captureVerifiedEvent(
+          evt.data.id,
+          "signup_verified",
+          {
+            $insert_id: `clerk-signup:${evt.data.id}`,
+            verification_source: "clerk_webhook",
+          },
+          new Date(evt.data.created_at),
+        );
+      }
     } else if (evt.type === "user.deleted" && evt.data.id) {
       await deleteUser(evt.data.id);
     }

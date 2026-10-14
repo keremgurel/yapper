@@ -1,0 +1,1 @@
+SELECT toString(properties.screen) AS Screen,toString(properties.surface) AS Surface,uniqExact(person_id) AS People,count() AS Views FROM events WHERE event IN ('studio_screen_viewed','native_screen_viewed') AND (properties.environment = 'production' AND properties.product = 'studio') AND {filters} GROUP BY Screen,Surface ORDER BY People DESC LIMIT 60

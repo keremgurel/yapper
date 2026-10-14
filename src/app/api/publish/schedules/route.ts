@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { createHash } from "node:crypto";
 import { auth } from "@clerk/nextjs/server";
 import {
@@ -45,7 +46,7 @@ export const GET = withServerTiming(async () => {
   );
 });
 
-export async function POST(request: Request) {
+async function trackedPOST(request: Request) {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   if (!schedulingEnabled())
@@ -148,3 +149,5 @@ export async function POST(request: Request) {
     throw error;
   }
 }
+
+export const POST = withProductAnalytics("post_scheduled", trackedPOST);

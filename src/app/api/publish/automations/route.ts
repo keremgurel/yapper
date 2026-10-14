@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import { canUsePremium } from "@/lib/billing/gate";
 import {
@@ -42,7 +43,7 @@ export async function GET() {
     throw cause;
   }
 }
-export async function PUT(request: Request) {
+async function trackedPUT(request: Request) {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   try {
@@ -100,3 +101,5 @@ export async function PUT(request: Request) {
     throw error;
   }
 }
+
+export const PUT = withProductAnalytics("automation_saved", trackedPUT);

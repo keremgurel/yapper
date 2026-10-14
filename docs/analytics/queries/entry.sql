@@ -1,0 +1,1 @@
+SELECT event AS Action,toString(properties.source_page) AS Page,uniqExact(person_id) AS People,count() AS Clicks FROM events WHERE event IN ('studio_entry_clicked','app_download_clicked','app_release_page_opened','desktop_handoff_requested') AND properties.environment = 'production' AND properties.product = 'studio' AND {filters} GROUP BY Action,Page ORDER BY People DESC LIMIT 50

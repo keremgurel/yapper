@@ -63,3 +63,6 @@ next-env.d.ts
 
 # Raw Search Console query data is local research, not public source.
 /docs/seo/research-*/private/
+
+# Private analytics backups
+/.analytics-private/

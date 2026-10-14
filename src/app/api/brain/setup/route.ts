@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import {
@@ -29,7 +30,7 @@ export const maxDuration = 90;
  * edits field by field, and applying is the ordinary project patch and block
  * creates.
  */
-export async function POST(req: NextRequest): Promise<Response> {
+async function trackedPOST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const ingressLimited = await guardProviderIngress(req);
@@ -80,3 +81,5 @@ export async function POST(req: NextRequest): Promise<Response> {
     return Response.json({ error: "setup_failed" }, { status: 502 });
   }
 }
+
+export const POST = withProductAnalytics("brain_setup", trackedPOST);

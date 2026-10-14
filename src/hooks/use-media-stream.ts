@@ -1,5 +1,7 @@
 "use client";
 
+import { track } from "@/lib/analytics";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   RECORDING_AUDIO_BITS_PER_SECOND,
@@ -155,6 +157,10 @@ export function useMediaStream() {
         audioBitsPerSecond: RECORDING_AUDIO_BITS_PER_SECOND,
       });
 
+      const recordingId = crypto.randomUUID();
+      let recordingFailed = false;
+      recorder.onstart = () =>
+        track("studio_recording_started", { recording_id: recordingId });
       recorderRef.current = recorder;
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data);
@@ -168,6 +174,11 @@ export function useMediaStream() {
           type:
             recorder.mimeType || selectedMimeType || chunksRef.current[0]?.type,
         });
+        if (nextBlob.size > 0 && !recordingFailed)
+          track("studio_recording_completed", {
+            recording_id: recordingId,
+            bytes: nextBlob.size,
+          });
         const nextUrl = URL.createObjectURL(nextBlob);
         setIsRecording(false);
         setRecordedBlob(nextBlob);
@@ -178,6 +189,8 @@ export function useMediaStream() {
         setIsPreparingDownload(false);
       };
       recorder.onerror = () => {
+        recordingFailed = true;
+        track("studio_recording_failed", { recording_id: recordingId });
         recorderRef.current = null;
         setIsPreparingDownload(false);
         setIsRecording(false);

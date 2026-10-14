@@ -7,9 +7,13 @@ let package = Package(
     products: [
         .executable(name: "YapperNative", targets: ["YapperNative"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/PostHog/posthog-ios.git", exact: "3.92.0"),
+    ],
     targets: [
         .executableTarget(
             name: "YapperNative",
+            dependencies: [.product(name: "PostHog", package: "posthog-ios")],
             path: "Sources/YapperNative",
             resources: [.copy("Resources/SoundEffects"), .copy("Resources/SceneIcons")],
             swiftSettings: [

@@ -1,0 +1,1 @@
+SELECT toString(properties.app_version) AS Version,toString(properties.error_domain) AS Domain,toString(properties.error_code) AS Code,uniqExact(person_id) AS People,count() AS Errors FROM events WHERE event='native_error' AND (properties.environment = 'production' AND properties.product = 'studio') AND {filters} GROUP BY Version,Domain,Code ORDER BY Errors DESC LIMIT 60
