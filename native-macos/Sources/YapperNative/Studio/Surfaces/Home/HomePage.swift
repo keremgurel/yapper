@@ -37,7 +37,7 @@ struct HomePage: View {
                         hour: Calendar.current.component(.hour, from: now),
                         firstName: HomeGreeting.firstName(from: auth.account)
                     ),
-                    description: HomeDashboard.subtitle(hasIdeas: !(ideas.items ?? []).isEmpty)
+                    description: HomeDashboard.subtitle(hasIdeas: ideas.items.map { !$0.isEmpty })
                 )
                 if expanded {
                     Color.clear.frame(height: 96)

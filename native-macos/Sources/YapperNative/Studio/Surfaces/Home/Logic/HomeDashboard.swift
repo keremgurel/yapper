@@ -54,9 +54,13 @@ struct HomeDashboard {
             : nil
     }
 
-    static func subtitle(hasIdeas: Bool) -> String {
-        hasIdeas
-            ? "Get a thought down, or pick up where you left off."
-            : "Start with an idea. Type it, or press ⌘D and say it."
+    /// Nil `hasIdeas` is still loading: the line stays blank rather than
+    /// greet a returning creator as new and then change its mind.
+    static func subtitle(hasIdeas: Bool?) -> String {
+        switch hasIdeas {
+        case nil: " "
+        case true?: "Get a thought down, or pick up where you left off."
+        case false?: "Start with an idea. Type it, or press ⌘D and say it."
+        }
     }
 }
