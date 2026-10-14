@@ -6,6 +6,7 @@ import {
   NoConnectionError,
 } from "@/lib/publish/connection";
 import { listTikTokVideos } from "@/lib/publish/tiktok-list";
+import { refreshFailureReason } from "@/lib/publish/refresh-failure";
 import {
   cachedVideoList,
   wantsFreshList,
@@ -27,14 +28,12 @@ export const GET = withServerTiming(async (req: Request): Promise<Response> => {
     if (error instanceof NoConnectionError) {
       return Response.json({ connected: false, videos: [] });
     }
-    // A refresh TikTok did not answer cleanly. Say so, rather than letting it
-    // escape as an empty 500 that no client can tell from an outage.
-    console.error(
-      "[publish] tiktok token refresh failed",
-      error instanceof Error ? error.message : error,
-    );
+    // A refresh TikTok did not answer cleanly. Say so, and why, rather than
+    // letting it escape as an empty 500 that no client can tell from an outage.
+    const reason = refreshFailureReason(error);
+    console.error("[publish] tiktok token refresh failed", reason, error);
     return Response.json(
-      { connected: true, videos: [], error: "token_refresh_failed" },
+      { connected: true, videos: [], error: "token_refresh_failed", reason },
       { status: 502 },
     );
   }
