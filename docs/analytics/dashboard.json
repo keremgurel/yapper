@@ -5,32 +5,32 @@
   "sections": [
     {
       "key": "pulse",
-      "body": "## Yapper operating overview\nUTC \u00b7 Change the date range above. Web history is available; verified signups and Studio events begin with the tracking deployment. Native events require the instrumented app release. Empty charts before those dates mean missing coverage, not zero usage. Test and development events are excluded.",
+      "body": "## Yapper overview\nUTC. New tracking starts at deployment; Mac data needs the new release. Earlier zeros mean untracked.",
       "layout": [0, 0, 12, 2]
     },
     {
       "key": "acquisition",
-      "body": "## Acquisition and activation\nSources are observed visit sources, not causal attribution. A person can use multiple sources. Signup activation is an ordered same-account sequence within seven days; recent cohorts remain incomplete. Anonymous visitors become account-linked after sign-in.",
+      "body": "## Acquisition and activation\nObserved traffic sources. Activation requires a useful action within seven days of verified signup.",
       "layout": [0, 8, 12, 2]
     },
     {
       "key": "product",
-      "body": "## What people do in Studio\nA successful API action means the request completed. Publishing requests are separate from provider-confirmed publishing. Native actions record outcome codes only; scripts, prompts, transcripts, media and filenames are not collected.",
+      "body": "## Studio usage\nSuccessful requests, visible screens and confirmed publishing. No scripts, prompts or media collected.",
       "layout": [0, 20, 12, 2]
     },
     {
       "key": "mac",
-      "body": "## Mac adoption and release health\nDownloads are GitHub asset transfers, not unique people or installations. First observed launch includes existing users upgrading to telemetry. Version distribution uses each installation\u2019s latest observed foreground activity in the selected period. Clearing local preferences creates a new installation identity.",
+      "body": "## Mac adoption\nDownloads count transfers. First observations include upgrades. Versions use the latest activity per installation.",
       "layout": [0, 33, 12, 2]
     },
     {
       "key": "money",
-      "body": "## Revenue and conversion\nOnly verified live Stripe payments count. Amounts stay in minor currency units to handle currencies correctly; no currency mixing, FX assumptions or net-profit claims. Trials are separate. Refunds, fees, taxes and provider costs are not deducted. Payment history starts at webhook instrumentation.",
+      "body": "## Revenue and conversion\nVerified live payments, grouped by currency in minor units. Gross of refunds, fees and tax deductions.",
       "layout": [0, 50, 12, 2]
     },
     {
       "key": "reliability",
-      "body": "## Reliability and measurement coverage\nThese charts make missing instrumentation visible. Native error events are handled failures, not a crash-free rate. API outcome events report HTTP status and duration, not request bodies. Development, preview and test events stay out of headline metrics.",
+      "body": "## Reliability and coverage\nTrack API failures, handled native errors and event freshness. Native errors are not a crash-free rate.",
       "layout": [0, 57, 12, 2]
     }
   ],
@@ -193,7 +193,7 @@
     },
     {
       "key": "active",
-      "name": "Active Studio users",
+      "name": "Active Studio",
       "description": "Distinct people in the selected period. Coverage starts when the corresponding instrumentation reaches production.",
       "layout": [10, 2, 2, 3],
       "query": {
@@ -233,7 +233,7 @@
     },
     {
       "key": "native",
-      "name": "Active Mac users",
+      "name": "Active Mac",
       "description": "Distinct people in the selected period. Coverage starts when the corresponding instrumentation reaches production.",
       "layout": [6, 5, 2, 3],
       "query": {
@@ -273,7 +273,7 @@
     },
     {
       "key": "exports",
-      "name": "Exporting creators",
+      "name": "Exporters",
       "description": "Distinct people in the selected period. Coverage starts when the corresponding instrumentation reaches production.",
       "layout": [8, 5, 2, 3],
       "query": {
