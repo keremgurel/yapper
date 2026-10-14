@@ -19,13 +19,7 @@ struct PosterVideoStill: View {
                 if let frame {
                     Image(decorative: frame, scale: 1).resizable().scaledToFill()
                 } else if case let .platform(_, _, _, thumbnail?, _, _, _, _, _) = video.origin {
-                    AsyncImage(url: thumbnail) { phase in
-                        if let image = phase.image {
-                            image.resizable().scaledToFill()
-                        } else {
-                            placeholder
-                        }
-                    }
+                    RemoteThumbnail(url: thumbnail) { placeholder }
                 } else {
                     placeholder
                 }

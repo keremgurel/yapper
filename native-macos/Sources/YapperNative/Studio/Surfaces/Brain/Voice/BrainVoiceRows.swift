@@ -120,11 +120,7 @@ struct BrainThumbnail: View {
         RoundedRectangle(cornerRadius: 5, style: .continuous)
             .fill(Color.studioFaintFill)
             .overlay {
-                if let url, let parsed = URL(string: url) {
-                    AsyncImage(url: parsed) { image in
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    } placeholder: { Color.clear }
-                }
+                RemoteThumbnail(url: url.flatMap(URL.init(string:)))
             }
             .frame(width: width, height: height)
             .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))

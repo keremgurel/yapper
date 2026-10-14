@@ -1,63 +1,65 @@
 import AppKit
 import SwiftUI
 
-/// Home: what's in the pipeline, what to make next, and how the channels are
-/// doing. The stores keep their last read, so returning here shows it at once
-/// while a fresh read runs behind it.
+/// Home: capture first, then what to work on, then how the posts are doing.
+/// The same page as the web's Home, reshaping itself around where the
+/// creator is (see `HomeDashboard`). The stores keep their last read, so
+/// returning here paints at once while a fresh read runs behind it.
 struct HomePage: View {
     @ObservedObject private var channelsStore: HomeChannelsStore = .shared
-    @ObservedObject private var itemsStore: HomeItemsStore = .shared
-    @ObservedObject private var connectionsStore: ConnectionsStore = .shared
+    @ObservedObject private var ideas: IdeasStore = .shared
+    @ObservedObject private var capture: IdeaCapture = .shared
+    @ObservedObject private var connections: ConnectionsStore = .shared
+    @ObservedObject private var brain: BrainProjectStore = .shared
+    @ObservedObject private var auth: StudioAuth = .shared
+    @Namespace private var composerSpace
+    @State private var expanded = false
+    /// One clock per visit, so the numbers do not shift while the page is open.
+    @State private var now = Date()
+
+    private var dashboard: HomeDashboard {
+        HomeDashboard(
+            channels: channelsStore.channels,
+            connections: connections.response?.connections,
+            connectionsFailed: connections.error != nil,
+            items: ideas.loadError == nil ? ideas.items : nil,
+            brainStarted: brain.project.map { HomeSetupStep.brainStarted($0, pillarCount: brain.pillars.count) },
+            now: now
+        )
+    }
 
     var body: some View {
-        let channels = channelsStore.channels
-        let ranked = HomeRanking.rankVideos(channels)
-        let connections = connectionsStore.response?.connections
-        let connectionsFailed = connectionsStore.error != nil
-        let channelFailed = channelsStore.anyFailed
-
-        NativePage {
-            NativePageHeader(
-                title: "Home",
-                description: "What's in the pipeline, what to make next, and how your channels are doing."
-            ) {
-                Button { StudioNavigation.shared.goTo(.ideas) } label: {
-                    Label("Ideas", systemImage: "lightbulb")
-                }
-                .buttonStyle(EditorSecondaryButtonStyle())
-                Button { StudioNavigation.shared.goTo(.editor) } label: {
-                    Label("Open editor", systemImage: "plus")
-                }
-                .buttonStyle(EditorPrimaryButtonStyle())
-            }
-
-            VStack(alignment: .leading, spacing: 32) {
-                if channelFailed || itemsStore.pipelineFailed || itemsStore.ideasFailed || connectionsFailed {
-                    HomeRefreshNotice { Task { await refresh() } }
-                }
-                HomePerformanceBand(
-                    loaded: channels != nil,
-                    unavailable: channelFailed || connectionsFailed,
-                    totalViews: ranked.reduce(0) { $0 + $1.video.viewCount },
-                    postCount: ranked.count,
-                    averageViews: ranked.isEmpty ? 0 : Int((Double(ranked.reduce(0) { $0 + $1.video.viewCount }) / Double(ranked.count)).rounded()),
-                    connectedCount: PublishPlatform.allCases.filter {
-                        HomeRanking.isConnected($0, channels: channels, connections: connections)
-                    }.count
+        let dashboard = dashboard
+        ZStack {
+            NativePage {
+                NativePageHeader(
+                    title: HomeGreeting.text(
+                        hour: Calendar.current.component(.hour, from: now),
+                        firstName: HomeGreeting.firstName(from: auth.account)
+                    ),
+                    description: HomeDashboard.subtitle(hasIdeas: !(ideas.items ?? []).isEmpty)
                 )
-                HomeSplitLayout {
-                    HomeUpNextSection(items: itemsStore.pipeline, failed: itemsStore.pipelineFailed)
-                    HomeDailyIdeasSection(ideas: HomeDailyIdeas.make(saved: itemsStore.ideas ?? [], topVideo: ranked.first))
+                if expanded {
+                    Color.clear.frame(height: 96)
+                } else {
+                    HomeCaptureSection(namespace: composerSpace, onExpand: toggleExpanded)
                 }
-                HomeSplitLayout {
-                    HomeTopContentSection(ranked: channels == nil ? nil : ranked, unavailable: channelFailed)
-                    HomeChannelsSection(
-                        channels: channels,
-                        connections: connections,
-                        connectionsLoading: connectionsStore.loading,
-                        connectionsUnavailable: connectionsFailed
-                    )
+                VStack(alignment: .leading, spacing: 32) {
+                    if let steps = dashboard.setup { HomeSetupTrack(steps: steps) }
+                    if let channels = dashboard.channels {
+                        HomeSplitLayout {
+                            HomeChannelsColumn(channels: channels)
+                            queue(dashboard)
+                        }
+                    } else {
+                        queue(dashboard)
+                    }
                 }
+                .padding(.top, 24)
+            }
+            if expanded {
+                IdeaComposerFullWindow(namespace: composerSpace, onCollapse: toggleExpanded)
+                    .zIndex(1)
             }
         }
         .task { await refresh(channelMaxAge: 60) }
@@ -66,25 +68,28 @@ struct HomePage: View {
         }
     }
 
-    private func refresh(channelMaxAge: TimeInterval = 0) async {
-        async let channels: Void = channelsStore.refresh(maxAge: channelMaxAge)
-        async let items: Void = itemsStore.refresh()
-        async let connections: Void = connectionsStore.refresh()
-        _ = await (channels, items, connections)
-    }
-}
-
-/// Some reads failed: say so once, with the one action that retries them.
-private struct HomeRefreshNotice: View {
-    let retry: () -> Void
-    var body: some View {
-        HStack(spacing: 12) {
-            Text("Some Studio data couldn't be loaded. Refresh to check your channels, Library, and ideas again.")
-                .font(.system(size: 13))
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
-            Button("Refresh", action: retry).buttonStyle(EditorSecondaryButtonStyle(size: .small))
+    /// A brand-new creator's empty queue would only repeat setup's first step.
+    @ViewBuilder
+    private func queue(_ dashboard: HomeDashboard) -> some View {
+        if dashboard.setup == nil || !(ideas.items ?? []).isEmpty {
+            HomeUpNextSection(
+                items: ideas.items,
+                shaping: capture.working,
+                failed: ideas.loadError != nil && ideas.items == nil,
+                onRetry: { Task { await ideas.refresh() } }
+            )
         }
-        .nativeCard(padding: 16, radius: 12)
+    }
+
+    private func toggleExpanded() {
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) { expanded.toggle() }
+    }
+
+    private func refresh(channelMaxAge: TimeInterval) async {
+        async let channels: Void = channelsStore.refresh(maxAge: channelMaxAge)
+        async let items: Void = ideas.refresh()
+        async let links: Void = connections.refresh()
+        async let project: Void = brain.refresh()
+        _ = await (channels, items, links, project)
     }
 }

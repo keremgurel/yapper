@@ -5,6 +5,9 @@ describe("telling a revoked login from a passing failure", () => {
   it("treats a refused refresh as revoked", () => {
     expect(isRejectedLogin(new Error("oauth_refresh_400"))).toBe(true);
     expect(isRejectedLogin(new Error("oauth_refresh_401"))).toBe(true);
+    expect(isRejectedLogin(new Error("oauth_refresh_invalid_grant"))).toBe(
+      true,
+    );
   });
 
   it("treats Instagram's invalidated session as revoked", () => {
