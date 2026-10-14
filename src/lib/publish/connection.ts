@@ -14,6 +14,28 @@ const SKEW_MS = 60_000;
 
 export class NoConnectionError extends Error {}
 
+/** How long a refused refresh waits for a concurrent one to finish saving. */
+export const RACE_SETTLE_MS = 750;
+
+/**
+ * The access token another request saved after `staleTokenEnc` was read, or
+ * null when nothing changed. Looks twice, because the request that won the
+ * refresh may still be writing when the loser's refusal comes back.
+ */
+async function loginSavedMeanwhile(
+  userId: string,
+  platform: PublishPlatform,
+  staleTokenEnc: string,
+): Promise<string | null> {
+  for (const wait of [0, RACE_SETTLE_MS]) {
+    if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+    const latest = await getConnectionRow(userId, platform);
+    if (latest?.status === "active" && latest.accessTokenEnc !== staleTokenEnc)
+      return decryptToken(latest.accessTokenEnc);
+  }
+  return null;
+}
+
 /**
  * A valid access token for (user, platform), refreshing and persisting a new one
  * when the stored one is expired or about to be. The single place the rest of
@@ -54,6 +76,15 @@ export async function getFreshAccessToken(
     fresh = await refreshAccessToken(platform, refreshToken);
   } catch (error) {
     if (!isRejectedLogin(error)) throw error;
+    // TikTok and Instagram issue a new refresh token on every refresh, so two
+    // requests refreshing at once leave the slower one holding a spent token.
+    // That refusal is not a revoked login: use what the faster one saved.
+    const saved = await loginSavedMeanwhile(
+      userId,
+      platform,
+      row.accessTokenEnc,
+    );
+    if (saved) return saved;
     await markConnectionExpired(userId, platform);
     throw new NoConnectionError(`${platform}_reauth_required`);
   }

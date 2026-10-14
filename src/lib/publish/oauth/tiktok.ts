@@ -83,7 +83,12 @@ export const tiktok: OAuthProvider = {
       access_token?: string;
       refresh_token?: string;
       expires_in?: number;
+      error?: string;
     };
+    // TikTok can refuse a refresh with a 200 and an OAuth error in the body
+    // (`invalid_grant` for a spent or revoked refresh token). Reading that as
+    // "no token" hid a dead login behind a generic failure.
+    if (json.error) throw new Error(`oauth_refresh_${json.error}`);
     if (!json.access_token) throw new Error("oauth_refresh_no_token");
     return {
       accessToken: json.access_token,

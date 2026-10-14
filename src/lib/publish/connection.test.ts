@@ -1,9 +1,14 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import { getConnectionRow, updateAccessToken } from "@/lib/db/publish";
+import {
+  getConnectionRow,
+  markConnectionExpired,
+  updateAccessToken,
+} from "@/lib/db/publish";
 import { refreshAccessToken } from "./oauth";
 import { getFreshAccessToken } from "./connection";
 vi.mock("@/lib/db/publish", () => ({
   getConnectionRow: vi.fn(),
+  markConnectionExpired: vi.fn(),
   updateAccessToken: vi.fn(),
 }));
 vi.mock("./oauth", () => ({ refreshAccessToken: vi.fn() }));
@@ -57,4 +62,30 @@ it("stops if reconnecting changed the connection while refresh was in flight", a
   await expect(
     getFreshAccessToken("user", "youtube", "original"),
   ).rejects.toThrow("youtube_connection_changed");
+});
+it("uses a login another request saved when TikTok refuses a spent refresh token", async () => {
+  const row = await getConnectionRow("user", "tiktok");
+  vi.mocked(getConnectionRow)
+    .mockResolvedValueOnce({ ...row!, platform: "tiktok" })
+    .mockResolvedValueOnce({
+      ...row!,
+      platform: "tiktok",
+      accessTokenEnc: "saved-by-the-other-request",
+    });
+  vi.mocked(refreshAccessToken).mockRejectedValue(
+    new Error("oauth_refresh_invalid_grant"),
+  );
+  expect(await getFreshAccessToken("user", "tiktok")).toBe(
+    "decrypted:saved-by-the-other-request",
+  );
+  expect(markConnectionExpired).not.toHaveBeenCalled();
+});
+it("marks the login expired when the refusal was not a race", async () => {
+  vi.mocked(refreshAccessToken).mockRejectedValue(
+    new Error("oauth_refresh_invalid_grant"),
+  );
+  await expect(getFreshAccessToken("user", "tiktok")).rejects.toThrow(
+    "tiktok_reauth_required",
+  );
+  expect(markConnectionExpired).toHaveBeenCalledWith("user", "tiktok");
 });

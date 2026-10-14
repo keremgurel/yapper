@@ -8,7 +8,7 @@ import Foundation
 @MainActor
 enum StudioPrefetch {
     static func warm() async {
-        async let home: Void = HomeItemsStore.shared.refresh()
+        async let home: Void = HomeChannelsStore.shared.refresh(maxAge: 60)
         async let ideas: Void = IdeasStore.shared.refresh()
         async let poster: Void = PosterLibraryStore.shared.refresh()
         async let connections: Void = PosterConnectionStore.shared.refresh()

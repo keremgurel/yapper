@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// A clickable list row: full-width hit area, a faint fill on hover, the
-/// pointer. Used by Up next and Five for today.
+/// pointer. Used by Up next.
 struct HomeListRow<Content: View>: View {
     let action: () -> Void
     @ViewBuilder var content: () -> Content

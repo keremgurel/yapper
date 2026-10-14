@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Two columns at three to two when the page is wide enough for the narrow
+/// Two columns at two to one when the page is wide enough for the narrow
 /// side to keep 320pt; stacked otherwise. Mirrors the web's
-/// `xl:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]`.
+/// `xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]`.
 struct HomeSplitLayout: Layout {
     var spacing: CGFloat = 32
     var breakpoint: CGFloat = 960
@@ -34,7 +34,7 @@ struct HomeSplitLayout: Layout {
         }
         if width >= breakpoint {
             let usable = width - spacing
-            let right = max(320, usable * 2 / 5)
+            let right = max(320, usable / 3)
             let left = usable - right
             let leftHeight = subviews[0].sizeThatFits(ProposedViewSize(width: left, height: nil)).height
             let rightHeight = subviews[1].sizeThatFits(ProposedViewSize(width: right, height: nil)).height

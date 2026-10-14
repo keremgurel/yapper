@@ -27,7 +27,16 @@ export const GET = withServerTiming(async (req: Request): Promise<Response> => {
     if (error instanceof NoConnectionError) {
       return Response.json({ connected: false, videos: [] });
     }
-    throw error;
+    // A refresh TikTok did not answer cleanly. Say so, rather than letting it
+    // escape as an empty 500 that no client can tell from an outage.
+    console.error(
+      "[publish] tiktok token refresh failed",
+      error instanceof Error ? error.message : error,
+    );
+    return Response.json(
+      { connected: true, videos: [], error: "token_refresh_failed" },
+      { status: 502 },
+    );
   }
 
   try {

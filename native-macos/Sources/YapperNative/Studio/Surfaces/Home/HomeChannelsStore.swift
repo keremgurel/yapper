@@ -9,8 +9,6 @@ final class HomeChannelsStore: ObservableObject {
     /// Nil until the first read finishes; cached afterwards.
     @Published private(set) var channels: [HomeChannel]?
 
-    var anyFailed: Bool { channels?.contains(where: \.failed) ?? false }
-
     private var loadedAt: Date?
 
     /// Re-reads unless the last read is younger than `maxAge`. Platform lists

@@ -8,6 +8,8 @@ final class ComposerActions: ObservableObject {
 
     @Published private(set) var saving = false
     @Published private(set) var captureError: String?
+    /// Ideas banked since launch, so a page can confirm a save it watched.
+    @Published private(set) var savedCount = 0
 
     private let draft = CaptureDraft.shared
     private let dictation = DictationController.shared
@@ -32,6 +34,7 @@ final class ComposerActions: ObservableObject {
             try await IdeaCapture.shared.capture(capture, format: CaptureFormat.shared.current)
             draft.clear()
             CaptureFormat.shared.reset()
+            savedCount += 1
         } catch {
             captureError = "Your idea couldn't be saved. Your draft is still here; try again."
         }

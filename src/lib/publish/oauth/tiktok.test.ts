@@ -75,4 +75,20 @@ describe("tiktok.refreshAccessToken", () => {
       tiktok.refreshAccessToken({ id: "x", secret: "y" }, "old"),
     ).rejects.toThrow("oauth_refresh_no_token");
   });
+
+  it("names the OAuth error TikTok sends in the body of a 200", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          error: "invalid_grant",
+          error_description: "Refresh token is invalid or expired.",
+        }),
+      })),
+    );
+    await expect(
+      tiktok.refreshAccessToken({ id: "x", secret: "y" }, "old"),
+    ).rejects.toThrow("oauth_refresh_invalid_grant");
+  });
 });

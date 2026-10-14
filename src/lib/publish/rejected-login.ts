@@ -7,5 +7,7 @@
 export function isRejectedLogin(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   if ((error as { graphCode?: number }).graphCode === 190) return true;
-  return /^oauth_refresh_(400|401)$/.test(error.message);
+  // `invalid_grant` is OAuth's own word for a spent or revoked refresh token,
+  // which TikTok sends in the body of a 200.
+  return /^oauth_refresh_(400|401|invalid_grant)$/.test(error.message);
 }
