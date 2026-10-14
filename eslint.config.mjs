@@ -13,6 +13,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     ".vercel/**",
+    "native-macos/.build/**",
+    "native-macos/dist/**",
+    ".analytics-private/**",
     "next-env.d.ts",
   ]),
   // Disable ESLint rules that conflict with Prettier (must stay last).

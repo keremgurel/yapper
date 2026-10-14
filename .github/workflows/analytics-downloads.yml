@@ -1,0 +1,23 @@
+name: Release download analytics
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-download-analytics
+  cancel-in-progress: false
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Capture cumulative release downloads
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/analytics/downloads.mjs --apply

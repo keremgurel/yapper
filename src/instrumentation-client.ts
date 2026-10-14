@@ -1,4 +1,5 @@
 import posthog from "posthog-js";
+import { analyticsURL, clientContext } from "@/lib/analytics/context";
 
 const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 
@@ -9,6 +10,20 @@ if (key) {
     ui_host: "https://us.posthog.com",
     defaults: "2026-01-30",
     capture_exceptions: true,
+    before_send: (event) => {
+      if (event)
+        for (const key of [
+          "$current_url",
+          "$initial_current_url",
+          "$referrer",
+          "$initial_referrer",
+        ]) {
+          const value = event.properties[key];
+          if (typeof value === "string" && value.startsWith("http"))
+            event.properties[key] = analyticsURL(value);
+        }
+      return event;
+    },
     // AnalyticsProvider owns page views. Enabling both counts each load twice.
     capture_pageview: false,
     capture_pageleave: false,
@@ -26,6 +41,11 @@ if (key) {
       maskAllInputs: true,
       maskInputOptions: { email: true, password: true },
     },
+    loaded: (client) =>
+      client.register({
+        ...clientContext(navigator.userAgent),
+        environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV,
+      }),
     debug: process.env.NODE_ENV === "development",
   });
 }

@@ -9,6 +9,7 @@ final class RecorderMovieOutput: NSObject, ObservableObject {
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var failure: String?
 
+    private var analyticsRecordingID = UUID().uuidString
     private var finished: CheckedContinuation<URL?, Never>?
 
     var isRecording: Bool { phase == .recording || phase == .paused }
@@ -36,6 +37,7 @@ final class RecorderMovieOutput: NSObject, ObservableObject {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("yapper-take-\(UUID().uuidString)")
             .appendingPathExtension("mov")
+        analyticsRecordingID = UUID().uuidString
         output.startRecording(to: url, recordingDelegate: self)
         phase = .recording
     }
@@ -64,6 +66,7 @@ final class RecorderMovieOutput: NSObject, ObservableObject {
     }
 
     private func complete(_ url: URL?, error: String?) {
+        NativeAnalytics.shared.capture(url == nil ? "studio_recording_failed" : "studio_recording_completed", ["recording_id": analyticsRecordingID])
         phase = .idle
         failure = error
         finished?.resume(returning: url)
@@ -72,6 +75,12 @@ final class RecorderMovieOutput: NSObject, ObservableObject {
 }
 
 extension RecorderMovieOutput: AVCaptureFileOutputRecordingDelegate {
+    nonisolated func fileOutput(_ output: AVCaptureFileOutput, didStartRecordingTo fileURL: URL, from connections: [AVCaptureConnection]) {
+        Task { @MainActor in
+            NativeAnalytics.shared.capture("studio_recording_started", ["recording_id": self.analyticsRecordingID])
+        }
+    }
+
     nonisolated func fileOutput(
         _ output: AVCaptureFileOutput,
         didFinishRecordingTo outputFileURL: URL,

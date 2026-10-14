@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import {
@@ -30,7 +31,7 @@ const asMessages = (value: unknown): AskMessage[] =>
     : [];
 
 /** Ask the brain a question, and let it offer what it learned back. */
-export async function POST(req: NextRequest): Promise<Response> {
+async function trackedPOST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const ingressLimited = await guardProviderIngress(req);
@@ -84,3 +85,5 @@ export async function POST(req: NextRequest): Promise<Response> {
     return Response.json({ error: "ask_failed" }, { status: 502 });
   }
 }
+
+export const POST = withProductAnalytics("brain_asked", trackedPOST);

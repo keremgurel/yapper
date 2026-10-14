@@ -99,7 +99,10 @@ struct AppShellView: View {
                 // Someone signing out mid-session lands on the door, and the watcher
                 // picks them back up when they come through it.
                 if signedIn == false { auth.startWatching() } else { auth.stopWatching() }
-                if signedIn == true { Task { await StudioPrefetch.warm() } }
+                if signedIn == true {
+                    NativeAnalytics.shared.capture("native_screen_viewed", ["screen": destinationRaw])
+                    Task { await StudioPrefetch.warm() }
+                }
             }
             .onAppear {
                 // A launch straight into a web tab parks on that tab, not on Home.
@@ -111,6 +114,7 @@ struct AppShellView: View {
                 editorLayoutDefaultsVersion = 1
             }
             .onChange(of: destinationRaw) { _, _ in
+                if auth.isSignedIn == true { NativeAnalytics.shared.capture("native_screen_viewed", ["screen": destinationRaw]) }
                 updateAssistantSurface()
             }
             .onChange(of: auth.account?.userID) { _, _ in

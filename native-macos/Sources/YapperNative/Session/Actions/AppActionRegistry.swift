@@ -102,6 +102,9 @@ final class AppActionRegistry {
                     message: mutation?.message ?? message, changes: status == .applied ? mutation?.changes ?? [] : [],
                     skippedIDs: mutation?.skippedIDs ?? [], persisted: status == .applied && mutation?.changes.isEmpty == false)
             }
+            for reply in replies {
+                NativeAnalytics.shared.capture("native_action_finished", ["action": reply.action, "outcome": reply.status.rawValue, "entry_point": "assistant"])
+            }
             recentResults = Array((recentResults + replies).suffix(64))
             return replies
         }
@@ -178,6 +181,7 @@ final class AppActionRegistry {
                 projectID: request.projectID, revision: session.actionRevision, action: request.action, status: status,
                 message: message, changes: status == .applied ? mutation?.changes ?? [] : [],
                 skippedIDs: mutation?.skippedIDs ?? [], persisted: status == .applied)
+            NativeAnalytics.shared.capture("native_action_finished", ["action": request.action, "outcome": status.rawValue, "entry_point": "direct"])
             recentResults.append(result)
             if recentResults.count > 64 { recentResults.removeFirst(recentResults.count - 64) }
             // A failed save already left the error on screen with the status

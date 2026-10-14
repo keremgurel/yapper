@@ -1,3 +1,4 @@
+import { captureServerEvent } from "@/lib/analytics/server";
 import { enrichRecording } from "@/lib/content/recording-memory";
 import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { encryptToken } from "@/lib/publish/tokens";
@@ -335,6 +336,7 @@ export async function completePublishJob(
     .returning({
       contentItemId: publishJobs.contentItemId,
       userId: publishJobs.userId,
+      platform: publishJobs.platform,
     });
   // The idea this video came from has reached the end of the loop.
   if (job?.contentItemId && !result.draft) {
@@ -349,6 +351,13 @@ export async function completePublishJob(
       );
     await enrichRecording(job.userId, job.contentItemId);
   }
+  if (job)
+    await captureServerEvent(job.userId, "post_published", {
+      $insert_id: `publish:${id}`,
+      job_id: id,
+      platform: job.platform,
+      delivery: result.draft ? "draft_upload" : "published",
+    });
 }
 
 /** Keep the TikTok publish ID durable even if the upload request disconnects. */

@@ -1,0 +1,1 @@
+SELECT toString(properties.platform) AS Platform,toString(properties.delivery) AS Delivery,uniqExact(properties.job_id) AS Posts,uniqExact(distinct_id) AS Creators FROM events WHERE event='post_published' AND (properties.environment = 'production' AND properties.product = 'studio') AND {filters} GROUP BY Platform,Delivery ORDER BY Posts DESC LIMIT 20

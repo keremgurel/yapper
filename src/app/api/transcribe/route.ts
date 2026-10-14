@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import {
   readOwnedAudioDuration,
   transcriptionUnits,
@@ -82,7 +83,7 @@ const AUDIO_MEDIA_TYPES = [
  * return per-word timings.
  * Responds 501 when no provider key is configured.
  */
-export async function POST(req: Request): Promise<Response> {
+async function trackedPOST(req: Request): Promise<Response> {
   // Includes auth, bounded ingress read, rate limits, and billing. Provider
   // work receives only what remains of the route's single wall-clock budget.
   const providerDeadline = Date.now() + PROVIDER_DEADLINE_MS;
@@ -744,3 +745,8 @@ export async function POST(req: Request): Promise<Response> {
     },
   );
 }
+
+export const POST = withProductAnalytics(
+  "transcription_requested",
+  trackedPOST,
+);

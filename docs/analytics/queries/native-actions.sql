@@ -1,0 +1,1 @@
+SELECT toString(properties.action) AS Action,toString(properties.outcome) AS Outcome,uniqExact(person_id) AS People,count() AS Actions FROM events WHERE event='native_action_finished' AND (properties.environment = 'production' AND properties.product = 'studio') AND {filters} GROUP BY Action,Outcome ORDER BY People DESC LIMIT 100

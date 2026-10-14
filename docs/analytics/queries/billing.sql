@@ -1,0 +1,1 @@
+SELECT event AS Event,uniqExact(distinct_id) AS Accounts FROM events WHERE (properties.environment = 'production' AND properties.product = 'studio') AND {filters} AND (event='signup_verified' OR (event IN ('trial_started','purchase_verified') AND properties.livemode=true)) GROUP BY Event ORDER BY Accounts DESC LIMIT 10

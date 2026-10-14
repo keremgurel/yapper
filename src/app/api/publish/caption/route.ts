@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import {
   preflightPaidActionOrResponse,
@@ -43,7 +44,7 @@ function platformsOf(value: unknown): PublishPlatform[] {
  * Charge-on-success: generate first, refund on failure, so nothing is billed
  * for an empty result.
  */
-export async function POST(req: Request): Promise<Response> {
+async function trackedPOST(req: Request): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const ingressLimited = await guardProviderIngress(req);
@@ -152,3 +153,5 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "generate_failed" }, { status: 502 });
   }
 }
+
+export const POST = withProductAnalytics("caption_generated", trackedPOST);

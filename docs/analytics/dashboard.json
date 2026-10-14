@@ -1,0 +1,846 @@
+{
+  "projectId": 383795,
+  "name": "Yapper | Operating overview",
+  "description": "Acquisition, verified signups, Studio usage, macOS adoption and versions, retention, verified payments and tracking health. UTC. Native coverage starts with the instrumented release.",
+  "sections": [
+    {
+      "key": "pulse",
+      "body": "## Yapper operating overview\nUTC \u00b7 Change the date range above. Web history is available; verified signups and Studio events begin with the tracking deployment. Native events require the instrumented app release. Empty charts before those dates mean missing coverage, not zero usage. Test and development events are excluded.",
+      "layout": [0, 0, 12, 2]
+    },
+    {
+      "key": "acquisition",
+      "body": "## Acquisition and activation\nSources are observed visit sources, not causal attribution. A person can use multiple sources. Signup activation is an ordered same-account sequence within seven days; recent cohorts remain incomplete. Anonymous visitors become account-linked after sign-in.",
+      "layout": [0, 8, 12, 2]
+    },
+    {
+      "key": "product",
+      "body": "## What people do in Studio\nA successful API action means the request completed. Publishing requests are separate from provider-confirmed publishing. Native actions record outcome codes only; scripts, prompts, transcripts, media and filenames are not collected.",
+      "layout": [0, 20, 12, 2]
+    },
+    {
+      "key": "mac",
+      "body": "## Mac adoption and release health\nDownloads are GitHub asset transfers, not unique people or installations. First observed launch includes existing users upgrading to telemetry. Version distribution uses each installation\u2019s latest observed foreground activity in the selected period. Clearing local preferences creates a new installation identity.",
+      "layout": [0, 33, 12, 2]
+    },
+    {
+      "key": "money",
+      "body": "## Revenue and conversion\nOnly verified live Stripe payments count. Amounts stay in minor currency units to handle currencies correctly; no currency mixing, FX assumptions or net-profit claims. Trials are separate. Refunds, fees, taxes and provider costs are not deducted. Payment history starts at webhook instrumentation.",
+      "layout": [0, 50, 12, 2]
+    },
+    {
+      "key": "reliability",
+      "body": "## Reliability and measurement coverage\nThese charts make missing instrumentation visible. Native error events are handled failures, not a crash-free rate. API outcome events report HTTP status and duration, not request bodies. Development, preview and test events stay out of headline metrics.",
+      "layout": [0, 57, 12, 2]
+    }
+  ],
+  "charts": [
+    {
+      "key": "pulse",
+      "name": "Daily product pulse",
+      "description": "Unique people per UTC day. Web includes historical ypr.app visits; Studio activity excludes old Train sessions. New accounts come only from verified Clerk creation events.",
+      "layout": [0, 2, 6, 6],
+      "query": {
+        "kind": "DataVisualizationNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "display": "ActionsLineGraph",
+        "chartSettings": {
+          "xAxis": {
+            "column": "Day"
+          },
+          "yAxis": [
+            {
+              "column": "Visitors",
+              "settings": {
+                "display": {
+                  "label": "Visitors"
+                },
+                "formatting": {
+                  "style": "number",
+                  "decimalPlaces": 0
+                }
+              }
+            },
+            {
+              "column": "Signups",
+              "settings": {
+                "display": {
+                  "label": "Signups"
+                },
+                "formatting": {
+                  "style": "number",
+                  "decimalPlaces": 0
+                }
+              }
+            },
+            {
+              "column": "Active",
+              "settings": {
+                "display": {
+                  "label": "Active"
+                },
+                "formatting": {
+                  "style": "number",
+                  "decimalPlaces": 0
+                }
+              }
+            },
+            {
+              "column": "Mac",
+              "settings": {
+                "display": {
+                  "label": "Mac"
+                },
+                "formatting": {
+                  "style": "number",
+                  "decimalPlaces": 0
+                }
+              }
+            }
+          ],
+          "showLegend": true,
+          "showNullsAsZero": false
+        }
+      }
+    },
+    {
+      "key": "visitors",
+      "name": "Web visitors",
+      "description": "Distinct people in the selected period. Coverage starts when the corresponding instrumentation reaches production.",
+      "layout": [6, 2, 2, 3],
+      "query": {
+        "kind": "DataVisualizationNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "display": "BoldNumber",
+        "chartSettings": {
+          "xAxis": {
+            "column": "Total"
+          },
+          "yAxis": [
+            {
+              "column": "Total",
+              "settings": {
+                "display": {
+                  "label": "Total"
+                },
+                "formatting": {
+                  "style": "number",
+                  "decimalPlaces": 0
+                }
+              }
+            }
+          ],
+          "showLegend": false,
+          "showNullsAsZero": false
+        }
+      }
+    },
+    {
+      "key": "signups",
+      "name": "Verified signups",
+      "description": "Distinct people in the selected period. Coverage starts when the corresponding instrumentation reaches production.",
+      "layout": [8, 2, 2, 3],
+      "query": {
+        "kind": "DataVisualizationNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "display": "BoldNumber",
+        "chartSettings": {
+          "xAxis": {
+            "column": "Total"
+          },
+          "yAxis": [
+            {
+              "column": "Total",
+              "settings": {
+                "display": {
+                  "label": "Total"
+                },
+                "formatting": {
+                  "style": "number",
+                  "decimalPlaces": 0
+                }
+              }
+            }
+          ],
+          "showLegend": false,
+          "showNullsAsZero": false
+        }
+      }
+    },
+    {
+      "key": "active",
+      "name": "Active Studio users",
+      "description": "Distinct people in the selected period. Coverage starts when the corresponding instrumentation reaches production.",
+      "layout": [10, 2, 2, 3],
+      "query": {
+        "kind": "DataVisualizationNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "display": "BoldNumber",
+        "chartSettings": {
+          "xAxis": {
+            "column": "Total"
+          },
+          "yAxis": [
+            {
+              "column": "Total",
+              "settings": {
+                "display": {
+                  "label": "Total"
+                },
+                "formatting": {
+                  "style": "number",
+                  "decimalPlaces": 0
+                }
+              }
+            }
+          ],
+          "showLegend": false,
+          "showNullsAsZero": false
+        }
+      }
+    },
+    {
+      "key": "native",
+      "name": "Active Mac users",
+      "description": "Distinct people in the selected period. Coverage starts when the corresponding instrumentation reaches production.",
+      "layout": [6, 5, 2, 3],
+      "query": {
+        "kind": "DataVisualizationNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "display": "BoldNumber",
+        "chartSettings": {
+          "xAxis": {
+            "column": "Total"
+          },
+          "yAxis": [
+            {
+              "column": "Total",
+              "settings": {
+                "display": {
+                  "label": "Total"
+                },
+                "formatting": {
+                  "style": "number",
+                  "decimalPlaces": 0
+                }
+              }
+            }
+          ],
+          "showLegend": false,
+          "showNullsAsZero": false
+        }
+      }
+    },
+    {
+      "key": "exports",
+      "name": "Exporting creators",
+      "description": "Distinct people in the selected period. Coverage starts when the corresponding instrumentation reaches production.",
+      "layout": [8, 5, 2, 3],
+      "query": {
+        "kind": "DataVisualizationNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "display": "BoldNumber",
+        "chartSettings": {
+          "xAxis": {
+            "column": "Total"
+          },
+          "yAxis": [
+            {
+              "column": "Total",
+              "settings": {
+                "display": {
+                  "label": "Total"
+                },
+                "formatting": {
+                  "style": "number",
+                  "decimalPlaces": 0
+                }
+              }
+            }
+          ],
+          "showLegend": false,
+          "showNullsAsZero": false
+        }
+      }
+    },
+    {
+      "key": "payers",
+      "name": "Paid customers",
+      "description": "Distinct people in the selected period. Coverage starts when the corresponding instrumentation reaches production.",
+      "layout": [10, 5, 2, 3],
+      "query": {
+        "kind": "DataVisualizationNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "display": "BoldNumber",
+        "chartSettings": {
+          "xAxis": {
+            "column": "Total"
+          },
+          "yAxis": [
+            {
+              "column": "Total",
+              "settings": {
+                "display": {
+                  "label": "Total"
+                },
+                "formatting": {
+                  "style": "number",
+                  "decimalPlaces": 0
+                }
+              }
+            }
+          ],
+          "showLegend": false,
+          "showNullsAsZero": false
+        }
+      }
+    },
+    {
+      "key": "sources",
+      "name": "Where visitors come from",
+      "description": "Unique web people by observed UTM source or referrer. A visitor may appear in more than one row.",
+      "layout": [0, 10, 6, 5],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "pages",
+      "name": "Pages people visit",
+      "description": "Routes only, with query strings removed. Includes historical Train pages, which are identifiable by path.",
+      "layout": [6, 10, 6, 5],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "activation",
+      "name": "Signup to first useful action",
+      "description": "Verified signup followed by a successful Studio action within seven days. Excludes page visits, checkout and publish requests. Recent signups have not had a full seven days.",
+      "layout": [0, 15, 6, 5],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "countries",
+      "name": "Countries and devices",
+      "description": "Observed web visitors; people can appear in multiple device/country groups. Geolocation is approximate.",
+      "layout": [6, 15, 6, 5],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "features",
+      "name": "Successful product actions",
+      "description": "Successful mutating API requests by feature and surface. This does not count read requests, prefetches or confirmed published posts.",
+      "layout": [0, 22, 6, 6],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "screens",
+      "name": "Studio screens",
+      "description": "Visible web routes or native destinations. The native app hidden authentication webview is excluded.",
+      "layout": [6, 22, 6, 6],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "native-actions",
+      "name": "Native editing actions",
+      "description": "Registered deterministic edits and assistant workflows. Applied, unchanged, rejected, canceled and failed are distinct outcomes.",
+      "layout": [0, 28, 6, 5],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "publishing",
+      "name": "Confirmed publishing",
+      "description": "Unique successful jobs after the provider confirms publishing. Draft uploads are separate; retries deduplicate by job ID.",
+      "layout": [6, 28, 6, 5],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "downloads",
+      "name": "Release downloads, cumulative",
+      "description": "Latest daily GitHub snapshot by asset. Cumulative since release, not downloads during the selected range. Direct external downloads are included. Updated by the release snapshot workflow.",
+      "layout": [0, 35, 6, 5],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "native-adoption",
+      "name": "Mac first observations and activity",
+      "description": "Daily distinct installation IDs. First observed is a telemetry adoption metric, not an install counter.",
+      "layout": [6, 35, 6, 5],
+      "query": {
+        "kind": "DataVisualizationNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "display": "ActionsLineGraph",
+        "chartSettings": {
+          "xAxis": {
+            "column": "Day"
+          },
+          "yAxis": [
+            {
+              "column": "First_observed",
+              "settings": {
+                "display": {
+                  "label": "First_observed"
+                },
+                "formatting": {
+                  "style": "number",
+                  "decimalPlaces": 0
+                }
+              }
+            },
+            {
+              "column": "Active_installations",
+              "settings": {
+                "display": {
+                  "label": "Active_installations"
+                },
+                "formatting": {
+                  "style": "number",
+                  "decimalPlaces": 0
+                }
+              }
+            }
+          ],
+          "showLegend": true,
+          "showNullsAsZero": false
+        }
+      }
+    },
+    {
+      "key": "versions",
+      "name": "Latest observed version per installation",
+      "description": "Each active installation is counted once, on its most recent version in the selected period. Inactive older installs are not a complete installed-base inventory.",
+      "layout": [0, 40, 6, 5],
+      "query": {
+        "kind": "DataVisualizationNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "display": "ActionsBar",
+        "chartSettings": {
+          "xAxis": {
+            "column": "Version"
+          },
+          "yAxis": [
+            {
+              "column": "Installations",
+              "settings": {
+                "display": {
+                  "label": "Installations"
+                },
+                "formatting": {
+                  "style": "number",
+                  "decimalPlaces": 0
+                }
+              }
+            }
+          ],
+          "showLegend": true,
+          "showNullsAsZero": false
+        }
+      }
+    },
+    {
+      "key": "builds",
+      "name": "Build, OS and architecture",
+      "description": "Latest foreground observation per installation in the selected period. Build includes source revision for locally packaged builds.",
+      "layout": [6, 40, 6, 5],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "export-health",
+      "name": "Export success and failures",
+      "description": "Native export attempts by outcome and version. Successful export means a file was rendered; it does not mean it was posted.",
+      "layout": [0, 45, 6, 5],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "returning",
+      "name": "Weekly Studio return rate",
+      "description": "People active in a UTC week who return in the following week. Only cohorts whose following week has ended are shown. Uses real Studio activity, excluding Train.",
+      "layout": [6, 45, 6, 5],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "revenue",
+      "name": "Verified gross payments by currency",
+      "description": "Deduplicated Stripe transaction IDs. Amounts are minor currency units (USD/CAD cents, JPY yen), including tax. Initial purchases and renewals remain distinct.",
+      "layout": [0, 52, 6, 5],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "billing",
+      "name": "Trial and paid account activity",
+      "description": "Distinct accounts per event in the selected range. Counts are not an ordered funnel and should not be divided into a conversion rate.",
+      "layout": [6, 52, 6, 5],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "failures",
+      "name": "Failed API actions",
+      "description": "Failures by action and HTTP status. Includes entitlement/credit refusals and server errors, so blocked users can be distinguished from broken services.",
+      "layout": [0, 59, 6, 5],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "native-errors",
+      "name": "Native handled errors",
+      "description": "Error domain and numeric code only; no messages, local paths or content. This is not automatic native crash reporting.",
+      "layout": [6, 59, 6, 5],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "coverage",
+      "name": "Tracking freshness and coverage",
+      "description": "Latest receipt per event/surface/version. Missing expected events need checking against the deployment or release. Compare with the checked-in event contract.",
+      "layout": [0, 64, 12, 6],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "recording",
+      "name": "Recording completion",
+      "description": "Distinct recording IDs by surface. Completion means a nonempty browser blob or a native movie file, not upload or publication.",
+      "layout": [0, 70, 6, 5],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "workflows",
+      "name": "Native workflow attempts",
+      "description": "Operations begun in the app, including transcription, 1-Click Edit and import. Finished means the operation ended, regardless of success; consult exports and errors for verified outcomes.",
+      "layout": [6, 70, 6, 5],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "entry",
+      "name": "Studio entry and download intent",
+      "description": "Unique people clicking Studio entry, opening release notes or requesting the desktop handoff. These are intent signals, not confirmed signups or downloads.",
+      "layout": [0, 75, 6, 5],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    },
+    {
+      "key": "web-errors",
+      "name": "Browser exceptions",
+      "description": "Browser exception events in the selected period. Messages and stack traces remain in PostHog error tracking, not this overview.",
+      "layout": [6, 75, 6, 5],
+      "query": {
+        "kind": "DataTableNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": true
+          }
+        },
+        "full": true
+      }
+    }
+  ]
+}

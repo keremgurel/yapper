@@ -307,11 +307,13 @@ final class EditorSession: ObservableObject {
     func beginLongOperation(_ operation: LongOperation) -> LongOperationLease? {
         guard let lease = longOperationCoordinator.acquire(operation) else { return nil }
         activeOperation = lease
+        NativeAnalytics.shared.begin(lease)
         return lease
     }
 
     func endLongOperation(_ lease: LongOperationLease) {
         guard longOperationCoordinator.release(lease) else { return }
+        NativeAnalytics.shared.end(lease)
         activeOperation = nil
         drainPendingLongWork()
     }
@@ -962,6 +964,7 @@ final class EditorSession: ObservableObject {
             try await persist()
             await reconcileDerivedMedia(from: rollbackState.project)
             recordHistory(before: rollbackState.project)
+            NativeAnalytics.shared.capture("native_media_imported", ["file_count": urls.count, "media_count": project.media.count])
             statusMessage = landedInBin.isEmpty
                 ? "Ready"
                 : "\(landedInBin.joined(separator: ", ")) added to Media · use Overlay, Add, or @ it"
@@ -1223,18 +1226,24 @@ final class EditorSession: ObservableObject {
         endPreparedTimelineEdit()
         errorMessage = nil
         statusMessage = "Exporting native composition…"
+        let analyticsID = UUID().uuidString
+        let analyticsStart = Date()
+        NativeAnalytics.shared.capture("native_export_started", ["operation_id": analyticsID, "duration_seconds": exportProject.duration])
         do {
             try await exportRunner(exportProject, url)
+            NativeAnalytics.shared.capture("native_export_completed", ["operation_id": analyticsID, "elapsed_seconds": Date().timeIntervalSince(analyticsStart), "duration_seconds": exportProject.duration])
             lastExportURL = url
             statusMessage = "Exported \(url.lastPathComponent)"
             if revealInFinder { NSWorkspace.shared.activateFileViewerSelecting([url]) }
             return true
         } catch is CancellationError {
+            NativeAnalytics.shared.capture("native_export_canceled", ["operation_id": analyticsID])
             markCurrentLongOperationCanceled()
             errorMessage = nil
             statusMessage = "Export canceled"
             return false
         } catch {
+            NativeAnalytics.shared.capture("native_export_failed", ["operation_id": analyticsID])
             show(error)
             return false
         }
@@ -3183,6 +3192,7 @@ final class EditorSession: ObservableObject {
 
     func show(_ error: Error) {
         let failure = error as NSError
+        NativeAnalytics.shared.capture("native_error", ["error_domain": failure.domain, "error_code": failure.code])
         errorMessage = failure.domain == "com.apple.coreaudio.avfaudio"
             ? "The audio could not be prepared. Your edits are safe. Retry transcription; if this continues, import a video with AAC audio at 44.1 or 48 kHz."
             : error.localizedDescription

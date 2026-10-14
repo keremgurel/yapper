@@ -16,7 +16,9 @@ final class StudioAuth: ObservableObject {
     /// nil until Clerk has answered. The shell shows neither Studio nor the
     /// sign-in screen until then, so neither flashes at the wrong person.
     @Published private(set) var isSignedIn: Bool?
-    @Published private(set) var account: StudioAccountIdentity?
+    @Published private(set) var account: StudioAccountIdentity? {
+        didSet { NativeAnalytics.shared.identify(account?.userID) }
+    }
 
     var accountName: String { account?.displayName ?? "Account" }
     var accountInitial: String { String(accountName.prefix(1)).uppercased() }
@@ -57,6 +59,7 @@ final class StudioAuth: ObservableObject {
             isSignedIn = true
             await loadIdentityFromClerk()
         case .ended:
+            account = nil
             isSignedIn = false
         case .unknown:
             // Clerk could not be reached, but this Mac holds a session Clerk

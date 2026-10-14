@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import {
   PosterSlotBusyError,
   posterSlotBusyResponse,
@@ -69,7 +70,7 @@ export async function GET(): Promise<Response> {
  * and count the object against the quota once (shared dedupe with the feedback
  * pipeline). Premium-gated like the rest of the library surface.
  */
-export async function POST(req: NextRequest): Promise<Response> {
+async function trackedPOST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   await ensureUser(userId);
@@ -246,3 +247,5 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   return Response.json({ submission }, { status: 201 });
 }
+
+export const POST = withProductAnalytics("recording_saved", trackedPOST);

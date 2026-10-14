@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import { canUsePremium } from "@/lib/billing/gate";
@@ -45,7 +46,7 @@ const strArr = (value: unknown, max: number, cap: number): string[] =>
  * section on objections", "make block 2 punchier". Auth, then credits charged
  * only on a usable reply, like the other generate routes.
  */
-export async function POST(req: NextRequest): Promise<Response> {
+async function trackedPOST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const ingressLimited = await guardProviderIngress(req);
@@ -176,3 +177,5 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   return Response.json({ ...result, balance, used: brain.used, messages });
 }
+
+export const POST = withProductAnalytics("canvas_generated", trackedPOST);

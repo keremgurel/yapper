@@ -5,7 +5,8 @@ let posthogClient: PostHog | null = null;
 export function getPostHogClient(): PostHog {
   if (!posthogClient) {
     posthogClient = new PostHog(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
-      host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+      host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
+      requestTimeout: 5_000,
       flushAt: 1,
       flushInterval: 0,
     });

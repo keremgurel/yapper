@@ -12,6 +12,7 @@ final class YapperNativeAppDelegate: NSObject, NSApplicationDelegate {
         // process: the Scene exists, but macOS gives it no visible window or
         // Dock presence. Explicitly promote and activate it so development
         // launches behave like the packaged application.
+        NativeAnalytics.shared.start()
         NSApp.setActivationPolicy(.regular)
         DispatchQueue.main.async {
             NSApp.activate(ignoringOtherApps: true)
@@ -26,6 +27,7 @@ final class YapperNativeAppDelegate: NSObject, NSApplicationDelegate {
         terminationTask = Task { @MainActor [weak self] in
             let shouldTerminate = await session.prepareForTermination()
             self?.terminationTask = nil
+            if shouldTerminate { NativeAnalytics.shared.flush() }
             sender.reply(toApplicationShouldTerminate: shouldTerminate)
         }
         return .terminateLater

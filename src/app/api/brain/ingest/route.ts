@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import {
@@ -30,7 +31,7 @@ const SHAPE_MAX = 200;
  * Nothing is saved here. The proposal goes back to a preview the creator edits,
  * and saving is an ordinary block create.
  */
-export async function POST(req: NextRequest): Promise<Response> {
+async function trackedPOST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const ingressLimited = await guardProviderIngress(req);
@@ -67,3 +68,5 @@ export async function POST(req: NextRequest): Promise<Response> {
     return Response.json({ error: "ingest_failed" }, { status: 502 });
   }
 }
+
+export const POST = withProductAnalytics("brain_ingested", trackedPOST);

@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import { getBillingState, setStripeCustomerId } from "@/lib/db/billing";
@@ -21,7 +22,7 @@ export const runtime = "nodejs";
  * front and store its id, so subscription webhooks can map back to the user
  * even if they arrive before checkout.session.completed. Returns { url }.
  */
-export async function POST(req: NextRequest): Promise<Response> {
+async function trackedPOST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   if (!stripeConfigured()) {
@@ -115,3 +116,5 @@ export async function POST(req: NextRequest): Promise<Response> {
   });
   return Response.json({ url: session.url });
 }
+
+export const POST = withProductAnalytics("checkout_created", trackedPOST);
