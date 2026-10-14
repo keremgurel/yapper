@@ -290,10 +290,9 @@ private struct StudioSidebar: View {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(visibleGroups, id: \.0) { group, items in
                         if !group.isEmpty, expanded {
-                            Text(group.uppercased())
-                                .font(.system(size: 10, weight: .bold))
-                                .tracking(1.15)
-                                .foregroundStyle(Color.secondary.opacity(0.72))
+                            Text(group)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(Color.secondary.opacity(0.8))
                                 .padding(.top, 14)
                                 .padding(.horizontal, 12)
                                 .transition(.opacity)

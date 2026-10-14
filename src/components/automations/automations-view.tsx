@@ -234,7 +234,7 @@ function AutomationEditor() {
           className="mt-5 space-y-5 border-t border-dashed pt-5"
         >
           <div>
-            <p className="text-muted-foreground mb-2 flex items-center gap-2 text-xs font-bold uppercase">
+            <p className="text-muted-foreground mb-2 flex items-center gap-2 text-xs font-medium">
               <Camera className="size-3.5" /> Source
             </p>
             <p className="text-sm font-bold">
@@ -242,7 +242,7 @@ function AutomationEditor() {
             </p>
           </div>
           <div>
-            <p className="text-muted-foreground mb-2 text-xs font-bold uppercase">
+            <p className="text-muted-foreground mb-2 text-xs font-medium">
               Send new videos to
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
