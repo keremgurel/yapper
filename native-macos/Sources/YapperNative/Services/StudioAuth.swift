@@ -7,22 +7,22 @@ import Foundation
 /// `__session` cookie on ypr.app, which is a guess about a shape that is
 /// Clerk's to change and is split across two domains; it came back false for a
 /// signed-in account and hid the entire sidebar. The web session reports its
-/// own state now (see `auth_state` in the web shell), and the cookie check is
-/// only a first guess for the moment before the page has loaded.
+/// own state (see `auth_state` in the web shell), and before the page has
+/// loaded, Clerk's Frontend API answers for it.
 @MainActor
 final class StudioAuth: ObservableObject {
     static let shared = StudioAuth()
 
-    /// nil until the first look, so the window does not flash a sign-in screen
-    /// at somebody who is already signed in.
+    /// nil until Clerk has answered. The shell shows neither Studio nor the
+    /// sign-in screen until then, so neither flashes at the wrong person.
     @Published private(set) var isSignedIn: Bool?
     @Published private(set) var account: StudioAccountIdentity?
 
     var accountName: String { account?.displayName ?? "Account" }
     var accountInitial: String { String(accountName.prefix(1)).uppercased() }
 
-    /// Set once the web session has spoken for itself. From then on the cookie
-    /// guess is ignored: Clerk knows, and it is right.
+    /// Set once the web session has spoken for itself. From then on it is the
+    /// only voice: it is Clerk, running where the session lives.
     private var reportedByWeb = false
     private var watcher: Task<Void, Never>?
 
@@ -44,26 +44,27 @@ final class StudioAuth: ObservableObject {
         if signedIn { stopWatching() }
     }
 
-    /// Whether we have waited long enough to call it: a page that never says
-    /// anything, on a build too old to report, still has to reach the door.
-    private var firstLook: Date?
-
     func refresh() async {
         guard !reportedByWeb else { return }
-        if await YapperAPI.hasSession() {
+        // Clerk is asked, not the cookie jar: the session cookie outlives the
+        // session by months, and trusting it drew Home for an account that
+        // was gone and let every read on the page fail before the sign-in
+        // screen came up.
+        let outcome = await ClerkTokenRefresher.check()
+        guard !reportedByWeb else { return }
+        switch outcome {
+        case .active:
             isSignedIn = true
             await loadIdentityFromClerk()
-            return
+        case .ended:
+            isSignedIn = false
+        case .unknown:
+            // Clerk could not be reached, but this Mac holds a session Clerk
+            // has not refused. Let the creator in: editing works offline, and
+            // the first request the server turns down brings the sign-in
+            // screen back through `requireSignIn`.
+            if isSignedIn == nil { isSignedIn = true }
         }
-        // Never says "signed out" on the cookie's word alone. The guess was
-        // wrong once already and took the whole sidebar with it, and being
-        // wrong in this direction throws a working session out of the app.
-        // Unknown stays unknown, which the shell treats as signed in, until
-        // either the page speaks or nothing has spoken for long enough.
-        let now = Date()
-        let started = firstLook ?? now
-        firstLook = started
-        if isSignedIn == nil, now.timeIntervalSince(started) > 6 { isSignedIn = false }
     }
 
     /// Fills in the account name when the web page has not reported it,
@@ -106,12 +107,19 @@ final class StudioAuth: ObservableObject {
     /// and shows the sign-in door.
     func signOutIfSessionIsGone() async {
         StudioWebCommands.shared.forgetToken()
-        let stillSignedIn = await StudioWebCommands.shared.accountIdentity() != nil
+        // Clerk's own answer first. The page used to be the only witness, and
+        // a page still loading after launch reads exactly like a signed-out
+        // one, which put the sign-in screen in front of working accounts.
+        let stillSignedIn: Bool
+        switch await ClerkTokenRefresher.check() {
+        case .active: stillSignedIn = true
+        case .ended: stillSignedIn = false
+        case .unknown: stillSignedIn = await StudioWebCommands.shared.accountIdentity() != nil
+        }
         confirmingSignOut = false
         guard !stillSignedIn else { return }
         reportedByWeb = false
         account = nil
-        firstLook = nil
         isSignedIn = false
         startWatching()
     }

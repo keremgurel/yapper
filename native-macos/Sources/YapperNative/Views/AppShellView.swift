@@ -21,7 +21,6 @@ struct AppShellView: View {
     /// the right one.
     @State private var parkedWebDestination = StudioDestination.home
     @ObservedObject private var auth = StudioAuth.shared
-    @ObservedObject private var handoff = NativeAuthHandoff.shared
     @ObservedObject private var webCommands = StudioWebCommands.shared
     @ObservedObject private var chirpyThreads = StudioChirpyThreads.shared
     @ObservedObject private var projectNavigation: ProjectNavigationState
@@ -39,24 +38,28 @@ struct AppShellView: View {
         destination == .editor && projectNavigation.showsProjectsHome
     }
 
+    private var isEditorVisible: Bool {
+        isSignedIn && destination == .editor && !isProjectsHomeVisible
+    }
+
     /// The chrome is for people who are in. A signed-out window shows one door,
-    /// not eleven locked ones.
+    /// not eleven locked ones, and a window still asking Clerk shows neither:
+    /// drawing Studio on a guess is what flashed Home, with every read failing,
+    /// in front of somebody whose session had ended.
     private var isSignedIn: Bool {
-        auth.isSignedIn ?? true
+        auth.isSignedIn == true
     }
 
-    /// What the one web view is showing: the tab, the tab it is parked on while
-    /// a native tab is in front, or the sign-in card.
+    /// What the one web view is showing: the tab, or the tab it is parked on
+    /// while a native tab is in front. Signed out it stays parked and hidden;
+    /// it is where Clerk runs the email-code sign-in for the native screen.
     private var webDestination: StudioDestination {
-        guard isSignedIn else { return .signIn }
-        return destination.isNative ? parkedWebDestination : destination
+        destination.isNative ? parkedWebDestination : destination
     }
 
-    /// Hidden while a native tab is in front, and while the browser has the
-    /// creator's attention mid sign-in.
+    /// Hidden while a native tab is in front, and whenever nobody is signed in.
     private var isWebViewVisible: Bool {
-        guard isSignedIn else { return !handoff.isWaitingInBrowser }
-        return !destination.isNative
+        isSignedIn && !destination.isNative
     }
 
     private var destination: StudioDestination {
@@ -86,7 +89,7 @@ struct AppShellView: View {
             }
             .task {
                 await auth.refresh()
-                if auth.isSignedIn == false { auth.startWatching() }
+                if auth.isSignedIn != true { auth.startWatching() }
                 // No tab shows the web page any more, so it may never report
                 // who is signed in; ask Clerk for the name directly.
                 await auth.loadIdentityFromClerk()
@@ -158,25 +161,27 @@ struct AppShellView: View {
                 ZStack {
                     PersistentEditorHost(
                         session: session,
-                        isActive: destination == .editor && !isProjectsHomeVisible
+                        isActive: isEditorVisible
                     )
-                        .opacity(destination == .editor && !isProjectsHomeVisible ? 1 : 0)
-                        .allowsHitTesting(destination == .editor && !isProjectsHomeVisible)
-                        .accessibilityHidden(destination != .editor || isProjectsHomeVisible)
+                        .opacity(isEditorVisible ? 1 : 0)
+                        .allowsHitTesting(isEditorVisible)
+                        .accessibilityHidden(!isEditorVisible)
 
-                    if isProjectsHomeVisible {
+                    if isSignedIn, isProjectsHomeVisible {
                         ProjectsHomeView(session: session, navigation: projectNavigation)
                     }
 
                     // Built on arrival and torn down on the way out, unlike the
                     // editor: the library holds no work in progress, and one
                     // that stayed mounted would rebuild on every edit made in
-                    // the tab next door.
-                    if NativeSurfaces.enabled.contains(destination) {
+                    // the tab next door. Never built signed out: a page behind
+                    // the sign-in screen kept reading, failing, and asking for
+                    // sign-in again every time the window came forward.
+                    if isSignedIn, NativeSurfaces.enabled.contains(destination) {
                         NativeSurfaceHost(destination: destination, session: session, navigate: navigate)
                     }
 
-                    if destination == .audio {
+                    if isSignedIn, destination == .audio {
                         AudioLibraryPage(
                             session: session,
                             store: .shared,
@@ -187,10 +192,9 @@ struct AppShellView: View {
                     // Keep one authenticated web view alive behind the native
                     // editor. Clerk refreshes its short-lived session there,
                     // and native AI uploads read the resulting Yapper cookies.
-                    // Signed out, this is the whole window: Clerk's own sign-in
-                    // card, where an email and a password work without leaving
-                    // the app. Only Google and Apple are sent to a browser, and
-                    // only because they refuse to be shown here.
+                    // Signed out, it stays hidden and runs the sign-in screen's
+                    // email codes through Clerk, so the session it ends up with
+                    // is the one every request already reads.
                     StudioPageView(destination: webDestination, onNavigate: navigate)
                         .opacity(isWebViewVisible ? 1 : 0)
                         .allowsHitTesting(isWebViewVisible)
@@ -208,8 +212,10 @@ struct AppShellView: View {
                     // switch into the editor.
                     .transaction { $0.disablesAnimations = true }
 
-                    if !isSignedIn, handoff.isWaitingInBrowser {
-                        StudioSignInView()
+                    switch auth.isSignedIn {
+                    case nil: StudioLaunchView()
+                    case false?: StudioSignInView()
+                    case true?: EmptyView()
                     }
                 }
             }

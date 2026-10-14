@@ -17,7 +17,7 @@ final class StudioChirpyThreads: ObservableObject {
     private var threads: [String: AssistantConversation] = [:]
 
     func activate(_ destination: StudioDestination, userID: String?) {
-        guard destination != .editor, destination != .signIn else {
+        guard destination != .editor else {
             current = nil
             surface = nil
             return

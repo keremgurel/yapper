@@ -68,11 +68,7 @@ struct CloudStudioView: View {
     /// stays covered until the route it is on matches the one that was asked
     /// for.
     private var isShowingDestination: Bool {
-        // Nothing to hide on the way to the sign-in card: there is no previous
-        // page behind it worth covering, and a cover that outlives its reason
-        // is an opaque sheet over the only button in the app.
-        if destination == .signIn { return true }
-        return destination.cloudPath == nil
+        destination.cloudPath == nil
             || destination.contains(cloudPath: presentation.shownPath)
     }
 
@@ -964,7 +960,6 @@ extension StudioDestination {
         case .storage: "/studio/storage"
         case .dictionary: "/studio/dictionary"
         case .connections: "/studio/connections"
-        case .signIn: "/studio/app-sign-in"
         }
     }
 
