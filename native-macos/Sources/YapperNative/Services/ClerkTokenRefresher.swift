@@ -13,19 +13,43 @@ import Foundation
 enum ClerkTokenRefresher {
     struct Minted: Decodable { let jwt: String }
 
+    /// What Clerk says about this Mac's session.
+    enum Outcome: Equatable {
+        /// Alive, with a fresh token to prove it.
+        case active(String)
+        /// Clerk has no session for this client: never signed in here, signed
+        /// out, or past the session's lifetime.
+        case ended
+        /// No answer (offline, timed out, Clerk unwell). Says nothing either way.
+        case unknown
+    }
+
     static func mint() async -> String? {
+        if case let .active(token) = await check() { return token }
+        return nil
+    }
+
+    /// Asks Clerk whether the session is alive, in one round trip.
+    ///
+    /// The `__session` cookie cannot answer this: the server sets it to last a
+    /// year while the token inside expires in a minute, so it is there long
+    /// after the session behind it has ended. Launches used to take it at its
+    /// word, draw Home for an account that was gone, and only find out when
+    /// every request on the page failed.
+    static func check() async -> Outcome {
         let started = ContinuousClock.now
         let cookies = await webCookies()
         // Clerk keeps its client cookie on its own domain (the Frontend API
-        // host); finding it tells us where to ask.
-        guard let client = cookies.first(where: { $0.name == "__client" }),
+        // host); finding it tells us where to ask. Without it, or without a
+        // session id, Clerk has nothing on file for this app to refresh.
+        guard let client = cookies.first(where: { $0.name == "__client" && !isExpired($0) }),
               let sessionID = sessionID(in: cookies)
         else {
             PerfLog.logger.debug("clerk mint skipped: no client or session cookie")
-            return nil
+            return .ended
         }
         let host = client.domain.trimmingCharacters(in: CharacterSet(charactersIn: "."))
-        guard let url = URL(string: "https://\(host)/v1/client/sessions/\(sessionID)/tokens") else { return nil }
+        guard let url = URL(string: "https://\(host)/v1/client/sessions/\(sessionID)/tokens") else { return .unknown }
 
         var request = URLRequest(url: url, timeoutInterval: 5)
         request.httpMethod = "POST"
@@ -35,16 +59,31 @@ enum ClerkTokenRefresher {
         for (header, value) in HTTPCookie.requestHeaderFields(with: applicable) {
             request.setValue(value, forHTTPHeaderField: header)
         }
-        guard let (data, response) = try? await URLSession.shared.data(for: request),
-              (response as? HTTPURLResponse)?.statusCode == 200,
+        guard let (data, response) = try? await URLSession.shared.data(for: request) else {
+            PerfLog.logger.debug("clerk mint unreachable after \(PerfLog.milliseconds(since: started))ms")
+            return .unknown
+        }
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard status == 200,
               let minted = try? JSONDecoder().decode(Minted.self, from: data),
               !minted.jwt.isEmpty
         else {
-            PerfLog.logger.debug("clerk mint failed after \(PerfLog.milliseconds(since: started))ms")
-            return nil
+            PerfLog.logger.debug("clerk mint \(status) after \(PerfLog.milliseconds(since: started))ms")
+            return outcome(forRefusal: status)
         }
         PerfLog.logger.debug("clerk mint \(PerfLog.milliseconds(since: started))ms")
-        return minted.jwt
+        return .active(minted.jwt)
+    }
+
+    /// Clerk answers a session it no longer has with 401 or 404 (422 for one
+    /// it will not touch). Anything else, a rate limit or an outage, is not
+    /// evidence the account is gone.
+    static func outcome(forRefusal status: Int) -> Outcome {
+        [401, 404, 422].contains(status) ? .ended : .unknown
+    }
+
+    private static func isExpired(_ cookie: HTTPCookie) -> Bool {
+        cookie.expiresDate.map { $0 <= Date() } ?? false
     }
 
     /// The active session's id, read from the `sid` claim of the last session

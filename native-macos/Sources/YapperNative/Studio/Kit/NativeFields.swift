@@ -3,12 +3,13 @@ import SwiftUI
 /// The text field every native form uses: sunken fill, hairline, 8pt corners.
 struct NativeTextFieldStyle: TextFieldStyle {
     var size: CGFloat = 13
+    var minHeight: CGFloat = 32
     func _body(configuration: TextField<Self._Label>) -> some View {
         configuration
             .textFieldStyle(.plain)
             .font(.system(size: size))
             .padding(.horizontal, 10)
-            .frame(minHeight: 32)
+            .frame(minHeight: minHeight)
             .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.studioInputBackground))
             .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Color.studioLine, lineWidth: 1))
     }

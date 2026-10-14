@@ -178,7 +178,9 @@ final class StudioWebCommands: ObservableObject {
     /// Runs page JavaScript with a deadline. The hidden page can be asleep,
     /// mid-reload or gone after the Mac sleeps, and a call into it then never
     /// answers; without a deadline every native request waited on it forever.
-    private func runJavaScript(_ script: String, timeout: TimeInterval) async -> Any? {
+    /// `arguments` arrive in the script as named variables, so values typed
+    /// by the creator never have to be spliced into the source.
+    func runJavaScript(_ script: String, arguments: [String: Any] = [:], timeout: TimeInterval) async -> Any? {
         guard let webView else { return nil }
         final class Once: @unchecked Sendable {
             var done = false
@@ -188,7 +190,7 @@ final class StudioWebCommands: ObservableObject {
         struct Result: @unchecked Sendable { let value: Any? }
         let once = Once()
         let result = await withCheckedContinuation { (continuation: CheckedContinuation<Result, Never>) in
-            webView.callAsyncJavaScript(script, arguments: [:], in: nil, in: .page) { outcome in
+            webView.callAsyncJavaScript(script, arguments: arguments, in: nil, in: .page) { outcome in
                 let value = Result(value: try? outcome.get())
                 Task { @MainActor in
                     guard !once.done else { return }
