@@ -224,12 +224,12 @@ export default async function StoragePage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="font-display text-foreground text-lg font-semibold">
-              Written workspace
+              Saved writing and settings
             </h2>
             <p className="text-muted-foreground mt-1 max-w-2xl text-xs leading-5">
               About {formatStorageBytes(details.workspace.estimatedBytes)} of
-              project, Brain, idea and library records. This is visible for
-              transparency but does not consume your temporary storage limit.
+              writing and settings in the cloud. Idea and library counts are
+              separate stored categories; neither uses your video allowance.
             </p>
           </div>
           <span className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-[11px] font-semibold">
@@ -260,7 +260,9 @@ export default async function StoragePage() {
               <span className="text-foreground block text-sm font-semibold">
                 {details.workspace.contentIdeas} ideas
               </span>
-              <span className="text-muted-foreground text-xs">Idea bank</span>
+              <span className="text-muted-foreground text-xs">
+                Captured ideas
+              </span>
             </span>
           </Link>
           <Link

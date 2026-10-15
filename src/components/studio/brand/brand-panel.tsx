@@ -300,19 +300,18 @@ export default function BrandPanel() {
               should reach for first.
             </p>
           </div>
-          <button
+          <Button
             type="button"
             onClick={() => picker.current?.click()}
             disabled={busy || !kit || (kit?.logos.length ?? 0) >= MAX_LOGOS}
-            className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold disabled:opacity-50"
           >
             {busy ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Upload className="h-4 w-4" />
-            )}{" "}
+            )}
             Upload logo
-          </button>
+          </Button>
           <input
             ref={picker}
             type="file"
@@ -416,18 +415,18 @@ export default function BrandPanel() {
               readable combinations automatically.
             </p>
           </div>
-          <button
+          <Button
             type="button"
+            variant="outline"
             disabled={busy || !kit || kit.colors.length >= MAX_COLORS}
             onClick={() => {
               if (!kit) return;
               const next = nextBrandColor(kit.colors);
               if (next) void persistColors([...kit.colors, next]);
             }}
-            className="border-border bg-background text-foreground hover:bg-muted inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-semibold disabled:opacity-50"
           >
             <Plus className="h-4 w-4" /> Add color
-          </button>
+          </Button>
         </div>
 
         {kit === null ? (
@@ -478,14 +477,14 @@ export default function BrandPanel() {
                 starter palette.
               </p>
             </div>
-            <button
+            <Button
               type="button"
+              variant="outline"
               disabled={busy}
               onClick={() => void persistColors(STARTER_COLORS)}
-              className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold"
             >
               <Check className="h-4 w-4" /> Use defaults
-            </button>
+            </Button>
           </div>
         )}
       </section>

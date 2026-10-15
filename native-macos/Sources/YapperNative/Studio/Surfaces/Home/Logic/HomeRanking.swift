@@ -49,8 +49,10 @@ enum HomeNumber {
         return value.formatted(.number)
     }
 
-    /// "3.2×" under ten, "12×" from ten up.
+    /// "3.2×" under ten, "12×" from ten up, and "<0.1×" for a post far below
+    /// the typical one, which would otherwise read "0.0×". Same as the web.
     static func multiplier(_ times: Double) -> String {
-        times >= 10 ? "\(Int(times.rounded()))×" : String(format: "%.1f×", times)
+        if times < 0.1 { return "<0.1×" }
+        return times >= 10 ? "\(Int(times.rounded()))×" : String(format: "%.1f×", times)
     }
 }
