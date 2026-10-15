@@ -6,7 +6,10 @@ import { PLATFORMS } from "@/lib/publish/platforms";
 import type { PublishPlatform } from "@/lib/db/schema";
 import { enabledPublishPlatforms } from "@/lib/publish/availability";
 import type { PosterSource } from "./use-source-videos";
+import type { CSSProperties } from "react";
 
+/** Wide screens give every source an equal slot in one row, however many
+ * platforms are enabled, so pausing one never leaves a hole at the end. */
 export default function SourceOptions({
   selected,
   onChoose,
@@ -16,12 +19,14 @@ export default function SourceOptions({
   onChoose: (source: PosterSource) => void;
   connected: PublishPlatform[];
 }) {
+  const sources = ["uploads", ...enabledPublishPlatforms] as const;
   return (
     <nav
       aria-label="Video sources"
-      className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5"
+      style={{ "--source-count": sources.length } as CSSProperties}
+      className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-[repeat(var(--source-count),minmax(0,1fr))]"
     >
-      {(["uploads", ...enabledPublishPlatforms] as const).map((source) => (
+      {sources.map((source) => (
         <button
           key={source}
           type="button"

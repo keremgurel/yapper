@@ -4,8 +4,14 @@ import SwiftUI
 struct StorageMediaSection: View {
     let media: StorageUsage.Media
     @State private var managingVideos = false
+    @State private var availableWidth: CGFloat = 1_000
 
-    private let columns = [GridItem(.adaptive(minimum: 200), spacing: 12)]
+    /// Four equal tiles across when there is room, as on the web; fewer
+    /// columns as the window narrows. An adaptive grid made a fifth, empty
+    /// slot on a wide window.
+    private var columns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: 12), count: min(4, max(1, Int(availableWidth / 200))))
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -49,6 +55,7 @@ struct StorageMediaSection: View {
                     bytes: media.brandLogo.bytes
                 )
             }
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
         }
         .sheet(isPresented: $managingVideos) { StorageVideoManager() }
     }

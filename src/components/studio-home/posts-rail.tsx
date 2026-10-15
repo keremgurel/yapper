@@ -7,13 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Chip, Section } from "@/components/studio-ui";
 import { compactNumber } from "@/components/studio-home/format-number";
 import { versusUsual } from "@/components/studio-home/channel-stats";
+import { multiplierLabel } from "@/components/studio-home/multiplier-label";
 import type { RankedVideo } from "@/components/studio-home/rank-videos";
 
 type View = "recent" | "top";
-
-function multiplierLabel(times: number): string {
-  return times >= 10 ? `${Math.round(times)}×` : `${times.toFixed(1)}×`;
-}
 
 /**
  * The posts themselves. Recent shows the latest few against the creator's

@@ -7,6 +7,7 @@ import {
 } from "@glass-sdk/liquid-glass";
 import type { ComponentProps, ReactNode } from "react";
 import { useTheme } from "next-themes";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { cn } from "@/lib/utils";
 import "@glass-sdk/liquid-glass/styles.css";
 
@@ -17,10 +18,14 @@ export function StudioGlassScene({
   ...props
 }: ComponentProps<typeof GlassScene>) {
   const { resolvedTheme } = useTheme();
+  // The server cannot know the saved theme, so the scene starts light like
+  // the server's HTML and turns dark once hydrated. Reading the theme during
+  // hydration left a dark-mode page with the light glass attribute.
+  const dark = useHydrated() && resolvedTheme === "dark";
   return (
     <GlassScene
       material="regular"
-      appearance={resolvedTheme === "dark" ? "dark" : "light"}
+      appearance={dark ? "dark" : "light"}
       motion="none"
       className={cn("studio-glass", className)}
       {...props}

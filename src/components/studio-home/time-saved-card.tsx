@@ -1,5 +1,5 @@
 import { Info, Scissors } from "lucide-react";
-import { EmptyState, StatBlock } from "@/components/studio-ui";
+import { StatBlock } from "@/components/studio-ui";
 import { formatDuration } from "@/components/studio-home/format-duration";
 import type { TimeSaved } from "@/components/studio-home/use-time-saved";
 import { SECONDS_PER_MANUAL_CUT } from "@/lib/studio/edit-run";
@@ -39,11 +39,11 @@ export default function TimeSavedCard({ saved }: { saved: TimeSaved | null }) {
         </span>
       </header>
       {saved !== null && !counted ? (
-        <EmptyState
-          icon={Scissors}
-          title="Your time saved starts here"
-          description="Run 1-Click Edit on a take and the hours it saves you add up in this card."
-        />
+        <p className="text-muted-foreground flex items-center gap-2 px-4 pt-2 pb-4 text-sm sm:px-5">
+          <Scissors aria-hidden className="size-4 shrink-0" />
+          Starts with your next 1-Click Edit. The hours it saves you add up
+          here.
+        </p>
       ) : (
         <>
           <div className="px-4 pt-2 pb-4 sm:px-5">

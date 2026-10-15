@@ -135,5 +135,6 @@ struct HomeDecodingTests {
         #expect(HomeNumber.compact(1_234).hasSuffix("K"))
         #expect(HomeNumber.multiplier(3.24) == "3.2×")
         #expect(HomeNumber.multiplier(12.4) == "12×")
+        #expect(HomeNumber.multiplier(0.02) == "<0.1×")
     }
 }

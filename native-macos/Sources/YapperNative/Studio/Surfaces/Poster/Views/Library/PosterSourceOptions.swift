@@ -7,8 +7,15 @@ struct PosterSourceOptions: View {
     let onChoose: (PosterSource) -> Void
     @State private var availableWidth: CGFloat = 1_200
 
+    /// Made in Yapper, Uploads, then each enabled platform.
+    private var sourceCount: Int { 2 + PublishPlatform.enabledCases.count }
+
+    /// One row of equal slots when there is room, so pausing a platform never
+    /// leaves a hole at the end; fewer columns as the window narrows.
+    private var columnCount: Int { min(sourceCount, max(1, Int(availableWidth / 200))) }
+
     var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: min(6, max(1, Int(availableWidth / 200)))), spacing: 8) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: columnCount), spacing: 8) {
             choice(.yapper, title: "Made in Yapper", detail: "Latest edited projects", icon: "film.stack")
             choice(.uploads, title: "Uploads", detail: "Ready to post", icon: "square.and.arrow.up")
             ForEach(PublishPlatform.enabledCases) { platform in

@@ -26,13 +26,13 @@ struct HomeTimeSavedCard: View {
             .padding(.top, 16)
 
             if let saved, saved.edits == 0 {
-                NativeEmptyState(
-                    systemImage: "scissors",
-                    title: "Your time saved starts here",
-                    message: "Run 1-Click Edit on a take and the hours it saves you add up in this card."
-                ) { EmptyView() }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 20)
+                Label("Starts with your next 1-Click Edit. The hours it saves you add up here.", systemImage: "scissors")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 18)
+                    .padding(.top, 8)
+                    .padding(.bottom, 16)
             } else {
                 headline
                 Rectangle().fill(Color.studioLine).frame(height: 1)
