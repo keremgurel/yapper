@@ -17,7 +17,7 @@ struct ConnectionsPage: View {
                     .padding(.bottom, 16)
             }
             VStack(spacing: 0) {
-                ForEach(Array(PublishPlatform.allCases.enumerated()), id: \.element) { index, platform in
+                ForEach(Array(PublishPlatform.enabledCases.enumerated()), id: \.element) { index, platform in
                     if index > 0 { Rectangle().fill(Color.studioLine).frame(height: 1) }
                     ConnectionRow(platform: platform, store: store)
                 }

@@ -1,3 +1,7 @@
+import {
+  isPlatformEnabled,
+  platformPausedResponse,
+} from "@/lib/publish/availability";
 import { randomBytes } from "node:crypto";
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
@@ -25,6 +29,7 @@ export async function GET(req: Request, { params }: Params): Promise<Response> {
     return Response.json({ error: "unknown_platform" }, { status: 404 });
   }
   const p = platform as PublishPlatform;
+  if (!isPlatformEnabled(p)) return platformPausedResponse();
   if (!isPlatformConfigured(p) || !tokenCryptoConfigured()) {
     return Response.json({ error: "not_configured" }, { status: 501 });
   }

@@ -28,7 +28,7 @@ struct HomeDashboard {
         // Every channel failing leaves nothing to rank; partial failures
         // still count what did load.
         let ranked = loaded.map { HomeChannelHealth.allFailed($0) ? [] : HomeRanking.rankVideos($0) }
-        let connected = PublishPlatform.allCases.contains {
+        let connected = PublishPlatform.enabledCases.contains {
             HomeRanking.isConnected($0, channels: loaded, connections: connections)
         }
 

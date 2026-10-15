@@ -1,3 +1,4 @@
+import { enabledPublishPlatforms } from "@/lib/publish/availability";
 import type { CaptionSet } from "../captions/caption-draft";
 import { defaultCover, type CoverDraft } from "./cover-draft";
 import type { PosterVideo } from "./poster-video";
@@ -23,11 +24,9 @@ export function sourceCaptions(video: PosterVideo): CaptionSet {
   if (video.kind !== "platform" || video.caption === undefined) return {};
   // Keep line breaks and inline hashtags exactly where the creator put them.
   return Object.fromEntries(
-    (["youtube", "tiktok", "instagram", "facebook"] as const).map(
-      (platform) => [
-        platform,
-        { platform, title: "", body: video.caption!, hashtags: [] },
-      ],
-    ),
+    enabledPublishPlatforms.map((platform) => [
+      platform,
+      { platform, title: "", body: video.caption!, hashtags: [] },
+    ]),
   );
 }

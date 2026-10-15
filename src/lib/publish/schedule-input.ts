@@ -1,3 +1,4 @@
+import { isPlatformEnabled } from "./availability";
 import { RequestBodyError, readBoundedJson } from "@/lib/http/bounded-body";
 import {
   readInstagramPublishRequest,
@@ -77,7 +78,7 @@ export async function readScheduleInput(
       target.expectedAccountId.length > 200
     )
       throw new RequestBodyError("invalid_body");
-    if (!["youtube", "instagram", "tiktok", "facebook"].includes(platform))
+    if (!isPlatformEnabled(platform))
       throw new RequestBodyError("invalid_body");
     const read =
       platform === "youtube"

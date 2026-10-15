@@ -13,7 +13,7 @@ struct PosterSourceTabs: View {
             HStack(spacing: 4) {
                 tab(.yapper) { Text("Made in Yapper") }
                 tab(.uploads) { Text("Uploads") }
-                ForEach(PublishPlatform.allCases) { platform in
+                ForEach(PublishPlatform.enabledCases) { platform in
                     tab(.platform(platform)) {
                         HStack(spacing: 6) {
                             Image(systemName: platform.symbol).font(.system(size: 12))

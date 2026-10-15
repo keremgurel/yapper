@@ -2,6 +2,9 @@ import Foundation
 
 enum PublishPlatform: String, Codable, CaseIterable, Identifiable {
     case youtube, tiktok, instagram, facebook
+
+    // Match the server rollout; keep Facebook decodable for saved data.
+    static let enabledCases: [PublishPlatform] = [.youtube, .tiktok, .instagram]
     var id: String { rawValue }
 
     var label: String {

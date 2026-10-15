@@ -8,7 +8,8 @@ import {
 import { getBrainContextSafe } from "@/lib/brain/context/server";
 import { getContentItem } from "@/lib/db/content";
 import { hookTexts, normalizeBody } from "@/lib/content/normalize";
-import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
+import type { PublishPlatform } from "@/lib/db/schema";
+import { enabledPublishPlatforms } from "@/lib/publish/availability";
 import { generateCaptions } from "@/lib/publish/caption";
 import { collectStyleSamples } from "@/lib/publish/caption-style";
 import { loadRecordedTranscript } from "@/lib/content/recorded-transcript";
@@ -26,7 +27,7 @@ const str = (v: unknown, max: number): string | undefined =>
 function platformsOf(value: unknown): PublishPlatform[] {
   if (!Array.isArray(value)) return ["youtube"];
   const wanted = value.filter((v): v is PublishPlatform =>
-    (publishPlatforms as readonly string[]).includes(v as string),
+    (enabledPublishPlatforms as readonly string[]).includes(v as string),
   );
   return wanted.length ? [...new Set(wanted)] : ["youtube"];
 }

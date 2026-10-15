@@ -1,3 +1,4 @@
+import { isPlatformEnabled, platformPausedResponse } from "../availability";
 import {
   getConnectionRow,
   claimPublishJob,
@@ -38,6 +39,8 @@ export async function publishFacebook(
     return Response.json({ error: "invalid_idempotency_key" }, { status: 400 });
   const prior = await findPublishJobClaim(userId, "facebook", key);
   if (prior) return reconcile(prior, userId, workflow);
+  // Keep status reconciliation for posts already sent, but never start a new post.
+  if (!isPlatformEnabled("facebook")) return platformPausedResponse();
   let body;
   try {
     body = await readFacebookPublishRequest(req);

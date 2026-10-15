@@ -2,7 +2,8 @@
 
 import { Check, Link2 } from "lucide-react";
 import PlatformIcon from "@/components/publish/platform-icon";
-import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
+import type { PublishPlatform } from "@/lib/db/schema";
+import { enabledPublishPlatforms } from "@/lib/publish/availability";
 import { PLATFORMS } from "@/lib/publish/platforms";
 
 /**
@@ -27,7 +28,7 @@ export default function DestinationToggles({
       role="group"
       aria-label="Destinations"
     >
-      {publishPlatforms.map((platform) => {
+      {enabledPublishPlatforms.map((platform) => {
         const label = PLATFORMS[platform].label;
         const isConnected = connected.includes(platform);
         const on = chosen.has(platform);

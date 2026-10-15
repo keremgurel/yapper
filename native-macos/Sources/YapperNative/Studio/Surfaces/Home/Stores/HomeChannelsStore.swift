@@ -18,12 +18,12 @@ final class HomeChannelsStore: ObservableObject {
         if let loadedAt, Date().timeIntervalSince(loadedAt) < maxAge { return }
         loadedAt = Date()
         channels = await withTaskGroup(of: HomeChannel.self) { group in
-            for platform in PublishPlatform.allCases {
+            for platform in PublishPlatform.enabledCases {
                 group.addTask { await Self.load(platform) }
             }
             var loaded: [HomeChannel] = []
             for await channel in group { loaded.append(channel) }
-            return PublishPlatform.allCases.compactMap { platform in loaded.first { $0.platform == platform } }
+            return PublishPlatform.enabledCases.compactMap { platform in loaded.first { $0.platform == platform } }
         }
     }
 

@@ -1,7 +1,8 @@
 "use client";
 
 import PlatformIcon from "@/components/publish/platform-icon";
-import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
+import type { PublishPlatform } from "@/lib/db/schema";
+import { enabledPublishPlatforms } from "@/lib/publish/availability";
 import { PLATFORMS } from "@/lib/publish/platforms";
 import type { PosterSource } from "./use-source-videos";
 
@@ -66,7 +67,7 @@ export default function SourceTabs({
       className="border-border/70 flex flex-wrap items-center border-b"
     >
       {tab("uploads", "Uploads")}
-      {publishPlatforms.map((platform) =>
+      {enabledPublishPlatforms.map((platform) =>
         tab(
           platform,
           <>

@@ -119,7 +119,13 @@ describe("scheduling input", () => {
       readScheduleInput(
         request({
           ...body,
-          targets: [{ platform: "facebook", input: body.targets[0].input }],
+          targets: [
+            {
+              platform: "facebook",
+              expectedAccountId: "facebook-page",
+              input: body.targets[0].input,
+            },
+          ],
         }),
       ),
     ).rejects.toThrow();

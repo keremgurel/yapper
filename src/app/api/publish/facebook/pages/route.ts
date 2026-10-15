@@ -1,3 +1,7 @@
+import {
+  isPlatformEnabled,
+  platformPausedResponse,
+} from "@/lib/publish/availability";
 import { auth } from "@clerk/nextjs/server";
 import { getConnectionRow, selectFacebookPage } from "@/lib/db/publish";
 import { listFacebookPages } from "@/lib/publish/facebook-api";
@@ -11,6 +15,7 @@ export const runtime = "nodejs";
 export async function GET() {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!isPlatformEnabled("facebook")) return platformPausedResponse();
   const row = await getConnectionRow(userId, "facebook");
   if (!row?.refreshTokenEnc)
     return Response.json({ error: "facebook_not_connected" }, { status: 409 });
@@ -33,6 +38,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!isPlatformEnabled("facebook")) return platformPausedResponse();
   let body;
   try {
     body = await readBoundedJson(req, { maxBytes: 4096 });

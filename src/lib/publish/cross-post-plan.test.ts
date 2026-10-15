@@ -34,6 +34,14 @@ describe("crossPostTargets", () => {
     expect(out.map((t) => t.platform)).toEqual(["youtube"]);
   });
 
+  it("excludes saved Facebook connections while rollout is paused", () => {
+    expect(
+      crossPostTargets(["facebook", "youtube"]).map(
+        (target) => target.platform,
+      ),
+    ).toEqual(["youtube"]);
+  });
+
   it("is empty when nothing is connected", () => {
     expect(crossPostTargets([])).toEqual([]);
   });
@@ -45,7 +53,7 @@ describe("crossPostSummary", () => {
     const s = crossPostSummary(
       crossPostTargets(["youtube", "tiktok", "instagram", "facebook"]),
     );
-    expect(s).toEqual({ total: 4, direct: 4, draftInbox: 0 });
+    expect(s).toEqual({ total: 3, direct: 3, draftInbox: 0 });
   });
 
   it("is all zeros for no targets", () => {

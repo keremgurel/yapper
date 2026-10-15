@@ -1,6 +1,6 @@
 # Before recording
 
-Use this once before the four platform scripts. Quoted passages are the full words to say. Camera inset is optional; clear screen footage and narration are enough. Keep the inset away from account names, permissions, settings, and results. Suggested lengths are editorial guidance, not platform requirements.
+Use this once before the active platform scripts. Quoted passages are the full words to say. Camera inset is optional; clear screen footage and narration are enough. Keep the inset away from account names, permissions, settings, and results. Suggested lengths are editorial guidance, not platform requirements.
 
 ## Prepare one original sample video
 
@@ -30,7 +30,7 @@ Prepare Editor and Poster **before** starting the recording. In the native Edito
 
 ## Short creation overview — about 20 seconds
 
-Use the exact shared opening in [the recording index](../platform-review-demo.md). Prepare Lab, Recorder, native Editor, and Poster beforehand, and show each for 2–3 seconds while saying its one-line description. Reuse this footage in all four demos. The platform integration should take most of each recording.
+Use the exact shared opening in [the recording index](../platform-review-demo.md). Prepare Lab, Recorder, native Editor, and Poster beforehand, and show each for 2–3 seconds while saying its one-line description. Reuse this footage in the active demos. The platform integration should take most of each recording.
 
 ## Export and submit
 

@@ -19,7 +19,8 @@ import FacebookPagePicker from "./facebook-page-picker";
 import TikTokInsightsRow from "@/components/publish/tiktok-insights-row";
 import { CHIP_TONES } from "@/components/studio-ui/chip-tones";
 import { PLATFORMS } from "@/lib/publish/platforms";
-import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
+import type { PublishPlatform } from "@/lib/db/schema";
+import { enabledPublishPlatforms } from "@/lib/publish/availability";
 
 // Lucide dropped its brand marks, so these are neutral stand-ins.
 const ICON: Record<PublishPlatform, typeof Video> = {
@@ -39,7 +40,7 @@ function useConnectNotice(): { ok?: PublishPlatform; error?: string } {
   const [{ ok, error }] = useState(() => {
     const raw = params.get("connected");
     return {
-      ok: publishPlatforms.includes(raw as PublishPlatform)
+      ok: enabledPublishPlatforms.includes(raw as PublishPlatform)
         ? (raw as PublishPlatform)
         : undefined,
       error: params.get("connect_error") ?? undefined,
@@ -88,9 +89,11 @@ export default function ConnectionsPanel() {
           role="alert"
           className="mb-4 rounded-lg bg-[color:var(--sg-pink-500)]/12 px-4 py-2.5 text-sm font-bold text-[color:var(--sg-pink-500)]"
         >
-          {notice.error === "tiktok_configuration"
-            ? "TikTok couldn’t connect because Yapper’s TikTok configuration needs fixing. Contact support; signing in again won’t resolve this."
-            : `Couldn’t connect (${notice.error}). Try again.`}
+          {notice.error === "platform_paused"
+            ? "This platform is temporarily unavailable."
+            : notice.error === "tiktok_configuration"
+              ? "TikTok couldn’t connect because Yapper’s TikTok configuration needs fixing. Contact support; signing in again won’t resolve this."
+              : `Couldn’t connect (${notice.error}). Try again.`}
         </p>
       )}
 
@@ -109,7 +112,7 @@ export default function ConnectionsPanel() {
         </p>
       )}
       <Card className="gap-0 overflow-hidden py-0">
-        {publishPlatforms.map((p) => {
+        {enabledPublishPlatforms.map((p) => {
           const spec = PLATFORMS[p];
           const Icon = ICON[p];
           const connected = connections?.find((c) => c.platform === p) ?? null;

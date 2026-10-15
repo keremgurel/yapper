@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET, POST } from "./route";
 const mocks = vi.hoisted(() => ({
+  enabled: vi.fn(),
   auth: vi.fn(),
   row: vi.fn(),
   list: vi.fn(),
@@ -17,8 +18,13 @@ vi.mock("@/lib/publish/facebook-api", () => ({
 vi.mock("@/lib/publish/tokens", () => ({
   decryptToken: (value: string) => `decrypted:${value}`,
 }));
+vi.mock("@/lib/publish/availability", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/publish/availability")>()),
+  isPlatformEnabled: mocks.enabled,
+}));
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.enabled.mockReturnValue(true);
   mocks.auth.mockResolvedValue({ userId: "owner" });
   mocks.row.mockResolvedValue({
     id: "connection",
@@ -68,4 +74,13 @@ describe("per-user Facebook Page selection", () => {
     expect((await select("123")).status).toBe(401);
     expect(mocks.row).not.toHaveBeenCalled();
   });
+});
+
+it("blocks Page reads and selection while paused", async () => {
+  mocks.enabled.mockReturnValue(false);
+  expect((await GET()).status).toBe(409);
+  expect((await select("123")).status).toBe(409);
+  expect(mocks.row).not.toHaveBeenCalled();
+  expect(mocks.list).not.toHaveBeenCalled();
+  expect(mocks.select).not.toHaveBeenCalled();
 });

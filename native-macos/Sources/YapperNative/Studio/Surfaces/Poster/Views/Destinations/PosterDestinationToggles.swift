@@ -12,7 +12,7 @@ struct PosterDestinationToggles: View {
 
     var body: some View {
         LazyVGrid(columns: columns, spacing: 8) {
-            ForEach(PublishPlatform.allCases) { platform in
+            ForEach(PublishPlatform.enabledCases) { platform in
                 if connected.contains(platform) {
                     toggle(platform)
                 } else {
