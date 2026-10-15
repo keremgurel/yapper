@@ -8,7 +8,6 @@ import { enabledPublishPlatforms } from "@/lib/publish/availability";
 import HomeView from "@/components/studio-home/home-view";
 import { greeting } from "@/components/studio-home/greeting";
 import { rankVideos } from "@/components/studio-home/rank-videos";
-import { channelStats } from "@/components/studio-home/channel-stats";
 import { setupSteps } from "@/components/studio-home/setup-steps";
 import { isChannelConnected } from "@/components/studio-home/connection-state";
 import {
@@ -54,10 +53,6 @@ export default function StudioDashboard() {
           : rankVideos(channels),
     [channels],
   );
-  const stats = useMemo(
-    () => (shown === null ? null : channelStats(shown, now)),
-    [shown, now],
-  );
   const connectedCount = enabledPublishPlatforms.filter((platform) =>
     isChannelConnected(platform, channels, connections),
   ).length;
@@ -80,7 +75,6 @@ export default function StudioDashboard() {
 
   return (
     <HomeView
-      userId={user?.id}
       title={hour === null ? "" : greeting(hour, user?.firstName)}
       onCapture={ideas.capture}
       setup={showSetup ? steps : null}
@@ -94,7 +88,6 @@ export default function StudioDashboard() {
         connectedCount > 0
           ? {
               ranked: shown,
-              stats,
               missing: joinPlatformNames(failed),
               connected: (channels ?? [])
                 .filter((channel) => channel.connected && !channel.error)

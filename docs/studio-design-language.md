@@ -284,25 +284,30 @@ readable disabled states and neutral fallback surfaces without WebGPU, under
 reduced transparency and in forced colors. Sent messages remain in the same
 conversation when navigating between Home and the floating assistant.
 
-## Home attention shortlist (October 15, 2026)
+## Home analytics (October 15, 2026)
 
-Keep capture, the performance band and the idea queue. The former four large
-post covers become “Worth your attention”: compact 64–80px thumbnails and
-readable rows with one reason and one concrete action. For today is the default;
-Recent and Top remain explicit choices. Use the existing system type, semantic
-colors, Section/Button primitives, 1440px frame and responsive gutters. No new
-motion or decorative surfaces.
+This supersedes the earlier Home ordering. Keep capture first, followed by a
+performance band, a large video bar chart beside channel comparison, then compact
+navigation cards for Ideas, Recorder, Editor and Poster. Show the time-saved card
+only once there are actual edits to count. Use the existing system typography,
+semantic surfaces, 1440px frame and responsive gutters. No decorative motion.
 
-Group platform copies by a shared stored source, or conservatively matching
-substantial titles within seven days. Keep every platform link and its views.
-Never merge separate posts on the same platform or claim visual recognition.
-Daily suggestions cover recent standouts, potential sharing gaps and older
-strong ideas. Baselines use at least five other mature posts on the same channel.
-These are lifetime-view comparisons, not growth measurements or causal claims.
-Sharing suggestions say “no matching post found” because loaded history is bounded.
-Hide for a week persists per account on the current device; reset is available.
-Opening Home makes no AI or transcription request. Capturing an angle uses the
-existing explicit idea-capture action, without resolving the original post URL.
+Home shows posts published in the last 30 days. Filter before grouping, so a new
+cross-post cannot pull an old copy's views into the window. Group copies by a
+shared saved source, or conservatively matching substantial titles within seven
+days; keep different posts on the same platform separate. This is metadata
+matching, not visual recognition. Each bar represents one unique video, with
+platform segments using theme-aware chart tokens derived from the platform palette. Its total is
+always visible; click or use the keyboard to disclose the full title, exact
+counts and platform links. Latest is the default, Most viewed is an explicit
+alternative; both show up to eight unique videos from the same window.
+
+All figures are current lifetime views on those posts, not views earned each day.
+Never draw them as a daily-growth curve. The performance band counts unique
+videos and their combined median views. Channel comparison counts each platform's
+own posts. The chart, legend, values and disclosures convey meaning without color
+alone. Opening Home does not generate ideas or transcribe anything. AI remains
+available through the existing explicit composer/Chirpy actions.
 
 Connected history uses official APIs only: up to 200 YouTube videos, 100 TikTok
 videos and 100 Instagram media items (photos count toward Instagram's scan).
@@ -313,3 +318,8 @@ and explicit fresh reads invalidate/bypass that cache. This avoids Apify listing
 charges, not infrastructure costs or platform quotas. Voice sample selection is
 optional, up to ten per selection. Its existing credit confirmation stays in
 place: source recovery can use Apify and transcription can use paid providers.
+
+The window is bounded by the available connected history. High-volume accounts
+can hit the provider scan limit before covering all 30 days. Different captions
+can remain separate when no shared source is available; do not imply visual
+deduplication. Historical daily view snapshots are not collected by this change.

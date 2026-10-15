@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contentOpportunities, groupVideos } from "./content-opportunities";
+import { groupVideos } from "./group-videos";
 import type { RankedVideo } from "./rank-videos";
 const now = Date.parse("2026-10-15T12:00:00Z");
 function post(
@@ -20,9 +20,6 @@ function post(
     url: `https://example.com/${id}`,
   };
 }
-const baseline = Array.from({ length: 5 }, (_, i) =>
-  post(`base${i}`, "youtube", 10 + i, 100, `Different useful idea number ${i}`),
-);
 describe("distinct videos", () => {
   it("groups matching captions across channels but preserves episodes and same-platform posts", () => {
     const groups = groupVideos([
@@ -62,6 +59,15 @@ describe("distinct videos", () => {
       ]),
     ).toHaveLength(2);
   });
+  it("does not bridge conflicting sources through a caption-only post", () => {
+    expect(
+      groupVideos([
+        { ...post("a", "youtube", 4, 300), mediaKey: "one" },
+        post("b", "instagram", 4, 200),
+        { ...post("c", "tiktok", 4, 100), mediaKey: "two" },
+      ]),
+    ).toHaveLength(2);
+  });
   it("uses the original source even with different captions and dates", () => {
     expect(
       groupVideos([
@@ -77,53 +83,5 @@ describe("distinct videos", () => {
     expect(
       groupVideos([post("1", "youtube"), post("1", "youtube")])[0].views,
     ).toBe(200);
-  });
-});
-describe("daily opportunities", () => {
-  it("uses same-channel mature baselines and shows a group once", () => {
-    const videos = [
-      ...baseline,
-      post("winner", "youtube", 4, 1000),
-      post("other", "instagram", 5, 200, "A different useful recent video"),
-    ];
-    const suggestions = contentOpportunities(
-      groupVideos(videos),
-      videos,
-      ["youtube", "instagram"],
-      now,
-    );
-    expect(suggestions[0].kind).toBe("follow-up");
-    expect(suggestions[0].comparison?.times).toBe(10);
-    expect(new Set(suggestions.map((s) => s.group.id)).size).toBe(
-      suggestions.length,
-    );
-  });
-  it("avoids premature judgments, missing baselines and disconnected targets", () => {
-    const videos = [post("new", "youtube", 0.2, 10000)];
-    expect(
-      contentOpportunities(groupVideos(videos), videos, ["youtube"], now),
-    ).toEqual([]);
-  });
-  it("rotates candidates deterministically and expires old recommendations", () => {
-    const videos = [
-      post("a", "youtube"),
-      post("b", "youtube", 5, 200, "Another useful recent video"),
-      post("ancient", "youtube", 200),
-    ];
-    const groups = groupVideos(videos);
-    const first = contentOpportunities(
-      groups,
-      videos,
-      ["youtube", "instagram"],
-      now,
-    );
-    expect(
-      contentOpportunities(groups, videos, ["youtube", "instagram"], now),
-    ).toEqual(first);
-    expect(
-      contentOpportunities(groups, videos, ["youtube", "instagram"], now, 1)[0]
-        .group.id,
-    ).not.toBe(first[0].group.id);
-    expect(first[0].group.primary.id).not.toBe("ancient");
   });
 });

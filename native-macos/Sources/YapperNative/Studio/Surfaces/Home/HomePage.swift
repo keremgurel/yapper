@@ -8,7 +8,6 @@ import SwiftUI
 struct HomePage: View {
     @ObservedObject private var channelsStore: HomeChannelsStore = .shared
     @ObservedObject private var ideas: IdeasStore = .shared
-    @ObservedObject private var capture: IdeaCapture = .shared
     @ObservedObject private var connections: ConnectionsStore = .shared
     @ObservedObject private var brain: BrainProjectStore = .shared
     @ObservedObject private var auth: StudioAuth = .shared
@@ -48,14 +47,10 @@ struct HomePage: View {
                 VStack(alignment: .leading, spacing: 32) {
                     if let steps = dashboard.setup { HomeSetupTrack(steps: steps) }
                     if let channels = dashboard.channels {
-                        HomeSplitLayout {
-                            HomeChannelsColumn(channels: channels) { saved(dashboard) }
-                            queue(dashboard)
-                        }
-                    } else {
-                        queue(dashboard)
-                        saved(dashboard)
+                        HomeChannelsColumn(channels: channels)
                     }
+                    HomeQuickTools(ideaCount: ideas.loadError == nil ? ideas.items.map { $0.filter { $0.status != "posted" }.count } : nil)
+                    saved(dashboard)
                 }
                 .padding(.top, 24)
             }
@@ -70,26 +65,13 @@ struct HomePage: View {
         }
     }
 
-    /// A brand-new creator's empty queue would only repeat setup's first step.
-    @ViewBuilder
-    private func queue(_ dashboard: HomeDashboard) -> some View {
-        if dashboard.setup == nil || !(ideas.items ?? []).isEmpty {
-            HomeUpNextSection(
-                items: ideas.items,
-                shaping: capture.working,
-                failed: ideas.loadError != nil && ideas.items == nil,
-                onRetry: { Task { await ideas.refresh() } }
-            )
-        }
-    }
-
     /// A creator still on setup has nothing edited to count, so the card
     /// waits for their first 1-Click Edit; a read that failed with nothing to
     /// show leaves it out rather than spin.
     @ViewBuilder
     private func saved(_ dashboard: HomeDashboard) -> some View {
         let onSetup = dashboard.setup != nil && (timeSaved.saved?.edits ?? 0) == 0
-        if !onSetup && !timeSaved.failed {
+        if !onSetup && !timeSaved.failed && (timeSaved.saved?.edits ?? 0) > 0 {
             HomeTimeSavedCard(saved: timeSaved.saved)
         }
     }

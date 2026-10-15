@@ -4,7 +4,7 @@ import SwiftUI
 /// where the views come from. Nil stats keep the shape as skeletons while
 /// channel history loads.
 struct HomeStatsBand: View {
-    let stats: HomeChannelStats?
+    let stats: HomeRecentPerformance?
     /// Channels whose history failed, named so the totals are not misread.
     let missing: String
 
@@ -16,14 +16,10 @@ struct HomeStatsBand: View {
 
     private var blocks: [Block] {
         [
-            Block(label: "Loaded views", value: stats?.totalViews ?? 0,
-                  detail: stats.map { "Across \(HomeNumber.compact($0.postCount)) loaded posts" }),
-            Block(label: "Recent posts’ views", value: stats?.recentViews ?? 0,
-                  detail: "Lifetime views on posts from the last 30 days"),
-            Block(label: "Typical post", value: stats?.typical ?? 0,
-                  detail: "Views on your middle post"),
-            Block(label: "Posted this week", value: stats?.postsThisWeek ?? 0,
-                  detail: stats.map { "Usually \($0.usualPerWeek) a week" }),
+            Block(label: "Views on recent videos", value: stats?.totalViews ?? 0, detail: "Current totals across your channels"),
+            Block(label: "Unique videos", value: stats?.groups.count ?? 0, detail: stats.map { "Across \($0.postCount) platform posts" }),
+            Block(label: "Typical video", value: stats?.typical ?? 0, detail: "Median views, cross-posts combined"),
+            Block(label: "Posted this week", value: stats?.thisWeek ?? 0, detail: "Unique videos in the past 7 days"),
         ]
     }
 
@@ -37,9 +33,9 @@ struct HomeStatsBand: View {
             }
             .fixedSize(horizontal: false, vertical: true)
 
-            if let stats, stats.platforms.count > 1 || !missing.isEmpty {
-                Rectangle().fill(Color.studioLine).frame(height: 1)
-                shares(stats)
+            if !missing.isEmpty {
+                Divider()
+                Text("\(missing) didn’t load, so those posts are left out. Check Connections to try again.").font(.system(size: 12)).foregroundStyle(.secondary).padding(16)
             }
         }
         .background(NativeCardBackground(radius: 12))
@@ -63,28 +59,6 @@ struct HomeStatsBand: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 18)
         .padding(.vertical, 16)
-    }
-
-    private func shares(_ stats: HomeChannelStats) -> some View {
-        HStack(spacing: 20) {
-            ForEach(stats.platforms, id: \.platform) { share in
-                HStack(spacing: 6) {
-                    PublishPlatformGlyph(platform: share.platform, size: 14)
-                    Text(share.platform.label)
-                    Text("\(Int((Double(share.views) / Double(max(stats.totalViews, 1)) * 100).rounded()))%")
-                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(.primary)
-                }
-            }
-            if !missing.isEmpty {
-                Text("\(missing) didn’t load, so it’s left out")
-            }
-            Spacer(minLength: 0)
-        }
-        .font(.system(size: 12))
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, 18)
-        .padding(.vertical, 12)
     }
 
     static func changeLine(_ change: Double?) -> String {

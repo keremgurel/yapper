@@ -18,6 +18,12 @@
 :root {
   color-scheme: light;
 
+  /* Chart series retain platform identity with contrast in each theme. */
+  --sg-chart-youtube: #d92e26;
+  --sg-chart-instagram: #b43278;
+  --sg-chart-tiktok: #087f7a;
+  --sg-chart-facebook: #1664d8;
+
   /* fonts: the platform's own face. SF Pro on Apple devices, which is where
      the native app runs; the system font elsewhere. It ships optical sizing
      and tracking tables no web font matches. */
@@ -327,6 +333,10 @@
 
 .dark {
   color-scheme: dark;
+  --sg-chart-youtube: #ff4e45;
+  --sg-chart-instagram: #f06cae;
+  --sg-chart-tiktok: #42e8e0;
+  --sg-chart-facebook: #6aa8ff;
 
   /* Pure black page canvas; raised surfaces use neutral graphite. */
   --sg-bg: #000000;

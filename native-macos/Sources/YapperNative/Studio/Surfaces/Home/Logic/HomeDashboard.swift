@@ -61,7 +61,7 @@ struct HomeDashboard {
     static func subtitle(hasIdeas: Bool?) -> String {
         switch hasIdeas {
         case nil: " "
-        case true?: "Get a thought down, or pick up where you left off."
+        case true?: "Get a thought down, or see how your latest videos are doing."
         case false?: "Start with an idea. Type it, or press ⌘D and say it."
         }
     }

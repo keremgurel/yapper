@@ -1,139 +1,114 @@
 import SwiftUI
 
 struct HomePostsRail: View {
-    enum Mode: Hashable { case today, recent, top }
-    let ranked: [HomeRankedVideo]?
-    let connected: [PublishPlatform]
-    let now: Date
-    @State private var mode = Mode.today
-    @State private var rotation = 0
-    @ObservedObject private var auth = StudioAuth.shared
-    private var hiddenKey: String { "yapper.home-hidden.v1.\(auth.account?.userID ?? "preview")" }
-    private var hidden: [String: Double] {
-        (UserDefaults.standard.dictionary(forKey: hiddenKey) as? [String: Double] ?? [:]).filter { $0.value > now.timeIntervalSince1970 }
-    }
-    private func dismiss(_ group: HomeVideoGroup) {
-        var next = hidden
-        for post in group.posts { next[post.id] = now.timeIntervalSince1970 + 7 * 86400 }
-        UserDefaults.standard.set(next, forKey: hiddenKey)
-        rotation += 1
-    }
+    enum Mode: Hashable { case latest, top }
+    let performance: HomeRecentPerformance?
+    @State private var mode = Mode.latest
 
     var body: some View {
-        NativeSection(title: "Worth your attention", meta: mode == .today ? "A daily shortlist from your posts" : "Cross-posts grouped by source or matching titles") {
-            NativeSegmented(options: [.init(value: Mode.today, label: "For today"), .init(value: Mode.recent, label: "Recent"), .init(value: Mode.top, label: "Top")], selection: $mode)
+        NativeSection(title: "Views by video", meta: "Published in the last 30 days") {
+            NativeSegmented(options: [.init(value: Mode.latest, label: "Latest"), .init(value: Mode.top, label: "Most viewed")], selection: $mode)
         } content: {
-            VStack(alignment: .leading, spacing: 12) {
-                content
-                if !hidden.isEmpty {
-                    Button("Reset hidden suggestions") { UserDefaults.standard.removeObject(forKey: hiddenKey); rotation += 1 }
-                        .buttonStyle(EditorGhostButtonStyle(size: .small))
-                }
-            }
-        }
-    }
-
-    @ViewBuilder private var content: some View {
-        if let ranked {
-            let groups = HomeOpportunities.groups(ranked)
-            if mode == .today {
-                let eligible = groups.filter { group in !group.posts.contains { hidden[$0.id] != nil } }
-                let opportunities = HomeOpportunities.suggestions(eligible, videos: ranked, connected: connected, now: now, rotation: rotation)
-                if opportunities.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Nothing to flag from your posts today").font(.system(size: 14, weight: .medium))
-                        Text("Keep moving on your next idea. We’ll surface recent standouts and possible sharing gaps when there’s enough channel history.")
-                            .font(.system(size: 13)).foregroundStyle(.secondary)
-                        Button("Open ideas") { StudioNavigation.shared.goTo(.ideas) }.buttonStyle(EditorSecondaryButtonStyle())
-                    }.padding(.vertical, 16)
+            if let performance {
+                let groups = mode == .top ? performance.groups : performance.groups.sorted { $0.publishedAt > $1.publishedAt }
+                let posts = Array(groups.prefix(8))
+                if posts.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Your next video starts the chart").font(.system(size: 14, weight: .medium))
+                        Text("No videos were found in the last 30 days. Older posts are still in Poster.").font(.system(size: 13)).foregroundStyle(.secondary)
+                    }.padding(.vertical, 32)
                 } else {
-                    VStack(alignment: .leading, spacing: 16) {
-                        ForEach(opportunities) { item in
-                            HomeOpportunityRow(group: item.group, opportunity: item, onDismiss: { dismiss(item.group) })
-                            if item.id != opportunities.last?.id { Divider() }
-                        }
-                        HStack {
-                            Text("Based on loaded history. Suggestions rotate daily.").font(.system(size: 12)).foregroundStyle(.secondary)
-                            Spacer()
-                            if HomeOpportunities.suggestions(eligible, videos: ranked, connected: connected, now: now, rotation: rotation + 1).map(\.id) != opportunities.map(\.id) {
-                                Button("Show another mix") { rotation += 1 }.buttonStyle(EditorGhostButtonStyle(size: .small))
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 16) {
+                            ForEach(performance.channels.filter { $0.posts > 0 }) { channel in
+                                HStack(spacing: 6) {
+                                    Circle().fill(HomeChartColor.color(channel.platform)).frame(width: 8, height: 8)
+                                    Text(channel.platform.label).font(.system(size: 12)).foregroundStyle(.secondary)
+                                }
                             }
+                        }.padding(.bottom, 4)
+                        ForEach(posts) { group in
+                            HomeVideoBar(group: group, maximum: posts.map(\.views).max() ?? 0)
+                            if group.id != posts.last?.id { Divider() }
                         }
+                        Text("\(mode == .latest ? "Latest" : "Most-viewed") \(posts.count) of \(groups.count) unique videos. Current lifetime views, cross-posts combined.")
+                            .font(.system(size: 12)).foregroundStyle(.secondary).padding(.top, 12)
                     }
                 }
             } else {
-                let posts = mode == .top ? groups : groups.sorted { $0.publishedAt > $1.publishedAt }
-                VStack(alignment: .leading, spacing: 16) {
-                    ForEach(Array(posts.prefix(4))) { group in
-                        HomeOpportunityRow(group: group)
-                        if group.id != posts.prefix(4).last?.id { Divider() }
-                    }
-                }
+                NativeLoadingState(label: "Loading video performance…")
             }
-        } else {
-            NativeLoadingState(label: "Loading your posts…")
         }
     }
 }
 
-private struct HomeOpportunityRow: View {
+private struct HomeVideoBar: View {
     let group: HomeVideoGroup
-    var opportunity: HomeOpportunity?
-    var onDismiss: (() -> Void)?
-    @State private var saving = false
-    @State private var saved = false
-    @State private var failed = false
+    let maximum: Int
+    @State private var expanded = false
     @Environment(\.openURL) private var openURL
+    private var date: String { IdeaDates.parse(group.publishedAt)?.formatted(.dateTime.month(.abbreviated).day()) ?? "" }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            RemoteThumbnail(url: group.primary.video.thumbnail.flatMap(URL.init(string:)))
-                .frame(width: 80, height: 112)
-                .background(Color.studioFaintFill)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            VStack(alignment: .leading, spacing: 8) {
-                if let opportunity { Text(opportunity.heading).font(.system(size: 14, weight: .semibold)) }
-                Text(group.primary.video.displayTitle).font(.system(size: 14, weight: .medium)).fixedSize(horizontal: false, vertical: true)
-                if let opportunity { Text(opportunity.reason).font(.system(size: 13)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 12) { platforms }
-                    VStack(alignment: .leading, spacing: 4) { platforms }
-                }
-                if group.posts.count > 1 { Text("\(HomeNumber.compact(group.views)) combined views").font(.system(size: 12)).foregroundStyle(.secondary) }
-                if let opportunity {
-                    if opportunity.kind == .share {
-                        Button("Review in Poster") { StudioNavigation.shared.goTo(.poster) }.buttonStyle(EditorSecondaryButtonStyle())
-                    } else {
-                        Button(saved ? "Saved to ideas" : saving ? "Saving…" : "Capture this angle") { capture(opportunity) }
-                            .buttonStyle(EditorSecondaryButtonStyle()).disabled(saving || saved)
+        VStack(alignment: .leading, spacing: 8) {
+            Button { expanded.toggle() } label: {
+                HStack(spacing: 12) {
+                    RemoteThumbnail(url: group.primary.video.thumbnail.flatMap(URL.init(string:)))
+                        .frame(width: 40, height: 56).background(Color.studioFaintFill).clipShape(RoundedRectangle(cornerRadius: 6))
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Text(group.primary.video.displayTitle).font(.system(size: 13, weight: .medium)).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+                            Text(HomeNumber.compact(group.views)).font(.system(size: 14, weight: .semibold)).monospacedDigit()
+                        }
+                        GeometryReader { geometry in
+                            ZStack(alignment: .leading) {
+                                Color.studioFaintFill
+                                HStack(spacing: 0) {
+                                    ForEach(group.posts) { post in
+                                        HomeChartColor.color(post.platform).frame(width: maximum > 0 ? geometry.size.width * CGFloat(post.video.viewCount) / CGFloat(maximum) : 0)
+                                    }
+                                }
+                            }.clipShape(RoundedRectangle(cornerRadius: 3))
+                        }.frame(height: 12).accessibilityHidden(true)
+                        HStack {
+                            Text("\(date) · \(group.posts.count > 1 ? "\(group.posts.count) channels" : group.primary.platform.label)")
+                            Spacer()
+                            Text(expanded ? "Hide details" : "Details")
+                        }.font(.system(size: 12)).foregroundStyle(.secondary)
                     }
-                }
-                if opportunity != nil {
-                    Button("Hide for a week") { onDismiss?() }.buttonStyle(EditorGhostButtonStyle(size: .small)).disabled(saving)
-                }
-                if failed { Text("Couldn’t save the idea. Try again.").font(.system(size: 12)).foregroundStyle(.red) }
-            }.frame(maxWidth: .infinity, alignment: .leading)
+                }.padding(.vertical, 12).contentShape(Rectangle())
+            }.buttonStyle(.studioPlain).accessibilityLabel("\(group.primary.video.displayTitle), \(group.views) views, \(expanded ? "hide" : "show") details")
+            if expanded {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(group.primary.video.displayTitle).font(.system(size: 14, weight: .medium)).fixedSize(horizontal: false, vertical: true)
+                    ForEach(group.posts) { post in
+                        Button {
+                            if let url = URL(string: post.video.url) { openURL(url) }
+                        } label: {
+                            HStack(spacing: 8) {
+                                PublishPlatformGlyph(platform: post.platform, size: 14)
+                                Text("\(post.platform.label)  \(post.video.viewCount.formatted()) views").font(.system(size: 12))
+                            }.padding(.vertical, 4)
+                        }.buttonStyle(.studioPlain).help("Open on \(post.platform.label)")
+                    }
+                }.padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Color.studioFaintFill, in: RoundedRectangle(cornerRadius: 8))
+            }
         }
     }
-    @ViewBuilder private var platforms: some View {
-        ForEach(group.posts) { post in
-            Button {
-                if let url = URL(string: post.video.url) { openURL(url) }
-            } label: {
-                HStack(spacing: 6) {
-                    PublishPlatformGlyph(platform: post.platform, size: 14)
-                    Text("\(post.platform.label) \(HomeNumber.compact(post.video.viewCount))").font(.system(size: 12))
-                }.padding(.vertical, 4)
-            }.buttonStyle(.studioPlain).help("Open on \(post.platform.label)")
+}
+
+enum HomeChartColor {
+    static func color(_ platform: PublishPlatform) -> Color {
+        let light: UInt32
+        let dark: UInt32
+        switch platform {
+        case .youtube: (light, dark) = (0xD92E26, 0xFF4E45)
+        case .instagram: (light, dark) = (0xB43278, 0xF06CAE)
+        case .tiktok: (light, dark) = (0x087F7A, 0x42E8E0)
+        case .facebook: (light, dark) = (0x1664D8, 0x6AA8FF)
         }
-    }
-    private func capture(_ item: HomeOpportunity) {
-        saving = true
-        failed = false
-        Task {
-            do { try await IdeaCapture.shared.capture(item.captureText); saved = true }
-            catch { failed = true }
-            saving = false
-        }
+        return Color(nsColor: NSColor(name: nil) { appearance in
+            NSColor(hex: appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light)
+        })
     }
 }
