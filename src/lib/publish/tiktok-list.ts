@@ -48,6 +48,7 @@ export function mapTikTokVideos(videos: TikTokListVideo[]): TikTokVideo[] {
 
 export async function listTikTokVideos(
   accessToken: string,
+  max = 100,
 ): Promise<TikTokVideo[]> {
   const fields = [
     "id",
@@ -59,24 +60,53 @@ export async function listTikTokVideos(
     "view_count",
     "duration",
   ].join(",");
-  const response = await fetch(
-    `https://open.tiktokapis.com/v2/video/list/?fields=${fields}`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
+  const limit = Math.max(1, Math.min(100, Math.floor(max) || 100));
+  const videos: TikTokListVideo[] = [];
+  let cursor: number | undefined;
+  const cursors = new Set<number>();
+  for (let page = 0; page < Math.ceil(limit / 20); page++) {
+    const response = await fetch(
+      `https://open.tiktokapis.com/v2/video/list/?fields=${fields}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          max_count: Math.min(20, limit - videos.length),
+          ...(cursor === undefined ? {} : { cursor }),
+        }),
       },
-      body: JSON.stringify({ max_count: 20 }),
-    },
-  );
-  if (!response.ok) throw new Error(`tiktok_video_list_${response.status}`);
-  const json = (await response.json()) as {
-    data?: { videos?: TikTokListVideo[] };
-    error?: { code?: string; message?: string };
-  };
-  if (json.error?.code && json.error.code !== "ok") {
-    throw new Error(`tiktok_video_list_${json.error.code}`);
+    );
+    if (!response.ok) throw new Error(`tiktok_video_list_${response.status}`);
+    const json = (await response.json()) as {
+      data?: {
+        videos?: TikTokListVideo[];
+        cursor?: number;
+        has_more?: boolean;
+      };
+      error?: { code?: string; message?: string };
+    };
+    if (json.error?.code && json.error.code !== "ok") {
+      throw new Error(`tiktok_video_list_${json.error.code}`);
+    }
+    videos.push(...(json.data?.videos ?? []));
+    cursor = json.data?.cursor;
+    if (
+      !json.data?.has_more ||
+      cursor === undefined ||
+      cursors.has(cursor) ||
+      videos.length >= limit
+    )
+      break;
+    cursors.add(cursor);
   }
-  return mapTikTokVideos(json.data?.videos ?? []);
+  return mapTikTokVideos(
+    [
+      ...new Map(
+        videos.filter((video) => video.id).map((video) => [video.id, video]),
+      ).values(),
+    ].slice(0, limit),
+  );
 }

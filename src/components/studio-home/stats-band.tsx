@@ -4,13 +4,6 @@ import { PLATFORMS } from "@/lib/publish/platforms";
 import { compactNumber } from "@/components/studio-home/format-number";
 import type { ChannelStats } from "@/components/studio-home/channel-stats";
 
-function changeLine(change: number | null): string {
-  if (change === null) return "Posts from the last 30 days";
-  const percent = Math.round(Math.abs(change) * 100);
-  if (percent === 0) return "Level with the 30 days before";
-  return `${change > 0 ? "Up" : "Down"} ${percent}% on the 30 days before`;
-}
-
 /** The channel numbers in one Level-1 card: four StatBlocks split by
  * hairlines, then where the views come from. Null stats keep the shape as
  * skeletons while channel history loads. */
@@ -26,16 +19,16 @@ export default function StatsBand({
     stats === null ? null : compactNumber(number);
   const blocks = [
     {
-      label: "Total views",
+      label: "Loaded views",
       value: value(stats?.totalViews ?? 0),
       detail: stats
-        ? `Across ${compactNumber(stats.postCount)} posts`
+        ? `Across ${compactNumber(stats.postCount)} loaded posts`
         : undefined,
     },
     {
-      label: "Last 30 days",
+      label: "Recent posts’ views",
       value: value(stats?.recentViews ?? 0),
-      detail: stats ? changeLine(stats.recentChange) : undefined,
+      detail: "Lifetime views on posts from the last 30 days",
     },
     {
       label: "Typical post",

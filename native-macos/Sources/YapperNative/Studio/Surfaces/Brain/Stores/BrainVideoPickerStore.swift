@@ -11,7 +11,7 @@ final class BrainVideoPickerStore: ObservableObject {
         let code: String
     }
 
-    static let maxPick = 8
+    static let maxPick = 10
 
     @Published private(set) var platform: String?
     @Published private(set) var videos: [BrainChannelVideo]?
@@ -48,7 +48,7 @@ final class BrainVideoPickerStore: ObservableObject {
     }
 
     func toggle(_ video: BrainChannelVideo) {
-        guard !BrainVoiceCredits.tooLong(video.durationSec) else { return }
+        guard !busy, !BrainVoiceCredits.tooLong(video.durationSec) else { return }
         if picked[video.id] != nil {
             picked[video.id] = nil
             pickOrder.removeAll { $0 == video.id }

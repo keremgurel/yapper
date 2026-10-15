@@ -22,7 +22,7 @@ struct HomeChannelsColumn<Saved: View>: View {
                 .background(NativeCardBackground(radius: 12))
             } else {
                 HomeStatsBand(stats: channels.stats, missing: channels.missing)
-                HomePostsRail(ranked: channels.ranked, typical: channels.stats?.typical ?? 0)
+                HomePostsRail(ranked: channels.ranked, connected: channels.connected, now: channels.now)
             }
             saved()
         }

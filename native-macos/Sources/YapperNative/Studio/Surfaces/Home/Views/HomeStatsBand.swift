@@ -16,10 +16,10 @@ struct HomeStatsBand: View {
 
     private var blocks: [Block] {
         [
-            Block(label: "Total views", value: stats?.totalViews ?? 0,
-                  detail: stats.map { "Across \(HomeNumber.compact($0.postCount)) posts" }),
-            Block(label: "Last 30 days", value: stats?.recentViews ?? 0,
-                  detail: stats.map { Self.changeLine($0.recentChange) }),
+            Block(label: "Loaded views", value: stats?.totalViews ?? 0,
+                  detail: stats.map { "Across \(HomeNumber.compact($0.postCount)) loaded posts" }),
+            Block(label: "Recent posts’ views", value: stats?.recentViews ?? 0,
+                  detail: "Lifetime views on posts from the last 30 days"),
             Block(label: "Typical post", value: stats?.typical ?? 0,
                   detail: "Views on your middle post"),
             Block(label: "Posted this week", value: stats?.postsThisWeek ?? 0,
@@ -58,7 +58,7 @@ struct HomeStatsBand: View {
             Text(block.detail ?? " ")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 18)

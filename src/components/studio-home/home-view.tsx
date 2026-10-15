@@ -17,6 +17,8 @@ export interface HomeChannels {
   ranked: RankedVideo[] | null;
   stats: ChannelStats | null;
   missing: string;
+  connected?: import("@/lib/db/schema").PublishPlatform[];
+  now?: number;
 }
 
 /**
@@ -33,8 +35,10 @@ export default function HomeView({
   ideas,
   channels,
   timeSaved,
+  userId,
 }: {
   title: string;
+  userId?: string;
   onCapture: (text: string) => Promise<void>;
   /** Null once setup is done or while it is unknown. */
   setup: SetupStep[] | null;
@@ -111,7 +115,10 @@ export default function HomeView({
               <StatsBand stats={channels.stats} missing={channels.missing} />
               <PostsRail
                 ranked={channels.ranked}
-                typical={channels.stats?.typical ?? 0}
+                connected={channels.connected ?? []}
+                now={channels.now ?? 0}
+                onCapture={onCapture}
+                userId={userId}
               />
               {saved}
             </div>

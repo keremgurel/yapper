@@ -80,6 +80,7 @@ export default function StudioDashboard() {
 
   return (
     <HomeView
+      userId={user?.id}
       title={hour === null ? "" : greeting(hour, user?.firstName)}
       onCapture={ideas.capture}
       setup={showSetup ? steps : null}
@@ -95,6 +96,10 @@ export default function StudioDashboard() {
               ranked: shown,
               stats,
               missing: joinPlatformNames(failed),
+              connected: (channels ?? [])
+                .filter((channel) => channel.connected && !channel.error)
+                .map((channel) => channel.platform),
+              now,
             }
           : null
       }

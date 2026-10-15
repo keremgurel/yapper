@@ -283,3 +283,33 @@ Tabs use Base UI keyboard navigation. Glass controls keep visible focus,
 readable disabled states and neutral fallback surfaces without WebGPU, under
 reduced transparency and in forced colors. Sent messages remain in the same
 conversation when navigating between Home and the floating assistant.
+
+## Home attention shortlist (October 15, 2026)
+
+Keep capture, the performance band and the idea queue. The former four large
+post covers become “Worth your attention”: compact 64–80px thumbnails and
+readable rows with one reason and one concrete action. For today is the default;
+Recent and Top remain explicit choices. Use the existing system type, semantic
+colors, Section/Button primitives, 1440px frame and responsive gutters. No new
+motion or decorative surfaces.
+
+Group platform copies by a shared stored source, or conservatively matching
+substantial titles within seven days. Keep every platform link and its views.
+Never merge separate posts on the same platform or claim visual recognition.
+Daily suggestions cover recent standouts, potential sharing gaps and older
+strong ideas. Baselines use at least five other mature posts on the same channel.
+These are lifetime-view comparisons, not growth measurements or causal claims.
+Sharing suggestions say “no matching post found” because loaded history is bounded.
+Hide for a week persists per account on the current device; reset is available.
+Opening Home makes no AI or transcription request. Capturing an angle uses the
+existing explicit idea-capture action, without resolving the original post URL.
+
+Connected history uses official APIs only: up to 200 YouTube videos, 100 TikTok
+videos and 100 Instagram media items (photos count toward Instagram's scan).
+YouTube takes at most nine requests; TikTok five; Instagram at most four list
+pages plus one insights request per video, with five insights requests at once.
+Lists cache for five minutes per server instance; reconnections, Yapper publishing
+and explicit fresh reads invalidate/bypass that cache. This avoids Apify listing
+charges, not infrastructure costs or platform quotas. Voice sample selection is
+optional, up to ten per selection. Its existing credit confirmation stays in
+place: source recovery can use Apify and transcription can use paid providers.

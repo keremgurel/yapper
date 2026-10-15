@@ -1,139 +1,147 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import PlatformIcon from "@/components/publish/platform-icon";
 import { Button } from "@/components/ui/button";
-import { Chip, Section } from "@/components/studio-ui";
-import { compactNumber } from "@/components/studio-home/format-number";
-import { versusUsual } from "@/components/studio-home/channel-stats";
-import { multiplierLabel } from "@/components/studio-home/multiplier-label";
-import type { RankedVideo } from "@/components/studio-home/rank-videos";
+import { Section } from "@/components/studio-ui";
+import { contentOpportunities, groupVideos } from "./content-opportunities";
+import { useHomeDismissals } from "./use-home-dismissals";
+import VideoRow from "./opportunity-row";
+import type { PublishPlatform } from "@/lib/db/schema";
+import type { RankedVideo } from "./rank-videos";
 
-type View = "recent" | "top";
-
-/**
- * The posts themselves. Recent shows the latest few against the creator's
- * typical post ("3.2× usual"), which is what changes week to week; Top is the
- * all-time list. A sideways row on a phone, four across on a wide screen.
- */
+type View = "today" | "recent" | "top";
+/** A fresh shortlist with evidence, then distinct recent/top videos on demand.
+ * Metadata-only: opening Home never transcribes or generates anything. */
 export default function PostsRail({
   ranked,
-  typical,
+  connected,
+  now,
+  onCapture,
+  userId = "preview",
 }: {
-  /** Null while channel history loads; already sorted by views. */
   ranked: RankedVideo[] | null;
-  typical: number;
+  connected: PublishPlatform[];
+  now: number;
+  userId?: string;
+  onCapture: (text: string) => Promise<void>;
 }) {
-  const [view, setView] = useState<View>("recent");
+  const [view, setView] = useState<View>("today");
+  const [rotation, setRotation] = useState(0);
+  const groups = useMemo(() => groupVideos(ranked ?? []), [ranked]);
+  const { hidden, dismiss, reset } = useHomeDismissals(userId, now);
+  const eligible = groups.filter(
+    (group) =>
+      !group.posts.some((post) => hidden[`${post.platform}:${post.id}`]),
+  );
+  const opportunities = contentOpportunities(
+    eligible,
+    ranked ?? [],
+    connected,
+    now,
+    rotation,
+  );
+  const anotherMix =
+    contentOpportunities(eligible, ranked ?? [], connected, now, rotation + 1)
+      .map((item) => item.group.id)
+      .join() !== opportunities.map((item) => item.group.id).join();
   const posts =
-    ranked === null
-      ? null
-      : view === "top"
-        ? ranked.slice(0, 4)
-        : [...ranked]
-            .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
-            .slice(0, 4);
-
+    view === "top"
+      ? groups.slice(0, 4)
+      : [...groups]
+          .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
+          .slice(0, 4);
   return (
     <Section
-      title="Posts"
+      title="Worth your attention"
       meta={
-        view === "recent" ? "Latest, against your typical post" : "Most viewed"
+        view === "today"
+          ? "A daily shortlist from your posts"
+          : "Cross-posts grouped by source or matching titles"
       }
       action={
-        <div className="flex items-center gap-2">
-          <div
-            role="tablist"
-            aria-label="Which posts"
-            className="bg-muted flex rounded-md p-0.5"
-          >
-            {(["recent", "top"] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                role="tab"
-                aria-selected={view === option}
-                onClick={() => setView(option)}
-                className={`rounded-[5px] px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none ${
-                  view === option
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {option === "recent" ? "Recent" : "Top"}
-              </button>
-            ))}
-          </div>
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/studio/poster">Open Poster</Link>
-          </Button>
+        <div
+          className="flex flex-wrap items-center gap-1"
+          role="group"
+          aria-label="Content view"
+        >
+          {(["today", "recent", "top"] as const).map((option) => (
+            <Button
+              key={option}
+              variant={view === option ? "outline" : "ghost"}
+              size="sm"
+              aria-pressed={view === option}
+              onClick={() => setView(option)}
+            >
+              {option === "today"
+                ? "For today"
+                : option === "recent"
+                  ? "Recent"
+                  : "Top"}
+            </Button>
+          ))}
         </div>
       }
     >
-      {posts === null ? (
-        <div aria-hidden className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[0, 1, 2, 3].map((card) => (
-            <div
-              key={card}
-              className="bg-muted aspect-[3/4] animate-pulse rounded-xl"
-            />
-          ))}
+      {ranked === null ? (
+        <div role="status" className="text-muted-foreground py-8 text-sm">
+          Loading your posts…
         </div>
-      ) : posts.length === 0 ? (
-        <p className="text-muted-foreground py-4 text-[13px]">
-          Your posts and their views show up here after your first publish.
-        </p>
-      ) : (
-        <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0">
-          {posts.map((video) => {
-            const times = versusUsual(video.viewCount || 0, typical);
-            return (
-              <li
-                key={`${video.platform}-${video.id}`}
-                className="w-[42%] shrink-0 snap-start sm:w-auto"
-              >
-                <a
-                  href={video.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group block no-underline"
+      ) : view === "today" ? (
+        opportunities.length ? (
+          <>
+            <ul className="divide-border/60 divide-y">
+              {opportunities.map((item) => (
+                <VideoRow
+                  key={`${item.kind}:${item.group.id}`}
+                  group={item.group}
+                  opportunity={item}
+                  onDismiss={() => dismiss(item.group)}
+                  onCapture={onCapture}
+                />
+              ))}
+            </ul>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-muted-foreground text-xs">
+                Based on loaded history. Suggestions rotate daily.
+              </p>
+              {anotherMix ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setRotation((value) => value + 1)}
                 >
-                  <div className="bg-muted relative aspect-[3/4] overflow-hidden rounded-xl">
-                    {video.thumbnail ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={video.thumbnail}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    ) : null}
-                    <span className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-full bg-black/60 px-2 py-1 text-xs font-semibold text-white">
-                      <PlatformIcon
-                        platform={video.platform}
-                        className="h-3 w-3"
-                      />
-                      <span className="font-mono tabular-nums">
-                        {compactNumber(video.viewCount || 0)}
-                      </span>
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-start justify-between gap-2">
-                    <p className="text-foreground line-clamp-2 min-w-0 text-[13px] leading-snug font-medium group-hover:underline">
-                      {video.title || video.caption || "Untitled"}
-                    </p>
-                    {view === "recent" && times !== null ? (
-                      <Chip tone={times >= 1.5 ? "green" : "neutral"} pill>
-                        {multiplierLabel(times)} usual
-                      </Chip>
-                    ) : null}
-                  </div>
-                </a>
-              </li>
-            );
-          })}
+                  Show another mix
+                </Button>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <div className="space-y-3 py-4">
+            <p className="text-sm font-medium">
+              Nothing to flag from your posts today
+            </p>
+            <p className="text-muted-foreground max-w-[68ch] text-[13px]">
+              Keep moving on your next idea. We’ll surface recent standouts and
+              possible sharing gaps when there’s enough channel history.
+            </p>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/studio/ideas">Open ideas</Link>
+            </Button>
+          </div>
+        )
+      ) : (
+        <ul className="divide-border/60 divide-y">
+          {posts.map((group) => (
+            <VideoRow key={group.id} group={group} onCapture={onCapture} />
+          ))}
         </ul>
       )}
+      {Object.keys(hidden).length > 0 ? (
+        <Button className="mt-3" variant="ghost" size="sm" onClick={reset}>
+          Reset hidden suggestions
+        </Button>
+      ) : null}
     </Section>
   );
 }

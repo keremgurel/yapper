@@ -17,21 +17,21 @@ struct BrainVideoPicker: View {
     var body: some View {
         BrainSheetFrame(
             title: "Add videos to your voice",
-            description: "Pick videos you actually talk in. Each is transcribed once and kept word for word. One credit covers three minutes; YouTube captions are free.",
-            closeDisabled: picker.busy,
+            description: "Optionally pick up to 10 videos you actually talk in. Each is transcribed once and kept word for word. One credit covers three minutes; YouTube captions are free.",
+            closeDisabled: picker.busy || deriving,
             onClose: onClose
         ) {
             HStack(spacing: 8) {
                 Button { onBack() } label: { Label("Your videos", systemImage: "chevron.left") }
                     .buttonStyle(EditorGhostButtonStyle(size: .small))
-                    .disabled(picker.busy)
+                    .disabled(picker.busy || deriving)
                 Spacer()
                 if platforms.count > 1 {
                     NativeSegmented(
                         options: platforms.map { .init(value: $0, label: BrainVoiceFormat.platformLabel($0)) },
                         selection: $platform
                     )
-                    .disabled(picker.busy)
+                    .disabled(picker.busy || deriving)
                 }
             }
             grid
@@ -58,6 +58,7 @@ struct BrainVideoPicker: View {
                             selected: picker.picked[video.id] != nil,
                             sampled: sampledIDs.contains(video.id)
                         ) { picker.toggle(video) }
+                        .disabled(picker.busy || deriving || (picker.picked[video.id] == nil && picker.picked.count >= BrainVideoPickerStore.maxPick))
                     }
                 }
             }
