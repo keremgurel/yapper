@@ -5,9 +5,10 @@ import { typicalViews } from "./channel-stats";
 const DAY = 86_400_000;
 export interface RecentPerformance {
   groups: VideoGroup[];
+  days: { date: string; groups: VideoGroup[] }[];
   totalViews: number;
   postCount: number;
-  typical: number;
+  average: number;
   thisWeek: number;
   channels: {
     platform: PublishPlatform;
@@ -30,18 +31,30 @@ export function recentPerformance(
   });
   const groups = groupVideos(recent);
   const posts = groups.flatMap((group) => group.posts);
-  const combined = groups.map((group) => ({
-    ...group.primary,
-    viewCount: group.views,
-  }));
+  const totalViews = groups.reduce((sum, group) => sum + group.views, 0);
   const platforms = [
     ...new Set([...connected, ...posts.map((post) => post.platform)]),
   ];
+  const start = new Date(now - 30 * DAY);
+  start.setUTCHours(0, 0, 0, 0);
+  const days = Array.from({ length: 31 }, (_, index) => {
+    const date = new Date(start.getTime() + index * DAY)
+      .toISOString()
+      .slice(0, 10);
+    return {
+      date,
+      groups: groups.filter(
+        (group) =>
+          new Date(group.publishedAt).toISOString().slice(0, 10) === date,
+      ),
+    };
+  });
   return {
     groups,
-    totalViews: groups.reduce((sum, group) => sum + group.views, 0),
+    days,
+    totalViews,
     postCount: posts.length,
-    typical: typicalViews(combined),
+    average: groups.length ? Math.round(totalViews / groups.length) : 0,
     thisWeek: groups.filter(
       (group) => Date.parse(group.publishedAt) >= now - 7 * DAY,
     ).length,

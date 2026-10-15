@@ -10,10 +10,16 @@ struct HomeRecentPerformance {
         let typical: Int
         var id: PublishPlatform { platform }
     }
+    struct Day: Identifiable {
+        let date: Date
+        let groups: [HomeVideoGroup]
+        var id: Date { date }
+    }
+    let days: [Day]
     let groups: [HomeVideoGroup]
     let totalViews: Int
     let postCount: Int
-    let typical: Int
+    let average: Int
     let thisWeek: Int
     let channels: [Channel]
 
@@ -23,13 +29,21 @@ struct HomeRecentPerformance {
             return date >= now.addingTimeInterval(-30 * 86400) && date <= now
         }
         groups = HomeVideoGrouping.groups(recent)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let start = calendar.startOfDay(for: now.addingTimeInterval(-30 * 86400))
+        let grouped = groups
+        days = (0...30).map { index in
+            let date = start.addingTimeInterval(Double(index) * 86400)
+            return Day(date: date, groups: grouped.filter { group in
+                guard let published = IdeaDates.parse(group.publishedAt) else { return false }
+                return calendar.isDate(published, inSameDayAs: date)
+            })
+        }
         let posts = groups.flatMap(\.posts)
         totalViews = groups.reduce(0) { $0 + $1.views }
         postCount = posts.count
-        let counts = groups.map(\.views).sorted()
-        let middle = counts.count / 2
-        typical = counts.isEmpty ? 0 : counts.count.isMultiple(of: 2)
-            ? Int((Double(counts[middle - 1] + counts[middle]) / 2).rounded()) : counts[middle]
+        average = groups.isEmpty ? 0 : Int((Double(totalViews) / Double(groups.count)).rounded())
         thisWeek = groups.filter { group in
             guard let date = IdeaDates.parse(group.publishedAt) else { return false }
             return date >= now.addingTimeInterval(-7 * 86400)

@@ -49,8 +49,7 @@ struct HomePage: View {
                     if let channels = dashboard.channels {
                         HomeChannelsColumn(channels: channels)
                     }
-                    HomeQuickTools(ideaCount: ideas.loadError == nil ? ideas.items.map { $0.filter { $0.status != "posted" }.count } : nil)
-                    saved(dashboard)
+                    HomeWorkSummary(items: ideas.loadError == nil ? ideas.items : nil, ideasFailed: ideas.loadError != nil, saved: timeSaved.saved, savedFailed: timeSaved.failed, now: now)
                 }
                 .padding(.top, 24)
             }
@@ -62,17 +61,6 @@ struct HomePage: View {
         .task { await refresh(channelMaxAge: 60) }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
             Task { await refresh(channelMaxAge: 60) }
-        }
-    }
-
-    /// A creator still on setup has nothing edited to count, so the card
-    /// waits for their first 1-Click Edit; a read that failed with nothing to
-    /// show leaves it out rather than spin.
-    @ViewBuilder
-    private func saved(_ dashboard: HomeDashboard) -> some View {
-        let onSetup = dashboard.setup != nil && (timeSaved.saved?.edits ?? 0) == 0
-        if !onSetup && !timeSaved.failed && (timeSaved.saved?.edits ?? 0) > 0 {
-            HomeTimeSavedCard(saved: timeSaved.saved)
         }
     }
 

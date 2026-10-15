@@ -286,28 +286,34 @@ conversation when navigating between Home and the floating assistant.
 
 ## Home analytics (October 15, 2026)
 
-This supersedes the earlier Home ordering. Keep capture first, followed by a
-performance band, a large video bar chart beside channel comparison, then compact
-navigation cards for Ideas, Recorder, Editor and Poster. Show the time-saved card
-only once there are actual edits to count. Use the existing system typography,
-semantic surfaces, 1440px frame and responsive gutters. No decorative motion.
+Home keeps capture first, then a compact analytics panel and three open,
+information-bearing summaries. Use existing system typography, semantic surfaces,
+1440px frame and responsive gutters. No decorative motion or shortcut cards.
 
-Home shows posts published in the last 30 days. Filter before grouping, so a new
-cross-post cannot pull an old copy's views into the window. Group copies by a
-shared saved source, or conservatively matching substantial titles within seven
-days; keep different posts on the same platform separate. This is metadata
-matching, not visual recognition. Each bar represents one unique video, with
-platform segments using theme-aware chart tokens derived from the platform palette. Its total is
-always visible; click or use the keyboard to disclose the full title, exact
-counts and platform links. Latest is the default, Most viewed is an explicit
-alternative; both show up to eight unique videos from the same window.
+The four metrics are total views, average views per unique video, unique videos
+and posted this week (rolling seven days). All use videos published in the last
+30 days. The average is the arithmetic mean of combined cross-platform views,
+not the median or an average across platform copies. Filter before grouping, so
+a new cross-post cannot pull an older copy's views into this window.
 
-All figures are current lifetime views on those posts, not views earned each day.
-Never draw them as a daily-growth curve. The performance band counts unique
-videos and their combined median views. Channel comparison counts each platform's
-own posts. The chart, legend, values and disclosures convey meaning without color
-alone. Opening Home does not generate ideas or transcribe anything. AI remains
-available through the existing explicit composer/Chirpy actions.
+The chart is a compact stacked column chart with platform filters. Each column
+contains current view counts for unique videos grouped by publish date, not views
+earned on that day. The rolling window includes partial dates at its edges;
+buckets use UTC dates in both clients. Pointer, touch and keyboard inspection
+exposes the date, views and video titles. Group copies by a shared saved source,
+or conservatively matching substantial titles within seven days; keep different
+posts on the same platform separate. This is metadata matching, not visual
+recognition. Chart tokens adapt to light/dark themes, and labels carry meaning
+without relying on color alone.
+
+Below analytics, Ideas shows the count in progress and recent titles with a
+See all ideas link. Yapper Edit gives hours saved, edit/cut counts and an
+accessible explanation of the estimate, with Open editor. Calendar shows the
+number of upcoming planned videos and the next two dates/titles with See calendar.
+These are content planning dates, not a claim that posts will publish automatically.
+Summaries use quiet horizontal separators; no individual card shells. Show
+honest zero, loading and unavailable states, including before the first edit.
+Hours saved are all-time recorded estimates, independent of the analytics window.
 
 Connected history uses official APIs only: up to 200 YouTube videos, 100 TikTok
 videos and 100 Instagram media items (photos count toward Instagram's scan).
@@ -316,10 +322,11 @@ pages plus one insights request per video, with five insights requests at once.
 Lists cache for five minutes per server instance; reconnections, Yapper publishing
 and explicit fresh reads invalidate/bypass that cache. This avoids Apify listing
 charges, not infrastructure costs or platform quotas. Voice sample selection is
-optional, up to ten per selection. Its existing credit confirmation stays in
-place: source recovery can use Apify and transcription can use paid providers.
+optional, up to ten per selection. Existing credit confirmation stays in place:
+source recovery can use Apify and transcription can use paid providers.
 
-The window is bounded by the available connected history. High-volume accounts
-can hit the provider scan limit before covering all 30 days. Different captions
-can remain separate when no shared source is available; do not imply visual
-deduplication. Historical daily view snapshots are not collected by this change.
+The window is bounded by available connected history. High-volume accounts can
+hit the scan limit before covering all 30 days. Different captions can remain
+separate when no shared source is available. Existing Instagram insight failures
+can undercount views. This change does not collect historical daily view snapshots
+or generate AI suggestions automatically.

@@ -11,7 +11,7 @@ import Testing
         #expect(data.groups.count == 2)
         #expect(data.totalViews == 1000)
         #expect(data.postCount == 3)
-        #expect(data.typical == 500)
+        #expect(data.average == 500)
         #expect(data.thisWeek == 1)
         #expect(data.channels.first { $0.platform == .tiktok }?.posts == 0)
     }
@@ -20,5 +20,12 @@ import Testing
         #expect(data.totalViews == 100)
         #expect(data.groups.count == 1)
         #expect(data.postCount == 1)
+    }
+    @Test func averagesUniqueVideosAndBucketsWithoutDoubleCounting() {
+        let data = HomeRecentPerformance(videos: [post("a", .youtube, 2, 100), post("b", .instagram, 2, 200), post("c", .youtube, 3, 600, "Another distinct video title"), post("d", .youtube, 30, 2100, "A third distinct video title")], connected: [.youtube, .instagram], now: now)
+        #expect(data.average == 1000)
+        #expect(data.days.count == 31)
+        #expect(data.days.flatMap(\.groups).count == 3)
+        #expect(data.days.flatMap(\.groups).reduce(0) { $0 + $1.views } == data.totalViews)
     }
 }

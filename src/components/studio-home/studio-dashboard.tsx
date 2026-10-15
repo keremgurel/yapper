@@ -75,6 +75,7 @@ export default function StudioDashboard() {
 
   return (
     <HomeView
+      now={now}
       title={hour === null ? "" : greeting(hour, user?.firstName)}
       onCapture={ideas.capture}
       setup={showSetup ? steps : null}

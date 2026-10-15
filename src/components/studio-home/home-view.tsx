@@ -1,12 +1,9 @@
 import type { ItemSummary } from "@/lib/ideas/client";
 import HomeCapture from "@/components/studio-home/home-capture";
-import PostsRail from "@/components/studio-home/posts-rail";
 import SetupTrack from "@/components/studio-home/setup-track";
-import StatsBand from "@/components/studio-home/stats-band";
-import TimeSavedCard from "@/components/studio-home/time-saved-card";
 import type { TimeSaved } from "@/components/studio-home/use-time-saved";
-import QuickTools from "./quick-tools";
-import ChannelComparison from "./channel-comparison";
+import AnalyticsOverview from "./analytics-overview";
+import WorkSummary from "./work-summary";
 import { recentPerformance } from "./recent-performance";
 import type { RankedVideo } from "@/components/studio-home/rank-videos";
 import type { SetupStep } from "@/components/studio-home/setup-steps";
@@ -21,11 +18,12 @@ export interface HomeChannels {
 
 /**
  * Home's layout, render-only, at the shared Studio width. Capture across the
- * top, a 30-day performance band, a unique-video chart beside channel
- * comparisons, then compact navigation to the creation tools.
+ * top, compact 30-day analytics, then linked summaries for ideas, editing
+ * time saved and calendar plans.
  */
 export default function HomeView({
   title,
+  now,
   onCapture,
   setup,
   ideas,
@@ -33,6 +31,7 @@ export default function HomeView({
   timeSaved,
 }: {
   title: string;
+  now: number;
   onCapture: (text: string) => Promise<void>;
   /** Null once setup is done or while it is unknown. */
   setup: SetupStep[] | null;
@@ -50,13 +49,9 @@ export default function HomeView({
   const performance = channels?.ranked
     ? recentPerformance(channels.ranked, channels.connected, channels.now)
     : null;
-  const saved =
-    timeSaved.data && timeSaved.data.edits > 0 ? (
-      <TimeSavedCard saved={timeSaved.data} />
-    ) : null;
 
   return (
-    <div className="w-full space-y-8 pb-24">
+    <div className="w-full min-w-0 space-y-8 pb-24">
       <header>
         <h1 className="font-display text-foreground min-h-8 text-[22px] font-bold tracking-[-0.01em]">
           {title}
@@ -77,24 +72,18 @@ export default function HomeView({
       {setup ? <SetupTrack steps={setup} /> : null}
 
       {channels ? (
-        <>
-          <StatsBand stats={performance} missing={channels.missing} />
-          <div className="grid gap-8 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
-            <div className="min-w-0">
-              <PostsRail performance={performance} />
-            </div>
-            <div className="min-w-0">
-              <ChannelComparison performance={performance} />
-            </div>
-          </div>
-        </>
+        <AnalyticsOverview
+          performance={performance}
+          missing={channels.missing}
+        />
       ) : null}
-      <QuickTools
-        ideaCount={
-          ideas.items?.filter((item) => item.status !== "posted").length ?? null
-        }
+      <WorkSummary
+        items={ideas.items}
+        ideasFailed={ideas.failed}
+        saved={timeSaved.data}
+        savedFailed={timeSaved.failed}
+        now={now}
       />
-      {saved}
     </div>
   );
 }

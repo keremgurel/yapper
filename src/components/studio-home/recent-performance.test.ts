@@ -33,7 +33,7 @@ it("counts unique videos while retaining each channel's contribution", () => {
   expect(data.groups).toHaveLength(2);
   expect(data.totalViews).toBe(1000);
   expect(data.postCount).toBe(3);
-  expect(data.typical).toBe(500);
+  expect(data.average).toBe(500);
   expect(data.thisWeek).toBe(1);
   expect(data.channels.find((c) => c.platform === "tiktok")).toMatchObject({
     views: 0,
@@ -67,8 +67,44 @@ it("includes the 30-day boundary and reports honest zero values", () => {
   expect(recentPerformance([], [], now)).toMatchObject({
     totalViews: 0,
     postCount: 0,
-    typical: 0,
+    average: 0,
     thisWeek: 0,
     groups: [],
   });
+});
+
+it("uses the arithmetic mean of unique videos, not the median or platform-post mean", () => {
+  const data = recentPerformance(
+    [
+      post("a", "youtube", 2, 100),
+      post("b", "instagram", 2, 200),
+      post("c", "youtube", 3, 600, "Another distinct video title"),
+      post("d", "youtube", 4, 2100, "A third distinct video title"),
+    ],
+    [],
+    now,
+  );
+  expect(data.average).toBe(1000);
+});
+
+it("buckets each unique video's combined views once on its publish date", () => {
+  const data = recentPerformance(
+    [
+      post("a", "youtube", 2, 100),
+      post("b", "instagram", 2, 300),
+      post("c", "youtube", 30, 600, "Another distinct video title"),
+    ],
+    [],
+    now,
+  );
+  expect(data.days).toHaveLength(31);
+  expect(data.days.flatMap((day) => day.groups)).toHaveLength(2);
+  expect(
+    data.days
+      .flatMap((day) => day.groups)
+      .reduce((sum, group) => sum + group.views, 0),
+  ).toBe(data.totalViews);
+  expect(
+    data.days.find((day) => day.date === "2026-10-13")?.groups[0].views,
+  ).toBe(400);
 });

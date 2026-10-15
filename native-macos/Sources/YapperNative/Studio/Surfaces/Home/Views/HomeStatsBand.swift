@@ -7,6 +7,7 @@ struct HomeStatsBand: View {
     let stats: HomeRecentPerformance?
     /// Channels whose history failed, named so the totals are not misread.
     let missing: String
+    var embedded = false
 
     private struct Block {
         let label: String
@@ -16,9 +17,9 @@ struct HomeStatsBand: View {
 
     private var blocks: [Block] {
         [
-            Block(label: "Views on recent videos", value: stats?.totalViews ?? 0, detail: "Current totals across your channels"),
+            Block(label: "Total views", value: stats?.totalViews ?? 0, detail: "On videos posted in the last 30 days"),
+            Block(label: "Average views per video", value: stats?.average ?? 0, detail: "Combined across platforms"),
             Block(label: "Unique videos", value: stats?.groups.count ?? 0, detail: stats.map { "Across \($0.postCount) platform posts" }),
-            Block(label: "Typical video", value: stats?.typical ?? 0, detail: "Median views, cross-posts combined"),
             Block(label: "Posted this week", value: stats?.thisWeek ?? 0, detail: "Unique videos in the past 7 days"),
         ]
     }
@@ -38,7 +39,7 @@ struct HomeStatsBand: View {
                 Text("\(missing) didn’t load, so those posts are left out. Check Connections to try again.").font(.system(size: 12)).foregroundStyle(.secondary).padding(16)
             }
         }
-        .background(NativeCardBackground(radius: 12))
+        .background { if !embedded { NativeCardBackground(radius: 12) } }
     }
 
     private func cell(_ block: Block) -> some View {
