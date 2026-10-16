@@ -170,6 +170,27 @@ export default function HomePage() {
       <ProjectStack />
       <HomeGuides />
       <StudioStart />
+      <div className="marketing-container pb-8">
+        <a
+          href="https://altern.ai/ai/yapper-studio"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Yapper Studio on Altern (opens in a new tab)"
+          className="inline-flex min-h-11 items-center rounded focus-visible:outline-2 focus-visible:outline-offset-4"
+        >
+          {/* Preserve Altern's original badge URL for its submission verifier. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="https://data.altern.ai/alternbadge.png"
+            alt="Featured on Altern"
+            width={200}
+            height={70}
+            loading="lazy"
+            decoding="async"
+            className="h-auto max-w-full"
+          />
+        </a>
+      </div>
     </MarketingLayout>
   );
 }
