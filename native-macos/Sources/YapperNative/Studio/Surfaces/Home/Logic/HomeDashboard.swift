@@ -9,6 +9,8 @@ struct HomeDashboard {
         let ranked: [HomeRankedVideo]?
         let stats: HomeChannelStats?
         /// Channels whose history failed, named for the numbers card.
+        let connected: [PublishPlatform]
+        let now: Date
         let missing: String
     }
 
@@ -47,6 +49,8 @@ struct HomeDashboard {
             ? Channels(
                 ranked: ranked,
                 stats: ranked.map { HomeChannelMath.stats($0, now: now) },
+                connected: (loaded ?? []).filter { $0.connected && !$0.failed }.map(\.platform),
+                now: now,
                 missing: HomeChannelHealth.names(HomeChannelHealth.failed(loaded))
             )
             : nil
@@ -57,7 +61,7 @@ struct HomeDashboard {
     static func subtitle(hasIdeas: Bool?) -> String {
         switch hasIdeas {
         case nil: " "
-        case true?: "Get a thought down, or pick up where you left off."
+        case true?: "Get a thought down, or see how your latest videos are doing."
         case false?: "Start with an idea. Type it, or press ⌘D and say it."
         }
     }

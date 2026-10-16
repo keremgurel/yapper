@@ -33,7 +33,7 @@ describe("cachedVideoList", () => {
     vi.useFakeTimers();
     const load = vi.fn(async () => [{ id: "a" }]);
     await cachedVideoList("user_a", "instagram", load);
-    vi.advanceTimersByTime(61_000);
+    vi.advanceTimersByTime(301_000);
     await cachedVideoList("user_a", "instagram", load);
     expect(load).toHaveBeenCalledTimes(2);
   });

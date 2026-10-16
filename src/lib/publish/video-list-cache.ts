@@ -4,7 +4,7 @@ import type { PublishPlatform } from "@/lib/db/schema";
 /**
  * A short per-instance cache for the connected platforms' own video lists.
  *
- * Each list costs one to fifty provider calls (Instagram asks for insights per
+ * Each list costs up to 104 provider calls (Instagram asks for insights per
  * video), which is most of a Poster or Home load, and tab switches ask for the
  * same list again seconds later. Entries are keyed by a stamp that changes when
  * the account is reconnected or any Yapper publish job for that platform moves,
@@ -16,7 +16,7 @@ import type { PublishPlatform } from "@/lib/db/schema";
  * are never cached.
  */
 
-const TTL_MS = 60_000;
+const TTL_MS = 5 * 60_000;
 const MAX_ENTRIES = 500;
 
 interface Entry {

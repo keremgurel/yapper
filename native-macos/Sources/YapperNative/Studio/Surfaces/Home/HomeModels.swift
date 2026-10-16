@@ -5,6 +5,7 @@ import Foundation
 struct HomeVideo: Decodable, Equatable, Identifiable {
     let id: String
     let title: String
+    let mediaKey: String?
     let caption: String?
     let thumbnail: String?
     let viewCount: Int
@@ -18,12 +19,13 @@ struct HomeVideo: Decodable, Equatable, Identifiable {
 
     var publishedDate: Date? { IdeaDates.parse(publishedAt) }
 
-    private enum CodingKeys: String, CodingKey { case id, title, caption, thumbnail, viewCount, publishedAt, url }
+    private enum CodingKeys: String, CodingKey { case id, title, mediaKey, caption, thumbnail, viewCount, publishedAt, url }
 
     init(
         id: String,
         title: String,
         caption: String? = nil,
+        mediaKey: String? = nil,
         thumbnail: String?,
         viewCount: Int,
         publishedAt: String = "",
@@ -32,6 +34,7 @@ struct HomeVideo: Decodable, Equatable, Identifiable {
         self.id = id
         self.title = title
         self.caption = caption
+        self.mediaKey = mediaKey
         self.thumbnail = thumbnail
         self.viewCount = viewCount
         self.publishedAt = publishedAt
@@ -46,6 +49,7 @@ struct HomeVideo: Decodable, Equatable, Identifiable {
             id = String(try c.decode(Int.self, forKey: .id))
         }
         title = (try? c.decodeIfPresent(String.self, forKey: .title)) ?? ""
+        mediaKey = try? c.decodeIfPresent(String.self, forKey: .mediaKey)
         caption = try? c.decodeIfPresent(String.self, forKey: .caption)
         thumbnail = try? c.decodeIfPresent(String.self, forKey: .thumbnail)
         let views = (try? c.decodeIfPresent(Double.self, forKey: .viewCount)) ?? 0
