@@ -184,7 +184,7 @@ export default function HomePage() {
             src="https://data.altern.ai/alternbadge.png"
             alt="Featured on Altern"
             width={200}
-            height={43}
+            height={70}
             loading="lazy"
             decoding="async"
             className="h-auto max-w-full"
