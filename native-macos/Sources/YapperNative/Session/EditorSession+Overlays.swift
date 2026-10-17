@@ -93,11 +93,8 @@ extension EditorSession {
             guard !lane.isEmpty else { return nil }
             let hidden = !lane.allSatisfy { !$0.isVisible }
             updateProject { project in
-                guard var overlays = project.overlays else { return }
-                for index in overlays.indices where overlays[index].lane == track {
-                    overlays[index].isHidden = hidden ? true : nil
-                }
-                project.overlays = overlays
+                guard let overlays = project.overlays else { return }
+                project.overlays = OverlayTracks.settingHidden(hidden, on: track, in: overlays)
                 project.updatedAt = Date()
             }
             return hidden ? "Overlay track hidden" : "Overlay track shown"
@@ -107,16 +104,7 @@ extension EditorSession {
     /// Deleting a lane is the one edit that closes the stack up: the lane is
     /// gone, so nothing should be left where it used to be.
     func removeOverlayTrack(_ track: Int) async {
-        let lane = OverlayTracks.on(track, in: overlays)
-        guard !lane.isEmpty else { return }
-        await commitTimelineEdit(successStatus: "Overlay track deleted · ⌘Z to undo") {
-            updateProject { project in
-                let kept = (project.overlays ?? []).filter { $0.lane != track }
-                project.overlays = OverlayTracks.compacted(kept)
-            }
-            reconcileTimelineSelection()
-            return true
-        }
+        await performAppAction(OverlayTrackInput(track: track, operation: .remove, hidden: nil))
     }
 
     /// The shape of what the overlay shows, and the shape of the frame it is
@@ -158,28 +146,14 @@ extension EditorSession {
     /// it would save without rebuilding the composition. This changes how the
     /// whole project is composited, so it always rebuilds.
     func setOverlayBehindSpeaker(_ overlay: ProjectOverlay, behind: Bool) {
-        guard !behind || media(for: overlay)?.isScene != true else {
-            setStatus("Generated overlays currently sit in front of the video.")
-            return
-        }
-        guard overlays.contains(where: { $0.id == overlay.id }) else { return }
-        scheduleCompositionCommit { [self] in
-            updateProject { project in
-                guard let index = project.overlays?.firstIndex(where: { $0.id == overlay.id })
-                else { return }
-                project.overlays?[index].behindSpeaker = behind ? true : nil
-                project.updatedAt = Date()
-            }
-            selectedOverlayID = overlay.id
-            return true
-        }
+        Task { await performAppAction(OverlayPropertiesInput(overlayIDs: [overlay.id], all: nil,
+            hidden: nil, behindSpeaker: behind, sourceStart: nil, timelineStart: nil, duration: nil, track: nil)) }
     }
 
-    /// Shows or hides one overlay without disturbing its place on the timeline.
+    /// Visibility changes are independent of placement keys.
     func setOverlayHidden(_ overlay: ProjectOverlay, hidden: Bool) {
-        var updated = overlay
-        updated.isHidden = hidden ? true : nil
-        commitOverlayEdit(updated)
+        Task { await performAppAction(OverlayPropertiesInput(overlayIDs: [overlay.id], all: nil,
+            hidden: hidden, behindSpeaker: nil, sourceStart: nil, timelineStart: nil, duration: nil, track: nil)) }
     }
 
     /// Live during a drag: saved, but the composition is left alone.
@@ -345,22 +319,33 @@ extension EditorSession {
 
     /// Blows the overlay up to cover the whole frame, for a straight cutaway.
     func fillFrameWithOverlay(_ overlay: ProjectOverlay) {
-        commitOverlayEdit(OverlayCanvasGeometry.filling(overlay: overlay))
+        setOverlayFrame(overlay, fit: .full)
     }
 
-    /// Puts the overlay back where a freshly added one lands.
     func resetOverlayFrame(_ overlay: ProjectOverlay) {
-        let aspects = aspects(for: overlay)
-        let box = OverlayFrame.introduced(
-            mediaAspect: aspects.media,
-            frameAspect: aspects.frame
-        )
-        var reset = overlay
-        reset.x = box.x
-        reset.y = box.y
-        reset.width = box.width
-        reset.height = box.height
-        commitOverlayEdit(reset)
+        setOverlayFrame(overlay, fit: .card)
+    }
+
+    private func setOverlayFrame(_ overlay: ProjectOverlay, fit: OverlayFrameFit) {
+        if OverlayKeyTrack.isKeyed(overlay), !isPlayheadOver(overlay) {
+            setStatus("Move the playhead over this portion to edit a keyframe")
+            return
+        }
+        let time = OverlayKeyTrack.isKeyed(overlay) ? overlayTime(of: overlay) : nil
+        // A multi-selection follows the same box, as it does during a canvas
+        // resize. Other keyed overlays retain their own moves.
+        let companions = time == nil && selectedOverlayIDs.contains(overlay.id)
+            ? overlays.filter { $0.id != overlay.id && selectedOverlayIDs.contains($0.id) && !OverlayKeyTrack.isKeyed($0) }.map(\.id) : []
+        if companions.isEmpty {
+            Task { await performAppAction(OverlayFrameInput(overlayIDs: [overlay.id], all: nil, fit: fit,
+                x: nil, y: nil, width: nil, height: nil, rotation: nil, time: time)) }
+        } else {
+            let aspects = aspects(for: overlay)
+            let box = fit == .full ? (x: 0.0, y: 0.0, width: 1.0, height: 1.0)
+                : OverlayFrame.introduced(mediaAspect: aspects.media, frameAspect: aspects.frame)
+            Task { await performAppAction(OverlayFrameInput(overlayIDs: [overlay.id] + companions, all: nil, fit: nil,
+                x: box.x, y: box.y, width: box.width, height: box.height, rotation: nil, time: nil)) }
+        }
     }
 
     func deleteOverlay(_ id: UUID) async {

@@ -114,7 +114,7 @@
       "id": "editor.masks.setRegion",
       "symbol": "maskRegion",
       "input": "MaskRegionInput",
-      "description": "Create or edit a rectangular solid-color mask on an image or generated overlay. Coordinates are source-image fractions from its top left; RGB values are 0–1. Use the attached source image to locate any requested area (text, face, logo, chart, or other content); OCR is optional evidence, not a requirement. Omit regionID to create a mask; use a saved ID to edit one. opacityKeys animate the cover: 1 conceals the area, 0 exposes it. The first opacity is held before the first key and the last after the last key: include the initial covered state explicitly before a fade. Each key accepts a shared timing anchor, including exact speech phrases. New masks default to a solid cover. Geometry-only edits omit opacityKeys and policy to preserve existing timing. policy/revealTime are compatibility shortcuts; use opacityKeys for new animations. Image conversion supports scene source durations of 0.5–30 seconds. Preserve unmentioned masks and source pixels. Unsupported mask styles, shapes, or moving-object tracking must be reported as unavailable.",
+      "description": "Create or edit a rectangular solid-color mask on an image or generated overlay. Coordinates are source-image fractions from its top left; RGB values are 0\u20131. Use the attached source image to locate any requested area (text, face, logo, chart, or other content); OCR is optional evidence, not a requirement. Omit regionID to create a mask; use a saved ID to edit one. opacityKeys animate the cover: 1 conceals the area, 0 exposes it. The first opacity is held before the first key and the last after the last key: include the initial covered state explicitly before a fade. Each key accepts a shared timing anchor, including exact speech phrases. New masks default to a solid cover. Geometry-only edits omit opacityKeys and policy to preserve existing timing. policy/revealTime are compatibility shortcuts; use opacityKeys for new animations. Image conversion supports scene source durations of 0.5\u201330 seconds. Preserve unmentioned masks and source pixels. Unsupported mask styles, shapes, or moving-object tracking must be reported as unavailable.",
       "effect": "reversibleEdit",
       "requiresRebuild": true
     },
@@ -309,6 +309,134 @@
       "description": "Change a text layer's words, timeline start, or duration. Send only the fields to change. Remove a layer with editor.timeline.delete.",
       "effect": "reversibleEdit",
       "requiresRebuild": false
+    },
+    {
+      "id": "editor.overlays.setFrame",
+      "symbol": "overlayFrame",
+      "description": "Set size, position and rotation of existing overlays. Use all=true and overlayIDs=[] for every overlay in one action. fit=full is the manual Full frame control (x/y=0, width/height=1); fit=card resets the frame using each source aspect. Otherwise supply only changed fields. Width without height preserves source aspect and center. Omit time to apply throughout each overlay, including every placement key, preserving crop keys/easing. time edits one overlay at an overlay-local keyframe. Does not place or generate media.",
+      "input": "OverlayFrameInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.overlays.setProperties",
+      "symbol": "overlayProperties",
+      "description": "Edit existing overlays: visibility, behind-speaker depth, source in point, timeline start/duration, or zero-based lane. Only supplied fields change. all=true targets every overlay; otherwise use overlayIDs. Cannot put generated scenes behind the speaker, exceed video source bounds, or collide on a lane.",
+      "input": "OverlayPropertiesInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.overlays.add",
+      "symbol": "overlayAdd",
+      "description": "Place one existing media item as an overlay at a known timeline anchor. Optional duration and sourceStart; defaults match Add as overlay. Use designOverlays/placeImported only when editorial placement across speech must be decided.",
+      "input": "OverlayAddInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.overlays.editTrack",
+      "symbol": "overlayTrack",
+      "description": "Remove an overlay lane and compact remaining lanes, or set every overlay on it hidden/shown. track is zero-based. Removing keeps original media.",
+      "input": "OverlayTrackInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.project.setSettings",
+      "symbol": "projectSettings",
+      "description": "Set project aspect ratio, visual filter/strength, video-track visibility or mute. Only supplied fields change. Applies the same project-wide settings as the manual controls.",
+      "input": "ProjectSettingsInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.media.edit",
+      "symbol": "mediaEdit",
+      "input": "MediaEditInput",
+      "description": "Append imported media to the main track, remove media and its timeline instances (original files kept), or reset its main-track cuts to the full source. Uses media IDs from context. Removing/resetting locked clips is rejected.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.timeline.transfer",
+      "symbol": "trackTransfer",
+      "input": "TrackTransferInput",
+      "description": "Move a clip to an overlay lane or an overlay onto the main track. toOverlay requires itemID of an unlocked clip and optional at/track; at is a timeline anchor. toMainTrack requires overlay itemID and insertionIndex (0-based). Keeps source trim and speed. At least one main-track clip must remain.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.video.framingKey",
+      "symbol": "videoFramingKey",
+      "input": "VideoFramingKeyInput",
+      "description": "Set, remove, move or clear absolute video framing keys on a clip, like the manual diamonds. sourceTime/destination are recording seconds inside that clip, not timeline time. set without framing fields captures the current framing. clear leaves framing sampled at sourceTime. Locked clips are skipped.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.audio.replace",
+      "symbol": "audioReplace",
+      "input": "AudioReplaceInput",
+      "description": "Replace existing sound layers with a built-in sound from soundLibrary, keeping timeline placement and volume. Resets source trim and rate to the new sound.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.audio.trim",
+      "symbol": "audioTrim",
+      "input": "AudioTrimInput",
+      "description": "Set source in point and/or duration of existing audio layers. Preserve timeline position, volume and speed. SourceStart is recording seconds; duration is timeline seconds.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.captions.splitAtWord",
+      "symbol": "captionSplit",
+      "input": "CaptionSplitInput",
+      "description": "Split one caption after a word count, as pressing Enter at a word boundary. Locked captions are skipped.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": false
+    },
+    {
+      "id": "editor.timeline.clearTrack",
+      "symbol": "clearTrack",
+      "input": "ClearTrackInput",
+      "description": "Clear all main-track clips, or all captions and caption visibility, as the manual clear-track control. Original media stays in the bin. Locked content is protected.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.history.restore",
+      "symbol": "history",
+      "input": "HistoryInput",
+      "description": "Undo or redo the last saved edit, including a whole Chirpy batch. Runs alone and uses the existing history stack. Check canUndo/canRedo.",
+      "effect": "workflow",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.media.import",
+      "symbol": "importPicker",
+      "input": "ImportPickerInput",
+      "description": "Open the same local file picker as Import media or Import audio, then import the creator-selected files. You cannot choose filesystem paths. Runs alone. The creator may cancel.",
+      "effect": "workflow",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.export",
+      "symbol": "exportVideo",
+      "input": "ExportInput",
+      "description": "Export the current edited video. destination=file opens the normal save panel. Use poster only when explicitly asked to send the final video to Poster: it uploads the export and opens Poster without publishing. Runs alone.",
+      "effect": "workflow",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.audio.addSaved",
+      "symbol": "savedAudioAdd",
+      "input": "SavedAudioAddInput",
+      "description": "Place existing audio from savedAudioLibrary at a timeline anchor. Keeps the library default volume and adds the actual saved source; no paths are accepted.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
     }
   ],
   "$defs": {
@@ -1581,6 +1709,419 @@
           "type": "number",
           "minimum": 0.3,
           "maximum": 600
+        }
+      }
+    },
+    "OverlayFrameFit": {
+      "type": "string",
+      "enum": ["full", "card"]
+    },
+    "OverlayFrameInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overlayIDs"],
+      "properties": {
+        "overlayIDs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "maxItems": 5000,
+          "uniqueItems": true
+        },
+        "all": {
+          "type": "boolean"
+        },
+        "fit": {
+          "$ref": "#/$defs/OverlayFrameFit"
+        },
+        "x": {
+          "type": "number",
+          "minimum": -2,
+          "maximum": 2
+        },
+        "y": {
+          "type": "number",
+          "minimum": -2,
+          "maximum": 2
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 4
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 4
+        },
+        "rotation": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "time": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        }
+      }
+    },
+    "OverlayPropertiesInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overlayIDs"],
+      "properties": {
+        "overlayIDs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "maxItems": 5000,
+          "uniqueItems": true
+        },
+        "all": {
+          "type": "boolean"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "behindSpeaker": {
+          "type": "boolean"
+        },
+        "sourceStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "timelineStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 86400
+        },
+        "track": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000
+        }
+      }
+    },
+    "OverlayAddInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mediaID", "at"],
+      "properties": {
+        "mediaID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "at": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 86400
+        },
+        "sourceStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        }
+      }
+    },
+    "OverlayTrackOperation": {
+      "type": "string",
+      "enum": ["remove", "setHidden"]
+    },
+    "OverlayTrackInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["track", "operation"],
+      "properties": {
+        "track": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000
+        },
+        "operation": {
+          "$ref": "#/$defs/OverlayTrackOperation"
+        },
+        "hidden": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ProjectAspectInput": {
+      "type": "string",
+      "enum": ["original", "portrait", "feedPortrait", "square", "landscape"]
+    },
+    "VisualFilterInput": {
+      "type": "string",
+      "enum": ["original", "clean", "warm", "cool", "punch", "mono", "fade"]
+    },
+    "ProjectSettingsInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "aspectRatio": {
+          "$ref": "#/$defs/ProjectAspectInput"
+        },
+        "filter": {
+          "$ref": "#/$defs/VisualFilterInput"
+        },
+        "filterStrength": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "videoHidden": {
+          "type": "boolean"
+        },
+        "videoMuted": {
+          "type": "boolean"
+        }
+      }
+    },
+    "MediaEditOperation": {
+      "type": "string",
+      "enum": ["append", "remove", "resetToSource"]
+    },
+    "MediaEditInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mediaIDs", "operation"],
+      "properties": {
+        "mediaIDs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true
+        },
+        "operation": {
+          "$ref": "#/$defs/MediaEditOperation"
+        }
+      }
+    },
+    "TrackTransferDirection": {
+      "type": "string",
+      "enum": ["toOverlay", "toMainTrack"]
+    },
+    "TrackTransferInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["itemID", "direction"],
+      "properties": {
+        "itemID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "direction": {
+          "$ref": "#/$defs/TrackTransferDirection"
+        },
+        "at": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        },
+        "track": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000
+        },
+        "insertionIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000
+        }
+      }
+    },
+    "VideoFramingKeyInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clipID", "sourceTime", "operation"],
+      "properties": {
+        "clipID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "sourceTime": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "operation": {
+          "$ref": "#/$defs/OverlayKeyOperation"
+        },
+        "destination": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "scale": {
+          "type": "number",
+          "minimum": 0.2,
+          "maximum": 5
+        },
+        "x": {
+          "type": "number",
+          "minimum": -1.5,
+          "maximum": 1.5
+        },
+        "y": {
+          "type": "number",
+          "minimum": -1.5,
+          "maximum": 1.5
+        },
+        "rotation": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        }
+      }
+    },
+    "AudioReplaceInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layerIDs", "effectID"],
+      "properties": {
+        "layerIDs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true
+        },
+        "effectID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      }
+    },
+    "AudioTrimInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layerIDs"],
+      "properties": {
+        "layerIDs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true
+        },
+        "sourceStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0.02,
+          "maximum": 86400
+        }
+      }
+    },
+    "CaptionSplitInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["captionID", "afterWords"],
+      "properties": {
+        "captionID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "afterWords": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300
+        }
+      }
+    },
+    "ClearTrackKind": {
+      "type": "string",
+      "enum": ["video", "captions"]
+    },
+    "ClearTrackInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["track"],
+      "properties": {
+        "track": {
+          "$ref": "#/$defs/ClearTrackKind"
+        }
+      }
+    },
+    "HistoryDirectionInput": {
+      "type": "string",
+      "enum": ["undo", "redo"]
+    },
+    "HistoryInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["direction"],
+      "properties": {
+        "direction": {
+          "$ref": "#/$defs/HistoryDirectionInput"
+        }
+      }
+    },
+    "ImportKindInput": {
+      "type": "string",
+      "enum": ["media", "audio"]
+    },
+    "ImportPickerInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/ImportKindInput"
+        }
+      }
+    },
+    "ExportDestinationInput": {
+      "type": "string",
+      "enum": ["file", "poster"]
+    },
+    "ExportInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["destination"],
+      "properties": {
+        "destination": {
+          "$ref": "#/$defs/ExportDestinationInput"
+        }
+      }
+    },
+    "SavedAudioAddInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["savedAudioID", "at"],
+      "properties": {
+        "savedAudioID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "at": {
+          "$ref": "#/$defs/TimelineAnchorInput"
         }
       }
     }

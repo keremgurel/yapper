@@ -13,6 +13,7 @@ import { canUsePremium } from "@/lib/billing/gate";
 import { InsufficientCreditsError } from "@/lib/db/credits";
 import { parsePlanInput } from "@/lib/chirpy/protocol";
 import { withPlanLedger, PlanConflict } from "@/lib/chirpy/ledger";
+import { sceneModelFailureReason } from "@/lib/studio/scene/scene-model-call";
 import { planChirpy } from "@/lib/chirpy/planner";
 
 export const runtime = "nodejs";
@@ -51,7 +52,11 @@ async function trackedPOST(req: Request): Promise<Response> {
       "[chirpy/plan] failed",
       error instanceof Error ? error.message : "unknown",
     );
-    return Response.json({ error: "planning_failed" }, { status: 502 });
+    const reason =
+      error instanceof Error && error.message === "invalid_action_plan"
+        ? "invalid_action_plan"
+        : sceneModelFailureReason(error);
+    return Response.json({ error: reason }, { status: 502 });
   }
 }
 

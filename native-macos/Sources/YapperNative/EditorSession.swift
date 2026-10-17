@@ -1339,24 +1339,7 @@ final class EditorSession: ObservableObject {
     }
 
     func addOverlay(_ mediaID: UUID) async {
-        guard
-            duration > 0,
-            let media = project.media.first(where: { $0.id == mediaID })
-        else { return }
-        let start = min(currentTime, max(0, duration - 0.1))
-        let available = max(0.1, duration - start)
-        let overlayDuration = min(available, media.isImage ? Self.imageClipDefaultDuration : media.duration)
-        let overlay = introducedOverlay(
-            media: media,
-            timelineStart: start,
-            duration: overlayDuration
-        )
-        await commitTimelineEdit {
-            project.overlays = (project.overlays ?? []) + [overlay]
-            selectTimelineItem(.overlay(overlay.id))
-            inspectorRequest = EditorInspectorRequest(tool: "Overlays")
-            return true
-        }
+        await performAppAction(OverlayAddInput(mediaID: mediaID, at: .playhead, duration: nil, sourceStart: nil))
     }
 
     /// An overlay sized to its media before it ever reaches the frame: media

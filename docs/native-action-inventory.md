@@ -1,6 +1,6 @@
 # Native editor action inventory
 
-Status: audit of the native macOS editor as of 2026-09-22, for step 3 of [chirpy-shared-actions.md](chirpy-shared-actions.md). Rows marked registered have shipped; everything else is still to do.
+Status: the baseline audit below is from 2026-09-22. The 2026-10-17 editor expansion registers 16 more actions (54 total); see [the current coverage and verification](chirpy-shared-actions.md#editor-coverage-added-after-the-full-frame-failure). The baseline counts below are historical, not current capability counts. A method retaining a coalesced UI commit can now have an equivalent registered action; the call-site script measures routing, not semantic capability coverage.
 
 The numbers come from `scripts/app-actions/inventory.py`, which lists every `EditorSession` method the SwiftUI views and the app menu call and traces each one to the seam where it commits. Rerun it after registering actions to refresh the table and, later, to produce the allowlist for the view-boundary lint.
 
@@ -68,7 +68,7 @@ Proposed IDs follow the existing `editor.<feature>.<verb>` convention. "Property
 
 ### Overlays and tracks
 
-Crop, keyframes, zoom, and masks are registered. Placement and visibility are not.
+Crop, keyframes, zoom, masks, placement, framing, visibility, depth, timing and lane operations are now registered. See the current coverage linked above; the following rows retain the original migration audit.
 
 | Session method                                                                   | Commits via        | Proposed action                                         | Notes                                                   |
 | -------------------------------------------------------------------------------- | ------------------ | ------------------------------------------------------- | ------------------------------------------------------- |
