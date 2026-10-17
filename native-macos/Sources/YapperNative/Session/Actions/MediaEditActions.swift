@@ -43,7 +43,10 @@ extension AppActionRegistry {
             project.updatedAt = Date()
             session.updateProject { $0 = project }
             return .init(message: "Media edit saved · ⌘Z to undo", changes: changes,
-                         afterCommit: { session.reconcileTimelineSelection() })
+                         afterCommit: {
+                             session.mediaSelection = session.mediaSelection.reconciled(against: session.project.media.map(\.id))
+                             session.reconcileTimelineSelection()
+                         })
         }
         register(TrackTransferInput.self, availability: { _ in .available }) { session, input in
             var project = session.project
