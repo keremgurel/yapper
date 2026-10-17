@@ -186,3 +186,21 @@ export function schemaDefinitions(input: PlanInput): Record<string, Schema> {
   for (const action of discoveredCatalog(input)) visit(action.parameters);
   return result;
 }
+
+/** Bounded, schema-owned feedback; never echo model prose or arbitrary keys. */
+export function planValidationIssue(raw: unknown, input: PlanInput): string {
+  if (!validate(raw, definitions.ChirpyPlanReply))
+    return "Use only message (string, at most 2000 characters) and actions (array, at most 8 actions). Use bulk targets for repeated edits.";
+  const reply = raw as ChirpyPlanReply;
+  const catalog = discoveredCatalog(input);
+  for (const call of reply.actions) {
+    const action = catalog.find((item) => item.id === call.action);
+    if (!action)
+      return "An action is not in this client's catalog. Use only advertised IDs or return no actions and explain the limitation.";
+    if (!validate(call.arguments, action.parameters))
+      return `Arguments for ${action.id} do not match its schema. Check required fields, enum values, UUIDs, numeric ranges and extra fields.`;
+    if (action.effect === "workflow" && reply.actions.length !== 1)
+      return "A workflow must run alone. Do not mix it with other actions.";
+  }
+  return "Return a plan matching the supplied schemas.";
+}

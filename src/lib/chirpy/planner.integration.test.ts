@@ -473,3 +473,65 @@ it.skipIf(!process.env.CHIRPY_MASK_VISION_IMAGE)(
   },
   50000,
 );
+
+it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1")(
+  "edits all existing overlays in one bulk action after placement, even with unused imports",
+  async () => {
+    const request = input([
+      {
+        role: "user",
+        content:
+          "i uploaded a ton of media to use as overlays. overlay parts of them wherever they make sense",
+      },
+      { role: "assistant", content: "Placed 12 changes · ⌘Z to undo" },
+      { role: "user", content: "make all overlays full screen please" },
+    ]);
+    const overlays = Array.from({ length: 12 }, (_, index) => ({
+      id: randomUUID(),
+      mediaID: randomUUID(),
+      timelineStart: index * 4,
+      duration: 3,
+      x: 0.55,
+      y: 0.07,
+      width: 0.38,
+      height: 0.38,
+      track: index % 3,
+    }));
+    request.catalog = contract["x-actions"].filter(
+      (action) => !("legacy" in action && action.legacy),
+    );
+    request.context = {
+      ...request.context,
+      overlays,
+      selectedOverlayID: overlays[0].id,
+      media: [
+        ...overlays.map((overlay, index) => ({
+          id: overlay.mediaID,
+          name: `Uploaded clip ${index}.mov`,
+          kind: "video",
+          onMainTrack: false,
+          usedAsOverlay: true,
+        })),
+        {
+          id: randomUUID(),
+          name: "unused.png",
+          kind: "image",
+          onMainTrack: false,
+          usedAsOverlay: false,
+        },
+      ],
+    };
+    const reply = await planChirpy(request);
+    expect(reply.actions).toHaveLength(1);
+    expect(reply.actions[0]).toEqual({
+      action: "editor.overlays.setFrame",
+      arguments: expect.objectContaining({
+        overlayIDs: [],
+        all: true,
+        fit: "full",
+      }),
+    });
+    expect(reply.actions[0].arguments).not.toHaveProperty("time");
+  },
+  60_000,
+);

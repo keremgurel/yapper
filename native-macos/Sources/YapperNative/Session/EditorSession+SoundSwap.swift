@@ -11,47 +11,7 @@ import Foundation
 extension EditorSession {
     /// Replaces the sound on `layerID` with `effect`, in place.
     func replaceSound(_ layerID: UUID, with effect: SoundEffectDescriptor) async {
-        guard
-            let existing = project.audioLayers?.first(where: { $0.id == layerID }),
-            existing.builtInID != effect.id
-        else { return }
-
-        do {
-            let url = try await soundEffectService.fileURL(for: effect)
-            await commitTimelineEdit(successStatus: "Swapped in \(effect.name) · ⌘Z to undo") {
-                guard
-                    let index = project.audioLayers?.firstIndex(where: { $0.id == layerID }),
-                    let existing = project.audioLayers?[index],
-                    existing.builtInID != effect.id
-                else { return false }
-                updateProject { project in
-                    project.audioLayers?[index].url = url
-                    project.audioLayers?[index].name = effect.name
-                    project.audioLayers?[index].builtInID = effect.id
-                    project.audioLayers?[index].sourceKind = .builtIn
-                    project.audioLayers?[index].sourceFingerprint = nil
-                    project.audioLayers?[index].savedAudioID = nil
-                    project.audioLayers?[index].savedAudioHash = nil
-                    project.audioLayers?[index].packagedMediaID = nil
-                    project.audioLayers?[index].sourceDuration = effect.duration
-                // Back to the whole of the new sound, and no further than the
-                // end of the video. A trim measured against the old file means
-                // nothing to this one: a head cut off a three-second riser
-                // would take most of a quarter-second pop with it.
-                    project.audioLayers?[index].sourceStart = 0
-                    project.audioLayers?[index].playbackRate = nil
-                    project.audioLayers?[index].duration = min(
-                        effect.duration,
-                        max(0.02, duration - existing.timelineStart)
-                    )
-                    project.updatedAt = Date()
-                }
-                selectedAudioLayerID = layerID
-                return true
-            }
-        } catch {
-            show(error)
-        }
+        await performAppAction(AudioReplaceInput(layerIDs: [layerID], effectID: effect.id))
     }
 
     /// The sounds a swap menu offers, grouped the way the library is so a long

@@ -4,17 +4,27 @@ import UniformTypeIdentifiers
 @MainActor
 enum ImportPanels {
     static func openMedia(for session: EditorSession) {
+        Task { _ = await importFiles(for: session, kind: .media) }
+    }
+
+    static func importFiles(for session: EditorSession, kind: ImportKindInput) async -> Bool {
         let panel = NSOpenPanel()
-        panel.title = "Import media"
+        panel.title = kind == .audio ? "Import audio" : "Import media"
         panel.prompt = "Import"
-        panel.allowedContentTypes = [.movie, .mpeg4Movie, .quickTimeMovie, .image]
+        panel.allowedContentTypes = kind == .audio ? [.audio, .mp3, .mpeg4Audio, .wav, .aiff] : [.movie, .mpeg4Movie, .quickTimeMovie, .image]
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
-        guard panel.runModal() == .OK else { return }
-        Task { await session.importMedia(panel.urls) }
+        guard panel.runModal() == .OK else { return true }
+        if kind == .audio { await session.importAudio(panel.urls) }
+        else { await session.importMedia(panel.urls) }
+        return Task.isCancelled
     }
 
     static func saveExport(for session: EditorSession) {
+        Task { _ = await exportFile(for: session) }
+    }
+
+    static func exportFile(for session: EditorSession) async -> Bool {
         let panel = NSSavePanel()
         panel.title = "Export video"
         panel.prompt = "Export"
@@ -26,8 +36,8 @@ enum ImportPanels {
         }
         panel.allowedContentTypes = [.mpeg4Movie]
         panel.nameFieldStringValue = "\(session.project.name)-export.mp4"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        Task { await session.export(to: url) }
+        guard panel.runModal() == .OK, let url = panel.url else { return true }
+        return await session.export(to: url)
     }
 
     /// The fast path: render to an app-owned temporary file, upload that exact
@@ -41,15 +51,7 @@ enum ImportPanels {
     }
 
     static func openAudio(for session: EditorSession) {
-        let panel = NSOpenPanel()
-        panel.title = "Import audio"
-        panel.prompt = "Import"
-        panel.allowedContentTypes = [.audio, .mp3, .mpeg4Audio, .wav, .aiff]
-        panel.canChooseFiles = true
-        panel.allowsMultipleSelection = true
-        panel.canChooseDirectories = false
-        guard panel.runModal() == .OK else { return }
-        Task { await session.importAudio(panel.urls) }
+        Task { _ = await importFiles(for: session, kind: .audio) }
     }
 
     /// Into the library rather than into the open project: the same panel, a

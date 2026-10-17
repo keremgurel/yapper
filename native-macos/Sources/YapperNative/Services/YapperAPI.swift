@@ -162,6 +162,12 @@ enum YapperAPI {
     /// The server's own word for what went wrong, in the creator's language.
     private static func readable(_ code: String) -> String {
         switch code {
+        case "invalid_action_plan":
+            return "Chirpy could not produce a valid edit for this app version. Nothing was changed and no planning credits were charged"
+        case "answer_truncated":
+            return "the model’s edit plan was cut off. Nothing was changed and no planning credits were charged"
+        case "planning_failed", "ai_failed":
+            return "the planning service could not complete the request. Try again; your project is unchanged"
         case "unsafe_take_boundary":
             return "the edit clipped the beginning of a take and could not be corrected, so your edit was left unchanged"
         case "unsafe_alignment":

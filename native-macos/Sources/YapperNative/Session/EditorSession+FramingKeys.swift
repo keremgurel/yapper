@@ -108,20 +108,8 @@ extension EditorSession {
     /// Moves a key along its own clip, which is how the speed of a push-in is
     /// set: closer together is a snap, further apart is a slow drift.
     func moveFramingKey(in clip: TimelineClip, fromSource: Double, toSource: Double) {
-        var keys = VideoFramingTrack.keys(of: clip)
-        guard let index = keys.firstIndex(where: {
-            abs($0.at - fromSource) < VideoFramingTrack.minimumGap
-        }) else { return }
-        let gap = VideoFramingTrack.minimumGap
-        let lower = index > 0 ? keys[index - 1].at + gap : clip.sourceStart
-        let upper = index < keys.count - 1 ? keys[index + 1].at - gap : clip.sourceEnd
-        guard upper > lower else { return }
-        keys[index].at = min(upper, max(lower, toSource))
-
-        var updated = clip
-        updated.framingKeys = keys.sorted { $0.at < $1.at }
-        guard updated != clip else { return }
-        replaceFramingClip(updated)
+        Task { await performAppAction(VideoFramingKeyInput(clipID: clip.id, sourceTime: fromSource,
+            operation: .move, destination: toSource, scale: nil, x: nil, y: nil, rotation: nil)) }
     }
 
     func removeFramingKey(in clip: TimelineClip, atSource time: Double) {
