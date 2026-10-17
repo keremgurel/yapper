@@ -165,9 +165,11 @@ enum YapperAPI {
         case "invalid_action_plan":
             return "Chirpy could not produce a valid edit for this app version. Nothing was changed and no planning credits were charged"
         case "answer_truncated":
-            return "the model’s edit plan was cut off. Nothing was changed and no planning credits were charged"
-        case "planning_failed", "ai_failed":
+            return "the model’s response was cut off. Try again"
+        case "planning_failed":
             return "the planning service could not complete the request. Try again; your project is unchanged"
+        case "ai_failed":
+            return "the AI service could not complete the request. Try again"
         case "unsafe_take_boundary":
             return "the edit clipped the beginning of a take and could not be corrected, so your edit was left unchanged"
         case "unsafe_alignment":
