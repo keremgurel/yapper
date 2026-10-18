@@ -86,7 +86,7 @@ struct AssistantEmptyState: View {
                         : "Ask for an edit, or say where your overlays go."
                 )
                     .font(.studioCaption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.primary.opacity(0.75))
                     .fixedSize(horizontal: false, vertical: true)
 
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), alignment: .leading)], alignment: .leading, spacing: 8) {
@@ -119,7 +119,7 @@ struct ImportedOverlaySuggestion: View {
             if showsHint {
                 Text("Import extra images or videos with descriptive names, like coffee brewing.mov. Chirpy matches them to your transcript.")
                     .font(.studioCaption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.primary.opacity(0.75))
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
