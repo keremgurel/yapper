@@ -176,3 +176,22 @@ Require domain-changing controls to invoke registered actions or registered prop
 The sound-effects acceptance case must also be included: after the Google Ads reveal, "add click sound effects when we reveal the clicks and cost" should bind two sound instances to the saved reveal events at 6.524 seconds and 8.249 seconds in the current ep12 fixture. It must not add or move visual overlays. The legacy path failed this test and was undone. The compatibility event action preserves the original fade-start timing. New clients use general opacity events and audio timing anchors without routing the request to visual design.
 
 The migration is complete only when the app action inventory is covered, the old command-routing dependency is removed from those paths, and the behavior has been verified in the running native app and web Studio.
+
+## Imported overlay suggestion
+
+The native editor's empty conversation includes **Place imported overlays** with
+an example of a descriptive filename. The same shortcut remains available in an
+ongoing editor conversation when imports exist, Chirpy is idle and the draft is
+empty. Picking it only fills and focuses the composer; the creator reviews and
+sends it explicitly. The example targets unused imports, preserving the main
+video and avoiding duplicate overlays.
+
+For requests to choose placements from filenames and speech, Chirpy asks for
+descriptive names or a file-to-subject explanation when the requested files have
+only camera counters, dates or generic names. It names the unclear files and
+returns no actions, including for a mixed batch. Main-track and already placed
+media are not candidates for this check. A user-provided description is enough;
+Chirpy passes that mapping into the placement workflow after clarification.
+Direct placements at an explicit anchor and edits to existing overlays do not
+require descriptive filenames. This is a planner instruction, evaluated against
+live model responses, not a claim that imported videos have been visually analyzed.
