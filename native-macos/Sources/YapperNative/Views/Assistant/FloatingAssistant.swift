@@ -250,10 +250,7 @@ private struct AssistantPanel: View {
     @ViewBuilder
     private var transcript: some View {
         if conversation.isEmpty {
-            AssistantEmptyState(usesStudioBrain: session.assistantUsesStudioBrain, onPick: {
-                draft = $0
-                focusRequest += 1
-            })
+            AssistantEmptyState(usesStudioBrain: session.assistantUsesStudioBrain, onPick: useExample)
         } else {
             AssistantTranscript(conversation: conversation)
         }
@@ -264,6 +261,11 @@ private struct AssistantPanel: View {
             header
             Divider().opacity(0.5)
             content
+            if !session.assistantUsesStudioBrain, !conversation.isEmpty,
+               draft.isEmpty, !isWorking, !session.placeableMedia.isEmpty {
+                ImportedOverlaySuggestion(onPick: useExample, showsHint: false)
+                    .padding(.horizontal, 12)
+            }
             composer
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -277,6 +279,12 @@ private struct AssistantPanel: View {
         .onChange(of: studioCommands.assistantGeneration) { _, _ in
             applyStudioPrompt()
         }
+    }
+
+    private func useExample(_ prompt: String) {
+        draft = prompt
+        caret = prompt.utf16.count
+        focusRequest += 1
     }
 
     private func applyStudioPrompt() {

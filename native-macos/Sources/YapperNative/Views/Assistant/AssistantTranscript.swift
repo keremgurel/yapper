@@ -75,25 +75,53 @@ struct AssistantEmptyState: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(
-                usesStudioBrain
-                    ? "Change what Yapper knows, or start something anywhere in Studio."
-                    : "Ask for an edit, or say where your overlays go."
-            )
-                .font(.studioCaption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if !usesStudioBrain {
+                    ImportedOverlaySuggestion(onPick: onPick)
+                }
+                Text(
+                    usesStudioBrain
+                        ? "Change what Yapper knows, or start something anywhere in Studio."
+                        : "Ask for an edit, or say where your overlays go."
+                )
+                    .font(.studioCaption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
-            HStack(spacing: 6) {
-                ForEach(examples, id: \.self) { example in
-                    Button(example) { onPick(example) }
-                        .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), alignment: .leading)], alignment: .leading, spacing: 8) {
+                    ForEach(examples, id: \.self) { example in
+                        Button(example) { onPick(example) }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                    }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-        .padding(.horizontal, 12)
-        .padding(.bottom, 10)
+    }
+}
+
+/// A suggestion fills the composer; it never starts a paid edit by itself.
+struct ImportedOverlaySuggestion: View {
+    static let prompt = "Use all my unused imported media as overlays, keeping my main video as it is. Match their filenames to what I say in the transcript and overlay them wherever they make sense."
+    let onPick: (String) -> Void
+    var showsHint = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button("Place imported overlays") { onPick(Self.prompt) }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("Fill in an example prompt. Review it, then send.")
+                .accessibilityHint("Fills the message box without sending")
+            if showsHint {
+                Text("Import extra images or videos with descriptive names, like coffee brewing.mov. Chirpy matches them to your transcript.")
+                    .font(.studioCaption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 }

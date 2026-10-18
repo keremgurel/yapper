@@ -535,3 +535,141 @@ it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1")(
   },
   60_000,
 );
+
+function importedMediaRequest(
+  names: string[],
+  messages: PlanInput["messages"],
+): PlanInput {
+  const request = input(messages);
+  request.catalog = contract["x-actions"].filter(
+    (action) => !("legacy" in action && action.legacy),
+  );
+  request.context = {
+    speechAvailable: true,
+    duration: 30,
+    playhead: 0,
+    media: [
+      {
+        id: randomUUID(),
+        name: "IMG_0001.MOV",
+        onMainTrack: true,
+        usedAsOverlay: false,
+      },
+      {
+        id: randomUUID(),
+        name: "Screenshot 2026-10-16.png",
+        onMainTrack: false,
+        usedAsOverlay: true,
+      },
+      ...names.map((name) => ({
+        id: randomUUID(),
+        name,
+        kind: name.endsWith(".mov") ? "video" : "image",
+        onMainTrack: false,
+        usedAsOverlay: false,
+      })),
+    ],
+    transcript:
+      "First I grind the coffee beans. Then I brew the coffee. Finally I look at our sales chart."
+        .split(" ")
+        .map((text, index) => ({
+          id: randomUUID(),
+          text,
+          start: index,
+          end: index + 1,
+          kept: true,
+        })),
+  };
+  return request;
+}
+const importedPlacementPrompt =
+  "i uploaded a ton of meda to use as overlays. overlay parts of them wherever they make sense";
+
+it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1")(
+  "places descriptively named imports without asking about main or already placed generic files",
+  async () => {
+    const reply = await planChirpy(
+      importedMediaRequest(
+        ["coffee-grinding.mov", "coffee-brewing.mov", "sales-chart.png"],
+        [{ role: "user", content: importedPlacementPrompt }],
+      ),
+    );
+    expect(reply.actions).toHaveLength(1);
+    expect(reply.actions[0].action).toBe("editor.designOverlays");
+    expect(reply.actions[0].arguments.mode).toBe("placeImported");
+  },
+  50_000,
+);
+
+it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1").each([
+  ["IMG_1234.mov", "DSC_0042.png"],
+  ["coffee-brewing.mov", "Screenshot 2026-10-16 at 8.48.45 PM.png"],
+])(
+  "asks about unclear import subjects before placing any of an entire batch: %s",
+  async (...names) => {
+    const reply = await planChirpy(
+      importedMediaRequest(names, [
+        { role: "user", content: importedPlacementPrompt },
+      ]),
+    );
+    expect(reply.actions).toEqual([]);
+    expect(reply.message).toMatch(
+      /descriptive|rename|what .*show|describe|name.*clearly/i,
+    );
+    expect(reply.message).toContain(names.at(-1)!);
+  },
+  50_000,
+);
+
+it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1")(
+  "carries the user's filename descriptions into the placement workflow after clarification",
+  async () => {
+    const reply = await planChirpy(
+      importedMediaRequest(
+        ["IMG_1234.mov", "DSC_0042.png"],
+        [
+          { role: "user", content: importedPlacementPrompt },
+          {
+            role: "assistant",
+            content:
+              "Please give IMG_1234.mov and DSC_0042.png descriptive names, or tell me what each shows so I can match them to the transcript.",
+          },
+          {
+            role: "user",
+            content:
+              "IMG_1234.mov shows coffee brewing and DSC_0042.png is our sales chart. Go ahead.",
+          },
+        ],
+      ),
+    );
+    expect(reply.actions).toHaveLength(1);
+    expect(reply.actions[0].action).toBe("editor.designOverlays");
+    expect(reply.actions[0].arguments.mode).toBe("placeImported");
+    expect(reply.actions[0].arguments.instruction).toMatch(/IMG_1234.mov/);
+    expect(reply.actions[0].arguments.instruction).toMatch(/coffee brewing/i);
+    expect(reply.actions[0].arguments.instruction).toMatch(/DSC_0042.png/);
+    expect(reply.actions[0].arguments.instruction).toMatch(/sales chart/i);
+  },
+  50_000,
+);
+
+it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1")(
+  "places a generic file at an explicit anchor without asking for its subject",
+  async () => {
+    const reply = await planChirpy(
+      importedMediaRequest(
+        ["IMG_1234.mov"],
+        [
+          {
+            role: "user",
+            content:
+              "Place IMG_1234.mov as an overlay at the playhead for 3 seconds.",
+          },
+        ],
+      ),
+    );
+    expect(reply.actions, JSON.stringify(reply)).toHaveLength(1);
+    expect(reply.actions[0].action).toBe("editor.overlays.add");
+  },
+  50_000,
+);
