@@ -283,3 +283,50 @@ Tabs use Base UI keyboard navigation. Glass controls keep visible focus,
 readable disabled states and neutral fallback surfaces without WebGPU, under
 reduced transparency and in forced colors. Sent messages remain in the same
 conversation when navigating between Home and the floating assistant.
+
+## Home analytics (October 15, 2026)
+
+Home keeps capture first, then a compact analytics panel and three open,
+information-bearing summaries. Use existing system typography, semantic surfaces,
+1440px frame and responsive gutters. No decorative motion or shortcut cards.
+
+The four metrics are total views, average views per unique video, unique videos
+and posted this week (rolling seven days). All use videos published in the last
+30 days. The average is the arithmetic mean of combined cross-platform views,
+not the median or an average across platform copies. Filter before grouping, so
+a new cross-post cannot pull an older copy's views into this window.
+
+The chart is a compact stacked column chart with platform filters. Each column
+contains current view counts for unique videos grouped by publish date, not views
+earned on that day. The rolling window includes partial dates at its edges;
+buckets use UTC dates in both clients. Pointer, touch and keyboard inspection
+exposes the date, views and video titles. Group copies by a shared saved source,
+or conservatively matching substantial titles within seven days; keep different
+posts on the same platform separate. This is metadata matching, not visual
+recognition. Chart tokens adapt to light/dark themes, and labels carry meaning
+without relying on color alone.
+
+Below analytics, Ideas shows the count in progress and recent titles with a
+See all ideas link. Yapper Edit gives hours saved, edit/cut counts and an
+accessible explanation of the estimate, with Open editor. Calendar shows the
+number of upcoming planned videos and the next two dates/titles with See calendar.
+These are content planning dates, not a claim that posts will publish automatically.
+Summaries use quiet horizontal separators; no individual card shells. Show
+honest zero, loading and unavailable states, including before the first edit.
+Hours saved are all-time recorded estimates, independent of the analytics window.
+
+Connected history uses official APIs only: up to 200 YouTube videos, 100 TikTok
+videos and 100 Instagram media items (photos count toward Instagram's scan).
+YouTube takes at most nine requests; TikTok five; Instagram at most four list
+pages plus one insights request per video, with five insights requests at once.
+Lists cache for five minutes per server instance; reconnections, Yapper publishing
+and explicit fresh reads invalidate/bypass that cache. This avoids Apify listing
+charges, not infrastructure costs or platform quotas. Voice sample selection is
+optional, up to ten per selection. Existing credit confirmation stays in place:
+source recovery can use Apify and transcription can use paid providers.
+
+The window is bounded by available connected history. High-volume accounts can
+hit the scan limit before covering all 30 days. Different captions can remain
+separate when no shared source is available. Existing Instagram insight failures
+can undercount views. This change does not collect historical daily view snapshots
+or generate AI suggestions automatically.

@@ -89,27 +89,54 @@ export function mapInstagramMedia(data: InstagramMedia[]): InstagramVideo[] {
 /** The connected account's own videos and Reels, newest first. */
 export async function listInstagramVideos(
   accessToken: string,
-  max = 50,
+  max = 100,
 ): Promise<InstagramVideo[]> {
+  const limit = Math.max(1, Math.min(100, Math.floor(max) || 100));
   const fields =
     "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp";
-  const url = `${GRAPH}/me/media?fields=${fields}&limit=${max}&access_token=${encodeURIComponent(
-    accessToken,
-  )}`;
-  // This list changes outside Yapper whenever the creator posts in Instagram.
-  // Always ask Graph for the current first page instead of reusing a cached
-  // provider response.
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw await instagramError(res, "media");
-  const json = (await res.json()) as { data?: InstagramMedia[] };
-  const videos = mapInstagramMedia(json.data ?? []);
+  const media: InstagramMedia[] = [];
+  const cursors = new Set<string>();
+  let after: string | undefined;
+  // Bound both the media scanned and the number of provider pages. Only
+  // reuse the cursor, never follow a provider-supplied URL with credentials.
+  for (let page = 0; page < 4 && media.length < limit; page++) {
+    const params = new URLSearchParams({
+      fields,
+      limit: String(limit - media.length),
+      access_token: accessToken,
+    });
+    if (after) params.set("after", after);
+    const res = await fetch(`${GRAPH}/me/media?${params}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) throw await instagramError(res, "media");
+    const json = (await res.json()) as {
+      data?: InstagramMedia[];
+      paging?: { next?: string; cursors?: { after?: string } };
+    };
+    media.push(...(json.data ?? []).slice(0, limit - media.length));
+    after = json.paging?.cursors?.after;
+    if (!json.paging?.next || !after || cursors.has(after)) break;
+    cursors.add(after);
+  }
+  const videos = mapInstagramMedia([
+    ...new Map(media.map((item) => [item.id, item])).values(),
+  ]);
 
   // View counts are not on the media node; each needs its own insights call
   // (requires instagram_business_manage_insights). Fetch in parallel and fail
   // soft to 0 so a missing metric never blocks the list.
-  const views = await Promise.all(
-    videos.map((v) => fetchViewCount(accessToken, v.id)),
-  );
+  const views: number[] = [];
+  // Keep provider concurrency bounded instead of launching 100 insights calls.
+  for (let offset = 0; offset < videos.length; offset += 5) {
+    views.push(
+      ...(await Promise.all(
+        videos
+          .slice(offset, offset + 5)
+          .map((v) => fetchViewCount(accessToken, v.id)),
+      )),
+    );
+  }
   return videos.map((v, i) => ({ ...v, viewCount: views[i] }));
 }
 

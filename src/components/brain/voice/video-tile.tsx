@@ -11,22 +11,24 @@ export default function VideoTile({
   video,
   selected,
   sampled,
+  disabled = false,
   onToggle,
 }: {
   platform: PublishPlatform;
   video: PlatformVideo;
   selected: boolean;
   sampled: boolean;
+  disabled?: boolean;
   onToggle: () => void;
 }) {
   const duration = formatDuration(video.durationSec ?? null);
   return (
     <button
       type="button"
-      disabled={sampled}
+      disabled={sampled || disabled}
       aria-pressed={selected}
       onClick={onToggle}
-      className={`group relative flex w-full gap-3 rounded-xl border p-2 text-left transition-colors disabled:cursor-default ${
+      className={`group focus-visible:outline-ring relative flex w-full gap-3 rounded-xl border p-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-default ${
         selected
           ? "border-[color:var(--sg-accent)] bg-[color:var(--sg-accent)]/5"
           : "border-border hover:bg-muted/40"

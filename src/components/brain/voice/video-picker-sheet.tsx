@@ -20,7 +20,7 @@ import type { PlatformVideo } from "@/lib/publish/client";
 import type { VoiceSample } from "@/lib/voice/client";
 import { sampleCredits, tooLong } from "@/lib/voice/units";
 
-const MAX_PICK = 8;
+const MAX_PICK = 10;
 
 /**
  * Pick published videos from a connected channel to teach the brain a voice.
@@ -99,7 +99,7 @@ export default function VideoPickerSheet({
 
   const close = (next: boolean) => {
     if (!next) {
-      if (busy) return;
+      if (busy || deriving) return;
       reset();
       setPicked(new Map());
     }
@@ -115,9 +115,9 @@ export default function VideoPickerSheet({
         <SheetHeader>
           <SheetTitle>Add videos to your voice</SheetTitle>
           <SheetDescription>
-            Pick videos you actually talk in. Each is transcribed once and kept
-            word for word. One credit covers three minutes; YouTube captions are
-            free.
+            Optionally pick up to 10 videos you actually talk in. Each is
+            transcribed once and kept word for word. One credit covers three
+            minutes; YouTube captions are free.
           </SheetDescription>
         </SheetHeader>
 
@@ -129,6 +129,7 @@ export default function VideoPickerSheet({
                 type="button"
                 role="tab"
                 aria-selected={active === p}
+                disabled={busy || deriving}
                 onClick={() => switchPlatform(p)}
                 className={`rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
                   active === p
@@ -167,6 +168,12 @@ export default function VideoPickerSheet({
                   video={video}
                   selected={picked.has(video.id)}
                   sampled={sampledIds.has(video.id)}
+                  disabled={
+                    busy ||
+                    deriving ||
+                    tooLong(video.durationSec ?? null) ||
+                    (!picked.has(video.id) && picked.size >= MAX_PICK)
+                  }
                   onToggle={() => toggle(video)}
                 />
               ))}
