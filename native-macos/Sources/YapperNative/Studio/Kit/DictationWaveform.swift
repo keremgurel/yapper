@@ -4,6 +4,7 @@ import SwiftUI
 /// row reads as a trail while nothing is said.
 struct DictationWaveform: View {
     let levels: [Double]
+    var height: CGFloat = 28
 
     var body: some View {
         Canvas { context, size in
@@ -21,7 +22,7 @@ struct DictationWaveform: View {
                 context.fill(Path(roundedRect: rect, cornerRadius: barWidth / 2), with: .color(.primary.opacity(0.8)))
             }
         }
-        .frame(height: 28)
+        .frame(height: height)
         .accessibilityLabel("Recording level")
     }
 }

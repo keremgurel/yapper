@@ -1,13 +1,13 @@
 import SwiftUI
 
-/// The thing you type into, at the foot of the conversation.
+/// The thing you type or talk into, at the foot of the conversation.
 ///
 /// One surface, not two. The box used to be a card sitting inside a bar with its
 /// own padding, its own border and a button parked outside it, which spent most
 /// of the panel's width on margins and left the send button floating in a strip
-/// of its own. Here the text, the hint and the send button share a single card:
-/// the text takes all the room, the controls sit on its bottom edge, and the
-/// whole card is the click target.
+/// of its own. Here the text, the hint, the mic and the send button share a
+/// single card: the text takes all the room, the controls sit on its bottom
+/// edge, and the whole card is the click target.
 struct AssistantComposer: View {
     @ObservedObject var session: EditorSession
     @Binding var instruction: String
@@ -20,6 +20,9 @@ struct AssistantComposer: View {
     let onListKey: (MentionTextView.ListKey) -> Bool
     let onEscape: () -> Void
     let onSend: () -> Void
+    /// Chirpy's own take, so talking here never lights up the idea composer
+    /// that may be sitting behind the panel.
+    @StateObject private var dictation = DictationController()
 
     /// The example it shows when empty. An overlay one, because overlays are
     /// the hardest thing to ask for in words — but nothing here refuses a
@@ -32,7 +35,8 @@ struct AssistantComposer: View {
     }
 
     private var canSend: Bool {
-        !isWorking && !isEmpty
+        !isWorking && !dictation.transcribing
+            && (dictation.recording || !isEmpty)
             && (session.assistantUsesStudioBrain || !session.project.clips.isEmpty)
     }
 
@@ -44,8 +48,9 @@ struct AssistantComposer: View {
                 placeholder: placeholder,
                 focusRequest: focusRequest,
                 onListKey: onListKey,
-                onEscape: onEscape,
-                onSubmit: onSend
+                onEscape: escape,
+                onDictate: { Task { await toggleVoice() } },
+                onSubmit: submit
             )
             .frame(minHeight: 46)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -76,29 +81,63 @@ struct AssistantComposer: View {
                 .strokeBorder(Color.studioLine, lineWidth: 1)
                 .allowsHitTesting(false)
         }
+        // The panel is torn down when it closes. A take still running then
+        // has nowhere to put its words, so it goes too.
+        .onDisappear { dictation.cancel() }
     }
 
     private var controls: some View {
-        HStack(spacing: 8) {
-            Text(session.assistantUsesStudioBrain && IdeaCanvasFocus.shared.runner != nil
-                 ? "1 credit per idea edit"
-                 : "2 credits to plan · generation costs extra")
-                .font(.system(size: 10.5))
-                .foregroundStyle(.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
-                // The hint is a label, not a target: clicking it has to reach
-                // the card underneath and put the caret in the text.
-                .allowsHitTesting(false)
+        HStack(spacing: 6) {
+            AssistantComposerStatus(
+                dictation: dictation,
+                hint: session.assistantUsesStudioBrain && IdeaCanvasFocus.shared.runner != nil
+                    ? "1 credit per idea edit"
+                    : "2 credits to plan · generation costs extra",
+                onRetryTake: { Task { insert(await dictation.retryUnsentTake()) } },
+                onStartTake: { Task { await toggleVoice() } }
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer(minLength: 8)
-
+            AssistantVoiceButton(dictation: dictation) { Task { await toggleVoice() } }
             sendButton
         }
         .frame(minHeight: 24)
     }
 
+    private func toggleVoice() async {
+        insert(await dictation.toggle())
+    }
+
+    /// Return and the send button both land here. Sending mid-take means
+    /// "send what I just said"; a silent or failed take leaves the box alone.
+    private func submit() {
+        Task {
+            guard !isWorking, !dictation.transcribing else { return }
+            if dictation.recording, !insert(await dictation.stop()) { return }
+            onSend()
+        }
+    }
+
+    /// Escape throws a running take away before it means "put Chirpy away".
+    private func escape() {
+        guard dictation.recording else { return onEscape() }
+        dictation.cancel()
+        focusRequest += 1
+    }
+
+    /// Puts dictated words in at the caret and the caret just past them.
+    @discardableResult
+    private func insert(_ heard: String?) -> Bool {
+        guard let heard else { return false }
+        let result = DictationInsertion.insert(heard, into: instruction, selection: NSRange(location: caret, length: 0))
+        instruction = result.text
+        caret = result.caret
+        focusRequest += 1
+        return true
+    }
+
     private var sendButton: some View {
-        Button(action: onSend) {
+        Button(action: submit) {
             Group {
                 if isWorking {
                     ProgressView().controlSize(.small).scaleEffect(0.72)
@@ -114,11 +153,13 @@ struct AssistantComposer: View {
         }
         .buttonStyle(.plain)
         .disabled(!canSend)
-        .help(
-            !session.assistantUsesStudioBrain && session.project.clips.isEmpty
-                ? "Import a video first"
-                : "Send · ⏎ · 2 credits to plan. Generation workflows have their usual additional charges."
-        )
+        .help(sendHelp)
         .animation(.easeOut(duration: 0.14), value: canSend)
+    }
+
+    private var sendHelp: String {
+        if !session.assistantUsesStudioBrain && session.project.clips.isEmpty { return "Import a video first" }
+        if dictation.recording { return "Send what you said · ⏎" }
+        return "Send · ⏎ · 2 credits to plan. Generation workflows have their usual additional charges."
     }
 }

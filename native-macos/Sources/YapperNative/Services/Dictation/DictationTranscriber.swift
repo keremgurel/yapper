@@ -18,7 +18,8 @@ enum DictationTranscriber {
         let words: [Word]?
 
         var text: String {
-            (words ?? []).map(\.text).joined(separator: " ").ideasTrimmed
+            (words ?? []).map(\.text).joined(separator: " ")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
         }
     }
 

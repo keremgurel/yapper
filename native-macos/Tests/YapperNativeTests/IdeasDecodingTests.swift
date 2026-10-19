@@ -119,10 +119,10 @@ struct IdeasDecodingTests {
     }
 
     @Test func dictationLandsAtTheCaret() {
-        let result = CaptureText.insertDictation("hello", into: "abc.", selection: NSRange(location: 3, length: 0))
+        let result = DictationInsertion.insert("hello", into: "abc.", selection: NSRange(location: 3, length: 0))
         #expect(result.text == "abc hello.")
         #expect(result.caret == 9)
-        let appended = CaptureText.insertDictation("more", into: "start", selection: NSRange(location: NSNotFound, length: 0))
+        let appended = DictationInsertion.insert("more", into: "start", selection: NSRange(location: NSNotFound, length: 0))
         #expect(appended.text == "start more")
     }
 

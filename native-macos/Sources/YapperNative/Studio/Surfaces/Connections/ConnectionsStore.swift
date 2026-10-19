@@ -64,8 +64,12 @@ final class ConnectionsStore: ObservableObject {
         guard connecting == platform else { return }
         connecting = nil
         let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
-        if query.contains(where: { $0.name == "connect_error" }) {
-            error = "The account wasn't connected. Choose Connect to try again."
+        if let failure = query.first(where: { $0.name == "connect_error" }) {
+            // Signing in again can't fix a broken TikTok app setup on our side,
+            // so that one says who has to act, the way the web page does.
+            error = failure.value == "tiktok_configuration"
+                ? "TikTok couldn’t connect because Yapper’s TikTok configuration needs fixing. Contact support; signing in again won’t resolve this."
+                : "The account wasn't connected. Choose Connect to try again."
         }
     }
 

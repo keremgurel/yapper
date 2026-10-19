@@ -41,15 +41,8 @@ final class ComposerActions: ObservableObject {
     }
 
     func toggleVoice() async {
-        guard !saving else { return }
-        switch dictation.phase {
-        case .idle:
-            if dictation.permissionBlocked && dictation.microphoneDenied { dictation.openMicrophoneSettings() } else { await dictation.start() }
-        case .recording:
-            await finishTake()
-        case .transcribing:
-            break
-        }
+        guard !saving, let heard = await dictation.toggle() else { return }
+        draft.insertDictation(heard)
     }
 
     /// Sends a take that failed to transcribe again, keeping its words.

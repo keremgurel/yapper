@@ -33,6 +33,8 @@ struct MentionTextView: NSViewRepresentable {
     /// Escape, when the list did not want it. Typing into a box is not a good
     /// enough reason for Escape to stop meaning "put this away".
     var onEscape: () -> Void = {}
+    /// ⌘D while the caret is in the box: start or stop a dictation take.
+    var onDictate: (() -> Void)?
     let onSubmit: () -> Void
 
     func makeCoordinator() -> Coordinator {
@@ -80,6 +82,7 @@ struct MentionTextView: NSViewRepresentable {
         context.coordinator.parent = self
         textView.onListKey = onListKey
         textView.onEscape = onEscape
+        textView.onDictate = onDictate
         textView.onSubmit = onSubmit
         textView.placeholderText = placeholder
         // Only write back when the model has moved on its own — accepting a
@@ -170,9 +173,50 @@ final class MentionScrollView: NSScrollView {
 final class MentionNSTextView: NSTextView {
     var onListKey: ((MentionTextView.ListKey) -> Bool)?
     var onEscape: (() -> Void)?
+    var onDictate: (() -> Void)?
     var onSubmit: (() -> Void)?
     var placeholderText = "" {
         didSet { needsDisplay = true }
+    }
+    /// Watches for ⌘D only while this box has the caret. A monitor rather
+    /// than a key equivalent, because the idea composer behind Chirpy binds
+    /// ⌘D to its own take, and the window would hand the key to whichever
+    /// shortcut it found first.
+    private var dictateMonitor: Any?
+
+    override func becomeFirstResponder() -> Bool {
+        let became = super.becomeFirstResponder()
+        if became { watchDictateKey() }
+        return became
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        if resigned { stopWatchingDictateKey() }
+        return resigned
+    }
+
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+        if newWindow == nil { stopWatchingDictateKey() }
+        super.viewWillMove(toWindow: newWindow)
+    }
+
+    private func watchDictateKey() {
+        guard dictateMonitor == nil else { return }
+        dictateMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, let onDictate = self.onDictate,
+                  let window = self.window, event.window === window, window.firstResponder === self,
+                  event.modifierFlags.intersection([.command, .control, .option, .shift]) == [.command],
+                  event.charactersIgnoringModifiers?.lowercased() == "d"
+            else { return event }
+            if !event.isARepeat { onDictate() }
+            return nil
+        }
+    }
+
+    private func stopWatchingDictateKey() {
+        if let dictateMonitor { NSEvent.removeMonitor(dictateMonitor) }
+        dictateMonitor = nil
     }
 
     override func keyDown(with event: NSEvent) {

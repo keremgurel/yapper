@@ -1,7 +1,8 @@
 import Foundation
 
 /// The composer's text rules, ported from the web's `link-spans`,
-/// `parse-capture`, `derive-type` and `insert-dictation`.
+/// `parse-capture` and `derive-type`. Dictation goes in through
+/// `DictationInsertion`, which Chirpy's box shares.
 ///
 /// Every range here is in UTF-16 units, because that is what the text view's
 /// selection speaks.
@@ -56,28 +57,6 @@ enum CaptureText {
         let hasWords = !(note ?? "").ideasTrimmed.isEmpty
         if hasLink && hasWords { return .semiOriginal }
         return hasLink ? .inspiration : .original
-    }
-
-    /// Splices dictated words in at the caret, replacing a selection, with the
-    /// spacing inferred. Returns the new text and where the caret belongs.
-    static func insertDictation(_ words: String, into current: String, selection: NSRange) -> (text: String, caret: Int) {
-        let spoken = words.ideasTrimmed
-        let ns = current as NSString
-        guard !spoken.isEmpty else { return (current, min(selection.location, ns.length)) }
-
-        let validStart = selection.location != NSNotFound && selection.location >= 0 && selection.location <= ns.length
-        let start = validStart ? selection.location : ns.length
-        let end = validStart ? min(max(selection.location + selection.length, start), ns.length) : start
-
-        let before = ns.substring(to: start)
-        let after = ns.substring(from: end)
-        let needsSpaceBefore = !before.isEmpty && !(before.last?.isWhitespace ?? false)
-        let closers: Set<Character> = [".", ",", ";", ":", "!", "?", ")", "]", "}"]
-        let needsSpaceAfter = !after.isEmpty && !(after.first.map { $0.isWhitespace || closers.contains($0) } ?? false)
-
-        let middle = (needsSpaceBefore ? " " : "") + spoken + (needsSpaceAfter ? " " : "")
-        let caret = (before as NSString).length + (middle as NSString).length - (needsSpaceAfter ? 1 : 0)
-        return (before + middle + after, caret)
     }
 }
 
