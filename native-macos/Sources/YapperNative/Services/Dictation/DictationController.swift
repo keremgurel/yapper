@@ -1,9 +1,11 @@
 import AppKit
 import AVFoundation
 
-/// The composer's dictation: start, stop and transcribe, or cancel. Lives
-/// outside the composer view so a take keeps going while the composer grows
-/// to the full window and back.
+/// One box's dictation: start, stop and transcribe, or cancel.
+///
+/// `shared` is the idea composer's. It lives outside that view so a take keeps
+/// going while the composer grows to the full window and back. Any other box
+/// makes its own, so a take in Chirpy never lights up the composer behind it.
 @MainActor
 final class DictationController: ObservableObject {
     static let shared = DictationController()
@@ -55,6 +57,21 @@ final class DictationController: ObservableObject {
         phase = .recording
         ticker = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
+        }
+    }
+
+    /// The mic button. Starts a take, or opens System Settings when only that
+    /// can bring the microphone back. With a take running, finishes it and
+    /// returns what was heard.
+    func toggle() async -> String? {
+        switch phase {
+        case .idle:
+            if permissionBlocked && microphoneDenied { openMicrophoneSettings() } else { await start() }
+            return nil
+        case .recording:
+            return await stop()
+        case .transcribing:
+            return nil
         }
     }
 

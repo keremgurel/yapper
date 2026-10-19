@@ -25,7 +25,7 @@ final class CaptureDraft: ObservableObject {
     /// Splices dictated words in at the caret and returns the full text.
     @discardableResult
     func insertDictation(_ words: String) -> String {
-        let result = CaptureText.insertDictation(words, into: text, selection: selection)
+        let result = DictationInsertion.insert(words, into: text, selection: selection)
         text = result.text
         selection = NSRange(location: result.caret, length: 0)
         return result.text
