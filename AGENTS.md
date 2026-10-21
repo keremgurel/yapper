@@ -4,6 +4,12 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+# Testing a change
+
+- Follow `docs/testing.md`. Test on dev before opening the PR and write the prod steps for after deploy, both signed in as `the.ypr.app+clerk_test@gmail.com` (dev code 424242).
+- In a worktree, run `bash scripts/link-worktree-env.sh` first. A worktree without `.env.local` is not a reason to skip signed-in checks.
+- Never sign in on prod yourself. Ask Kerem to sign the Browser pane in as the test account, then drive it.
+
 # Analytics access
 
 Yapper's PostHog project is separate from the CELPIP one, so the PostHog connector may not reach it. Query it directly:
