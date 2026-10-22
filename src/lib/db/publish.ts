@@ -489,7 +489,7 @@ export async function deleteConnection(
       eq(platformConnections.userId, userId),
       eq(platformConnections.platform, platform),
     );
-    // Serialize against a concurrent refresh/reconnect. Do not discard the
+    // Serialize deletion against concurrent credential writes. Do not discard the
     // credential needed to retry if the provider cannot confirm revocation.
     const [row] = await tx
       .select()

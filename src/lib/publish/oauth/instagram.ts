@@ -8,8 +8,7 @@ import {
 } from "./provider";
 
 // Instagram API with Instagram Login (no Facebook Page required). The account
-// must be a Professional account (Business or Creator) to publish; a personal
-// account can complete this OAuth but the publish call will 400.
+// must be a Professional account (Business or Creator).
 const AUTHORIZE = "https://www.instagram.com/oauth/authorize";
 const SHORT_TOKEN = "https://api.instagram.com/oauth/access_token";
 const GRAPH = "https://graph.instagram.com";

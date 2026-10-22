@@ -8,13 +8,12 @@ Record this 15–20 second script vertically, at 1080 × 1920 and 30 fps, using 
 
 > “Before I start a recording, I check three things. I put the camera at eye level, face a window for soft light, and record a few seconds to check the sound. Those simple checks help me make a clearer video.”
 
-Save the export as `camera-check-demo.mp4`. Use plain captions if desired. No music, promotional overlay, or Yapper/platform watermark is needed. This is a practical camera tip, not a sponsored advertisement or AI-generated likeness. Reuse the source across platforms; record a second take for the TikTok inbox example so the two TikTok results are distinguishable.
+Save the export as `camera-check-demo.mp4`. Use plain captions if desired. No music, promotional overlay, or Yapper/platform watermark is needed. This is a practical camera tip, not a sponsored advertisement or AI-generated likeness. Reuse this same source clip for Instagram and YouTube.
 
 Use these post fields:
 
 - Title where needed: `Three checks before recording`
 - Caption/description: `Camera at eye level. Face the light. Check the sound. Three simple checks before recording.`
-- Second-take caption: `A quick sound check before recording.`
 
 ## Set up the screen
 
@@ -33,7 +32,7 @@ Opening narration can be one sentence: “Yapper lets creators review an origina
 
 ## Export and submit
 
-Keep the raw recordings. Export the single TikTok recording as MP4/MOV under 50 MB. A readable 720p export can help; split footage instead of making text illegible. First-time TikTok review requires the sandbox and demonstrations of all selected scopes. [TikTok review guidelines](https://developers.tiktok.com/docs/en/our-guidelines-app-review-guidelines)
+Keep the raw recordings and the original sample MP4 until both reviews are complete.
 
 The live Meta draft was inspected on October 23: it has three separate screencast uploads, and **each permission asks to include the OAuth flow**. Make three focused exports from one Instagram master recording; see the exact mapping in [Instagram](instagram.md). Follow the upload control’s current format/size limits.
 
