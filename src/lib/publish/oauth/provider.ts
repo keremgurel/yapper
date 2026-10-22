@@ -46,8 +46,8 @@ export interface OAuthProvider {
     refreshToken?: string | null;
     expiresAt: Date | null;
   }>;
-  /** Identify the connected account for display. Best-effort: a failure here
-   * must not fail the connection, so it returns nulls. */
+  /** Identify the connected account. Providers may reject an unverifiable
+   * identity before it can replace a working connection. */
   fetchAccount(accessToken: string): Promise<OAuthAccount>;
 }
 

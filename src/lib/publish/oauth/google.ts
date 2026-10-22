@@ -52,6 +52,16 @@ export const google: OAuthProvider = {
       scope?: string;
     };
     if (!json.access_token) throw new Error("oauth_no_access_token");
+    // Google consent is granular: a successful exchange does not mean both
+    // permissions were granted. Never replace a working connection with one
+    // that cannot read the channel library or upload the reviewed video.
+    const granted = new Set(json.scope?.split(/\s+/).filter(Boolean));
+    if (!PLATFORMS.youtube.scopes.every((scope) => granted.has(scope))) {
+      throw new Error("youtube_permissions_required");
+    }
+    // Connections must survive the first access token's expiration. With
+    // offline access and prompt=consent, a successful reconnect supplies this.
+    if (!json.refresh_token) throw new Error("youtube_offline_access_required");
     return {
       accessToken: json.access_token,
       refreshToken: json.refresh_token ?? null,
@@ -91,7 +101,7 @@ export const google: OAuthProvider = {
       "https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true",
       { headers: { Authorization: `Bearer ${accessToken}` } },
     );
-    if (!res.ok) return { externalAccountId: null, handle: null };
+    if (!res.ok) throw new Error("youtube_channel_lookup_failed");
     const json = (await res.json()) as {
       items?: {
         id?: string;
@@ -99,6 +109,7 @@ export const google: OAuthProvider = {
       }[];
     };
     const ch = json.items?.[0];
+    if (!ch?.id) throw new Error("youtube_channel_required");
     return {
       externalAccountId: ch?.id ?? null,
       handle: ch?.snippet?.customUrl ?? ch?.snippet?.title ?? null,
