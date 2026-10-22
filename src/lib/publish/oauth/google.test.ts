@@ -79,18 +79,16 @@ describe("YouTube connection validation", () => {
   );
 
   it("uses the authenticated channel identity", async () => {
-    const fetcher = vi
-      .fn()
-      .mockResolvedValue(
-        Response.json({
-          items: [
-            {
-              id: "channel-1",
-              snippet: { title: "Channel", customUrl: "@channel" },
-            },
-          ],
-        }),
-      );
+    const fetcher = vi.fn().mockResolvedValue(
+      Response.json({
+        items: [
+          {
+            id: "channel-1",
+            snippet: { title: "Channel", customUrl: "@channel" },
+          },
+        ],
+      }),
+    );
     vi.stubGlobal("fetch", fetcher);
     expect(await google.fetchAccount("access")).toEqual({
       externalAccountId: "channel-1",
