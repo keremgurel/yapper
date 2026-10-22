@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const maintainYouTubeData = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/publish/youtube-maintenance", () => ({ maintainYouTubeData }));
 const processR2LifecycleBatch = vi.hoisted(() => vi.fn());
 const cleanupExpiredRateLimitBuckets = vi.hoisted(() => vi.fn());
 const releaseSupersededMediaBatch = vi.hoisted(() => vi.fn());
@@ -20,6 +22,13 @@ vi.mock("@/lib/db/rate-limit", () => ({ cleanupExpiredRateLimitBuckets }));
 import { GET } from "./route";
 
 beforeEach(() => {
+  maintainYouTubeData.mockResolvedValue({
+    checked: 0,
+    removed: 0,
+    pruned: 0,
+    failed: 0,
+    pending: false,
+  });
   reconcileR2Inventory.mockResolvedValue({
     scanned: 0,
     enqueued: 0,
@@ -56,6 +65,7 @@ describe("R2 lifecycle cron route", () => {
 
     expect(missing.status).toBe(401);
     expect(wrong.status).toBe(401);
+    expect(maintainYouTubeData).not.toHaveBeenCalled();
     expect(processR2LifecycleBatch).not.toHaveBeenCalled();
     expect(cleanupExpiredRateLimitBuckets).not.toHaveBeenCalled();
   });
@@ -184,4 +194,21 @@ describe("R2 lifecycle cron route", () => {
       supersededMedia: { released: 6, failed: 0 },
     });
   });
+});
+
+it("surfaces a YouTube verification backlog without skipping storage cleanup", async () => {
+  maintainYouTubeData.mockResolvedValue({
+    checked: 5,
+    removed: 0,
+    pruned: 0,
+    failed: 0,
+    pending: true,
+  });
+  const response = await GET(
+    new Request("https://example.test/api/internal/r2-lifecycle", {
+      headers: { authorization: "Bearer test-secret" },
+    }),
+  );
+  expect(response.status).toBe(503);
+  expect(processR2LifecycleBatch).toHaveBeenCalled();
 });

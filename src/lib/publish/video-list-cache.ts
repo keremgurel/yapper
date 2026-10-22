@@ -30,6 +30,10 @@ const cache = new Map<string, Entry>();
 function store(key: string, entry: Entry): void {
   cache.delete(key);
   cache.set(key, entry);
+  const expiry = setTimeout(() => {
+    if (cache.get(key) === entry) cache.delete(key);
+  }, TTL_MS);
+  expiry.unref?.();
   while (cache.size > MAX_ENTRIES) {
     const oldest = cache.keys().next().value;
     if (oldest === undefined) break;
@@ -64,7 +68,15 @@ export async function cachedVideoList<T>(
     return hit.videos as Promise<T[]>;
   }
 
-  const videos = load();
+  const videos = load().then(async (data) => {
+    // Another instance may have disconnected/reconnected while the API ran.
+    if (
+      platform === "youtube" &&
+      (await videoListStamp(userId, platform)) !== stamp
+    )
+      return [];
+    return data;
+  });
   const entry: Entry = { stamp, expiresAt: Date.now() + TTL_MS, videos };
   store(key, entry);
   videos.catch(() => {

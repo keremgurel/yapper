@@ -42,6 +42,7 @@ export interface PlatformVideo {
   title: string;
   thumbnail: string | null;
   viewCount: number;
+  insightsAvailable?: boolean;
   publishedAt: string;
   privacyStatus: string;
   url: string;

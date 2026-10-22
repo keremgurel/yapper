@@ -1,6 +1,6 @@
 # Instagram — one complete recording
 
-Aim for about 2–3 minutes plus necessary processing. Use the short introduction in Setup; no editor or AI-generation walkthrough is needed. Use an authorized Creator or Business account and an existing Reel with working insights. Rehearse first: a fallback zero view count does not prove insights access.
+Aim for about 2–3 minutes plus necessary processing. Use the short introduction in Setup; no editor or AI-generation walkthrough is needed. Use an authorized Creator or Business account and an existing Reel with working insights. Rehearse first: Poster shows a dash for unavailable insights; demonstrate a genuine numeric count from an older Reel.
 
 ## 1. Connect
 

@@ -45,14 +45,17 @@ export function savePillars(pillars: Pillar[]): void {
 export function loadItems(): InspirationItem[] {
   // Items saved before the video/creator split have no `kind` — treat them as
   // videos so the existing library keeps rendering.
-  return read<InspirationItem[]>(ITEMS_KEY, []).map((it) => ({
+  const items = read<InspirationItem[]>(ITEMS_KEY, []).map((it) => ({
     ...it,
     kind: it.kind ?? "video",
   }));
+  const clean = items.map(withoutYouTubeMetadata);
+  write(ITEMS_KEY, clean); // Upgrade legacy browser copies as soon as the app opens.
+  return clean;
 }
 
 export function saveItems(items: InspirationItem[]): void {
-  write(ITEMS_KEY, items);
+  write(ITEMS_KEY, items.map(withoutYouTubeMetadata));
 }
 
 export function newId(prefix: string): string {
@@ -60,4 +63,33 @@ export function newId(prefix: string): string {
     return `${prefix}-${crypto.randomUUID()}`;
   }
   return `${prefix}-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+}
+
+/** YouTube API metadata is session-only. Keep the creator's saved link, notes,
+ * transcript and organization; never persist feeds, metrics or API identity. */
+export function withoutYouTubeMetadata(item: InspirationItem): InspirationItem {
+  if (item.platform !== "youtube") return item;
+  return {
+    id: item.id,
+    kind: item.kind,
+    platform: item.platform,
+    pillarId: item.pillarId,
+    url: item.url,
+    title: item.url,
+    note: item.note,
+    transcript: item.transcript,
+    creatorItemId: item.creatorItemId,
+    createdAt: item.createdAt,
+  };
+}
+
+export const YOUTUBE_DISCONNECTED_EVENT = "yapper:youtube-disconnected";
+export function clearYouTubeBrowserData() {
+  saveItems(loadItems());
+  try {
+    window.localStorage.setItem(YOUTUBE_DISCONNECTED_EVENT, String(Date.now()));
+  } catch {
+    /* Storage may be disabled. */
+  }
+  window.dispatchEvent(new Event(YOUTUBE_DISCONNECTED_EVENT));
 }

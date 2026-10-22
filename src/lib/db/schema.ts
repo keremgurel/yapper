@@ -856,6 +856,8 @@ export const publishJobs = pgTable(
     // claim supplies a key.
     idempotencyKey: text("idempotency_key"),
     providerState: jsonb("provider_state").$type<{
+      /** Local tombstone: provider data was erased; late responses must not restore it. */
+      dataDeleted?: boolean;
       mode?: "direct" | "inbox";
       accountId?: string;
       publishId?: string;

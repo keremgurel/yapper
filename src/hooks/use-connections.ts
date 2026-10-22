@@ -1,6 +1,10 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  clearYouTubeBrowserData,
+  YOUTUBE_DISCONNECTED_EVENT,
+} from "@/lib/inspiration/store";
 import { disconnectPlatform, fetchConnections } from "@/lib/publish/client";
 import type { PublishPlatform } from "@/lib/db/schema";
 import {
@@ -38,6 +42,38 @@ export function useConnections(enabled: boolean) {
       return null;
     }
   }, [refreshResource]);
+  useEffect(() => {
+    if (!enabled) return;
+    const clearChannel = () =>
+      mutateClientResource(STUDIO_RESOURCE_KEYS.channel("youtube"), {
+        connected: false,
+        videos: [],
+      });
+    const storage = (event: StorageEvent) => {
+      if (event.key === YOUTUBE_DISCONNECTED_EVENT) clearChannel();
+    };
+    const check = () => {
+      void refresh().then((saved) => {
+        if (
+          saved &&
+          !saved.connections.some(
+            (c) => c.platform === "youtube" && c.status === "active",
+          )
+        )
+          clearYouTubeBrowserData();
+      });
+    };
+    window.addEventListener(YOUTUBE_DISCONNECTED_EVENT, clearChannel);
+    window.addEventListener("storage", storage);
+    window.addEventListener("focus", check);
+    const timer = window.setInterval(check, 60 * 60_000);
+    return () => {
+      window.removeEventListener(YOUTUBE_DISCONNECTED_EVENT, clearChannel);
+      window.removeEventListener("storage", storage);
+      window.removeEventListener("focus", check);
+      window.clearInterval(timer);
+    };
+  }, [enabled, refresh]);
   const disconnect = useCallback(
     async (platform: PublishPlatform) => {
       if (running.current.has(platform)) return false;
@@ -46,6 +82,7 @@ export function useConnections(enabled: boolean) {
       setDisconnectError(null);
       try {
         await disconnectPlatform(platform);
+        if (platform === "youtube") clearYouTubeBrowserData();
         mutateClientResource(STUDIO_RESOURCE_KEYS.channel(platform), {
           connected: false,
           videos: [],

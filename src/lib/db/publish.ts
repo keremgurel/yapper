@@ -3,6 +3,7 @@ import { enrichRecording } from "@/lib/content/recording-memory";
 import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { encryptToken } from "@/lib/publish/tokens";
 import { getDb } from "./client";
+import { purgeYouTubeDataWithinTx } from "./youtube-data";
 import {
   contentItems,
   platformConnections,
@@ -57,13 +58,16 @@ export async function upsertConnection(
     status: "active" as const,
     updatedAt: new Date(),
   };
-  await getDb()
-    .insert(platformConnections)
-    .values({ userId, platform, ...encrypted })
-    .onConflictDoUpdate({
-      target: [platformConnections.userId, platformConnections.platform],
-      set: encrypted,
-    });
+  await getDb().transaction(async (tx) => {
+    await lockStorageUserWithinTx(tx, userId);
+    await tx
+      .insert(platformConnections)
+      .values({ userId, platform, ...encrypted })
+      .onConflictDoUpdate({
+        target: [platformConnections.userId, platformConnections.platform],
+        set: encrypted,
+      });
+  });
 }
 
 /** The full stored row for one connection, tokens still encrypted. Used by the
@@ -142,11 +146,13 @@ export async function updateAccessToken(
   // self-refreshing long-lived token); omitted keeps the stored refresh token.
   newRefreshToken?: string | null,
   expected?: { id: string; accessTokenEnc: string },
+  account?: { externalAccountId: string | null; handle: string | null },
 ): Promise<boolean> {
   const rows = await getDb()
     .update(platformConnections)
     .set({
       accessTokenEnc: encryptToken(accessToken),
+      ...account,
       ...(newRefreshToken
         ? { refreshTokenEnc: encryptToken(newRefreshToken) }
         : {}),
@@ -284,6 +290,26 @@ export async function claimPublishJob(
       };
     }
 
+    if (input.platform === "youtube") {
+      const [connection] = await tx
+        .select({ id: platformConnections.id })
+        .from(platformConnections)
+        .where(
+          and(
+            eq(platformConnections.userId, userId),
+            eq(platformConnections.platform, "youtube"),
+            eq(platformConnections.status, "active"),
+            input.providerState?.accountId
+              ? eq(
+                  platformConnections.externalAccountId,
+                  input.providerState.accountId,
+                )
+              : undefined,
+          ),
+        )
+        .limit(1);
+      if (!connection) return { kind: "unavailable" };
+    }
     await lockMediaReferenceWithinTx(tx, userId, input.mediaKey);
     const [object] = await tx
       .select({ state: r2Objects.state })
@@ -332,7 +358,12 @@ export async function completePublishJob(
       error: null,
       updatedAt: new Date(),
     })
-    .where(eq(publishJobs.id, id))
+    .where(
+      and(
+        eq(publishJobs.id, id),
+        sql`coalesce(${publishJobs.providerState}->>'dataDeleted', 'false') <> 'true'`,
+      ),
+    )
     .returning({
       contentItemId: publishJobs.contentItemId,
       userId: publishJobs.userId,
@@ -414,7 +445,12 @@ export async function failPublishJob(id: string, error: string): Promise<void> {
       error: error.slice(0, 500),
       updatedAt: new Date(),
     })
-    .where(eq(publishJobs.id, id));
+    .where(
+      and(
+        eq(publishJobs.id, id),
+        sql`coalesce(${publishJobs.providerState}->>'dataDeleted', 'false') <> 'true'`,
+      ),
+    );
 }
 
 /** Record why an irreversible provider attempt remains unresolved without
@@ -427,7 +463,12 @@ export async function notePublishJobPending(
   await getDb()
     .update(publishJobs)
     .set({ error: error.slice(0, 500), updatedAt: new Date() })
-    .where(eq(publishJobs.id, id));
+    .where(
+      and(
+        eq(publishJobs.id, id),
+        sql`coalesce(${publishJobs.providerState}->>'dataDeleted', 'false') <> 'true'`,
+      ),
+    );
 }
 
 /**
@@ -485,6 +526,7 @@ export async function deleteConnection(
   ) => Promise<void>,
 ): Promise<boolean> {
   return getDb().transaction(async (tx) => {
+    await lockStorageUserWithinTx(tx, userId);
     const match = and(
       eq(platformConnections.userId, userId),
       eq(platformConnections.platform, platform),
@@ -496,8 +538,12 @@ export async function deleteConnection(
       .from(platformConnections)
       .where(match)
       .for("update");
-    if (!row) return false;
+    if (!row) {
+      if (platform === "youtube") await purgeYouTubeDataWithinTx(tx, userId);
+      return false;
+    }
     await beforeDelete?.(row);
+    if (platform === "youtube") await purgeYouTubeDataWithinTx(tx, userId);
     await tx.delete(platformConnections).where(match);
     return true;
   });
@@ -548,6 +594,7 @@ export async function recordProviderPublishId(
       and(
         eq(publishJobs.id, id),
         inArray(publishJobs.status, ["uploading", "processing"]),
+        sql`coalesce(${publishJobs.providerState}->>'dataDeleted', 'false') <> 'true'`,
       ),
     );
 }

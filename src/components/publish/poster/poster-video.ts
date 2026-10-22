@@ -31,6 +31,7 @@ export type PosterVideo =
       caption?: string;
       thumbnail: string | null;
       viewCount: number;
+      insightsAvailable?: boolean;
       publishedAt: string;
       url: string;
       mediaKey?: string;
@@ -83,6 +84,7 @@ export function fromPlatform(
     caption: video.caption,
     thumbnail: video.thumbnail,
     viewCount: video.viewCount,
+    insightsAvailable: video.insightsAvailable,
     publishedAt: video.publishedAt,
     url: video.url,
     mediaKey: video.mediaKey,

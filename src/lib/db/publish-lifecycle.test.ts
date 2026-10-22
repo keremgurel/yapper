@@ -42,6 +42,7 @@ function fakeClaimDatabase(options: {
       .mockImplementationOnce(() => ({
         from: () => ({
           where: () => ({
+            limit: vi.fn().mockResolvedValue([]),
             for: () => ({
               limit: vi
                 .fn()

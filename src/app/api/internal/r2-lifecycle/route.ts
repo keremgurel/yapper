@@ -1,3 +1,4 @@
+import { maintainYouTubeData } from "@/lib/publish/youtube-maintenance";
 import { timingSafeEqual } from "node:crypto";
 import { releaseLapsedMediaBatch } from "@/lib/db/lapsed-media-retention";
 import {
@@ -46,6 +47,21 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const deadlineAt = Date.now() + ROUTE_BUDGET_MS;
+  let youtube = {
+    checked: 0,
+    removed: 0,
+    pruned: 0,
+    failed: 0,
+    pending: false,
+  };
+  try {
+    youtube = await maintainYouTubeData(
+      Math.min(deadlineAt, Date.now() + 15_000),
+    );
+  } catch {
+    youtube.failed++;
+    console.error("[maintenance] YouTube data cleanup failed");
+  }
   let supersededMedia = { released: 0, failed: 0 };
   try {
     supersededMedia = await releaseSupersededMediaBatch();
@@ -105,6 +121,8 @@ export async function GET(request: Request): Promise<Response> {
   // Surface partial failure to cron/uptime monitoring instead of reporting a
   // healthy 200 while undeleted media or expired counters keep accumulating.
   const failed =
+    youtube.failed > 0 ||
+    youtube.pending ||
     supersededMedia.failed > 0 ||
     postedMedia.failed > 0 ||
     lapsedMedia.failed > 0 ||
@@ -114,6 +132,7 @@ export async function GET(request: Request): Promise<Response> {
   return Response.json(
     {
       ...result,
+      youtube,
       postedMedia,
       supersededMedia,
       lapsedMedia,

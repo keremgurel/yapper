@@ -1,22 +1,33 @@
+import { removeRejectedYouTubeConnection } from "@/lib/db/youtube-data";
+vi.mock("@/lib/db/youtube-data", () => ({
+  removeRejectedYouTubeConnection: vi.fn(),
+}));
 import { beforeEach, expect, it, vi } from "vitest";
 import {
   getConnectionRow,
   markConnectionExpired,
   updateAccessToken,
 } from "@/lib/db/publish";
-import { refreshAccessToken } from "./oauth";
+import { fetchAccount, refreshAccessToken } from "./oauth";
 import { getFreshAccessToken } from "./connection";
 vi.mock("@/lib/db/publish", () => ({
   getConnectionRow: vi.fn(),
   markConnectionExpired: vi.fn(),
   updateAccessToken: vi.fn(),
 }));
-vi.mock("./oauth", () => ({ refreshAccessToken: vi.fn() }));
+vi.mock("./oauth", () => ({
+  refreshAccessToken: vi.fn(),
+  fetchAccount: vi.fn(),
+}));
 vi.mock("./tokens", () => ({
   decryptToken: (value: string) => `decrypted:${value}`,
 }));
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(fetchAccount).mockResolvedValue({
+    externalAccountId: "original",
+    handle: "Original",
+  });
   vi.mocked(getConnectionRow).mockResolvedValue({
     id: "connection",
     userId: "user",
@@ -55,6 +66,7 @@ it("conditions token replacement on the exact connection that was refreshed", as
     expect.any(Date),
     "rotated",
     { id: "connection", accessTokenEnc: "old" },
+    { externalAccountId: "original", handle: "Original" },
   );
 });
 it("stops if reconnecting changed the connection while refresh was in flight", async () => {
@@ -88,4 +100,27 @@ it("marks the login expired when the refusal was not a race", async () => {
     "tiktok_reauth_required",
   );
   expect(markConnectionExpired).toHaveBeenCalledWith("user", "tiktok");
+});
+
+it("erases rejected YouTube grants using the original credential as a race guard", async () => {
+  vi.mocked(refreshAccessToken).mockRejectedValue(
+    new Error("oauth_refresh_invalid_grant"),
+  );
+  await expect(getFreshAccessToken("user", "youtube")).rejects.toThrow(
+    "youtube_reauth_required",
+  );
+  expect(removeRejectedYouTubeConnection).toHaveBeenCalledWith(
+    "user",
+    expect.objectContaining({ id: "connection", accessTokenEnc: "old" }),
+  );
+  expect(markConnectionExpired).not.toHaveBeenCalled();
+});
+it("keeps YouTube data on a configuration failure", async () => {
+  vi.mocked(refreshAccessToken).mockRejectedValue(
+    new Error("google_refresh_401"),
+  );
+  await expect(getFreshAccessToken("user", "youtube")).rejects.toThrow(
+    "google_refresh_401",
+  );
+  expect(removeRejectedYouTubeConnection).not.toHaveBeenCalled();
 });
