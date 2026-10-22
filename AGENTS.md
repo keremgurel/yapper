@@ -6,7 +6,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # Testing a change
 
-- Follow `docs/testing.md`. Test on dev before opening the PR and write the prod steps for after deploy, both signed in as `the.ypr.app+clerk_test@gmail.com` (dev code 424242).
+- Follow `docs/testing.md`. Test on dev before opening the PR and write the prod steps for after deploy, using `the.ypr.app+clerk_test@gmail.com` on dev (code 424242) and `the.ypr.app+qa@gmail.com` on prod (real email verification). Do not use Clerk’s reserved test-address suffix in production.
 - In a worktree, run `bash scripts/link-worktree-env.sh` first. A worktree without `.env.local` is not a reason to skip signed-in checks.
 - Never sign in on prod yourself. Ask Kerem to sign the Browser pane in as the test account, then drive it.
 

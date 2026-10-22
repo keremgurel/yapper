@@ -11,7 +11,8 @@ Mark each step run or not run. Setup, Premium and the format are in
 docs/testing.md.
 -->
 
-Account: `the.ypr.app+clerk_test@gmail.com` (dev code 424242)
+Dev account: `the.ypr.app+clerk_test@gmail.com` (code 424242)
+Prod account: `the.ypr.app+qa@gmail.com` (real email verification)
 
 Dev (http://localhost:3000), run by:
 
