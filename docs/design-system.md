@@ -81,6 +81,11 @@ switching. Auth pages are public with noindex metadata; Studio and its API keep
 their existing authentication gates. Preserve Clerk's return URL, with Studio
 home as the fallback. Native handoff pages retain their separate flow.
 
+Code-verification steps share one centered axis for their heading, explanation,
+account identity, code fields and resend action. Ordinary sign-in/up form headers
+and field labels remain left aligned. Long account identities wrap within the
+form instead of pushing the edit control outside the shared gutters.
+
 ## Buttons
 
 All standard actions use `Button` from `src/components/ui/button.tsx`.
