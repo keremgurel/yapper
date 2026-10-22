@@ -1,23 +1,21 @@
 # Testing a change
 
 Every change gets tested on dev before it merges and on prod after it deploys,
-signed in as the same test account. A PR's testing steps should be something
+signed in as the designated test account for that environment. A PR's testing steps should be something
 Kerem can follow without reading the diff or setting anything up.
 
 ## The test account
 
-Sign in as `the.ypr.app+clerk_test@gmail.com`.
+Use the address for the environment below.
 
-|                | Dev                            | Prod                                                      |
-| -------------- | ------------------------------ | --------------------------------------------------------- |
-| Site           | `http://localhost:3000`        | `https://ypr.app`                                         |
-| Clerk instance | development (`pk_test`)        | `clerk.ypr.app`                                           |
-| Sign-in code   | `424242`, and no email is sent | a real code, delivered to the the.ypr.app@gmail.com inbox |
+|                | Dev                                | Prod                                                      |
+| -------------- | ---------------------------------- | --------------------------------------------------------- |
+| Site           | `http://localhost:3000`            | `https://ypr.app`                                         |
+| Clerk instance | development (`pk_test`)            | `clerk.ypr.app`                                           |
+| Email          | `the.ypr.app+clerk_test@gmail.com` | `the.ypr.app+qa@gmail.com`                                |
+| Sign-in code   | `424242`, and no email is sent     | a real code, delivered to the the.ypr.app@gmail.com inbox |
 
-Clerk treats any `+clerk_test` address on a development instance as a test
-address. Production treats it as an ordinary address, and Gmail delivers it to
-the.ypr.app@gmail.com. Speaking Practice uses the same address on its own Clerk
-instances.
+Clerk reserves `+clerk_test` addresses for test mode, enabled by default on development instances. They are not ordinary production addresses: production rejected this address with “Email address must be a valid email address.” Keep production test mode disabled and use the ordinary `+qa` alias, whose real verification email reaches `the.ypr.app@gmail.com`. See [Clerk’s test-email guidance](https://clerk.com/docs/guides/development/testing/test-emails-and-phones).
 
 Dev and prod are separate Clerk users with separate data. Create the dev one
 with `npm run test-account`; dev sign-up asks for a password and the script
@@ -53,15 +51,15 @@ sign-in path with this account.
 
 ## Prod
 
-After the deploy finishes, open the page on ypr.app, sign in as the test
-account and take the code from the the.ypr.app@gmail.com inbox. The session
+After the deploy finishes, open the page on ypr.app, sign in as `the.ypr.app+qa@gmail.com`
+and take the code from the the.ypr.app@gmail.com inbox. The session
 persists, so later checks in the same browser skip this step.
 
 Agents never sign in on prod. Open the Browser pane on the page, ask Kerem to
 sign in as the test account, then run the steps in that pane.
 
 The test account's prod events reach PostHog like anyone else's. Exclude emails
-containing `+clerk_test` when reading numbers.
+matching `the.ypr.app+qa@gmail.com` and any development addresses containing `+clerk_test` when reading numbers.
 
 ## Credits
 
@@ -73,7 +71,8 @@ check on prod needs a purchase, ask Kerem first.
 Fill the PR's testing section like this:
 
 ```
-Account: the.ypr.app+clerk_test@gmail.com (dev code 424242)
+Dev account: the.ypr.app+clerk_test@gmail.com (code 424242)
+Prod account: the.ypr.app+qa@gmail.com (real email verification)
 
 Dev, run by <who>:
 1. Open http://localhost:3000/<page>, signed in. Expect ...
