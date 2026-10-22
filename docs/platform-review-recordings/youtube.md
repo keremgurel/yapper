@@ -27,7 +27,7 @@ If a warning appears, add:
 
 ## 2. Show read access
 
-**Do:** Show the connected channel in Connections, then Poster → YouTube source tab. Show existing videos and their titles, thumbnails, and view counts. Briefly open an existing user-selected YouTube creator feed in Inspiration, since that use is included in the prepared scope explanation.
+**Do:** Show the connected channel in Connections, then Poster → YouTube source tab. Show existing videos and their titles, thumbnails, and view counts. Open [Inspiration](https://studio.ypr.app/studio/inspiration) directly (it is not in the current sidebar), choose Creators and open a YouTube creator you saved. Prepare or refresh that feed during rehearsal so real titles, thumbnails and metrics are visible. This use is included in the prepared scope explanation.
 
 > “Yapper shows my connected channel and its video library. It also reads public video information for creator feeds I choose to follow.”
 
@@ -51,6 +51,6 @@ Only narrate the result once the video appears. Read the visible value; do not c
 
 > “Disconnect revokes Yapper’s Google access. My videos remain on YouTube. Because Google sign-in shares this project, Google may ask me to authorize it again next time. Our privacy policy explains data handling and deletion requests.”
 
-Use this narration only after the revocation fix has deployed and passed the rehearsal. Do not claim that all retained API data is deleted until the separate retention work in the rollout ledger is complete.
+Use this narration only after the revocation fix has deployed and passed the rehearsal. The server-side cleanup is now deployed. Legacy browser metadata clears when that browser next opens the library; do not claim instant remote erasure of offline devices. Original source files and user-authored notes remain.
 
 Upload this review recording itself as an Unlisted YouTube video and test its link signed out. Use that link in Google's Data Access form. The current form requires coverage of all OAuth clients in the project: the website sign-in and YouTube connection flows above cover the two clients currently listed. Recheck Clients if another is added. [Google verification guidance](https://support.google.com/cloud/answer/13461325?hl=en)

@@ -45,7 +45,7 @@ Control names and behavior in this pack were checked against Yapper's current so
 Do these once without recording at https://studio.ypr.app:
 
 1. Connections: connect the intended YouTube channel and Instagram Business/Creator account; approve all permissions and verify each displayed identity. Reload and confirm both remain connected.
-2. Poster: open each channel source and refresh it. Check existing thumbnails/titles, and a numeric Instagram view count for an older Reel. A dash or loading/error state must be resolved before recording.
+2. Poster: open each channel source and refresh it. Check existing thumbnails/titles, and a numeric Instagram view count for an older Reel. A dash or loading/error state must be resolved before recording. For Google, also prepare a YouTube creator feed at https://studio.ypr.app/studio/inspiration so its actual public metadata is visible during the read-access segment.
 3. Poster → Uploads → Add video: upload the original MP4, open it and play the preview. Select YouTube only, fill title/description, choose Unlisted, answer audience/synthetic-media questions truthfully, and publish once. Open the actual result in YouTube Studio and verify playback, identity and visibility.
 4. Use the same source for Instagram only. Review preview/caption/account, publish once, then open the actual Reel and confirm playback and caption. Leave time for platform processing and use Check publish status if offered.
 5. Disconnect YouTube in Connections. Confirm its library disappears and the original MP4 remains in Uploads. Reconnect and verify the channel returns. Google may ask to reauthorize website sign-in too.
