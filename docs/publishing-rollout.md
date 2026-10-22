@@ -82,3 +82,11 @@ The technical cleanup is now implemented in PR #307:
 - Attach actual review videos, submit the Google and Meta reviews, resolve feedback, then activate approved access. Neither provider's approval is implied by saved form progress.
 
 Facebook remains paused and unattended scheduling remains out of scope for these demos.
+
+## October 23 production release verification
+
+PR #307 merged as `65a85797dbc0d8834b9c48a44c58c0137e7c8375`. Vercel deployment `dpl_EMe9PQKFaMfhZDReHq64SU5p375b` is READY on ypr.app and studio.ypr.app. Required web CI (lint, formatting, typecheck, complete test suite and build) and PostgreSQL integration passed. No schema migration or new environment variable was needed; production CRON_SECRET and provider credentials already exist.
+
+The initial maintenance pass used the merged implementation against the shared production database after verifying the YouTube client and encrypted credentials. It checked/refreshed two valid grants, removed one invalid/inactive connection, pruned 24 old/orphan publish metadata rows, and reported zero failures and no backlog. The existing daily cron continues the lifecycle. This operation did not delete original source files or user-authored captions/notes.
+
+Dev sign-in used the designated development account. Connections, Poster and Brain loaded. Connected warning and unavailable-insights components were visually checked at 390px and 1280px using a temporary local-only fixture removed before commit. Production's owner-established QA session remained signed in. The recording instructions now match the live Uploads tab and Add video file picker. Real provider connection/publication and the reviewer login are still owner rehearsal gates, not claimed as verified by these technical checks.
