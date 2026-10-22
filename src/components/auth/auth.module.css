@@ -82,6 +82,17 @@
   gap: 12px;
 }
 
+/* Clerk centers code entry and the account identity. Match that axis on
+   every OTP step, while keeping ordinary sign-in/up form headers left aligned. */
+.card:has(.otpField) .formHeader {
+  text-align: center;
+}
+
+.identityText {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .title {
   color: var(--sg-text);
   font-size: 32px;

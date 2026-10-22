@@ -32,6 +32,8 @@ const appearance: NonNullable<ComponentProps<typeof SignIn>["appearance"]> = {
     header: styles.formHeader,
     headerTitle: styles.title,
     headerSubtitle: styles.subtitle,
+    otpCodeField: styles.otpField,
+    identityPreviewText: styles.identityText,
     socialButtonsBlockButton: styles.socialButton,
     lastAuthenticationStrategyBadge: styles.lastUsed,
     socialButtonsProviderIcon__apple: styles.appleIcon,
