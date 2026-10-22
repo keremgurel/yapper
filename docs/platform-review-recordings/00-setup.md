@@ -17,7 +17,7 @@ Use these post fields:
 
 ## Set up the screen
 
-For the current Instagram and Google reviews, use the **web app only**. There is no need to record Lab, Recorder, the native Editor, AI generation, Facebook, TikTok, or scheduling. Upload the finished MP4 in Poster with **Add video → Uploads**. The reviewer instructions already use this route. TikTok is approved; do not record another TikTok demo unless TikTok requests one.
+For the current Instagram and Google reviews, use the **web app only**. There is no need to record Lab, Recorder, the native Editor, AI generation, Facebook, TikTok, or scheduling. Upload the finished MP4 in Poster with **Uploads → Add video → choose the MP4 file**. The reviewer instructions already use this route. TikTok is approved; do not record another TikTok demo unless TikTok requests one.
 
 1. Enable Do Not Disturb and close unrelated private tabs. Use English for provider consent screens and narration.
 2. Prepare a YouTube channel with existing videos and an Instagram Creator or Business account with an existing Reel whose insights work. While Meta is in development, use an eligible account added to the app's roles/test setup. Ordinary customer access needs approved Advanced Access.
@@ -46,7 +46,7 @@ Do these once without recording at https://studio.ypr.app:
 
 1. Connections: connect the intended YouTube channel and Instagram Business/Creator account; approve all permissions and verify each displayed identity. Reload and confirm both remain connected.
 2. Poster: open each channel source and refresh it. Check existing thumbnails/titles, and a numeric Instagram view count for an older Reel. A dash or loading/error state must be resolved before recording.
-3. Add video → Uploads: upload the original MP4, open it and play the preview. Select YouTube only, fill title/description, choose Unlisted, answer audience/synthetic-media questions truthfully, and publish once. Open the actual result in YouTube Studio and verify playback, identity and visibility.
+3. Poster → Uploads → Add video: upload the original MP4, open it and play the preview. Select YouTube only, fill title/description, choose Unlisted, answer audience/synthetic-media questions truthfully, and publish once. Open the actual result in YouTube Studio and verify playback, identity and visibility.
 4. Use the same source for Instagram only. Review preview/caption/account, publish once, then open the actual Reel and confirm playback and caption. Leave time for platform processing and use Check publish status if offered.
 5. Disconnect YouTube in Connections. Confirm its library disappears and the original MP4 remains in Uploads. Reconnect and verify the channel returns. Google may ask to reauthorize website sign-in too.
 6. Rehearse the dedicated Meta reviewer Yapper login using the credentials saved in Meta. Do not record or share passwords/OTP codes.

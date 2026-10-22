@@ -16,7 +16,7 @@ Aim for about 2–3 minutes plus necessary processing. Use the short introductio
 
 ## 3. Review an original video
 
-**Do:** Made in Yapper → select your camera-check clip, or Add video for its export. Play the preview. Select only Instagram and edit its caption. Click Publish to 1 destination and show the correct account in the final sheet.
+**Do:** Poster → Uploads → select your camera-check clip, or Add video → choose the exported MP4. Play the preview. Select only Instagram and edit its caption. Click Publish to 1 destination and show the correct account in the final sheet.
 
 > “I select an original video, preview it, and edit the caption. I choose my connected Instagram account as the destination.”
 

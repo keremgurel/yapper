@@ -33,7 +33,7 @@ If a warning appears, add:
 
 ## 3. Review the upload
 
-**Do:** Poster → Add video → Uploads → select and preview your original MP4 (or use its already-saved Made in Yapper entry) → choose only YouTube. Edit the title and description. Choose a video frame for the cover if required. Click Publish to 1 destination, and show the destination channel. Open the visibility selector to show all three choices, choose Unlisted, and answer the audience and altered/synthetic-media questions truthfully.
+**Do:** Poster → Uploads → Add video → choose and preview your original MP4 (or select its already-saved Uploads entry) → choose only YouTube. Edit the title and description. Choose a video frame for the cover if required. Click Publish to 1 destination, and show the destination channel. Open the visibility selector to show all three choices, choose Unlisted, and answer the audience and altered/synthetic-media questions truthfully.
 
 > “I choose my original video, edit its title and description, and confirm the connected channel. I choose Unlisted visibility and specify the audience and any realistic altered or synthetic content.”
 
