@@ -480,17 +480,27 @@ export async function archivedMediaKeysForPosts(
 export async function deleteConnection(
   userId: string,
   platform: PublishPlatform,
+  beforeDelete?: (
+    row: typeof platformConnections.$inferSelect,
+  ) => Promise<void>,
 ): Promise<boolean> {
-  const rows = await getDb()
-    .delete(platformConnections)
-    .where(
-      and(
-        eq(platformConnections.userId, userId),
-        eq(platformConnections.platform, platform),
-      ),
-    )
-    .returning({ platform: platformConnections.platform });
-  return rows.length > 0;
+  return getDb().transaction(async (tx) => {
+    const match = and(
+      eq(platformConnections.userId, userId),
+      eq(platformConnections.platform, platform),
+    );
+    // Serialize against a concurrent refresh/reconnect. Do not discard the
+    // credential needed to retry if the provider cannot confirm revocation.
+    const [row] = await tx
+      .select()
+      .from(platformConnections)
+      .where(match)
+      .for("update");
+    if (!row) return false;
+    await beforeDelete?.(row);
+    await tx.delete(platformConnections).where(match);
+    return true;
+  });
 }
 
 /** Update only the connection whose Facebook user authorized this selection. */

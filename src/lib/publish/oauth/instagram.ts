@@ -46,11 +46,25 @@ export const instagram: OAuthProvider = {
       }),
     });
     if (!short.ok) throw new Error(`oauth_exchange_${short.status}`);
-    const shortJson = (await short.json()) as {
+    type ShortToken = {
       access_token?: string;
       permissions?: string[] | string;
     };
+    const shortBody = (await short.json()) as ShortToken & {
+      data?: ShortToken[];
+    };
+    // Current Business Login documentation wraps the grant in data; older
+    // responses are flat. Validate the same grant regardless of envelope.
+    const shortJson = shortBody.data?.[0] ?? shortBody;
     if (!shortJson.access_token) throw new Error("oauth_no_access_token");
+    const permissions = Array.isArray(shortJson.permissions)
+      ? shortJson.permissions
+      : (shortJson.permissions ?? "").split(/[\s,]+/);
+    if (
+      !PLATFORMS.instagram.scopes.every((scope) => permissions.includes(scope))
+    ) {
+      throw new Error("instagram_permissions_required");
+    }
 
     // Upgrade the 1-hour token to a ~60-day long-lived token.
     const longUrl = new URL(`${GRAPH}/access_token`);
@@ -63,7 +77,14 @@ export const instagram: OAuthProvider = {
       access_token?: string;
       expires_in?: number;
     };
-    const token = longJson.access_token ?? shortJson.access_token;
+    if (
+      !longJson.access_token ||
+      !longJson.expires_in ||
+      longJson.expires_in <= 0
+    ) {
+      throw new Error("instagram_longlived_token_required");
+    }
+    const token = longJson.access_token;
     const scope = Array.isArray(shortJson.permissions)
       ? shortJson.permissions.join(",")
       : (shortJson.permissions ?? null);
@@ -108,14 +129,17 @@ export const instagram: OAuthProvider = {
     url.searchParams.set("fields", "user_id,username");
     url.searchParams.set("access_token", accessToken);
     const res = await fetch(url);
-    if (!res.ok) return { externalAccountId: null, handle: null };
+    if (!res.ok) throw new Error("instagram_account_lookup_failed");
     const json = (await res.json()) as {
       user_id?: string;
       id?: string;
       username?: string;
     };
+    const accountId = json.user_id ?? json.id;
+    if (!accountId || !json.username)
+      throw new Error("instagram_account_required");
     return {
-      externalAccountId: json.user_id ?? json.id ?? null,
+      externalAccountId: accountId,
       handle: json.username ? `@${json.username}` : null,
     };
   },

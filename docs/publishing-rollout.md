@@ -1,4 +1,4 @@
-# Publishing rollout — October 22, 2026
+# Publishing rollout — October 23, 2026
 
 ## Current gates
 
@@ -56,3 +56,22 @@ Meta's dedicated reviewer account and credentials were already present in the re
 The Meta reviewer instructions were updated to the matching date. Submit before December 1, 2026 or extend access again so reviewers retain a full year. The reviewer uses their own Instagram professional account; no personal Instagram credentials are supplied. Real reviewer sign-in remains to be rehearsed.
 
 PR #303 added Google grant/channel validation, passed CI and deployed successfully on October 22. After the owner signed in as `the.ypr.app+qa@gmail.com`, production Connections loaded with YouTube, TikTok and Instagram available and Facebook absent. An invalid-state YouTube callback returned the expected connection error; the QA account remained without connected channels. The original testing instructions incorrectly used Clerk’s reserved `+clerk_test` address on production; after the owner encountered its validation rejection, `docs/testing.md` was corrected to use an ordinary alias for production. Local signed-in navigation and invalid-state rejection passed; full-grant and incomplete-grant callback paths passed automated tests. These checks do not establish successful real provider posting.
+
+## October 23 connection hardening and launch blockers
+
+Both review consoles were rechecked. Their video blockers remain unchanged. Google has two clients: Yapper Website Login and Yapper website YT publish. Meta has three permission uploads; all three explicitly require OAuth footage. The recording pack now covers these without requiring a native-editor, AI-generation, Facebook or scheduling walkthrough.
+
+This branch adds Instagram's documented `data` token envelope alongside the legacy flat response, validates all three granted scopes, requires a valid long-lived token, and rejects failed/empty identity lookups. Rejected reconnects must not replace a working stored connection. Source: [Meta Business Login token exchange](https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-instagram-login/business-login).
+
+YouTube Disconnect now requests Google revocation before removing the stored credential, retains the credential for retry on provider failure, and clears the browser's cached channel list after success. Google revokes the combined project grant, so the Connections copy explains that website sign-in may ask for authorization again. This is a code change, not evidence that a live grant has been revoked successfully.
+
+**Do not call this production-ready solely because the review videos exist.** Outstanding checks/work:
+
+- Owner connects the intended YouTube and Instagram Professional accounts in the QA browser; it was waiting at Google's chooser (only unrelated TEF/Coglyde accounts were available).
+- Rehearse real original-video publication and verify the actual destination result. Verify real Instagram insights; the current list implementation falls back to zero when insights are unavailable.
+- Rehearse the dedicated Meta reviewer Yapper login using the credentials already saved in Meta; do not store the password here.
+- Finish YouTube retained API-data cleanup and periodic detection of grants revoked outside Yapper. Current disconnect removes tokens and the active browser's channel cache, but historical provider IDs/URLs, saved Inspiration creator metadata, and other-device caches need a complete lifecycle. Preserve user-authored originals and notes while removing provider-derived data. The public YouTube creator feed is already excluded from the shared server scrape cache.
+- Verify the revocation behavior and warning on dev and production after deployment. Do not claim this whole lifecycle is already compliant: YouTube requires immediate in-app token revocation and Authorized Data deletion within seven days, plus periodic external-revocation checks and associated deletion within thirty days. [YouTube developer policies, III.D.3](https://developers.google.com/youtube/terms/developer-policies)
+- Attach actual review videos, submit the Google and Meta reviews, resolve feedback, then activate approved access. Neither provider's approval is implied by saved form progress.
+
+Facebook remains paused and unattended scheduling remains out of scope for these demos.

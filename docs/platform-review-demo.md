@@ -1,49 +1,20 @@
-# Yapper review demos — one recording per platform
+# Instagram and YouTube review recording pack
 
-Active review scripts: TikTok, Instagram, and YouTube. Facebook is paused; its script is retained for a future rollout. The TikTok recording has already been submitted; record another only if its review requests updated evidence. Each starts with the same short app overview, then shows only that platform's complete integration. This replaces the earlier six-recording plan.
+Checked against the live review forms on October 23, 2026. Facebook stays paused. TikTok Direct Post is approved and its public test succeeded; no new TikTok demo is needed.
 
-## Shared opening — about 20 seconds
+Prepare **one original 15–20 second clip**, then record **two screen walkthroughs**:
 
-**Show Yapper opening:**
+| Session          | What to show                                                                                                                                        | Deliverable                                                                                    |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Google / YouTube | Google website sign-in, YouTube OAuth, channel identity and read features, reviewed original-video upload, actual YouTube Studio result, disconnect | One screen recording uploaded to YouTube as **Unlisted**, with a working reviewer link         |
+| Instagram        | Professional-account OAuth, same username and media, real insights, reviewed original Reel publication and actual Instagram result                  | Three focused MP4 exports from the same master, each retaining OAuth: basic, publish, insights |
 
-> “Hi [TikTok / Meta / Google] team, I'm Kerem. Yapper is a content studio for creators.”
+Use [Setup](platform-review-recordings/00-setup.md), then follow the exact actions and narration in [YouTube](platform-review-recordings/youtube.md) and [Instagram](platform-review-recordings/instagram.md).
 
-**Show Lab for 2–3 seconds:**
+The **Google demo recording itself** must be accessible by its unlisted YouTube link. Choosing Unlisted for the sample upload performed inside that demo is a separate, low-impact rehearsal choice. Do not confuse those two videos.
 
-> “In the Lab, we develop scripts.”
+No scheduling, Facebook Page, native Editor, or AI-generation demo is needed for this selected review scope. No provider review is submitted until the real flows and reviewer access work and the required evidence is attached. [Rollout ledger](publishing-rollout.md) distinguishes form completeness, technical readiness, rehearsal and approval.
 
-**Show Recorder for 2–3 seconds:**
+Google requires an end-to-end OAuth flow and working demonstrations of the requested scopes. The current project has two clients, so the script includes both website sign-in and YouTube publishing. [Google sensitive-scope verification](https://support.google.com/cloud/answer/13464321?hl=en)
 
-> “The Recorder captures video with a teleprompter.”
-
-**Show the native Editor for 2–3 seconds:**
-
-> “The Editor removes mistakes and adds captions.”
-
-**Show Poster, then Connections:**
-
-> “Poster publishes to your connected accounts. I'll show you the [platform] integration.”
-
-Use “Instagram” or “Facebook” in the last sentence when addressing Meta. Reuse the app footage; change the greeting and destination sentence. These are brief glimpses of prepared screens, not live creation/rendering demonstrations.
-
-## Active scripts
-
-| Recording | Suggested length | Script                                               |
-| --------- | ---------------- | ---------------------------------------------------- |
-| TikTok    | 3–4 minutes      | [TikTok](platform-review-recordings/tiktok.md)       |
-| Instagram | 2–3 minutes      | [Instagram](platform-review-recordings/instagram.md) |
-| YouTube   | 2–3 minutes      | [YouTube](platform-review-recordings/youtube.md)     |
-
-Allow extra time for consent and processing; readability matters more than a time target. Each file pairs exact actions with short narration. TikTok includes Direct Post and the inbox option in the same recording because both permissions are requested.
-
-The main sequence is: connect → show the account and relevant data → preview and edit → publish → show the real destination result → disconnect. Spend most of the time on this sequence. Do not rush past consent or TikTok's post settings to meet the suggested length.
-
-## Before filming
-
-Use the original camera-check sample and preparation notes in [Setup](platform-review-recordings/00-setup.md). YouTube and Instagram recordings do not exist yet (confirmed October 15, 2026). See [rollout status](publishing-rollout.md) for the live review gates. TikTok needs the sandbox and a private test account for Direct Post. Rehearse each actual publish; no successful authenticated end-to-end publication has been confirmed in this work yet.
-
-Use the deployed web Poster for YouTube: select visibility and audience before uploading, then verify the actual result in YouTube Studio. The current native source also includes equivalent controls; confirm your installed build has them before filming the Mac flow. Keep failures and pending results out of success narration, and label processing time cuts.
-
-One complete TikTok demo is permitted; multiple files are optional. Its requested products/scopes still need visible demonstrations. [TikTok review guidelines](https://developers.tiktok.com/docs/en/our-guidelines-app-review-guidelines)
-
-Use each Meta recording for its platform's requested permissions, following any per-permission attachment prompts in the console. Google's recording should cover all active OAuth clients assigned to the project and be supplied as a working YouTube demo link. [Google verification guidance](https://support.google.com/cloud/answer/13461325?hl=en)
+Meta's current draft requires a screencast per requested permission, including OAuth. Reuse common login footage in focused exports; this does not mean three separate shoots. [Meta screen-recording guidance](https://developers.facebook.com/docs/app-review/submission-guide/screen-recordings/)

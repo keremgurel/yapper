@@ -3,7 +3,10 @@
 import { useCallback, useRef, useState } from "react";
 import { disconnectPlatform, fetchConnections } from "@/lib/publish/client";
 import type { PublishPlatform } from "@/lib/db/schema";
-import { STUDIO_RESOURCE_KEYS } from "@/lib/client-resource-cache";
+import {
+  STUDIO_RESOURCE_KEYS,
+  mutateClientResource,
+} from "@/lib/client-resource-cache";
 import { useClientResource } from "@/hooks/use-client-resource";
 
 /** Shared saved connections. A disconnect becomes visible only after the server
@@ -43,6 +46,10 @@ export function useConnections(enabled: boolean) {
       setDisconnectError(null);
       try {
         await disconnectPlatform(platform);
+        mutateClientResource(STUDIO_RESOURCE_KEYS.channel(platform), {
+          connected: false,
+          videos: [],
+        });
         mutate((current) => ({
           connections:
             current?.connections.filter(

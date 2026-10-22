@@ -133,6 +133,13 @@ export default function ConnectionsPanel() {
                     : spec.postMeaning}
                 </p>
                 {connected && p === "tiktok" && <TikTokInsightsRow />}
+                {connected && p === "youtube" && (
+                  <p className="text-muted-foreground mt-2 max-w-lg text-xs">
+                    Disconnect revokes Yapper’s Google access. Your YouTube
+                    videos stay on YouTube. You may need to authorize Google
+                    sign-in again next time you log in to Yapper.
+                  </p>
+                )}
                 {connected && p === "facebook" && (
                   <FacebookPagePicker
                     key={connected.updatedAt}

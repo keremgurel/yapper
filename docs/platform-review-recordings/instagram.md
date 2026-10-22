@@ -1,6 +1,6 @@
 # Instagram — one complete recording
 
-Aim for about 2–3 minutes plus necessary processing. Start with the shared short introduction. Use an authorized Creator or Business account and an existing Reel with working insights. Rehearse first: a fallback zero view count does not prove insights access.
+Aim for about 2–3 minutes plus necessary processing. Use the short introduction in Setup; no editor or AI-generation walkthrough is needed. Use an authorized Creator or Business account and an existing Reel with working insights. Rehearse first: a fallback zero view count does not prove insights access.
 
 ## 1. Connect
 
@@ -28,10 +28,24 @@ Aim for about 2–3 minutes plus necessary processing. Start with the shared sho
 
 Say the result sentence only after the actual Reel appears.
 
+Refresh the Instagram source after the new Reel appears. For the insights demonstration, use the older Reel with available metrics; a new Reel may not have metrics immediately. Do not narrate an unavailable metric as a measured zero.
+
 ## 5. Close
 
 **Do:** Connections → Instagram → Disconnect. Show Connect again, then briefly show the deletion/contact section at https://ypr.app/privacy.
 
 > “I can disconnect Instagram here. Our privacy policy explains data handling and deletion requests.”
 
-This one recording covers basic account/media access, insights, and content publishing. Follow Meta's exact permission prompts when attaching it; use excerpts only if the review form requires them.
+## Export three files from this one master
+
+The live review draft has separate uploads for these permissions. **Each asks for the OAuth/login flow**: reuse the same uninterrupted connect footage at the start of all three exports. You do not need three shoots or three real posts.
+
+| File                     | Include from the master                                                                                                             | Attach to                            |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `instagram-basic.mp4`    | Connect/OAuth → same connected username → existing media captions/thumbnails                                                        | `instagram_business_basic`           |
+| `instagram-publish.mp4`  | Connect/OAuth → original clip preview → caption and correct account → final Publish → actual Reel and matching caption in Instagram | `instagram_business_content_publish` |
+| `instagram-insights.mp4` | Connect/OAuth → same account → existing Reel and real available view metric in Poster → refresh/retrieval                           | `instagram_business_manage_insights` |
+
+The basic permission explicitly asks for the same account's profile information (username is sufficient), the app's login credentials, and instructions identifying where that information appears. The dedicated Yapper reviewer login is already saved privately in Meta. **Do not provide Instagram credentials.** Rehearse the reviewer login before submission.
+
+Submit these as direct screencast file uploads in Meta, not as the Google demo link. Retain the full master and original clip until review is complete.
