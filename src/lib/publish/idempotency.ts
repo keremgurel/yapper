@@ -11,6 +11,12 @@ export function existingPublishResponse(
   platform: "youtube" | "instagram" | "tiktok" | "facebook",
   claim: Extract<PublishJobClaim, { kind: "existing" }>,
 ): Response {
+  if (claim.providerState?.dataDeleted) {
+    return Response.json(
+      { error: "publish_data_removed", jobId: claim.jobId },
+      { status: 409 },
+    );
+  }
   if (claim.status === "published") {
     if (platform === "youtube") {
       return Response.json({

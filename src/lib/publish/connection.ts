@@ -1,3 +1,4 @@
+import { removeRejectedYouTubeConnection } from "@/lib/db/youtube-data";
 import {
   getConnectionRow,
   markConnectionExpired,
@@ -5,7 +6,7 @@ import {
 } from "@/lib/db/publish";
 import { isRejectedLogin } from "@/lib/publish/rejected-login";
 import type { PublishPlatform } from "@/lib/db/schema";
-import { refreshAccessToken } from "@/lib/publish/oauth";
+import { fetchAccount, refreshAccessToken } from "@/lib/publish/oauth";
 import { decryptToken } from "@/lib/publish/tokens";
 
 /** Access tokens are refreshed this many ms before they actually expire, so a
@@ -85,9 +86,17 @@ export async function getFreshAccessToken(
       row.accessTokenEnc,
     );
     if (saved) return saved;
-    await markConnectionExpired(userId, platform);
+    if (platform === "youtube") {
+      await removeRejectedYouTubeConnection(userId, row);
+    } else {
+      await markConnectionExpired(userId, platform);
+    }
     throw new NoConnectionError(`${platform}_reauth_required`);
   }
+  const account =
+    platform === "youtube"
+      ? await fetchAccount("youtube", fresh.accessToken)
+      : undefined;
   const saved = await updateAccessToken(
     userId,
     platform,
@@ -97,6 +106,7 @@ export async function getFreshAccessToken(
     // refresh does not reach for the expired original.
     fresh.refreshToken,
     { id: row.id, accessTokenEnc: row.accessTokenEnc },
+    account,
   );
   if (!saved) throw new NoConnectionError(`${platform}_connection_changed`);
   return fresh.accessToken;

@@ -75,3 +75,11 @@ describe("cachedVideoList", () => {
     ]);
   });
 });
+
+it("discards a provider response arriving after disconnect", async () => {
+  const load = async () => {
+    videoListStamp.mockResolvedValue("|deleted");
+    return [{ id: "private-video" }];
+  };
+  expect(await cachedVideoList("user_a", "youtube", load)).toEqual([]);
+});

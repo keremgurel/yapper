@@ -6,10 +6,13 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
   loadItems,
+  withoutYouTubeMetadata,
+  YOUTUBE_DISCONNECTED_EVENT,
   loadPillars,
   newId,
   saveItems,
@@ -66,6 +69,7 @@ export function InspirationProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const dataGeneration = useRef(0);
   const [ready, setReady] = useState(false);
   const [pillars, setPillars] = useState<Pillar[]>([]);
   const [items, setItems] = useState<InspirationItem[]>([]);
@@ -87,6 +91,25 @@ export function InspirationProvider({
   useEffect(() => {
     if (ready) saveItems(items);
   }, [ready, items]);
+
+  useEffect(() => {
+    const clear = () => {
+      dataGeneration.current++;
+      setItems((current) => current.map(withoutYouTubeMetadata));
+    };
+    const storage = (event: StorageEvent) => {
+      if (event.key === YOUTUBE_DISCONNECTED_EVENT) clear();
+    };
+    window.addEventListener(YOUTUBE_DISCONNECTED_EVENT, clear);
+    window.addEventListener("storage", storage);
+    // Long-lived open tabs also discard API data; refresh explicitly to reload.
+    const timer = window.setInterval(clear, 60 * 60_000);
+    return () => {
+      window.removeEventListener(YOUTUBE_DISCONNECTED_EVENT, clear);
+      window.removeEventListener("storage", storage);
+      window.clearInterval(timer);
+    };
+  }, []);
 
   const addPillar = useCallback((name: string): string | null => {
     const trimmed = name.trim();
@@ -162,6 +185,7 @@ export function InspirationProvider({
       setScrapingIds((prev) =>
         prev.includes(item.id) ? prev : [...prev, item.id],
       );
+      const generation = dataGeneration.current;
       try {
         const res = await fetch("/api/inspiration/creator", {
           method: "POST",
@@ -174,7 +198,8 @@ export function InspirationProvider({
         if (isScrapeFailure(res.ok, data)) {
           throw new Error(data.error ?? `creator_${res.status}`);
         }
-        updateItem(item.id, creatorScrapePatch(data, item, Date.now()));
+        if (generation === dataGeneration.current)
+          updateItem(item.id, creatorScrapePatch(data, item, Date.now()));
       } catch {
         // Leave the item as-is; the UI shows a retry affordance.
         updateItem(item.id, { scrapedAt: Date.now() });

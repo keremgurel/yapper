@@ -25,6 +25,7 @@ export interface InstagramVideo {
   caption: string;
   thumbnail: string | null;
   viewCount: number;
+  insightsAvailable?: boolean;
   publishedAt: string;
   privacyStatus: string;
   url: string;
@@ -77,6 +78,7 @@ export function mapInstagramMedia(data: InstagramMedia[]): InstagramVideo[] {
       caption: m.caption ?? "",
       thumbnail: m.thumbnail_url ?? null,
       viewCount: 0,
+      insightsAvailable: false,
       publishedAt: m.timestamp ?? "",
       privacyStatus: "public",
       url: m.permalink ?? "",
@@ -106,31 +108,36 @@ export async function listInstagramVideos(
 
   // View counts are not on the media node; each needs its own insights call
   // (requires instagram_business_manage_insights). Fetch in parallel and fail
-  // soft to 0 so a missing metric never blocks the list.
+  // soft without presenting an unavailable metric as a genuine zero.
   const views = await Promise.all(
     videos.map((v) => fetchViewCount(accessToken, v.id)),
   );
-  return videos.map((v, i) => ({ ...v, viewCount: views[i] }));
+  return videos.map((v, i) => ({
+    ...v,
+    viewCount: views[i] ?? 0,
+    insightsAvailable: views[i] !== null,
+  }));
 }
 
-/** The play/view count for one media, or 0 if insights are unavailable (older
+/** The play/view count for one media, or null if insights are unavailable (older
  * media, missing scope, or a metric the account cannot report). */
 async function fetchViewCount(
   accessToken: string,
   mediaId: string,
-): Promise<number> {
+): Promise<number | null> {
   try {
     const url = `${GRAPH}/${mediaId}/insights?metric=views&access_token=${encodeURIComponent(
       accessToken,
     )}`;
     const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) return 0;
+    if (!res.ok) return null;
     const json = (await res.json()) as {
       data?: { values?: { value?: number }[] }[];
     };
-    return json.data?.[0]?.values?.[0]?.value ?? 0;
+    const value = json.data?.[0]?.values?.[0]?.value;
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
   } catch {
-    return 0;
+    return null;
   }
 }
 

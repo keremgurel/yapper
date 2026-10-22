@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { loadItems } from "@/lib/inspiration/store";
+import { loadItems, saveItems } from "@/lib/inspiration/store";
 
 function stubStorage(value: string | null) {
   vi.stubGlobal("window", {
@@ -36,4 +36,34 @@ describe("loadItems", () => {
     stubStorage("{not json");
     expect(loadItems()).toEqual([]);
   });
+});
+
+it("migrates old YouTube feed data but keeps the creator's link, note and organization", () => {
+  const setItem = vi.fn();
+  const item = {
+    id: "a",
+    kind: "creator",
+    platform: "youtube",
+    url: "https://youtube.com/@creator",
+    title: "API title",
+    thumbnail: "API avatar",
+    videos: [{ views: 100 }],
+    note: "My idea",
+    pillarId: "p",
+    createdAt: 1,
+  };
+  vi.stubGlobal("window", {
+    localStorage: { getItem: () => JSON.stringify([item]), setItem },
+  });
+  const items = loadItems();
+  expect(items[0]).toMatchObject({
+    note: "My idea",
+    pillarId: "p",
+    url: item.url,
+  });
+  expect(items[0]).not.toHaveProperty("videos");
+  expect(items[0]).not.toHaveProperty("thumbnail");
+  saveItems([{ ...items[0], title: "API title", videos: [] }]);
+  expect(setItem.mock.lastCall?.[1]).not.toContain("API title");
+  expect(setItem.mock.lastCall?.[1]).not.toContain('"videos"');
 });

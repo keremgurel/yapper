@@ -96,6 +96,22 @@ describe("YouTube connection validation", () => {
     });
     expect(fetcher).toHaveBeenCalledWith(expect.stringContaining("mine=true"), {
       headers: { Authorization: "Bearer access" },
+      signal: expect.any(AbortSignal),
+      cache: "no-store",
     });
   });
+});
+
+it.each([
+  ["invalid_grant", "oauth_refresh_invalid_grant"],
+  ["invalid_client", "google_refresh_400"],
+  ["temporarily_unavailable", "google_refresh_400"],
+])("distinguishes %s from a revoked grant", async (error, expected) => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(Response.json({ error }, { status: 400 })),
+  );
+  await expect(google.refreshAccessToken(creds, "refresh")).rejects.toThrow(
+    expected,
+  );
 });

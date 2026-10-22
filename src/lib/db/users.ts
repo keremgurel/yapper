@@ -1,9 +1,11 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import { WELCOME_CREDITS } from "./constants";
 import { enqueueAllUserObjectsWithinTx } from "./r2-lifecycle";
 import { lockStorageUserWithinTx } from "./storage-accounting";
-import { creditLedger, users } from "./schema";
+import { revokeGoogleToken } from "@/lib/publish/oauth/google-revoke";
+import { decryptToken } from "@/lib/publish/tokens";
+import { creditLedger, users, platformConnections } from "./schema";
 
 /**
  * Ids this instance has already seen in the users table. Rows are only removed
@@ -101,6 +103,20 @@ export async function deleteUser(id: string): Promise<void> {
       .limit(1);
     if (!user) return;
 
+    const [youtube] = await tx
+      .select()
+      .from(platformConnections)
+      .where(
+        and(
+          eq(platformConnections.userId, id),
+          eq(platformConnections.platform, "youtube"),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    const credential = youtube?.refreshTokenEnc ?? youtube?.accessTokenEnc;
+    if (credential) await revokeGoogleToken(decryptToken(credential));
+    // A failed revocation leaves the webhook retryable with its credential.
     await enqueueAllUserObjectsWithinTx(tx, id, "account_deleted");
     await tx.delete(users).where(eq(users.id, id));
   });

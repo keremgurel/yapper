@@ -76,6 +76,7 @@ export const google: OAuthProvider = {
   ): Promise<{ accessToken: string; expiresAt: Date | null }> {
     const res = await fetch(TOKEN, {
       method: "POST",
+      signal: AbortSignal.timeout(5_000),
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         client_id: creds.id,
@@ -84,7 +85,18 @@ export const google: OAuthProvider = {
         grant_type: "refresh_token",
       }),
     });
-    if (!res.ok) throw new Error(`oauth_refresh_${res.status}`);
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      // Only invalid_grant proves revocation. Configuration failures and
+      // outages must not erase a creator's working authorization.
+      throw new Error(
+        body?.error === "invalid_grant"
+          ? "oauth_refresh_invalid_grant"
+          : `google_refresh_${res.status}`,
+      );
+    }
     const json = (await res.json()) as {
       access_token?: string;
       expires_in?: number;
@@ -99,7 +111,11 @@ export const google: OAuthProvider = {
   async fetchAccount(accessToken: string): Promise<OAuthAccount> {
     const res = await fetch(
       "https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true",
-      { headers: { Authorization: `Bearer ${accessToken}` } },
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(5_000),
+        cache: "no-store",
+      },
     );
     if (!res.ok) throw new Error("youtube_channel_lookup_failed");
     const json = (await res.json()) as {

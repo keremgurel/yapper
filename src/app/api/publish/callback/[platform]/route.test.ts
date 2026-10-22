@@ -106,3 +106,30 @@ it("does not exchange a code from an invalid OAuth state", async () => {
   expect(fetcher).not.toHaveBeenCalled();
   expect(mocks.save).not.toHaveBeenCalled();
 });
+
+it.each([
+  { access_token: "short", permissions: "instagram_business_basic" },
+  {
+    data: [{ access_token: "short", permissions: "instagram_business_basic" }],
+  },
+])(
+  "keeps an existing Instagram connection when the grant is incomplete",
+  async (grant) => {
+    vi.stubEnv("INSTAGRAM_APP_ID", "client");
+    vi.stubEnv("INSTAGRAM_APP_SECRET", "secret");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json(grant)));
+    const response = await GET(
+      new Request(
+        "https://ypr.app/api/publish/callback/instagram?code=code&state=nonce",
+        {
+          headers: { cookie: "publish_state_instagram=nonce" },
+        },
+      ),
+      { params: Promise.resolve({ platform: "instagram" }) },
+    );
+    expect(response.headers.get("location")).toContain(
+      "connect_error=exchange_failed",
+    );
+    expect(mocks.save).not.toHaveBeenCalled();
+  },
+);

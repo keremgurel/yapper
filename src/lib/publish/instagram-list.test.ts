@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   captionToTitle,
+  listInstagramVideos,
   mapInstagramMedia,
   type InstagramMedia,
 } from "./instagram-list";
@@ -72,3 +73,24 @@ describe("mapInstagramMedia", () => {
     expect(out.map((v) => v.id)).toEqual(["new", "old"]);
   });
 });
+
+afterEach(() => vi.unstubAllGlobals());
+it.each([false, true])(
+  "distinguishes an unavailable insight from a real zero (%s)",
+  async (available) => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json({ data: [{ id: "reel", media_type: "VIDEO" }] }),
+      )
+      .mockResolvedValueOnce(
+        available
+          ? Response.json({ data: [{ values: [{ value: 0 }] }] })
+          : new Response(null, { status: 403 }),
+      );
+    vi.stubGlobal("fetch", fetcher);
+    const [video] = await listInstagramVideos("token");
+    expect(video.viewCount).toBe(0);
+    expect(video.insightsAvailable).toBe(available);
+  },
+);

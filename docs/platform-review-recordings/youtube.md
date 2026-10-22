@@ -1,8 +1,19 @@
 # YouTube — one complete recording
 
-Aim for about 2–3 minutes plus necessary processing. Start with the shared short introduction. Use a channel you control with existing videos and the integration for project yapper-502200. Branding is verified; scope verification is pending.
+Aim for about 3–5 minutes plus necessary processing. Use the one-sentence introduction in Setup; no native-editor walkthrough is needed. Use a channel you control with existing videos and the integration for project yapper-502200. Branding is verified; scope verification is pending.
 
 Before filming, verify the deployed composer shows Private, Unlisted, and Public visibility choices, a made-for-kids selector, and the altered/synthetic-media disclosure. Choose the truthful audience and disclosure for your sample; use Unlisted visibility for a low-impact upload test. These controls must be present in production before using this script.
+
+## 0. Show website sign-in
+
+The project's Clients page was checked on October 23. It has **two** OAuth clients, and the submission asks for all clients:
+
+- **Yapper Website Login** — `471533681107-qhpoldjkd68sk7ohf6fmif9cn0nlkvlj.apps.googleusercontent.com`
+- **Yapper website YT publish** — `471533681107-4lk9m7to18qu4tt0ug0i4dsqvcdb3531.apps.googleusercontent.com`
+
+**Do:** In a separate signed-out Yapper tab, click Continue with Google. Show Google's account/consent screens and the successful return to Studio. Keep the client ID on the authorization page identifiable where available; do not show any client secret. Show all requested permissions in English. Pause for private credentials only.
+
+> “First I sign in to Yapper with Google. This identifies my Yapper account. Connecting my YouTube channel is a separate step.”
 
 ## 1. Connect through Google
 
@@ -22,7 +33,7 @@ If a warning appears, add:
 
 ## 3. Review the upload
 
-**Do:** Poster → Made in Yapper → select and preview your original clip → choose only YouTube. Edit the title and description. Choose a video frame for the cover if required. Click Publish to 1 destination, and show the destination channel. Open the visibility selector to show all three choices, choose Unlisted, and answer the audience and altered/synthetic-media questions truthfully.
+**Do:** Poster → Add video → Uploads → select and preview your original MP4 (or use its already-saved Made in Yapper entry) → choose only YouTube. Edit the title and description. Choose a video frame for the cover if required. Click Publish to 1 destination, and show the destination channel. Open the visibility selector to show all three choices, choose Unlisted, and answer the audience and altered/synthetic-media questions truthfully.
 
 > “I choose my original video, edit its title and description, and confirm the connected channel. I choose Unlisted visibility and specify the audience and any realistic altered or synthetic content.”
 
@@ -38,6 +49,8 @@ Only narrate the result once the video appears. Read the visible value; do not c
 
 **Do:** Connections → YouTube → Disconnect; show Connect again. Briefly show the deletion/contact instructions at https://ypr.app/privacy.
 
-> “I can disconnect YouTube here. Our privacy policy explains data handling and deletion requests.”
+> “Disconnect revokes Yapper’s Google access. My videos remain on YouTube. Because Google sign-in shares this project, Google may ask me to authorize it again next time. Our privacy policy explains data handling and deletion requests.”
 
-Upload this review recording itself as an Unlisted YouTube video and test its link signed out. Use that link in Google's Data Access form. The current form requires coverage of all OAuth clients in the project: append other active clients' real authorization flows to this same recording if needed. [Google verification guidance](https://support.google.com/cloud/answer/13461325?hl=en)
+Use this narration only after the revocation fix has deployed and passed the rehearsal. Do not claim that all retained API data is deleted until the separate retention work in the rollout ledger is complete.
+
+Upload this review recording itself as an Unlisted YouTube video and test its link signed out. Use that link in Google's Data Access form. The current form requires coverage of all OAuth clients in the project: the website sign-in and YouTube connection flows above cover the two clients currently listed. Recheck Clients if another is added. [Google verification guidance](https://support.google.com/cloud/answer/13461325?hl=en)

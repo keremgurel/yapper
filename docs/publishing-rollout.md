@@ -1,4 +1,4 @@
-# Publishing rollout — October 22, 2026
+# Publishing rollout — October 23, 2026
 
 ## Current gates
 
@@ -56,3 +56,29 @@ Meta's dedicated reviewer account and credentials were already present in the re
 The Meta reviewer instructions were updated to the matching date. Submit before December 1, 2026 or extend access again so reviewers retain a full year. The reviewer uses their own Instagram professional account; no personal Instagram credentials are supplied. Real reviewer sign-in remains to be rehearsed.
 
 PR #303 added Google grant/channel validation, passed CI and deployed successfully on October 22. After the owner signed in as `the.ypr.app+qa@gmail.com`, production Connections loaded with YouTube, TikTok and Instagram available and Facebook absent. An invalid-state YouTube callback returned the expected connection error; the QA account remained without connected channels. The original testing instructions incorrectly used Clerk’s reserved `+clerk_test` address on production; after the owner encountered its validation rejection, `docs/testing.md` was corrected to use an ordinary alias for production. Local signed-in navigation and invalid-state rejection passed; full-grant and incomplete-grant callback paths passed automated tests. These checks do not establish successful real provider posting.
+
+## October 23 connection hardening and launch blockers
+
+Both review consoles were rechecked. Their video blockers remain unchanged. Google has two clients: Yapper Website Login and Yapper website YT publish. Meta has three permission uploads; all three explicitly require OAuth footage. The recording pack now covers these without requiring a native-editor, AI-generation, Facebook or scheduling walkthrough.
+
+This branch adds Instagram's documented `data` token envelope alongside the legacy flat response, validates all three granted scopes, requires a valid long-lived token, and rejects failed/empty identity lookups. Rejected reconnects must not replace a working stored connection. Source: [Meta Business Login token exchange](https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-instagram-login/business-login).
+
+YouTube Disconnect now requests Google revocation before removing the stored credential, retains the credential for retry on provider failure, and clears the browser's cached channel list after success. Google revokes the combined project grant, so the Connections copy explains that website sign-in may ask for authorization again. This is a code change, not evidence that a live grant has been revoked successfully.
+
+The technical cleanup is now implemented in PR #307:
+
+- Disconnect revokes Google first, then erases the connection and YouTube provider IDs/URLs/account metadata in one transaction. Account deletion also revokes Google before the user cascade; failures retain retry credentials.
+- Daily authenticated maintenance validates unattended Google grants and refreshes channel identity, detects `invalid_grant`, and removes rejected credentials plus their retained provider data. Configuration/network failures remain retryable. Unverified connections and retained publish metadata have a conservative 25-day limit; maintenance backlog/failure returns HTTP 503.
+- Historical orphan publish data is swept too. Creator-owned source files, captions, saved links and notes remain. Publish idempotency tombstones prevent late provider responses from recreating deleted metadata or duplicating an old intent.
+- YouTube Inspiration metadata is session-only. Legacy localStorage metadata is removed when that browser next opens the library; an offline device cannot be remotely wiped. Open tabs clear on disconnect and hourly expiry. The server channel cache expires after one minute and discards responses arriving after a connection changes.
+- Poster distinguishes unavailable Instagram insights (dash with an accessible explanation) from a confirmed numeric zero.
+
+**Technical deployment is not provider approval or proof of a live account's successful upload.** Remaining owner rehearsal and review steps:
+
+- Owner connects the intended YouTube channel and eligible Instagram Professional account in production, accepting the full requested permission set.
+- Rehearse real original-video publication and verify the actual destination result. Verify real Instagram insights on an older Reel; a dash means unavailable, not a successful insights demonstration.
+- Rehearse the dedicated Meta reviewer Yapper login using the credentials already saved in Meta; do not store the password here.
+- Rehearse YouTube Disconnect/reconnect in production. Confirm the connected library disappears, the original uploaded source remains in Uploads, and Google asks for authorization again. The warning explains that revocation can also affect website Google sign-in in the same project. Lifecycle unit/integration tests do not replace this live check. [YouTube developer policies, III.D.3](https://developers.google.com/youtube/terms/developer-policies)
+- Attach actual review videos, submit the Google and Meta reviews, resolve feedback, then activate approved access. Neither provider's approval is implied by saved form progress.
+
+Facebook remains paused and unattended scheduling remains out of scope for these demos.

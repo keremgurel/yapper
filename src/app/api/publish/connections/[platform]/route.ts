@@ -1,6 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { deleteConnection } from "@/lib/db/publish";
 import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
+import { revokeGoogleToken } from "@/lib/publish/oauth/google-revoke";
+import { decryptToken } from "@/lib/publish/tokens";
 
 export const runtime = "nodejs";
 
@@ -18,6 +20,19 @@ export async function DELETE(
   if (!publishPlatforms.includes(platform as PublishPlatform)) {
     return Response.json({ error: "unknown_platform" }, { status: 404 });
   }
-  const removed = await deleteConnection(userId, platform as PublishPlatform);
-  return Response.json({ removed });
+  try {
+    const removed = await deleteConnection(
+      userId,
+      platform as PublishPlatform,
+      platform === "youtube"
+        ? (row) =>
+            revokeGoogleToken(
+              decryptToken(row.refreshTokenEnc ?? row.accessTokenEnc),
+            )
+        : undefined,
+    );
+    return Response.json({ removed });
+  } catch {
+    return Response.json({ error: "disconnect_failed" }, { status: 503 });
+  }
 }

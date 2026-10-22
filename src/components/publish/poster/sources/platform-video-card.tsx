@@ -79,7 +79,16 @@ export default function PlatformVideoCard({
           <span>{when(video.publishedAt)}</span>
           <span className="inline-flex items-center gap-1 font-mono tabular-nums">
             <Eye aria-hidden className="h-3 w-3" />
-            {compactViews(video.viewCount)}
+            {video.insightsAvailable === false ? (
+              <span
+                title="Instagram insights are unavailable"
+                aria-label="Instagram insights are unavailable"
+              >
+                —
+              </span>
+            ) : (
+              compactViews(video.viewCount)
+            )}
           </span>
         </div>
       </button>
