@@ -91,7 +91,7 @@ describe("evaluateDestination", () => {
 });
 
 describe("publishSummary", () => {
-  it("counts only what can actually go", () => {
+  it("counts every selected destination and blocks partial publishing", () => {
     const ready = evaluateDestination(
       input("tiktok", {
         caption: { ...blankCaption("tiktok"), body: "Ready." },
@@ -105,14 +105,14 @@ describe("publishSummary", () => {
     const summary = publishSummary([ready, blocked]);
     expect(summary.ready).toBe(1);
     expect(summary.blocked).toBe(1);
-    expect(summary.canPublish).toBe(true);
-    expect(summary.label).toBe("Publish to 1 destination");
+    expect(summary.canPublish).toBe(false);
+    expect(summary.label).toBe("Publish to 2 destinations");
   });
 
   it("cannot publish when nothing is ready", () => {
     const summary = publishSummary([evaluateDestination(input("tiktok"))]);
     expect(summary.canPublish).toBe(false);
-    expect(summary.label).toBe("Nothing ready to publish");
+    expect(summary.label).toBe("Publish to 1 destination");
   });
 });
 
@@ -130,4 +130,38 @@ it("does not block a valid YouTube post while thumbnail extraction is unavailabl
   });
   expect(result.state).toBe("ready");
   expect(result.blockers).toEqual([]);
+});
+
+it("counts all three selections while YouTube still needs its title", () => {
+  const selected = ["youtube", "tiktok", "instagram"] as const;
+  const summary = publishSummary(
+    selected.map((platform) =>
+      evaluateDestination(
+        input(platform, {
+          caption: { ...blankCaption(platform), body: "Shared caption" },
+        }),
+      ),
+    ),
+  );
+  expect(summary.label).toBe("Publish to 3 destinations");
+  expect(summary.canPublish).toBe(false);
+  expect(summary.blocked).toBe(1);
+});
+it("allows publishing only when every selected destination is ready", () => {
+  const selected = ["youtube", "tiktok", "instagram"] as const;
+  const summary = publishSummary(
+    selected.map((platform) =>
+      evaluateDestination(
+        input(platform, {
+          caption: {
+            ...blankCaption(platform),
+            title: platform === "youtube" ? "Video title" : "",
+            body: "Shared caption",
+          },
+        }),
+      ),
+    ),
+  );
+  expect(summary.canPublish).toBe(true);
+  expect(summary.ready).toBe(3);
 });

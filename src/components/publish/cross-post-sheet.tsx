@@ -67,7 +67,7 @@ function postSource(
         description: body || undefined,
         contentItemId: source.contentItemId,
         thumbnailKey: source.thumbnailKey,
-        privacyStatus: youtubeSettings?.privacyStatus ?? "private",
+        privacyStatus: youtubeSettings?.privacyStatus ?? "public",
         selfDeclaredMadeForKids:
           youtubeSettings?.selfDeclaredMadeForKids ?? undefined,
         containsSyntheticMedia: youtubeSettings?.containsSyntheticMedia,
@@ -130,7 +130,15 @@ export default function CrossPostSheet({
   onClose,
   onNext,
   onCompleted,
+  embedded = false,
+  disabled = false,
+  beforePublish,
+  onBusy,
 }: {
+  onBusy?: (busy: boolean) => void;
+  embedded?: boolean;
+  disabled?: boolean;
+  beforePublish?: () => Promise<CrossPostTarget[] | undefined>;
   item?: CrossPostTarget;
   items?: CrossPostTarget[];
   /** Destinations chosen upstream, pre-ticked here so the creator does not
@@ -154,10 +162,17 @@ export default function CrossPostSheet({
     single?.initialTitle ?? single?.title ?? "",
   );
   const [caption, setCaption] = useState(single?.initialDescription ?? "");
-  const [youtubeSettings, setYouTubeSettings] = useState(
-    INITIAL_YOUTUBE_SETTINGS,
+  const [youtubeSettings, setYouTubeSettings] = useState<YouTubeSettings>(
+    embedded
+      ? {
+          ...INITIAL_YOUTUBE_SETTINGS,
+          privacyStatus: "public",
+          selfDeclaredMadeForKids: false,
+        }
+      : INITIAL_YOUTUBE_SETTINGS,
   );
   const [posting, setPosting] = useState(false);
+  const [publishError, setPublishError] = useState("");
   const [scheduling, setScheduling] = useState(false);
   const operation = useRef(false);
   const [tiktokReviews, setTikTokReviews] = useState<
@@ -196,7 +211,9 @@ export default function CrossPostSheet({
   );
   // A platform chosen upstream but never connected has no button here, so it
   // must not be posted to either.
-  const chosen = connected.filter((platform) => selected.has(platform));
+  const chosen = connected.filter((platform) =>
+    embedded ? initialPlatforms?.includes(platform) : selected.has(platform),
+  );
   const targets = crossPostTargets(chosen);
   // Only the surfaces that prepared nothing get an editable copy field, and
   // only for a single video: a batch has no one title.
@@ -228,6 +245,8 @@ export default function CrossPostSheet({
 
   const publish = async () => {
     if (
+      disabled ||
+      (embedded && chosen.length !== initialPlatforms?.length) ||
       !youtubeReady ||
       !tiktokReady ||
       operation.current ||
@@ -238,59 +257,72 @@ export default function CrossPostSheet({
       return;
     operation.current = true;
     setPosting(true);
-    setOutcomes([]);
-    const finished: SourceOutcome[] = [];
-    // Keep source files sequential so a multi-video batch does not hold several
-    // large uploads in memory. Each video's platform fan-out still runs in
-    // parallel and independently through runCrossPost.
-    for (const source of sources) {
-      await runCrossPost(
-        targets,
-        (platform) =>
-          postSource(
-            source,
-            platform,
-            editable,
-            attemptKeys.current!.forTarget(`${source.id}:${platform}`),
-            tiktokReviews[source.id],
-            connections?.find((connection) => connection.platform === platform)
-              ?.externalAccountId ?? undefined,
-            youtubeSettings,
-          ),
-        (result) => {
-          finished.push({
-            ...result,
-            sourceId: source.id,
-            sourceTitle: source.title,
-          });
-          setOutcomes([...finished]);
-        },
-      );
-    }
-    for (const source of sources) {
-      const results = finished.filter(
-        (outcome) => outcome.sourceId === source.id,
-      );
-      if (
-        results.length === targets.length &&
-        results.every(
-          (outcome) =>
-            outcome.status === "posted" || outcome.status === "draft",
+    onBusy?.(true);
+    setPublishError("");
+    try {
+      setOutcomes([]);
+      const finished: SourceOutcome[] = [];
+      const publishSources = beforePublish ? await beforePublish() : sources;
+      if (!publishSources?.length) {
+        return;
+      }
+      // Keep source files sequential so a multi-video batch does not hold several
+      // large uploads in memory. Each video's platform fan-out still runs in
+      // parallel and independently through runCrossPost.
+      for (const source of publishSources) {
+        await runCrossPost(
+          targets,
+          (platform) =>
+            postSource(
+              source,
+              platform,
+              editable,
+              attemptKeys.current!.forTarget(`${source.id}:${platform}`),
+              tiktokReviews[source.id],
+              connections?.find(
+                (connection) => connection.platform === platform,
+              )?.externalAccountId ?? undefined,
+              youtubeSettings,
+            ),
+          (result) => {
+            finished.push({
+              ...result,
+              sourceId: source.id,
+              sourceTitle: source.title,
+            });
+            setOutcomes([...finished]);
+          },
+        );
+      }
+      for (const source of publishSources) {
+        const results = finished.filter(
+          (outcome) => outcome.sourceId === source.id,
+        );
+        if (
+          results.length === targets.length &&
+          results.every(
+            (outcome) =>
+              outcome.status === "posted" || outcome.status === "draft",
+          )
         )
-      )
-        onCompleted?.(source);
+          onCompleted?.(source);
+      }
+    } catch {
+      setPublishError("Couldn’t prepare this post. Try publishing again.");
+    } finally {
+      operation.current = false;
+      setPosting(false);
+      onBusy?.(false);
     }
-    operation.current = false;
-    setPosting(false);
   };
 
   const done =
     outcomes.length > 0 && outcomes.length === sources.length * targets.length;
   const failures = outcomes.filter((outcome) => outcome.status === "failed");
 
-  return (
-    <Sheet open={open} onOpenChange={close}>
-      <SheetContent className="flex w-full flex-col gap-0 overflow-y-auto sm:max-w-xl">
+  const content = (
+    <>
+      {!embedded && (
         <SheetHeader>
           <SheetTitle>
             Cross-post{" "}
@@ -301,44 +333,51 @@ export default function CrossPostSheet({
             selection; Yapper never silently chooses a platform.
           </SheetDescription>
         </SheetHeader>
+      )}
 
-        <div className="flex flex-col gap-5 p-4">
-          {prepared ? (
-            <PreparedCaptions sources={sources} />
-          ) : editable ? (
-            <SingleCopyFields
-              title={title}
-              caption={caption}
-              disabled={
-                posting || scheduling || scheduled || outcomes.length > 0
-              }
-              onTitle={setTitle}
-              onCaption={setCaption}
-            />
-          ) : (
-            <SourceList sources={sources} />
-          )}
+      <div
+        className={embedded ? "flex flex-col gap-4" : "flex flex-col gap-5 p-4"}
+      >
+        {publishError && (
+          <p role="alert" className="text-destructive text-sm">
+            {publishError}
+          </p>
+        )}
+        {embedded ? null : prepared ? (
+          <PreparedCaptions sources={sources} />
+        ) : editable ? (
+          <SingleCopyFields
+            title={title}
+            caption={caption}
+            disabled={posting || scheduling || scheduled || outcomes.length > 0}
+            onTitle={setTitle}
+            onCaption={setCaption}
+          />
+        ) : (
+          <SourceList sources={sources} />
+        )}
 
-          {connections === null && connectionsError ? (
-            <div role="alert" className="space-y-2 text-sm">
-              <p>Your connections couldn’t be loaded.</p>
-              <button
-                type="button"
-                className="underline"
-                onClick={() => void refreshConnections()}
-              >
-                Try again
-              </button>
-            </div>
-          ) : connections === null ? (
-            <div className="text-muted-foreground flex items-center gap-2 py-8 text-sm">
-              <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
-              Loading your connections…
-            </div>
-          ) : connected.length === 0 ? (
-            <NoConnections />
-          ) : (
-            <>
+        {connections === null && connectionsError ? (
+          <div role="alert" className="space-y-2 text-sm">
+            <p>Your connections couldn’t be loaded.</p>
+            <button
+              type="button"
+              className="underline"
+              onClick={() => void refreshConnections()}
+            >
+              Try again
+            </button>
+          </div>
+        ) : connections === null ? (
+          <div className="text-muted-foreground flex items-center gap-2 py-8 text-sm">
+            <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
+            Loading your connections…
+          </div>
+        ) : connected.length === 0 ? (
+          <NoConnections />
+        ) : (
+          <>
+            {!embedded && (
               <DestinationGrid
                 accounts={Object.fromEntries(
                   (connections ?? []).map((connection) => [
@@ -362,14 +401,33 @@ export default function CrossPostSheet({
                   )
                 }
               />
+            )}
 
-              {youtubeDescriptionTooLong && (
-                <p role="alert" className="text-destructive text-xs">
-                  Shorten the YouTube description to 5,000 bytes or fewer before
-                  posting or scheduling.
-                </p>
-              )}
-              {chosen.includes("youtube") && (
+            {youtubeDescriptionTooLong && (
+              <p role="alert" className="text-destructive text-xs">
+                Shorten the YouTube description to 5,000 bytes or fewer.
+              </p>
+            )}
+            {chosen.includes("youtube") &&
+              (embedded ? (
+                <details>
+                  <summary className="cursor-pointer text-sm">
+                    YouTube settings · {youtubeSettings.privacyStatus}
+                  </summary>
+                  <div className="mt-3">
+                    <YouTubeSettingsFields
+                      value={youtubeSettings}
+                      onChange={setYouTubeSettings}
+                      disabled={
+                        posting ||
+                        scheduling ||
+                        scheduled ||
+                        outcomes.length > 0
+                      }
+                    />
+                  </div>
+                </details>
+              ) : (
                 <YouTubeSettingsFields
                   value={youtubeSettings}
                   onChange={setYouTubeSettings}
@@ -377,63 +435,69 @@ export default function CrossPostSheet({
                     posting || scheduling || scheduled || outcomes.length > 0
                   }
                 />
-              )}
+              ))}
+            {chosen.includes("tiktok") &&
+              sources.map((source) => (
+                <TikTokPostReview
+                  key={source.id}
+                  source={source}
+                  compact={embedded}
+                  initialCaption={
+                    outgoingCopy(source, "tiktok", editable).body ||
+                    outgoingCopy(source, "tiktok", editable).title
+                  }
+                  disabled={posting || outcomes.length > 0}
+                  onChange={onTikTokReview}
+                />
+              ))}
+            {chosen.includes("facebook") && (
+              <p className="text-muted-foreground text-xs">
+                Facebook Reels will be public on your selected Page. Use
+                vertical videos, 3–90 seconds, at least 540 × 960 pixels.
+              </p>
+            )}
+            <OutcomeList outcomes={outcomes} />
 
-              {chosen.includes("tiktok") &&
-                sources.map((source) => (
-                  <TikTokPostReview
-                    key={source.id}
-                    source={source}
-                    initialCaption={
-                      outgoingCopy(source, "tiktok", editable).body ||
-                      outgoingCopy(source, "tiktok", editable).title
-                    }
-                    disabled={posting || outcomes.length > 0}
-                    onChange={onTikTokReview}
-                  />
-                ))}
-              {chosen.includes("facebook") && (
-                <p className="text-muted-foreground text-xs">
-                  Facebook Reels will be public on your selected Page. Use
-                  vertical videos, 3–90 seconds, at least 540 × 960 pixels.
-                </p>
-              )}
-              <OutcomeList outcomes={outcomes} />
+            {failures.length > 0 && done && (
+              <p className="text-xs font-semibold text-[color:var(--sg-pink-500)]">
+                {failures.length} destination
+                {failures.length === 1 ? "" : "s"} failed. Successful posts were
+                not rolled back.
+              </p>
+            )}
 
-              {failures.length > 0 && done && (
-                <p className="text-xs font-semibold text-[color:var(--sg-pink-500)]">
-                  {failures.length} destination
-                  {failures.length === 1 ? "" : "s"} failed. Successful posts
-                  were not rolled back.
-                </p>
+            {onNext && !posting && (done || scheduled) && (
+              <Button onClick={onNext}>Post another video</Button>
+            )}
+            {!scheduled &&
+              (!done ||
+                failures.length > 0 ||
+                outcomes.some((outcome) => outcome.status === "pending")) && (
+                <PublishButton
+                  videos={sources.length}
+                  platforms={
+                    embedded ? (initialPlatforms?.length ?? 0) : chosen.length
+                  }
+                  postedSoFar={outcomes.length}
+                  posting={posting}
+                  done={done}
+                  disabled={
+                    disabled ||
+                    (embedded && chosen.length !== initialPlatforms?.length) ||
+                    posting ||
+                    !youtubeReady ||
+                    !tiktokReady ||
+                    scheduling ||
+                    sources.length === 0 ||
+                    chosen.length === 0 ||
+                    (editable ? !title.trim() : false)
+                  }
+                  onPublish={() => void publish()}
+                />
               )}
-
-              {onNext && !posting && (done || scheduled) && (
-                <Button onClick={onNext}>Post another video</Button>
-              )}
-              {!scheduled &&
-                (!done ||
-                  failures.length > 0 ||
-                  outcomes.some((outcome) => outcome.status === "pending")) && (
-                  <PublishButton
-                    videos={sources.length}
-                    platforms={chosen.length}
-                    postedSoFar={outcomes.length}
-                    posting={posting}
-                    done={done}
-                    disabled={
-                      posting ||
-                      !youtubeReady ||
-                      !tiktokReady ||
-                      scheduling ||
-                      sources.length === 0 ||
-                      chosen.length === 0 ||
-                      (editable ? !title.trim() : false)
-                    }
-                    onPublish={() => void publish()}
-                  />
-                )}
-              {outcomes.length === 0 && !chosen.includes("tiktok") && (
+            {!embedded &&
+              outcomes.length === 0 &&
+              !chosen.includes("tiktok") && (
                 <SchedulePanel
                   accounts={Object.fromEntries(
                     (connections ?? []).map((connection) => [
@@ -461,12 +525,20 @@ export default function CrossPostSheet({
                   onScheduled={() => setScheduled(true)}
                 />
               )}
-              <p className="text-muted-foreground text-center text-xs">
-                For TikTok, review the audience and posting method above.
-              </p>
-            </>
-          )}
-        </div>
+            <p className="text-muted-foreground text-center text-xs">
+              For TikTok, review the audience and posting method above.
+            </p>
+          </>
+        )}
+      </div>
+    </>
+  );
+  return embedded ? (
+    content
+  ) : (
+    <Sheet open={open} onOpenChange={close}>
+      <SheetContent className="flex w-full flex-col gap-0 overflow-y-auto sm:max-w-xl">
+        {content}
       </SheetContent>
     </Sheet>
   );

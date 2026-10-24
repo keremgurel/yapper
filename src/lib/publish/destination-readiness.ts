@@ -149,18 +149,14 @@ export function publishSummary(readiness: DestinationReadiness[]): {
   label: string;
 } {
   const ready = readiness.filter((r) => r.state === "ready").length;
-  const blocked = readiness.filter(
-    (r) => r.state === "blocked" || r.state === "disconnected",
-  ).length;
+  const blocked = readiness.filter((r) => r.state !== "ready").length;
   return {
     ready,
     blocked,
-    canPublish: ready > 0,
+    canPublish: readiness.length > 0 && blocked === 0,
     label:
-      ready === 0
-        ? "Nothing ready to publish"
-        : ready === 1
-          ? "Publish to 1 destination"
-          : `Publish to ${ready} destinations`,
+      readiness.length === 1
+        ? "Publish to 1 destination"
+        : `Publish to ${readiness.length} destinations`,
   };
 }

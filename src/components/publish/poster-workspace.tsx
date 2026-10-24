@@ -11,6 +11,10 @@ import {
   captionFor,
   copyCaptionToOthers,
 } from "@/components/publish/captions/caption-draft";
+import {
+  evaluateDestination,
+  publishSummary,
+} from "@/lib/publish/destination-readiness";
 import { renderCaption } from "@/lib/publish/caption-format";
 import { useCaptionDrafts } from "@/components/publish/captions/use-caption-drafts";
 import { useCaptionGeneration } from "@/components/publish/captions/use-caption-generation";
@@ -119,6 +123,7 @@ export default function PosterWorkspace() {
       useCallback((item: ContentDetail) => patchRow(item.id, item), [patchRow]),
     );
   const prep = usePublishPrep();
+  const [publishLocked, setPublishLocked] = useState(false);
 
   const localUpload = useRef<{ id: string; url: string } | null>(null);
   useEffect(
@@ -223,14 +228,17 @@ export default function PosterWorkspace() {
 
   const draftCaptions = (titleOnly = false, reference?: PublishPlatform) => {
     if (!active) return;
+    const referenceCaption = reference
+      ? captionFor(captions, reference)
+      : Object.values(captions).find((caption) => caption.body.trim());
     void generate(
       [
         {
           id: active.id,
           title: active.title,
           videoDescription: descriptions[active.id],
-          captionReference: reference
-            ? renderCaption(captionFor(captions, reference))
+          captionReference: referenceCaption
+            ? renderCaption(referenceCaption)
             : undefined,
           noSpeech: active.kind === "yapper" && active.noSpeech,
           initialCaptions: byVideo[active.id] ?? {},
@@ -433,72 +441,152 @@ export default function PosterWorkspace() {
 
             <Section title="Send to">
               <div className="space-y-4">
-                <DestinationColumn
-                  captions={captions}
-                  hasOriginalCaption={
-                    active.kind === "platform" && Boolean(active.caption)
-                  }
-                  onUseOriginalCaption={() =>
-                    applyGenerated(
-                      active.id,
-                      Object.values(sourceCaptions(active)).map((caption) => ({
-                        ...caption,
-                        title: captions[caption.platform]?.title ?? "",
-                      })),
-                    )
-                  }
-                  onGenerateTitle={() => draftCaptions(true)}
-                  reading={
-                    reading || (active.kind === "platform" && !active.mediaKey)
-                  }
-                  chosen={destinations}
-                  connected={connectedPlatforms}
-                  hasCover={Boolean(cover.image)}
-                  generating={generating}
-                  captionError={errorVideoId === active.id ? error : ""}
-                  noSpeech={Boolean(
-                    noSpeech[active.id] ||
-                    (active.kind === "yapper" && active.noSpeech),
-                  )}
-                  description={descriptions[active.id] ?? ""}
-                  onDescriptionChange={(value) =>
-                    setDescriptions((current) => ({
-                      ...current,
-                      [active.id]: value,
-                    }))
-                  }
-                  onGenerateOthers={(platform) =>
-                    draftCaptions(false, platform)
-                  }
-                  onCopyOthers={(platform) =>
-                    applyGenerated(
-                      active.id,
-                      copyCaptionToOthers(captions, platform, [
-                        ...destinations,
-                      ]),
-                    )
-                  }
-                  publishing={prep.preparing}
-                  mediaPending={
-                    active.kind === "platform"
-                      ? !active.mediaKey
-                      : !active.submissionId
-                  }
-                  transcriptStatus={
-                    active.kind === "yapper" ? active.transcriptStatus : null
-                  }
-                  onToggle={toggleDestination}
-                  onConnect={beginConnect}
-                  onCaptionChange={(caption) => setCaption(active.id, caption)}
-                  onGenerate={() => draftCaptions()}
-                  onPublish={() =>
-                    void prep.prepare(
-                      [active],
-                      { ...covers, [active.id]: cover },
-                      { ...byVideo, [active.id]: captions },
-                    )
-                  }
-                />
+                <fieldset disabled={publishLocked} className="min-w-0">
+                  <DestinationColumn
+                    captions={captions}
+                    hasOriginalCaption={
+                      active.kind === "platform" && Boolean(active.caption)
+                    }
+                    onUseOriginalCaption={() =>
+                      applyGenerated(
+                        active.id,
+                        Object.values(sourceCaptions(active)).map(
+                          (caption) => ({
+                            ...caption,
+                            title: captions[caption.platform]?.title ?? "",
+                          }),
+                        ),
+                      )
+                    }
+                    onGenerateTitle={() =>
+                      draftCaptions(
+                        true,
+                        [...destinations].find((platform) =>
+                          captionFor(captions, platform).body.trim(),
+                        ),
+                      )
+                    }
+                    reading={
+                      reading ||
+                      (active.kind === "platform" && !active.mediaKey)
+                    }
+                    chosen={destinations}
+                    connected={connectedPlatforms}
+                    hasCover={Boolean(cover.image)}
+                    generating={generating}
+                    captionError={errorVideoId === active.id ? error : ""}
+                    noSpeech={Boolean(
+                      noSpeech[active.id] ||
+                      (active.kind === "yapper" && active.noSpeech),
+                    )}
+                    description={descriptions[active.id] ?? ""}
+                    onDescriptionChange={(value) =>
+                      setDescriptions((current) => ({
+                        ...current,
+                        [active.id]: value,
+                      }))
+                    }
+                    onGenerateOthers={(platform) =>
+                      draftCaptions(false, platform)
+                    }
+                    onCopyOthers={(platform) =>
+                      applyGenerated(
+                        active.id,
+                        copyCaptionToOthers(captions, platform, [
+                          ...destinations,
+                        ]),
+                      )
+                    }
+                    mediaPending={
+                      active.kind === "platform"
+                        ? !active.mediaKey
+                        : !active.submissionId
+                    }
+                    transcriptStatus={
+                      active.kind === "yapper" ? active.transcriptStatus : null
+                    }
+                    onToggle={toggleDestination}
+                    onConnect={beginConnect}
+                    onCaptionChange={(caption) =>
+                      setCaption(active.id, caption)
+                    }
+                    onGenerate={() => draftCaptions()}
+                  />
+                </fieldset>
+                {active && cover && (
+                  <CrossPostSheet
+                    key={active.id}
+                    embedded
+                    onBusy={setPublishLocked}
+                    disabled={
+                      prep.preparing ||
+                      !(active.kind === "platform"
+                        ? active.mediaKey
+                        : active.submissionId) ||
+                      !publishSummary(
+                        [...destinations].map((platform) =>
+                          evaluateDestination({
+                            platform,
+                            connected: connectedPlatforms.includes(platform),
+                            caption: captionFor(captions, platform),
+                            hasCover: Boolean(cover.image),
+                          }),
+                        ),
+                      ).canPublish
+                    }
+                    beforePublish={() =>
+                      prep.prepare(
+                        [active],
+                        { ...covers, [active.id]: cover },
+                        { ...byVideo, [active.id]: captions },
+                      )
+                    }
+                    item={{
+                      id: active.id,
+                      title: active.title,
+                      captions,
+                      submissionId:
+                        active.kind === "yapper"
+                          ? active.submissionId
+                          : undefined,
+                      mediaKey:
+                        active.kind === "platform"
+                          ? active.mediaKey
+                          : undefined,
+                      contentItemId:
+                        active.kind === "yapper"
+                          ? active.contentItemId
+                          : undefined,
+                    }}
+                    initialPlatforms={[...destinations]}
+                    onCompleted={(target) => {
+                      const item = items?.find(
+                        (row) => row.id === target.contentItemId,
+                      );
+                      if (item?.sourceUrl !== "yapper://poster-upload") return;
+                      void fetch(`/api/content/${item.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          sourceUrl: "yapper://poster-upload/completed",
+                        }),
+                      })
+                        .then((response) => {
+                          if (response.ok) removeRow(item.id);
+                        })
+                        .catch(() => {
+                          // Keep the upload available if completion could not be saved.
+                        });
+                    }}
+                    onClose={prep.clear}
+                    onNext={() => {
+                      prep.clear();
+                      bench.close();
+
+                      void refresh();
+                    }}
+                  />
+                )}
                 <CaptionBriefDisclosure
                   value={brief}
                   disabled={generating}
@@ -512,40 +600,6 @@ export default function PosterWorkspace() {
               </div>
             </Section>
           </div>
-        )}
-
-        {prep.targets && (
-          <CrossPostSheet
-            key={prep.targets.map((target) => target.id).join(",")}
-            items={prep.targets}
-            initialPlatforms={[...destinations]}
-            onCompleted={(target) => {
-              const item = items?.find(
-                (row) => row.id === target.contentItemId,
-              );
-              if (item?.sourceUrl !== "yapper://poster-upload") return;
-              void fetch(`/api/content/${item.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  sourceUrl: "yapper://poster-upload/completed",
-                }),
-              })
-                .then((response) => {
-                  if (response.ok) removeRow(item.id);
-                })
-                .catch(() => {
-                  // Keep the upload available if completion could not be saved.
-                });
-            }}
-            onClose={prep.clear}
-            onNext={() => {
-              prep.clear();
-              bench.close();
-
-              void refresh();
-            }}
-          />
         )}
       </div>
     </VideoDropzone>
