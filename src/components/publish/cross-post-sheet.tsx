@@ -475,12 +475,15 @@ export default function CrossPostSheet({
                 outcomes.some((outcome) => outcome.status === "pending")) && (
                 <PublishButton
                   videos={sources.length}
-                  platforms={chosen.length}
+                  platforms={
+                    embedded ? (initialPlatforms?.length ?? 0) : chosen.length
+                  }
                   postedSoFar={outcomes.length}
                   posting={posting}
                   done={done}
                   disabled={
                     disabled ||
+                    (embedded && chosen.length !== initialPlatforms?.length) ||
                     posting ||
                     !youtubeReady ||
                     !tiktokReady ||
@@ -523,8 +526,7 @@ export default function CrossPostSheet({
                 />
               )}
             <p className="text-muted-foreground text-center text-xs">
-              YouTube posts are requested as public. For TikTok, review the
-              audience and posting method above.
+              For TikTok, review the audience and posting method above.
             </p>
           </>
         )}
