@@ -34,3 +34,6 @@ CLAUDE.md
 
 # Private analytics dashboard backups
 .analytics-private
+
+# Generated keyword datasets (one row per line for diffable updates)
+marketing/seo/keywords-*.json

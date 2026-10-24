@@ -73,10 +73,12 @@ export default async function BlogPostPage({ params }: PageProps) {
     description: post.excerpt,
     datePublished: post.publishedAt,
     dateModified: post.publishedAt,
-    author: {
-      "@type": "Organization",
-      name: "Yapper",
-    },
+    // Team posts are credited to the organization; a named byline is a
+    // person.
+    author:
+      post.author === "Yapper Team"
+        ? { "@type": "Organization", name: "Yapper" }
+        : { "@type": "Person", name: post.author },
     publisher: {
       "@type": "Organization",
       name: "OCX Software Inc.",
