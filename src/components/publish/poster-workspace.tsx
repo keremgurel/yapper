@@ -228,14 +228,17 @@ export default function PosterWorkspace() {
 
   const draftCaptions = (titleOnly = false, reference?: PublishPlatform) => {
     if (!active) return;
+    const referenceCaption = reference
+      ? captionFor(captions, reference)
+      : Object.values(captions).find((caption) => caption.body.trim());
     void generate(
       [
         {
           id: active.id,
           title: active.title,
           videoDescription: descriptions[active.id],
-          captionReference: reference
-            ? renderCaption(captionFor(captions, reference))
+          captionReference: referenceCaption
+            ? renderCaption(referenceCaption)
             : undefined,
           noSpeech: active.kind === "yapper" && active.noSpeech,
           initialCaptions: byVideo[active.id] ?? {},

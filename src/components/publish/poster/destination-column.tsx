@@ -72,6 +72,9 @@ export default function DestinationColumn({
     }),
   );
   const readingVideo = reading;
+  const hasWrittenCaption = Object.values(captions ?? {}).some((caption) =>
+    caption.body.trim(),
+  );
 
   return (
     <div className="space-y-4">
@@ -135,7 +138,10 @@ export default function DestinationColumn({
                 generating ||
                 readingVideo ||
                 mediaPending ||
-                (noSpeech && !description.trim() && !hasOriginalCaption)
+                (noSpeech &&
+                  !description.trim() &&
+                  !hasOriginalCaption &&
+                  !hasWrittenCaption)
               }
             >
               <Sparkles className="h-4 w-4" />
@@ -150,7 +156,10 @@ export default function DestinationColumn({
               generating ||
               readingVideo ||
               mediaPending ||
-              (noSpeech && !description.trim() && !hasOriginalCaption)
+              (noSpeech &&
+                !description.trim() &&
+                !hasOriginalCaption &&
+                !hasWrittenCaption)
             }
             className="w-full"
           >
