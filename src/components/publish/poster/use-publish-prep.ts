@@ -70,6 +70,7 @@ export function usePublishPrep() {
       }
       setTargets(prepared);
       setPreparing(false);
+      return prepared;
     },
     [],
   );

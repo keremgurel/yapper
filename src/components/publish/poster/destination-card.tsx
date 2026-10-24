@@ -146,12 +146,21 @@ export default function DestinationCard({
               <Counter used={spec.body.used} max={spec.body.max} label="" />
             </span>
             <textarea
-              value={caption.body}
+              value={[
+                caption.body,
+                caption.hashtags.map((tag) => `#${tag}`).join(" "),
+              ]
+                .filter(Boolean)
+                .join("\n\n")}
               onChange={(e) =>
-                onCaptionChange({ ...caption, body: e.target.value })
+                onCaptionChange({
+                  ...caption,
+                  body: e.target.value,
+                  hashtags: [],
+                })
               }
               rows={4}
-              placeholder="What this says here"
+              placeholder="Write your caption…"
               className="border-border bg-background w-full resize-y scroll-mb-28 rounded-lg border px-3 py-2 text-sm leading-relaxed focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
             />
             {/* The fold is the part people forget, so it is drawn rather than
@@ -170,20 +179,20 @@ export default function DestinationCard({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={onGenerateOthers}
-                  disabled={generating}
-                  aria-label={`Generate other captions from ${readiness.label}`}
+                  onClick={onCopyOthers}
+                  aria-label={`Copy ${readiness.label} caption to other destinations`}
                 >
-                  Generate others
+                  Copy to others
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={onCopyOthers}
-                  aria-label={`Copy ${readiness.label} caption to other destinations`}
+                  onClick={onGenerateOthers}
+                  disabled={generating}
+                  aria-label={`Generate other captions from ${readiness.label}`}
                 >
-                  Copy to others
+                  Generate others
                 </Button>
               </div>
               <p className="text-muted-foreground text-xs">
@@ -207,17 +216,22 @@ export default function DestinationCard({
           )}
 
           {readiness.notes.length > 0 && (
-            <ul className="space-y-1">
-              {readiness.notes.map((note) => (
-                <li
-                  key={note}
-                  className="text-muted-foreground flex items-start gap-2 text-[12px] leading-relaxed"
-                >
-                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  {note}
-                </li>
-              ))}
-            </ul>
+            <details>
+              <summary className="text-muted-foreground cursor-pointer text-xs">
+                Platform details
+              </summary>
+              <ul className="mt-2 space-y-1">
+                {readiness.notes.map((note) => (
+                  <li
+                    key={note}
+                    className="text-muted-foreground flex items-start gap-2 text-[12px] leading-relaxed"
+                  >
+                    <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    {note}
+                  </li>
+                ))}
+              </ul>
+            </details>
           )}
         </div>
       )}

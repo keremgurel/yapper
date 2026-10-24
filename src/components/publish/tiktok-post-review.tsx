@@ -26,14 +26,17 @@ export default function TikTokPostReview({
   initialCaption,
   disabled,
   onChange,
+  compact = false,
 }: {
+  compact?: boolean;
   source: CrossPostTarget;
   initialCaption: string;
   disabled: boolean;
   onChange: (id: string, review: TikTokReview) => void;
 }) {
   const [mode, setMode] = useState<"direct" | "inbox">("direct");
-  const [caption, setCaption] = useState(initialCaption);
+  const [editedCaption, setCaption] = useState<string | null>(null);
+  const caption = compact ? initialCaption : (editedCaption ?? initialCaption);
   const [context, setContext] = useState<{
     creator: TikTokCreator;
     audited: boolean;
@@ -71,7 +74,17 @@ export default function TikTokPostReview({
       })
       .then((data) => {
         setContext(data);
-        setSettings((s) => ({ ...s, accountId: data.accountId }));
+        setSettings((s) => ({
+          ...s,
+          accountId: data.accountId,
+          privacy:
+            data.audited &&
+            data.creator.privacy_level_options.includes("PUBLIC_TO_EVERYONE")
+              ? "PUBLIC_TO_EVERYONE"
+              : data.creator.privacy_level_options.includes("SELF_ONLY")
+                ? "SELF_ONLY"
+                : ("" as TikTokPrivacy),
+        }));
       })
       .catch((cause) => {
         if (!controller.signal.aborted)
@@ -127,253 +140,271 @@ export default function TikTokPostReview({
       disabled={disabled}
       className="border-border space-y-3 rounded-xl border p-4 text-sm"
     >
-      <legend className="px-1 font-semibold">TikTok · {source.title}</legend>
-      {preview ? (
-        <video
-          crossOrigin="anonymous"
-          controls
-          playsInline
-          preload="metadata"
-          src={preview.url}
-          className="bg-muted max-h-64 w-full rounded-lg"
-        />
-      ) : (
-        <p>{previewError || "Loading video preview…"}</p>
-      )}
-      <label className="flex flex-col gap-1">
-        Posting method
-        <select
-          className="border-border bg-background rounded-md border p-2"
-          value={mode}
-          onChange={(event) =>
-            setMode(event.target.value as "direct" | "inbox")
-          }
-        >
-          <option value="direct">Post to TikTok</option>
-          <option value="inbox">Send to TikTok inbox to finish there</option>
-        </select>
-      </label>
-      {mode === "inbox" ? (
-        <p className="text-muted-foreground text-xs">
-          We’ll confirm inbox delivery. Open “Your content from Yapper is ready”
-          in TikTok to add the caption and finish posting.
-        </p>
-      ) : (
-        <>
-          {context ? (
-            <>
-              <p>
-                Posting as <strong>{context.creator.creator_nickname}</strong>{" "}
-                (@{context.creator.creator_username})
-              </p>
-              {!context.audited && (
-                <p className="text-muted-foreground text-xs">
-                  TikTok’s review is pending. Test posts must use “Only me” and
-                  a private TikTok account. Public posting becomes available
-                  after approval.
+      <legend className="px-1 font-semibold">TikTok</legend>
+      {!compact &&
+        (preview ? (
+          <video
+            crossOrigin="anonymous"
+            controls
+            playsInline
+            preload="metadata"
+            src={preview.url}
+            className="bg-muted max-h-64 w-full rounded-lg"
+          />
+        ) : (
+          <p>{previewError || "Loading video preview…"}</p>
+        ))}
+      <details>
+        <summary className="cursor-pointer">
+          TikTok settings · {labels[settings.privacy] ?? "Choose audience"}
+        </summary>
+        <label className="mt-3 flex flex-col gap-1">
+          Posting method
+          <select
+            className="border-border bg-background rounded-md border p-2"
+            value={mode}
+            onChange={(event) =>
+              setMode(event.target.value as "direct" | "inbox")
+            }
+          >
+            <option value="direct">Post to TikTok</option>
+            <option value="inbox">Send to TikTok inbox to finish there</option>
+          </select>
+        </label>
+        {mode === "inbox" ? (
+          <p className="text-muted-foreground text-xs">
+            We’ll confirm inbox delivery. Open “Your content from Yapper is
+            ready” in TikTok to add the caption and finish posting.
+          </p>
+        ) : (
+          <>
+            {context ? (
+              <>
+                <p>
+                  Posting as <strong>{context.creator.creator_nickname}</strong>{" "}
+                  (@{context.creator.creator_username})
                 </p>
-              )}
-              <label className="flex flex-col gap-1">
-                Caption
-                <textarea
-                  value={caption}
-                  maxLength={2200}
-                  className="border-border bg-background min-h-20 rounded-md border p-2"
-                  onChange={(event) => setCaption(event.target.value)}
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                Who can see this video?
-                <select
-                  value={settings.privacy}
-                  className="border-border bg-background rounded-md border p-2"
-                  onChange={(event) =>
-                    update("privacy", event.target.value as TikTokPrivacy)
-                  }
-                >
-                  <option value="" disabled>
-                    Choose an audience
-                  </option>
-                  {context.creator.privacy_level_options
-                    .filter((p) => context.audited || p === "SELF_ONLY")
-                    .map((p) => (
-                      <option
-                        key={p}
-                        value={p}
-                        disabled={p === "SELF_ONLY" && settings.brandedContent}
-                      >
-                        {labels[p] ?? p}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              {(
-                [
-                  [
-                    "allowComment",
-                    "Allow comments",
-                    context.creator.comment_disabled,
-                  ],
-                  ["allowDuet", "Allow Duet", context.creator.duet_disabled],
-                  [
-                    "allowStitch",
-                    "Allow Stitch",
-                    context.creator.stitch_disabled,
-                  ],
-                ] as const
-              ).map(([key, label, blocked]) => (
-                <label
-                  key={key}
-                  className={`flex items-center gap-2 ${blocked ? "text-muted-foreground" : ""}`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={settings[key]}
-                    disabled={blocked}
-                    onChange={(event) => update(key, event.target.checked)}
-                  />
-                  {label}
-                  {blocked ? " (disabled in TikTok)" : ""}
-                </label>
-              ))}
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={settings.discloseCommercial}
-                  onChange={(event) =>
-                    setSettings((s) => ({
-                      ...s,
-                      discloseCommercial: event.target.checked,
-                      ownBrand: false,
-                      brandedContent: false,
-                    }))
-                  }
-                />
-                Disclose commercial content
-              </label>
-              {settings.discloseCommercial && (
-                <div className="space-y-2 pl-4">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={settings.ownBrand}
-                      onChange={(event) =>
-                        update("ownBrand", event.target.checked)
-                      }
+                {!context.audited && (
+                  <p className="text-muted-foreground text-xs">
+                    TikTok’s review is pending. Test posts must use “Only me”
+                    and a private TikTok account. Public posting becomes
+                    available after approval.
+                  </p>
+                )}
+                {!compact && (
+                  <label className="flex flex-col gap-1">
+                    Caption
+                    <textarea
+                      value={caption}
+                      maxLength={2200}
+                      className="border-border bg-background min-h-20 rounded-md border p-2"
+                      onChange={(event) => setCaption(event.target.value)}
                     />
-                    Your brand
                   </label>
+                )}
+                <label className="flex flex-col gap-1">
+                  Who can see this video?
+                  <select
+                    value={settings.privacy}
+                    className="border-border bg-background rounded-md border p-2"
+                    onChange={(event) =>
+                      update("privacy", event.target.value as TikTokPrivacy)
+                    }
+                  >
+                    <option value="" disabled>
+                      Choose an audience
+                    </option>
+                    {context.creator.privacy_level_options
+                      .filter((p) => context.audited || p === "SELF_ONLY")
+                      .map((p) => (
+                        <option
+                          key={p}
+                          value={p}
+                          disabled={
+                            p === "SELF_ONLY" && settings.brandedContent
+                          }
+                        >
+                          {labels[p] ?? p}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                {(
+                  [
+                    [
+                      "allowComment",
+                      "Allow comments",
+                      context.creator.comment_disabled,
+                    ],
+                    ["allowDuet", "Allow Duet", context.creator.duet_disabled],
+                    [
+                      "allowStitch",
+                      "Allow Stitch",
+                      context.creator.stitch_disabled,
+                    ],
+                  ] as const
+                ).map(([key, label, blocked]) => (
                   <label
-                    className={`flex items-center gap-2 ${settings.privacy === "SELF_ONLY" ? "text-muted-foreground" : ""}`}
+                    key={key}
+                    className={`flex items-center gap-2 ${blocked ? "text-muted-foreground" : ""}`}
                   >
                     <input
                       type="checkbox"
-                      checked={settings.brandedContent}
-                      disabled={settings.privacy === "SELF_ONLY"}
-                      onChange={(event) =>
-                        update("brandedContent", event.target.checked)
-                      }
+                      checked={settings[key]}
+                      disabled={blocked}
+                      onChange={(event) => update(key, event.target.checked)}
                     />
-                    Branded content
+                    {label}
+                    {blocked ? " (disabled in TikTok)" : ""}
                   </label>
-                  {settings.privacy === "SELF_ONLY" && (
-                    <p className="text-xs">
-                      Branded content visibility cannot be set to private.
-                    </p>
-                  )}
-                  {!settings.ownBrand && !settings.brandedContent && (
-                    <p className="text-xs">
-                      Indicate whether this promotes your brand, a third party,
-                      or both.
-                    </p>
-                  )}
-                  {(settings.ownBrand || settings.brandedContent) && (
-                    <p className="text-xs">
-                      Your video will be labeled as “
-                      {settings.brandedContent
-                        ? "Paid partnership"
-                        : "Promotional content"}
-                      ”.
-                    </p>
-                  )}
-                </div>
-              )}
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={settings.aiGenerated}
-                  onChange={(event) =>
-                    update("aiGenerated", event.target.checked)
-                  }
-                />
-                Label this video as AI-generated
-              </label>
-              {preview &&
-                preview.duration >
-                  context.creator.max_video_post_duration_sec && (
-                  <p role="alert">
-                    This video is too long. This account supports up to{" "}
-                    {context.creator.max_video_post_duration_sec} seconds.
-                  </p>
+                ))}
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={settings.discloseCommercial}
+                    onChange={(event) =>
+                      setSettings((s) => ({
+                        ...s,
+                        discloseCommercial: event.target.checked,
+                        ownBrand: false,
+                        brandedContent: false,
+                      }))
+                    }
+                  />
+                  Disclose commercial content
+                </label>
+                {settings.discloseCommercial && (
+                  <div className="space-y-2 pl-4">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={settings.ownBrand}
+                        onChange={(event) =>
+                          update("ownBrand", event.target.checked)
+                        }
+                      />
+                      Your brand
+                    </label>
+                    <label
+                      className={`flex items-center gap-2 ${settings.privacy === "SELF_ONLY" ? "text-muted-foreground" : ""}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={settings.brandedContent}
+                        disabled={settings.privacy === "SELF_ONLY"}
+                        onChange={(event) =>
+                          update("brandedContent", event.target.checked)
+                        }
+                      />
+                      Branded content
+                    </label>
+                    {settings.privacy === "SELF_ONLY" && (
+                      <p className="text-xs">
+                        Branded content visibility cannot be set to private.
+                      </p>
+                    )}
+                    {!settings.ownBrand && !settings.brandedContent && (
+                      <p className="text-xs">
+                        Indicate whether this promotes your brand, a third
+                        party, or both.
+                      </p>
+                    )}
+                    {(settings.ownBrand || settings.brandedContent) && (
+                      <p className="text-xs">
+                        Your video will be labeled as “
+                        {settings.brandedContent
+                          ? "Paid partnership"
+                          : "Promotional content"}
+                        ”.
+                      </p>
+                    )}
+                  </div>
                 )}
-              <label className="flex items-start gap-2">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={settings.consent}
-                  onChange={(event) => update("consent", event.target.checked)}
-                />
-                <span>
-                  I reviewed this video and authorize posting. By posting, you
-                  agree to TikTok’s{" "}
-                  {settings.brandedContent && (
-                    <>
-                      <a
-                        className="underline"
-                        href="https://www.tiktok.com/legal/page/global/bc-policy/en"
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Branded Content Policy
-                      </a>{" "}
-                      and{" "}
-                    </>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={settings.aiGenerated}
+                    onChange={(event) =>
+                      update("aiGenerated", event.target.checked)
+                    }
+                  />
+                  Label this video as AI-generated
+                </label>
+                {preview &&
+                  preview.duration >
+                    context.creator.max_video_post_duration_sec && (
+                    <p role="alert">
+                      This video is too long. This account supports up to{" "}
+                      {context.creator.max_video_post_duration_sec} seconds.
+                    </p>
                   )}
+                <p className="text-muted-foreground text-xs">
+                  Processing may take a few minutes before the post appears on
+                  your profile.
+                </p>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <p>
+                  {error
+                    ? publishErrorCopy(error)
+                    : "Loading TikTok posting options…"}
+                </p>
+                {error && (
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => beginConnect("tiktok")}
+                  >
+                    Reconnect TikTok for Direct Post
+                  </button>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </details>
+      {mode === "direct" && context && (
+        <>
+          {" "}
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={settings.consent}
+              onChange={(event) => update("consent", event.target.checked)}
+            />
+            <span>
+              I reviewed this video and authorize posting. By posting, you agree
+              to TikTok’s{" "}
+              {settings.brandedContent && (
+                <>
                   <a
                     className="underline"
-                    href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en"
+                    href="https://www.tiktok.com/legal/page/global/bc-policy/en"
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Music Usage Confirmation
-                  </a>
-                  .
-                </span>
-              </label>
-              <p className="text-muted-foreground text-xs">
-                Processing may take a few minutes before the post appears on
-                your profile.
-              </p>
-            </>
-          ) : (
-            <div className="space-y-2">
-              <p>
-                {error
-                  ? publishErrorCopy(error)
-                  : "Loading TikTok posting options…"}
-              </p>
-              {error && (
-                <button
-                  type="button"
-                  className="underline"
-                  onClick={() => beginConnect("tiktok")}
-                >
-                  Reconnect TikTok for Direct Post
-                </button>
+                    Branded Content Policy
+                  </a>{" "}
+                  and{" "}
+                </>
               )}
-            </div>
-          )}
+              <a
+                className="underline"
+                href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Music Usage Confirmation
+              </a>
+              .
+            </span>
+          </label>
         </>
+      )}
+      {compact && !preview && (
+        <p role="status">{previewError || "Checking video…"}</p>
       )}
     </fieldset>
   );
