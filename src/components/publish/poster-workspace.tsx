@@ -451,7 +451,7 @@ export default function PosterWorkspace() {
             onRemoved={removeRow}
           />
         ) : (
-          <div className="grid gap-8 xl:grid-cols-[240px_minmax(0,1fr)_400px]">
+          <div className="grid grid-cols-1 gap-8 xl:grid-cols-[240px_minmax(0,1fr)_400px] [&>section]:min-w-0">
             <Section
               title="Videos"
               meta={String(sourceVideos.videos.length)}
@@ -481,7 +481,18 @@ export default function PosterWorkspace() {
               title={
                 needsOriginal(active) ? "Attach original video" : "Thumbnail"
               }
-              meta={active.title}
+              meta={
+                active.title.length > 120 ? (
+                  <details>
+                    <summary className="cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2">
+                      View original post title
+                    </summary>
+                    <p className="mt-2">{active.title}</p>
+                  </details>
+                ) : (
+                  active.title
+                )
+              }
             >
               {active.kind === "platform" && needsOriginal(active) ? (
                 <AttachOriginal
