@@ -1,4 +1,5 @@
 import type { PublishPlatform } from "@/lib/db/schema";
+import type { TikTokDirectSettings } from "./tiktok-direct-settings";
 
 export const scheduleStatuses = [
   "scheduled",
@@ -23,6 +24,9 @@ export interface ScheduledPublishInput {
   selfDeclaredMadeForKids?: boolean;
   containsSyntheticMedia?: boolean;
   thumbnailKey?: string;
+  /** TikTok only. Present means a reviewed Direct Post; absent means the video
+   * goes to the creator's TikTok drafts. */
+  settings?: TikTokDirectSettings;
 }
 
 export interface ScheduleSummary {
@@ -38,9 +42,19 @@ export interface ScheduleSummary {
   contentItemId: string | null;
 }
 
+/** Scheduling needs the flag and at least one way for a worker to be let in:
+ * Vercel Cron's CRON_SECRET or the publish clock's own secret. */
 export function schedulingEnabled(): boolean {
   return (
     process.env.STUDIO_SCHEDULER_ENABLED === "1" &&
-    Boolean(process.env.CRON_SECRET)
+    Boolean(process.env.CRON_SECRET || process.env.PUBLISH_SCHEDULER_SECRET)
   );
+}
+
+/** A TikTok schedule without reviewed Direct Post settings lands in drafts. */
+export function sendsTikTokDraft(
+  platform: PublishPlatform,
+  input: Pick<ScheduledPublishInput, "settings">,
+): boolean {
+  return platform === "tiktok" && !input.settings;
 }

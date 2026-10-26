@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   bucketByDay,
   dayKey,
+  defaultPostTime,
   isSameMonth,
   monthWeeks,
   rescheduleIso,
@@ -94,5 +95,28 @@ describe("rescheduleIso", () => {
     expect(moved.getDate()).toBe(21);
     expect(moved.getHours()).toBe(9);
     expect(moved.getMinutes()).toBe(0);
+  });
+});
+
+describe("defaultPostTime", () => {
+  const now = new Date(2026, 9, 27, 14, 40);
+  it("uses 9am on a future day", () => {
+    expect(defaultPostTime(new Date(2026, 9, 30), now)).toEqual(
+      new Date(2026, 9, 30, 9),
+    );
+  });
+  it("uses the next whole hour at least 30 minutes out today", () => {
+    expect(defaultPostTime(new Date(2026, 9, 27), now)).toEqual(
+      new Date(2026, 9, 27, 16),
+    );
+    expect(
+      defaultPostTime(new Date(2026, 9, 27), new Date(2026, 9, 27, 6, 0)),
+    ).toEqual(new Date(2026, 9, 27, 9));
+  });
+  it("offers nothing for a past day or a day with no time left", () => {
+    expect(defaultPostTime(new Date(2026, 9, 26), now)).toBeNull();
+    expect(
+      defaultPostTime(new Date(2026, 9, 27), new Date(2026, 9, 27, 23, 10)),
+    ).toBeNull();
   });
 });

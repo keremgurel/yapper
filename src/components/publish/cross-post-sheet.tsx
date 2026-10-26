@@ -36,7 +36,13 @@ import OutcomeList, {
 } from "@/components/publish/sheet/outcome-list";
 import PublishButton from "@/components/publish/sheet/publish-button";
 import SingleCopyFields from "@/components/publish/sheet/single-copy-fields";
-import SchedulePanel from "@/components/publish/sheet/schedule-panel";
+import ScheduleButton from "@/components/publish/schedule/schedule-button";
+import ScheduledNotice from "@/components/publish/schedule/scheduled-notice";
+import { scheduleTargets } from "@/components/publish/schedule/schedule-targets";
+import { useScheduleSubmit } from "@/components/publish/schedule/use-schedule-submit";
+import { useSchedulingAvailable } from "@/components/publish/schedule/use-scheduling-available";
+import { useWhen } from "@/components/publish/schedule/use-when";
+import WhenPicker from "@/components/publish/schedule/when-picker";
 import SourceList from "@/components/publish/sheet/source-list";
 import TikTokPostReview, { type TikTokReview } from "./tiktok-post-review";
 import type { CrossPostTarget } from "./compose/types";
@@ -183,7 +189,15 @@ export default function CrossPostSheet({
       setTikTokReviews((current) => ({ ...current, [id]: review })),
     [],
   );
-  const [scheduled, setScheduled] = useState(false);
+  const when = useWhen();
+  const schedulingAvailable = useSchedulingAvailable();
+  const scheduler = useScheduleSubmit((busy) => {
+    operation.current = busy;
+    setScheduling(busy);
+    onBusy?.(busy);
+  });
+  const scheduled = scheduler.savedFor !== null;
+  const later = schedulingAvailable === true && when.mode === "later";
   const [outcomes, setOutcomes] = useState<SourceOutcome[]>([]);
   const attemptKeys = useRef<PublishAttemptRegistry | null>(null);
   attemptKeys.current ??= new PublishAttemptRegistry();
@@ -315,6 +329,29 @@ export default function CrossPostSheet({
       onBusy?.(false);
     }
   };
+
+  const accounts = Object.fromEntries(
+    (connections ?? []).map((connection) => [
+      connection.platform,
+      connection.externalAccountId ?? "",
+    ]),
+  );
+  const postCount =
+    sources.length *
+    (embedded ? (initialPlatforms?.length ?? 0) : chosen.length);
+  const schedule = () =>
+    void scheduler.submit(when.at ?? new Date(NaN), async () => {
+      const prepared = beforePublish ? await beforePublish() : sources;
+      if (!prepared?.length) return null;
+      return scheduleTargets(
+        prepared,
+        targets.map((target) => target.platform),
+        { override: editable, accounts, youtubeSettings, tiktokReviews },
+      );
+    });
+  const tiktokDraftLater =
+    chosen.includes("tiktok") &&
+    sources.some((source) => tiktokReviews[source.id]?.mode === "inbox");
 
   const done =
     outcomes.length > 0 && outcomes.length === sources.length * targets.length;
@@ -466,65 +503,85 @@ export default function CrossPostSheet({
               </p>
             )}
 
+            {schedulingAvailable && outcomes.length === 0 && !scheduled && (
+              <WhenPicker
+                mode={when.mode}
+                onMode={when.setMode}
+                value={when.value}
+                onValue={when.setValue}
+                disabled={posting || scheduling}
+                note={
+                  tiktokDraftLater
+                    ? "TikTok gets a draft at that time, to finish in the app."
+                    : undefined
+                }
+              />
+            )}
+            {scheduler.savedFor && (
+              <ScheduledNotice at={scheduler.savedFor} count={postCount} />
+            )}
+            {scheduler.error && (
+              <p role="alert" className="text-destructive text-sm">
+                {scheduler.error}
+              </p>
+            )}
+            {later && !scheduled && postCount > 20 && (
+              <p className="text-destructive text-xs">
+                Schedule up to 20 posts at a time.
+              </p>
+            )}
+            {later
+              ? !scheduled && (
+                  <ScheduleButton
+                    at={when.at}
+                    count={postCount}
+                    saving={scheduling}
+                    disabled={
+                      disabled ||
+                      (embedded &&
+                        chosen.length !== initialPlatforms?.length) ||
+                      posting ||
+                      scheduling ||
+                      !youtubeReady ||
+                      !tiktokReady ||
+                      sources.length === 0 ||
+                      chosen.length === 0 ||
+                      postCount > 20 ||
+                      (editable ? !title.trim() : false)
+                    }
+                    onSchedule={schedule}
+                  />
+                )
+              : !scheduled &&
+                (!done ||
+                  failures.length > 0 ||
+                  outcomes.some((outcome) => outcome.status === "pending")) && (
+                  <PublishButton
+                    videos={sources.length}
+                    platforms={
+                      embedded ? (initialPlatforms?.length ?? 0) : chosen.length
+                    }
+                    postedSoFar={outcomes.length}
+                    posting={posting}
+                    done={done}
+                    disabled={
+                      disabled ||
+                      (embedded &&
+                        chosen.length !== initialPlatforms?.length) ||
+                      posting ||
+                      !youtubeReady ||
+                      !tiktokReady ||
+                      scheduling ||
+                      sources.length === 0 ||
+                      chosen.length === 0 ||
+                      (editable ? !title.trim() : false)
+                    }
+                    onPublish={() => void publish()}
+                  />
+                )}
             {onNext && !posting && (done || scheduled) && (
               <Button onClick={onNext}>Post another video</Button>
             )}
-            {!scheduled &&
-              (!done ||
-                failures.length > 0 ||
-                outcomes.some((outcome) => outcome.status === "pending")) && (
-                <PublishButton
-                  videos={sources.length}
-                  platforms={
-                    embedded ? (initialPlatforms?.length ?? 0) : chosen.length
-                  }
-                  postedSoFar={outcomes.length}
-                  posting={posting}
-                  done={done}
-                  disabled={
-                    disabled ||
-                    (embedded && chosen.length !== initialPlatforms?.length) ||
-                    posting ||
-                    !youtubeReady ||
-                    !tiktokReady ||
-                    scheduling ||
-                    sources.length === 0 ||
-                    chosen.length === 0 ||
-                    (editable ? !title.trim() : false)
-                  }
-                  onPublish={() => void publish()}
-                />
-              )}
-            {!embedded &&
-              outcomes.length === 0 &&
-              !chosen.includes("tiktok") && (
-                <SchedulePanel
-                  accounts={Object.fromEntries(
-                    (connections ?? []).map((connection) => [
-                      connection.platform,
-                      connection.externalAccountId ?? "",
-                    ]),
-                  )}
-                  sources={sources}
-                  platforms={chosen}
-                  override={editable}
-                  youtubeSettings={youtubeSettings}
-                  disabled={
-                    posting ||
-                    !youtubeReady ||
-                    !tiktokReady ||
-                    scheduling ||
-                    sources.length === 0 ||
-                    chosen.length === 0 ||
-                    (editable ? !title.trim() : false)
-                  }
-                  onBusy={(busy) => {
-                    operation.current = busy;
-                    setScheduling(busy);
-                  }}
-                  onScheduled={() => setScheduled(true)}
-                />
-              )}
             <p className="text-muted-foreground text-center text-xs">
               For TikTok, review the audience and posting method above.
             </p>

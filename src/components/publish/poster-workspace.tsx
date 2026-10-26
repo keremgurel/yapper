@@ -7,6 +7,7 @@ import { LayoutGrid, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState, PageHeader, Section } from "@/components/studio-ui";
 import CrossPostSheet from "@/components/publish/cross-post-sheet";
+import ScheduleIntentNote from "@/components/publish/schedule/schedule-intent-note";
 import {
   captionFor,
   copyCaptionToOthers,
@@ -347,6 +348,7 @@ export default function PosterWorkspace() {
             </div>
           }
         />
+        <ScheduleIntentNote />
 
         <input
           ref={fileInputRef}

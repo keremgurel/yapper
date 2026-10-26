@@ -7,6 +7,8 @@ import { demoIdeas } from "./demo-content";
 
 const noop = () => {};
 const noPosts = new Map();
+const noSchedules = { byDay: new Map(), onDrop: noop, onSaved: noop };
+const noAdd = () => null;
 const focus = new Date(2026, 9, 1);
 const items = demoIdeas.map((idea, index) => ({
   ...idea,
@@ -34,6 +36,8 @@ export default function CalendarPreview() {
             today={focus}
             byDay={byDay}
             postedByDay={noPosts}
+            layer={noSchedules}
+            addHref={noAdd}
             onOpenItem={noop}
             onDropDay={noop}
           />

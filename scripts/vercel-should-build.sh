@@ -21,8 +21,9 @@ set -uo pipefail
 head="${1:-HEAD}"
 
 # Paths that cannot affect what the site serves. `content/` is deliberately
-# absent: the blog posts under it are pages, so they must build.
-IGNORED='^(native-macos/|docs/|\.github/|README\.md$|AGENTS\.md$|CLAUDE\.md$)'
+# absent: the blog posts under it are pages, so they must build. `workers/`
+# holds Cloudflare Workers, which deploy with wrangler, not with the site.
+IGNORED='^(native-macos/|workers/|docs/|\.github/|README\.md$|AGENTS\.md$|CLAUDE\.md$)'
 
 build() { echo "▲ Building: $1"; exit 1; }
 skip() { echo "▲ Skipped: $1"; exit 0; }

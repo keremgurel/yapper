@@ -39,6 +39,8 @@ To resume, add Facebook to both active lists, run the rollout/regression tests, 
 
 Manual posting code and scheduled automation readiness are separate. The deployment inspected during this work does not have `STUDIO_SCHEDULER_ENABLED` set. `vercel.json` only registers the daily storage lifecycle cron, not the publishing worker. A suitable worker trigger, configured secrets and a successful scheduled delivery/recovery test are still required before calling unattended cross-posting production-ready. No hosting upgrade or scheduler activation is included here.
 
+October 27: the worker trigger now exists as the publish clock, a Cloudflare Worker in `workers/publish-clock`, and scheduled TikTok posts use Direct Post with the reviewed settings. Poster, the cross-post sheet and Calendar can schedule, move and cancel posts. Going live still needs the clock deployed, `PUBLISH_SCHEDULER_SECRET`, `PUBLISH_SCHEDULER_URL` and `STUDIO_SCHEDULER_ENABLED=1` in Vercel production, and a rehearsed scheduled delivery. Steps are in [scheduled-publishing.md](scheduled-publishing.md).
+
 ## October 22 technical verification
 
 The production Connections page still shows the existing YouTube, TikTok and Instagram accounts connected. This alone does not establish successful YouTube or Instagram publishing. Current native source already has YouTube visibility, audience and synthetic-media controls; the earlier October 10 native-control limitation is obsolete.

@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "yapper-publish-clock",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  // Hourly safety sweep. Wakes normally come from Yapper itself, so this only
+  // matters if one was lost.
+  "triggers": { "crons": ["7 * * * *"] },
+  "durable_objects": {
+    "bindings": [{ "name": "CLOCK", "class_name": "PublishClock" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["PublishClock"] }],
+  "vars": {
+    "SWEEP_URL": "https://ypr.app/api/internal/publishing",
+  },
+  // Secret, set with `wrangler secret put PUBLISH_SCHEDULER_SECRET`. The same
+  // value is PUBLISH_SCHEDULER_SECRET in Yapper's Vercel environment.
+}

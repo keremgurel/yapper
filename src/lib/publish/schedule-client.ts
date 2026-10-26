@@ -88,6 +88,19 @@ export function scheduleErrorMessage(error: unknown): string {
       "The previous sending attempt failed. Choose a new time to retry.",
     upload_failed: "The video could not be sent. Choose a new time to retry.",
     unauthorized: "Sign in again to manage your scheduled posts.",
+    schedule_missed:
+      "This post’s time passed more than a day ago before it could be sent. Choose a new time.",
+    too_many_scheduled:
+      "You can have up to 10 videos waiting to post. Let one go out or cancel one first.",
+    tiktok_preflight_failed:
+      "TikTok couldn’t be reached to check this post. Try scheduling again.",
+    tiktok_privacy_invalid:
+      "TikTok no longer offers that audience for your account. Choose another.",
+    tiktok_duration_check_failed:
+      "This video is longer than TikTok allows for your account.",
+    tiktok_interaction_disabled:
+      "Comments, Duet, or Stitch are turned off in your TikTok settings. Untick them here.",
+    tiktok_audit_required: "TikTok only allows private posts from Yapper yet.",
   };
   return (
     messages[code] ??

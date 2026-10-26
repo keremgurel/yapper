@@ -1,0 +1,14 @@
+{
+  "name": "yapper-publish-clock",
+  "private": true,
+  "description": "Wakes Yapper's scheduled-publishing worker at the minute a post is due.",
+  "scripts": {
+    "dev": "wrangler dev --test-scheduled",
+    "deploy": "wrangler deploy",
+    "typecheck": "wrangler types && tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "wrangler": "4.149.0"
+  }
+}

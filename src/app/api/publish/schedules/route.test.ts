@@ -10,6 +10,7 @@ import {
 } from "@/lib/db/publishing-schedules";
 import { getConnectionRow } from "@/lib/db/publish";
 import { resolveOwnedMediaKey } from "@/lib/publish/media";
+import { wakePublishClock } from "@/lib/publish/schedule-wake";
 import { GET, POST } from "./route";
 import { PATCH } from "./[id]/route";
 
@@ -24,6 +25,10 @@ vi.mock("@/lib/db/poster-slot", () => ({
     Response.json({ error: "poster_slot_busy", waiting }, { status: 409 }),
 }));
 vi.mock("@clerk/nextjs/server", () => ({ auth: vi.fn() }));
+const deferred = vi.hoisted(() => ({ after: vi.fn() }));
+vi.mock("next/server", () => deferred);
+vi.mock("@/lib/publish/schedule-wake", () => ({ wakePublishClock: vi.fn() }));
+vi.mock("@/lib/publish/schedule-plan-date", () => ({ syncPlanDates: vi.fn() }));
 vi.mock("@/lib/db/publishing-schedules", () => ({
   createPublishingSchedules: vi.fn(),
   findScheduleRequest: vi.fn(),
@@ -171,6 +176,9 @@ it("persists the resolved source and selected account only after all validation"
       }),
     ],
   );
+  // The publish clock is told when this selection comes due, after responding.
+  for (const [task] of deferred.after.mock.calls) await task();
+  expect(wakePublishClock).toHaveBeenCalledWith(new Date(plan.scheduledFor));
 });
 it("rejects submission aliases that would schedule the same destination twice", async () => {
   const plan = body();

@@ -16,6 +16,10 @@ const eslintConfig = defineConfig([
     "native-macos/.build/**",
     "native-macos/dist/**",
     ".analytics-private/**",
+    // Cloudflare Worker with its own toolchain and generated runtime types.
+    "workers/*/node_modules/**",
+    "workers/*/.wrangler/**",
+    "workers/*/worker-configuration.d.ts",
     "next-env.d.ts",
   ]),
   // Disable ESLint rules that conflict with Prettier (must stay last).

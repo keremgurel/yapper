@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, inArray, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lte, min, or, sql } from "drizzle-orm";
 import { getDb, type DbTx } from "./client";
 import { lockStorageUserWithinTx } from "./storage-accounting";
 import { publishingSchedules, publishJobs, r2Objects } from "./schema";
@@ -51,7 +51,7 @@ export async function reconcileScheduleOutcomes() {
   return getDb()
     .update(publishingSchedules)
     .set({
-      status: sql`case when ${publishJobs.status} = 'failed' then 'failed' when ${publishingSchedules.platform} = 'tiktok' then 'draft' else 'published' end`,
+      status: sql`case when ${publishJobs.status} = 'failed' then 'failed' when ${publishingSchedules.platform} = 'tiktok' and ${publishingSchedules.input}->'settings' is null then 'draft' else 'published' end`,
       publishJobId: publishJobs.id,
       externalUrl: publishJobs.externalUrl,
       error: publishJobs.error,
@@ -187,6 +187,46 @@ export async function claimDueSchedules(limit = 3, now = new Date()) {
     }
     return claimed;
   });
+}
+
+/** The earliest moment the worker has something to do: a scheduled post
+ * coming due, or a sending post whose lease or recheck expires. Null when the
+ * queue is idle, so the publish clock can sleep until it is woken. */
+export async function nextScheduleWake(): Promise<Date | null> {
+  const [row] = await getDb()
+    .select({
+      at: min(
+        sql<Date>`case when ${publishingSchedules.status} = 'scheduled' then ${publishingSchedules.scheduledFor} else ${publishingSchedules.leaseExpiresAt} end`,
+      ),
+    })
+    .from(publishingSchedules)
+    .where(inArray(publishingSchedules.status, ["scheduled", "running"]));
+  return row?.at ? new Date(row.at) : null;
+}
+
+/** The platform accepted the post but is still processing it. Keep the row
+ * sending and let a later sweep ask again with the same publish key, which
+ * reconciles instead of posting twice. */
+export async function deferPublishingSchedule(
+  row: PublishingSchedule,
+  recheckAt: Date,
+  publishJobId?: string,
+) {
+  if (!row.leaseToken) throw new ScheduleConflict("schedule_not_claimed");
+  await getDb()
+    .update(publishingSchedules)
+    .set({
+      publishJobId: publishJobId ?? row.publishJobId,
+      leaseToken: null,
+      leaseExpiresAt: recheckAt,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(publishingSchedules.id, row.id),
+        eq(publishingSchedules.leaseToken, row.leaseToken),
+      ),
+    );
 }
 
 export async function settlePublishingSchedule(

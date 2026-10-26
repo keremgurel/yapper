@@ -1,5 +1,6 @@
 import { withProductAnalytics } from "@/lib/analytics/server";
 import { createHash } from "node:crypto";
+import { after } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import {
   createPublishingSchedules,
@@ -17,7 +18,11 @@ import { resolveOwnedMediaKey } from "@/lib/publish/media";
 import { readScheduleInput, scheduleDate } from "@/lib/publish/schedule-input";
 import { schedulingEnabled } from "@/lib/publish/schedule-types";
 import { scheduleSummary } from "@/lib/publish/schedule-summary";
+import { wakePublishClock } from "@/lib/publish/schedule-wake";
+import { syncPlanDates } from "@/lib/publish/schedule-plan-date";
+import { preflightScheduledTikTok } from "@/lib/publish/server/tiktok-schedule-preflight";
 import { ownsKey } from "@/lib/r2";
+import type { TikTokDirectSettings } from "@/lib/publish/tiktok-direct-settings";
 import {
   countScheduledVideos,
   MAX_SCHEDULED_VIDEOS,
@@ -87,6 +92,23 @@ async function trackedPOST(request: Request) {
           { error: "destination_account_changed" },
           { status: 409 },
         );
+      if (
+        target.platform === "tiktok" &&
+        "settings" in target.input &&
+        target.input.settings
+      ) {
+        const invalid = await preflightScheduledTikTok(
+          userId,
+          media.mediaKey,
+          target.input.settings as TikTokDirectSettings,
+          request.signal,
+        );
+        if (invalid)
+          return Response.json(
+            { error: invalid, reason: invalid.replace(/^tiktok_/, "") },
+            { status: 400 },
+          );
+      }
       const item = target.input.contentItemId
         ? await getContentItem(userId, target.input.contentItemId)
         : null;
@@ -137,6 +159,12 @@ async function trackedPOST(request: Request) {
       hash,
       entries,
     );
+    await syncPlanDates(
+      userId,
+      rows.map((row) => row.contentItemId),
+      plan.scheduledFor,
+    );
+    after(() => wakePublishClock(plan.scheduledFor));
     return Response.json(
       { schedules: rows.map(scheduleSummary) },
       { status: 201 },

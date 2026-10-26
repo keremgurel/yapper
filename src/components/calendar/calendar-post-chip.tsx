@@ -30,7 +30,7 @@ export default function CalendarPostChip({
       }}
       onClick={onOpen}
       title={item.title.trim() || "Untitled"}
-      className="bg-card hover:bg-muted flex w-full cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 text-left transition-colors"
+      className="bg-card hover:bg-muted flex w-full min-w-0 cursor-pointer items-center gap-1.5 overflow-hidden rounded-md px-1.5 py-1 text-left transition-colors"
     >
       <span
         aria-hidden="true"
@@ -38,7 +38,7 @@ export default function CalendarPostChip({
         style={{ backgroundColor: STATUS_COLOR[item.status] }}
       />
       {item.scheduledFor && (
-        <span className="text-muted-foreground shrink-0 text-[11px] font-bold tabular-nums">
+        <span className="text-muted-foreground hidden shrink-0 text-[11px] font-bold tabular-nums sm:inline">
           {timeLabel(item.scheduledFor)}
         </span>
       )}

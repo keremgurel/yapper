@@ -126,3 +126,20 @@ export function rescheduleIso(
   else d.setHours(9, 0, 0, 0);
   return d.toISOString();
 }
+
+/** When a post started from a calendar day should go out: 9am on a future day;
+ * today, the next whole hour at least half an hour away; null once a day has
+ * no time left to schedule in. */
+export function defaultPostTime(day: Date, now: Date): Date | null {
+  const today = startOfDay(now);
+  const target = startOfDay(day);
+  if (target < today) return null;
+  const at = new Date(target);
+  at.setHours(9, 0, 0, 0);
+  if (target > today) return at;
+  const soon = new Date(now.getTime() + 30 * 60_000);
+  soon.setMinutes(0, 0, 0);
+  soon.setHours(soon.getHours() + 1);
+  const pick = at > soon ? at : soon;
+  return sameDay(pick, now) ? pick : null;
+}
