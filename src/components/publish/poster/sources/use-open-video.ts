@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { importInstagramMedia } from "@/lib/publish/client";
 import { importFailureMessage } from "@/lib/publish/import-failure";
-import { canOpen, type PosterVideo } from "../poster-video";
+import { canOpen, needsOriginal, type PosterVideo } from "../poster-video";
 
 /** Open immediately; prepare the reusable master without blocking composition. */
 export function useOpenVideo() {
@@ -23,7 +23,7 @@ export function useOpenVideo() {
       video.kind === "platform" ? { ...video, mediaKey: undefined } : video,
     );
     setImportingId(null);
-    if (video.kind === "yapper") return;
+    if (video.kind === "yapper" || needsOriginal(video)) return;
     setImportingId(video.id);
     try {
       if (video.mediaKey) {

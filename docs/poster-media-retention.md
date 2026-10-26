@@ -42,3 +42,21 @@ account's deletion queue, and verifies the released files are absent with R2 HEA
 requests. It reports retained bytes and any incomplete deletions. The latest
 waiting video stays even if it is old; posting, scheduling, or explicitly
 discarding it frees the slot.
+
+## Attach originals from channel posts
+
+YouTube and TikTok posts without retained media can be selected in Poster.
+Their cards say “Attach original video”; opening one asks for a local original
+file rather than downloading platform media. Attachment uses the same upload,
+entitlement, storage quota, waiting-slot and lifecycle checks as Add video.
+The post title becomes the upload title, and its caption is retained as the
+upload's original note and copied into the current cross-post drafts without
+overwriting edits made while the upload runs. YouTube descriptions and TikTok
+video descriptions are included in the connected library response.
+
+The attached file appears in Uploads. During the current Poster session,
+reopening the source card reuses the attachment; after reloading, use Uploads.
+Source-card associations and edited cross-post drafts are session state, not
+permanent platform imports. Published-media retention still applies.
+Instagram keeps its existing import flow. No new OAuth permissions or automatic
+YouTube/TikTok downloads are introduced.

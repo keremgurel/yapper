@@ -30,5 +30,7 @@ describe("mapTikTokVideos", () => {
       url: "https://tiktok/new",
     });
     expect(videos[1].title).toBe("Older caption");
+    expect(videos[1].caption).toBe("Older caption");
+    expect(videos[0].caption).toBe("New title");
   });
 });

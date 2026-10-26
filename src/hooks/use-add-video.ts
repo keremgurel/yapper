@@ -85,7 +85,7 @@ export function useAddVideo(
   const [progress, setProgress] = useState(0);
 
   const add = useCallback(
-    async (file: File) => {
+    async (file: File, metadata?: { title: string; caption?: string }) => {
       const detectedType = videoTypeFor(file);
       if (!detectedType) {
         setError("not_video");
@@ -97,7 +97,10 @@ export function useAddVideo(
       setNotice(null);
       setProgress(0);
       try {
-        const title = file.name.replace(/\.[^.]+$/, "") || "Untitled video";
+        const title =
+          metadata?.title ||
+          file.name.replace(/\.[^.]+$/, "") ||
+          "Untitled video";
         const mimeType = detectedType;
         const ext = mimeType.split("/")[1]?.split(";")[0] || "mp4";
         const presign = await fetch("/api/media/upload-url", {
@@ -155,6 +158,7 @@ export function useAddVideo(
         // and registered. A failed upload must never leave a blank orphan idea.
         const linked = await createContent({
           title,
+          originalNote: metadata?.caption,
           submissionId,
           sourceUrl: "yapper://poster-upload",
           sourceTitle: "Poster upload",

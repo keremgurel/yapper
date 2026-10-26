@@ -19,6 +19,7 @@ import { renderCaption } from "@/lib/publish/caption-format";
 import { useCaptionDrafts } from "@/components/publish/captions/use-caption-drafts";
 import { useCaptionGeneration } from "@/components/publish/captions/use-caption-generation";
 import CaptionBriefDisclosure from "@/components/publish/poster/caption-brief-disclosure";
+import AttachOriginal from "@/components/publish/poster/attach-original";
 import CoverStudio from "@/components/publish/poster/cover/cover-studio";
 import { type CoverDraft } from "@/components/publish/poster/cover-draft";
 import {
@@ -32,6 +33,8 @@ import {
   currentPosterVideo,
   fromPostable,
   mediaOf,
+  needsOriginal,
+  type PosterVideo,
 } from "@/components/publish/poster/poster-video";
 import { downloadCover } from "@/components/publish/poster/render-cover";
 import SourceOptions from "@/components/publish/poster/sources/source-options";
@@ -99,6 +102,14 @@ export default function PosterWorkspace() {
     !!isSignedIn,
   );
   const bench = useOpenVideo();
+  const attachedVideos = useRef(new Map<string, PosterVideo>());
+  const openVideo = (video: PosterVideo) => {
+    const attached = attachedVideos.current.get(video.id);
+    if (attached) {
+      bench.close();
+      bench.setActive(attached);
+    } else void bench.open(video);
+  };
   const active = useMemo(
     () => currentPosterVideo(bench.active, library),
     [bench.active, library],
@@ -185,6 +196,47 @@ export default function PosterWorkspace() {
     openUploaded,
     useCallback((item: ContentDetail) => patchRow(item.id, item), [patchRow]),
     selectLocalFile,
+  );
+
+  const attachOriginal = useCallback(
+    (
+      original: Extract<NonNullable<typeof active>, { kind: "platform" }>,
+      item: ContentDetail,
+    ) => {
+      prependRow(item);
+      const [uploaded] = postableVideos([item]);
+      if (!uploaded) return;
+      const attached: PosterVideo = {
+        ...fromPostable(uploaded),
+        id: original.id,
+      };
+      attachedVideos.current.set(original.id, attached);
+      // Preserve this post's drafts and identity. A late upload must never
+      // reopen a closed post or replace a different selection.
+      bench.setActive((current) =>
+        current?.id === original.id ? attached : current,
+      );
+      applyGenerated(
+        original.id,
+        Object.values(sourceCaptions(original)),
+        false,
+        "",
+        {},
+      );
+      setDestinationsByVideo((current) =>
+        current[original.id]
+          ? current
+          : {
+              ...current,
+              [original.id]: new Set(
+                connectedPlatforms.filter(
+                  (platform) => platform !== original.platform,
+                ),
+              ),
+            },
+      );
+    },
+    [prependRow, bench, applyGenerated, connectedPlatforms],
   );
 
   // The editor hands a finished cut over by linking to /studio/poster?item=<id>.
@@ -395,7 +447,7 @@ export default function PosterWorkspace() {
             uploadState={uploadState}
             uploadProgress={uploadProgress}
             onAdd={openFilePicker}
-            onOpen={(video) => void bench.open(video)}
+            onOpen={openVideo}
             onRemoved={removeRow}
           />
         ) : (
@@ -420,23 +472,37 @@ export default function PosterWorkspace() {
                 videos={sourceVideos.videos}
                 activeId={active.id}
                 importingId={bench.importingId}
-                onOpen={(video) => void bench.open(video)}
+                onOpen={openVideo}
                 onAdd={openFilePicker}
               />
             </Section>
 
-            <Section title="Thumbnail" meta={active.title}>
-              <CoverStudio
-                key={active.id}
-                draft={cover}
-                media={mediaOf(active)}
-                originalImage={originalThumbnail(active)}
-                onChange={(next) =>
-                  setCovers((current) => ({ ...current, [active.id]: next }))
-                }
-                onDownload={() => void downloadCover(cover)}
-                onFramePendingChange={setFramePending}
-              />
+            <Section
+              title={
+                needsOriginal(active) ? "Attach original video" : "Thumbnail"
+              }
+              meta={active.title}
+            >
+              {active.kind === "platform" && needsOriginal(active) ? (
+                <AttachOriginal
+                  key={active.id}
+                  video={active}
+                  onAttached={attachOriginal}
+                  onUpdated={(item) => patchRow(item.id, item)}
+                />
+              ) : (
+                <CoverStudio
+                  key={active.id}
+                  draft={cover}
+                  media={mediaOf(active)}
+                  originalImage={originalThumbnail(active)}
+                  onChange={(next) =>
+                    setCovers((current) => ({ ...current, [active.id]: next }))
+                  }
+                  onDownload={() => void downloadCover(cover)}
+                  onFramePendingChange={setFramePending}
+                />
+              )}
             </Section>
 
             <Section title="Send to">
@@ -468,7 +534,8 @@ export default function PosterWorkspace() {
                     }
                     reading={
                       reading ||
-                      (active.kind === "platform" && !active.mediaKey)
+                      (active.kind === "platform" &&
+                        bench.importingId === active.id)
                     }
                     chosen={destinations}
                     connected={connectedPlatforms}

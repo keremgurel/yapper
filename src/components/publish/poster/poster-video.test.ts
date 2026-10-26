@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { PostableVideo } from "@/lib/publish/postable-videos";
 import {
+  canOpen,
+  needsOriginal,
+  fromPlatform,
+  mediaOf,
   currentPosterVideo,
   fromPostable,
   type PosterVideo,
@@ -59,5 +63,46 @@ describe("open Poster video updates", () => {
     };
     expect(currentPosterVideo(selected, [uploaded])).toBe(selected);
     expect(currentPosterVideo(null, [uploaded])).toBeNull();
+  });
+});
+
+describe("channel originals", () => {
+  const post = {
+    id: "post-1",
+    title: "Original title",
+    caption: "Original caption\n#tag",
+    thumbnail: null,
+    viewCount: 4,
+    publishedAt: "",
+    privacyStatus: "public",
+    url: "https://example.com/post-1",
+  };
+  it.each(["youtube", "tiktok"] as const)(
+    "opens %s metadata for attachment without enabling remote import",
+    (platform) => {
+      const video = fromPlatform(platform, post);
+      expect(canOpen(video)).toBe(true);
+      expect(needsOriginal(video)).toBe(true);
+      expect(video).toMatchObject({
+        title: post.title,
+        caption: post.caption,
+        importable: false,
+      });
+      expect(mediaOf(video)).toEqual({
+        mediaKey: undefined,
+        previewUrl: undefined,
+      });
+    },
+  );
+  it("keeps retained sources and Instagram imports working", () => {
+    const retained = fromPlatform("youtube", {
+      ...post,
+      mediaKey: "owned/file.mp4",
+    });
+    expect(needsOriginal(retained)).toBe(false);
+    expect(canOpen(retained)).toBe(true);
+    const instagram = fromPlatform("instagram", post);
+    expect(needsOriginal(instagram)).toBe(false);
+    expect(canOpen(instagram)).toBe(true);
   });
 });
