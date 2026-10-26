@@ -115,7 +115,7 @@ export default function DestinationColumn({
           {hasOriginalCaption ? (
             <div className="space-y-2">
               <p className="text-muted-foreground text-xs">
-                Starts with your original Instagram caption.
+                Starts with your original caption.
               </p>
               <Button
                 type="button"
