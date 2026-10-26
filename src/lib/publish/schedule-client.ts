@@ -108,6 +108,23 @@ export function scheduleErrorMessage(error: unknown): string {
   );
 }
 
+/** What went wrong with a saved post, in the creator's words. A provider's raw
+ * error text has no copy of its own, so it falls back by state. */
+export function scheduleRowErrorMessage(row: {
+  status: string;
+  error: string | null;
+}): string {
+  const known = scheduleErrorMessage(new Error(row.error ?? ""));
+  if (known !== scheduleErrorMessage(new Error(""))) return known;
+  return scheduleErrorMessage(
+    new Error(
+      row.status === "needs_attention"
+        ? "publish_state_pending"
+        : "publish_failed",
+    ),
+  );
+}
+
 export function localScheduleInput(date: Date): string {
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;

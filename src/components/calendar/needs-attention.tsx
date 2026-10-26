@@ -7,7 +7,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { scheduleErrorMessage } from "@/lib/publish/schedule-client";
+import { scheduleRowErrorMessage } from "@/lib/publish/schedule-client";
 import type { ScheduleSummary } from "@/lib/publish/schedule-types";
 import ScheduleDetails from "./schedule-details";
 import { needsAttention } from "./schedule-status";
@@ -52,9 +52,7 @@ export default function NeedsAttention({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{row.title}</p>
                 <p className="text-destructive truncate text-xs">
-                  {scheduleErrorMessage(
-                    new Error(row.error ?? "publish_failed"),
-                  )}
+                  {scheduleRowErrorMessage(row)}
                 </p>
               </div>
               <Popover>

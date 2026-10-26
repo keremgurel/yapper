@@ -179,14 +179,26 @@ describe("scheduled destination execution", () => {
       status: "processing",
       publishJobId: "pending",
     });
+    // A post first sent late still gets the full window, counted from the send.
+    vi.mocked(findPublishJobClaim).mockResolvedValueOnce({
+      ...prior("processing"),
+      createdAt: new Date(Date.now() - 60_000),
+    });
     expect(
       await run(
         row({
           platform: "tiktok",
-          scheduledFor: new Date(Date.now() - RECHECK_WINDOW_MS - 1),
+          scheduledFor: new Date(Date.now() - 3 * RECHECK_WINDOW_MS),
         }),
       ),
-    ).toMatchObject({ status: "needs_attention" });
+    ).toMatchObject({ status: "processing" });
+    vi.mocked(findPublishJobClaim).mockResolvedValueOnce({
+      ...prior("processing"),
+      createdAt: new Date(Date.now() - RECHECK_WINDOW_MS - 1),
+    });
+    expect(await run(row({ platform: "tiktok" }))).toMatchObject({
+      status: "needs_attention",
+    });
   });
   it.each(["publish_in_progress", "publish_state_pending"])(
     "retains an uncertain outcome for %s without issuing another attempt",

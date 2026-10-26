@@ -26,8 +26,9 @@ const publishers = {
 };
 /** How soon to ask a platform again about a post it is still processing. */
 export const RECHECK_MS = 45_000;
-/** After this long a still-processing post stops being rechecked and asks the
- * creator to look at the platform instead. */
+/** After this long since the first send, a still-processing post stops being
+ * rechecked and asks the creator to look at the platform instead. Counted from
+ * the send, not the scheduled time, so a post sent late still gets the hour. */
 export const RECHECK_WINDOW_MS = 60 * 60_000;
 /** A post that never started sending and is this late is not sent at all: a
  * Tuesday 9am post going out on Wednesday is worse than asking again. Only an
@@ -104,10 +105,11 @@ export async function runScheduledDestination(
       };
     // The platform took the post and is still processing it. Asking again
     // with the same key checks its status rather than posting again.
+    const sentAt = prior?.createdAt?.getTime() ?? Date.now();
     if (
       result.error === "publish_state_pending" &&
       result.reconcilable &&
-      Date.now() - row.scheduledFor.getTime() < RECHECK_WINDOW_MS
+      Date.now() - sentAt < RECHECK_WINDOW_MS
     )
       return { status: "processing", publishJobId: result.jobId };
     const uncertain =

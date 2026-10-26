@@ -200,6 +200,8 @@ export type PublishJobClaim =
       externalUrl: string | null;
       error?: string | null;
       providerState?: (typeof publishJobs.$inferSelect)["providerState"];
+      /** When the platform operation was first admitted. */
+      createdAt?: Date;
     }
   | { kind: "unavailable" };
 
@@ -216,6 +218,7 @@ export async function findPublishJobClaim(
       externalUrl: publishJobs.externalUrl,
       error: publishJobs.error,
       providerState: publishJobs.providerState,
+      createdAt: publishJobs.createdAt,
     })
     .from(publishJobs)
     .where(
@@ -235,6 +238,7 @@ export async function findPublishJobClaim(
         externalUrl: row.externalUrl,
         error: row.error,
         providerState: row.providerState,
+        createdAt: row.createdAt,
       }
     : null;
 }

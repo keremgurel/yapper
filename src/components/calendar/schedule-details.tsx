@@ -8,7 +8,7 @@ import PlatformIcon from "@/components/publish/platform-icon";
 import { PLATFORMS } from "@/lib/publish/platforms";
 import {
   localScheduleInput,
-  scheduleErrorMessage,
+  scheduleRowErrorMessage,
 } from "@/lib/publish/schedule-client";
 import type { ScheduleSummary } from "@/lib/publish/schedule-types";
 import { SCHEDULE_STATUS } from "./schedule-status";
@@ -76,7 +76,13 @@ export default function ScheduleDetails({
       </span>
       {row.error && (
         <p className="text-destructive text-xs">
-          {scheduleErrorMessage(new Error(row.error))}
+          {scheduleRowErrorMessage(row)}
+        </p>
+      )}
+      {row.status === "needs_attention" && (
+        <p className="text-muted-foreground text-xs">
+          Look for this post on {platform} first. Removing it here only takes it
+          off your calendar.
         </p>
       )}
       {row.status === "draft" && (
@@ -111,7 +117,10 @@ export default function ScheduleDetails({
           {error}
         </p>
       )}
-      {(changeable || row.externalUrl || row.contentItemId) && (
+      {(changeable ||
+        row.status === "needs_attention" ||
+        row.externalUrl ||
+        row.contentItemId) && (
         <div className="flex flex-wrap items-center gap-2">
           {changeable && !editing && (
             <Button
@@ -134,6 +143,16 @@ export default function ScheduleDetails({
               onClick={() => void run("cancel")}
             >
               Cancel post
+            </Button>
+          )}
+          {row.status === "needs_attention" && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              onClick={() => void run("cancel")}
+            >
+              Remove from Calendar
             </Button>
           )}
           {row.externalUrl && /^https:\/\//.test(row.externalUrl) && (

@@ -351,4 +351,33 @@ describe("durable publishing schedules", () => {
       deferPublishingSchedule({ ...claimed, leaseToken: null }, recheck),
     ).rejects.toThrow("schedule_not_claimed");
   });
+  it("lets the creator remove a post the platform couldn't confirm, but not retry it", async () => {
+    const [row] = await save([
+      entry({ status: "needs_attention", error: "publish_state_pending" }),
+    ]);
+    await expect(
+      changePublishingSchedule("user_test", row.id, "retry", now),
+    ).rejects.toThrow();
+    expect(
+      (await changePublishingSchedule("user_test", row.id, "cancel"))?.status,
+    ).toBe("cancelled");
+  });
+  it("leaves an already failed row and its own error alone on later sweeps", async () => {
+    const [row] = await save([
+      entry({ status: "failed", error: "upload_failed" }),
+    ]);
+    await db.insert(schema.publishJobs).values({
+      userId: "user_test",
+      platform: "youtube",
+      mediaKey,
+      idempotencyKey: scheduleAttemptKey(row),
+      status: "failed",
+      error: "connect ECONNREFUSED 127.0.0.1:9",
+    });
+    expect(await reconcileScheduleOutcomes()).toEqual([]);
+    expect((await listPublishingSchedules("user_test"))[0]).toMatchObject({
+      status: "failed",
+      error: "upload_failed",
+    });
+  });
 });

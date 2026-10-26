@@ -67,7 +67,16 @@ export async function reconcileScheduleOutcomes() {
           publishJobs.idempotencyKey,
           sql`'schedule:' || ${publishingSchedules.id}::text || ':' || ${publishingSchedules.attempt}::text`,
         ),
-        inArray(publishJobs.status, ["published", "failed"]),
+        // Only rows whose state changes: a late success, or an unconfirmed
+        // post that turned out to fail. A failed row with a failed job is
+        // already settled and keeps its own error.
+        or(
+          eq(publishJobs.status, "published"),
+          and(
+            eq(publishJobs.status, "failed"),
+            eq(publishingSchedules.status, "needs_attention"),
+          ),
+        ),
       ),
     )
     .returning({ id: publishingSchedules.id });
@@ -302,8 +311,13 @@ export async function changePublishingSchedule(
       if (job) attempt++;
     } else if (
       !(
-        (action === "cancel" && row.status === "failed") ||
-        row.status === "scheduled"
+        // A post the platform couldn't confirm can be taken off the calendar
+        // once the creator has checked; that never touches the post itself.
+        (
+          (action === "cancel" &&
+            (row.status === "failed" || row.status === "needs_attention")) ||
+          row.status === "scheduled"
+        )
       )
     ) {
       throw new ScheduleConflict("schedule_already_started");
