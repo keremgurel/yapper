@@ -363,8 +363,13 @@ export default function PosterWorkspace() {
           error={uploadError}
           notice={uploadNotice}
         />
+        {bench.importingId && active?.kind === "platform" ? (
+          <p role="status" className="text-muted-foreground text-sm">
+            Importing your {PLATFORMS[active.platform].label} video…
+          </p>
+        ) : null}
         {bench.error ? (
-          <p role="alert" className="text-sm text-[color:var(--sg-yellow-500)]">
+          <p role="alert" className="text-foreground text-sm">
             {bench.error}
           </p>
         ) : null}
@@ -501,6 +506,21 @@ export default function PosterWorkspace() {
                   onAttached={attachOriginal}
                   onUpdated={(item) => patchRow(item.id, item)}
                 />
+              ) : active.kind === "platform" &&
+                bench.error &&
+                !active.mediaKey ? (
+                <div className="space-y-3">
+                  <p className="text-muted-foreground text-sm">
+                    The video could not be imported. Your selection and captions
+                    are still here.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => void bench.open(active)}
+                  >
+                    Try importing again
+                  </Button>
+                </div>
               ) : (
                 <CoverStudio
                   key={active.id}
@@ -543,11 +563,7 @@ export default function PosterWorkspace() {
                         ),
                       )
                     }
-                    reading={
-                      reading ||
-                      (active.kind === "platform" &&
-                        bench.importingId === active.id)
-                    }
+                    reading={reading}
                     chosen={destinations}
                     connected={connectedPlatforms}
                     hasCover={Boolean(cover.image)}

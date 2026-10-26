@@ -36,6 +36,7 @@ export type ProviderSpendEndpoint =
   | "publish-caption"
   | "publish-thumbnail"
   | "instagram-import"
+  | "tiktok-import"
   | "direct-overlays"
   | "design-overlays"
   | "review-overlay"
@@ -89,6 +90,7 @@ const ENDPOINT_POLICIES: Record<
   // API, but it is also the ceiling on cross-posting a week of clips, and a
   // creator who hits it waits two and a half hours for the next one.
   "instagram-import": { capacity: 8, refillPerSecond: 40 / DAY },
+  "tiktok-import": { capacity: 4, refillPerSecond: 20 / DAY },
   // Generated overlays. Planning is one reasoning call over the transcript.
   // Native designs one moment per request, so a single editorial action may
   // need up to twelve calls. A three-request burst cap cut normal batches off

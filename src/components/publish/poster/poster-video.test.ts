@@ -77,7 +77,7 @@ describe("channel originals", () => {
     privacyStatus: "public",
     url: "https://example.com/post-1",
   };
-  it.each(["youtube", "tiktok"] as const)(
+  it.each(["youtube"] as const)(
     "opens %s metadata for attachment without enabling remote import",
     (platform) => {
       const video = fromPlatform(platform, post);
@@ -94,6 +94,12 @@ describe("channel originals", () => {
       });
     },
   );
+  it("imports TikTok posts automatically instead of asking for a local file", () => {
+    const video = fromPlatform("tiktok", post);
+    expect(canOpen(video)).toBe(true);
+    expect(needsOriginal(video)).toBe(false);
+    expect(video).toMatchObject({ importable: true, caption: post.caption });
+  });
   it("keeps retained sources and Instagram imports working", () => {
     const retained = fromPlatform("youtube", {
       ...post,

@@ -7,7 +7,11 @@ vi.unmock("@/lib/costs/provider-budget");
 const client = new PGlite();
 const db = drizzle(client, { schema });
 vi.mock("@/lib/db/client", () => ({ getDb: () => db }));
-import { providerAllowance, reserveProviderBudget } from "./provider-budget";
+import {
+  providerAllowance,
+  reserveProviderBudget,
+  reserveTikTokImportBudget,
+} from "./provider-budget";
 import { fetchBoundedJson } from "@/lib/http/outbound";
 const now = new Date("2026-09-29T12:00:00Z");
 beforeAll(async () => {
@@ -94,4 +98,24 @@ it("covers each paid provider and leaves ordinary storage/social reads alone", (
       body: JSON.stringify({ max_completion_tokens: 999_999 }),
     }),
   ).toThrow();
+});
+
+it("caps concurrent TikTok fallback reservations independently of the global budget", async () => {
+  vi.stubEnv("TIKTOK_IMPORT_DAILY_BUDGET_USD", "0.04");
+  vi.stubEnv("TIKTOK_IMPORT_MONTHLY_BUDGET_USD", "0.06");
+  const attempts = await Promise.allSettled(
+    Array.from({ length: 8 }, () => reserveTikTokImportBudget(now)),
+  );
+  expect(
+    attempts.filter((result) => result.status === "fulfilled"),
+  ).toHaveLength(2);
+  await reserveTikTokImportBudget(new Date("2026-09-30T00:00:00Z"));
+  await expect(
+    reserveTikTokImportBudget(new Date("2026-09-30T01:00:00Z")),
+  ).rejects.toThrow("provider_budget_unavailable");
+  const rows = await db.select().from(schema.providerSpendWindows);
+  expect(
+    rows.find((row) => row.window === "tiktok-import:month:2026-09")
+      ?.reservedMicrousd,
+  ).toBe(60_000);
 });

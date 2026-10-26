@@ -36,7 +36,10 @@ export interface DownloadedInstagramClip {
   cleanup(): Promise<void>;
 }
 
-export function assertSafeRemoteUrl(raw: string): URL {
+export function assertSafeRemoteUrl(
+  raw: string,
+  domains: readonly string[] = ["cdninstagram.com", "fbcdn.net"],
+): URL {
   let url: URL;
   try {
     url = new URL(raw);
@@ -47,7 +50,7 @@ export function assertSafeRemoteUrl(raw: string): URL {
     throw new InstagramDownloadError();
   }
   const hostname = url.hostname.toLowerCase();
-  const isInstagramCdn = ["cdninstagram.com", "fbcdn.net"].some(
+  const isInstagramCdn = domains.some(
     (domain) => hostname === domain || hostname.endsWith(`.${domain}`),
   );
   if (!isInstagramCdn) throw new InstagramDownloadError();
@@ -86,6 +89,8 @@ export async function downloadInstagramClip(
     timeoutMs?: number;
     fetchImpl?: typeof fetch;
     signal?: AbortSignal;
+    allowedDomains?: readonly string[];
+    headersForUrl?: (url: URL) => HeadersInit | undefined;
   } = {},
 ): Promise<DownloadedInstagramClip> {
   const maxBytes = options.maxBytes ?? MAX_SERVER_PROCESSED_VIDEO_BYTES;
@@ -102,12 +107,13 @@ export async function downloadInstagramClip(
   }, timeoutMs);
 
   try {
-    let url = assertSafeRemoteUrl(sourceUrl);
+    let url = assertSafeRemoteUrl(sourceUrl, options.allowedDomains);
     let response: Response | null = null;
     for (let redirects = 0; redirects <= 3; redirects += 1) {
       response = await fetchImpl(url, {
         cache: "no-store",
         redirect: "manual",
+        headers: options.headersForUrl?.(url),
         signal: combinedSignal,
       });
       if (![301, 302, 303, 307, 308].includes(response.status)) break;
@@ -115,7 +121,10 @@ export async function downloadInstagramClip(
       const location = response.headers.get("location");
       if (!location) throw new InstagramDownloadError();
       await response.body?.cancel();
-      url = assertSafeRemoteUrl(new URL(location, url).toString());
+      url = assertSafeRemoteUrl(
+        new URL(location, url).toString(),
+        options.allowedDomains,
+      );
     }
     if (!response?.ok || !response.body) throw new InstagramDownloadError();
 

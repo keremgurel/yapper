@@ -45,7 +45,7 @@ discarding it frees the slot.
 
 ## Attach originals from channel posts
 
-YouTube and TikTok posts without retained media can be selected in Poster.
+YouTube posts without retained media can be selected in Poster.
 Their cards say “Attach original video”; opening one asks for a local original
 file rather than downloading platform media. Attachment uses the same upload,
 entitlement, storage quota, waiting-slot and lifecycle checks as Add video.
@@ -58,5 +58,38 @@ The attached file appears in Uploads. During the current Poster session,
 reopening the source card reuses the attachment; after reloading, use Uploads.
 Source-card associations and edited cross-post drafts are session state, not
 permanent platform imports. Published-media retention still applies.
-Instagram keeps its existing import flow. No new OAuth permissions or automatic
-YouTube/TikTok downloads are introduced.
+Instagram keeps its existing import flow. TikTok automatic importing is described
+below. No new OAuth permissions or automatic YouTube downloads are introduced.
+
+## TikTok automatic imports
+
+TikTok now follows Instagram's automatic import interaction when a source card
+is selected. The server first checks entitlement, a verified saved copy, storage
+and the waiting slot. For a fresh file, TikTok's authenticated `video/query`
+verifies ownership and supplies the canonical post URL. Caller-supplied URLs are
+never accepted. A bounded first-party public-page lookup can provide the file
+without Apify; when unavailable, one bounded Apify video request is permitted.
+
+The fallback imports one video, with related posts, covers, subtitles and
+transcription disabled. It uses `maxTotalChargeUsd=0.02`, `maxItems=1` and
+`restartOnError=false`. There is no app-level retry. DB-backed pacing allows at
+most two paid admissions within a 150-second import workflow and one per user,
+with a five-minute same-post cooldown. This pacing is intentionally conservative.
+
+Separate fixed-UTC-day/month reservations default to $1/day and $20/month for
+this feature, using a conservative $0.02 reservation per paid attempt. These are
+admission budgets, not exact provider invoices. Existing shared provider limits
+also apply. `TIKTOK_IMPORT_DAILY_BUDGET_USD` and
+`TIKTOK_IMPORT_MONTHLY_BUDGET_USD` can lower these defaults; zero stops the paid
+fallback, and invalid settings fail closed. First-party imports and verified
+cached files do not spend the Apify budget. Cache validation precedes all paid
+work, and reservations are not refunded on ambiguous failures.
+
+Downloaded bytes use the same streaming size/time limits, quota registration,
+unique attempt keys, race-loser cleanup and lifecycle as Instagram. Every media
+redirect is restricted to allowed provider hosts. The Apify credential is sent
+only to its key-value record endpoint, never to TikTok/CDN redirects. A new file
+is selected for cross-post preparation; nothing is published automatically.
+YouTube continues to use local original attachments. See
+[youtube-download-approval.md](youtube-download-approval.md) for the separate
+YouTube request and official export alternative.

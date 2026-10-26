@@ -29,12 +29,27 @@ async function runActor(
   actorId: string,
   input: Record<string, unknown>,
   signal?: AbortSignal,
+  options: {
+    maxChargeUsd?: number;
+    maxItems?: number;
+    restartOnError?: boolean;
+  } = {},
 ): Promise<unknown[]> {
   const token = process.env.APIFY_TOKEN;
   if (!token) throw new Error("no_apify_token");
 
+  const query = new URLSearchParams({
+    token,
+    clean: "true",
+    timeout: "90",
+    maxTotalChargeUsd: String(options.maxChargeUsd ?? 0.5),
+  });
+  if (options.maxItems !== undefined)
+    query.set("maxItems", String(options.maxItems));
+  if (options.restartOnError !== undefined)
+    query.set("restartOnError", String(options.restartOnError));
   const { response: res, data } = await fetchBoundedJson<unknown>(
-    `${RUN_BASE}/${actorId}/run-sync-get-dataset-items?token=${token}&clean=true&timeout=90&maxTotalChargeUsd=0.5`,
+    `${RUN_BASE}/${actorId}/run-sync-get-dataset-items?${query}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -160,4 +175,32 @@ export async function scrapeCreator(
     default:
       throw new Error("unsupported_platform");
   }
+}
+
+/** One explicit own-video import. No related videos, covers or transcription. */
+export async function resolveTikTokImportMedia(
+  url: string,
+  signal: AbortSignal,
+): Promise<TikTokMedia> {
+  const items = await runActor(
+    "clockworks~tiktok-video-scraper",
+    {
+      postURLs: [url],
+      resultsPerPage: 1,
+      scrapeRelatedVideos: false,
+      shouldDownloadVideos: true,
+      shouldDownloadCovers: false,
+      shouldDownloadSlideshowImages: false,
+      downloadSubtitlesOptions: "NEVER_DOWNLOAD_SUBTITLES",
+    },
+    signal,
+    { maxChargeUsd: 0.02, maxItems: 1, restartOnError: false },
+  );
+  const item = items[0];
+  const requestedId = new URL(url).pathname.split("/").filter(Boolean).pop();
+  if (str(pick(item, "id")) !== requestedId) throw new Error("no_source_file");
+  return {
+    ...tiktokMedia(item),
+    mediaUrl: str(pick(item, "mediaUrls", "0")) ?? tiktokMedia(item).mediaUrl,
+  };
 }
