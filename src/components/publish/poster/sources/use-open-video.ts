@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { importInstagramMedia } from "@/lib/publish/client";
+import { importPlatformMedia } from "@/lib/publish/client";
 import { importFailureMessage } from "@/lib/publish/import-failure";
 import { canOpen, needsOriginal, type PosterVideo } from "../poster-video";
 
@@ -12,7 +12,7 @@ export function useOpenVideo() {
   const [error, setError] = useState("");
   const generation = useRef(0);
   const imports = useRef(
-    new Map<string, ReturnType<typeof importInstagramMedia>>(),
+    new Map<string, ReturnType<typeof importPlatformMedia>>(),
   );
 
   const open = useCallback(async (video: PosterVideo) => {
@@ -36,13 +36,16 @@ export function useOpenVideo() {
             setActive({ ...video, previewUrl: url });
           return;
         }
-        if (video.platform !== "instagram") throw new Error("no_source_file");
+        if (video.platform !== "instagram" && video.platform !== "tiktok")
+          throw new Error("no_source_file");
         if (request === generation.current)
           setActive({ ...video, mediaKey: undefined });
       }
       let pending = imports.current.get(video.id);
       if (!pending) {
-        pending = importInstagramMedia(video.sourceId);
+        if (video.platform !== "instagram" && video.platform !== "tiktok")
+          throw new Error("no_source_file");
+        pending = importPlatformMedia(video.platform, video.sourceId);
         imports.current.set(video.id, pending);
       }
       const imported = await pending;
@@ -58,6 +61,7 @@ export function useOpenVideo() {
         setError(
           importFailureMessage(
             cause instanceof Error ? cause.message : undefined,
+            video.kind === "platform" ? video.platform : undefined,
           ),
         );
     } finally {

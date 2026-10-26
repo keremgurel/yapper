@@ -19,8 +19,8 @@ function when(iso: string): string {
 
 /**
  * A post already on a channel. Opening it puts it on the bench to send
- * elsewhere. YouTube and TikTok posts without a retained file open the
- * attach-original step instead of attempting a remote download.
+ * elsewhere. YouTube posts without a retained file open the
+ * attach-original step; TikTok and Instagram prepare an automatic import.
  */
 export default function PlatformVideoCard({
   video,

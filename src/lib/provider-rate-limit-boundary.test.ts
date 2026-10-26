@@ -66,7 +66,7 @@ describe("provider-spend route boundary", () => {
         relativePath === "publish/instagram/import/route.ts"
           ? route +
             readFileSync(
-              join(process.cwd(), "src/lib/publish/server/instagram-import.ts"),
+              join(process.cwd(), "src/lib/publish/server/platform-import.ts"),
               "utf8",
             )
           : route;

@@ -35,6 +35,33 @@ export async function reserveProviderBudget(
       cap: limit("PROVIDER_MONTHLY_BUDGET_USD", 250),
     },
   ];
+  return reserveWindows(microusd, windows, now);
+}
+
+/** Feature-specific reservations supplement the global provider ceilings. */
+export function reserveTikTokImportBudget(now = new Date()): Promise<void> {
+  const day = now.toISOString().slice(0, 10);
+  return reserveWindows(
+    20_000,
+    [
+      {
+        key: `tiktok-import:day:${day}`,
+        cap: limit("TIKTOK_IMPORT_DAILY_BUDGET_USD", 1),
+      },
+      {
+        key: `tiktok-import:month:${day.slice(0, 7)}`,
+        cap: limit("TIKTOK_IMPORT_MONTHLY_BUDGET_USD", 20),
+      },
+    ],
+    now,
+  );
+}
+
+async function reserveWindows(
+  microusd: number,
+  windows: { key: string; cap: number }[],
+  now: Date,
+): Promise<void> {
   try {
     await getDb().transaction(async (tx) => {
       for (const window of windows) {
@@ -53,7 +80,7 @@ export async function reserveProviderBudget(
     });
   } catch {
     console.error("[costs] provider admission refused", {
-      day,
+      day: now.toISOString().slice(0, 10),
       reservedMicrousd: microusd,
     });
     throw new ProviderBudgetError();

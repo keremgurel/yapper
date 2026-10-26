@@ -49,7 +49,7 @@ export interface PlatformVideo {
   /** Length in seconds when the platform reports one (YouTube, TikTok). */
   durationSec?: number | null;
   /** The downloadable source file, present only for platforms we can backfill
-   * from (Instagram). Absent for YouTube and TikTok, whose APIs do not hand
+   * from (Instagram). Absent for YouTube and TikTok, whose listing APIs do not hand
    * back a file, and null for an Instagram Reel whose licensed audio makes
    * Instagram withhold the file, so those rows are view-only. */
   sourceFileUrl?: string | null;
@@ -128,7 +128,14 @@ export interface TikTokPostInput {
 export async function importInstagramMedia(
   mediaId: string,
 ): Promise<{ mediaKey: string; title: string }> {
-  const res = await fetch("/api/publish/instagram/import", {
+  return importPlatformMedia("instagram", mediaId);
+}
+
+export async function importPlatformMedia(
+  platform: "instagram" | "tiktok",
+  mediaId: string,
+): Promise<{ mediaKey: string; title: string }> {
+  const res = await fetch(`/api/publish/${platform}/import`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ mediaId }),

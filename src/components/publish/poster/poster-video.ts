@@ -36,7 +36,7 @@ export type PosterVideo =
       url: string;
       mediaKey?: string;
       previewUrl?: string;
-      /** The file can be fetched from the platform (Instagram only). */
+      /** The file can be fetched from the platform (Instagram and TikTok). */
       importable: boolean;
     };
 
@@ -90,7 +90,7 @@ export function fromPlatform(
     mediaKey: video.mediaKey,
     previewUrl: video.sourceFileUrl ?? undefined,
     importable:
-      platform === "instagram" &&
+      (platform === "instagram" || platform === "tiktok") &&
       (Boolean(video.sourceFileUrl) || Boolean(video.url)),
   };
 }
@@ -124,6 +124,6 @@ export function needsOriginal(video: PosterVideo): boolean {
     video.kind === "platform" &&
     !video.mediaKey &&
     !video.importable &&
-    (video.platform === "youtube" || video.platform === "tiktok")
+    video.platform === "youtube"
   );
 }
