@@ -10,6 +10,7 @@ export interface TikTokListVideo {
 }
 
 export interface TikTokVideo {
+  caption?: string;
   id: string;
   title: string;
   thumbnail: string | null;
@@ -29,6 +30,7 @@ export function mapTikTokVideos(videos: TikTokListVideo[]): TikTokVideo[] {
     )
     .map((video) => ({
       id: video.id,
+      caption: video.video_description ?? video.title ?? "",
       title:
         video.title?.trim() || video.video_description?.trim() || "Untitled",
       thumbnail: video.cover_image_url ?? null,

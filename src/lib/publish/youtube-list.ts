@@ -6,6 +6,7 @@
 export interface YouTubeVideo {
   id: string;
   title: string;
+  caption?: string;
   thumbnail: string | null;
   viewCount: number;
   publishedAt: string;
@@ -64,6 +65,7 @@ export async function listYouTubeVideos(
     id?: string;
     snippet?: {
       title?: string;
+      description?: string;
       publishedAt?: string;
       thumbnails?: Record<string, { url?: string }>;
     };
@@ -77,6 +79,7 @@ export async function listYouTubeVideos(
     .map((v) => ({
       id: v.id as string,
       title: v.snippet?.title ?? "",
+      caption: v.snippet?.description ?? "",
       thumbnail:
         v.snippet?.thumbnails?.medium?.url ??
         v.snippet?.thumbnails?.default?.url ??

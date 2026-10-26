@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye, Loader2 } from "lucide-react";
-import { canOpen, type PosterVideo } from "../poster-video";
+import { canOpen, needsOriginal, type PosterVideo } from "../poster-video";
 
 function compactViews(count: number): string {
   if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
@@ -19,8 +19,8 @@ function when(iso: string): string {
 
 /**
  * A post already on a channel. Opening it puts it on the bench to send
- * elsewhere. Posts Yapper has no file for (YouTube and TikTok uploads made
- * outside the app) are shown but cannot be opened, and say so on hover.
+ * elsewhere. YouTube and TikTok posts without a retained file open the
+ * attach-original step instead of attempting a remote download.
  */
 export default function PlatformVideoCard({
   video,
@@ -34,6 +34,7 @@ export default function PlatformVideoCard({
   onOpen: () => void;
 }) {
   const openable = canOpen(video);
+  const attach = needsOriginal(video);
   return (
     <article
       className={`bg-card relative overflow-hidden rounded-xl border transition-colors ${
@@ -50,7 +51,11 @@ export default function PlatformVideoCard({
         onClick={onOpen}
         disabled={!openable || importing}
         aria-label={
-          openable ? `Repost ${video.title}` : `${video.title} (no source file)`
+          attach
+            ? `Attach original video for ${video.title}`
+            : openable
+              ? `Repost ${video.title}`
+              : `${video.title} (no source file)`
         }
         className="block w-full text-left focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none disabled:cursor-default"
       >
@@ -75,6 +80,11 @@ export default function PlatformVideoCard({
             </div>
           ) : null}
         </div>
+        {attach && (
+          <p className="text-muted-foreground px-3 pt-2 text-xs">
+            Attach original video
+          </p>
+        )}
         <div className="text-muted-foreground flex items-center justify-between gap-2 px-3 py-2.5 text-xs">
           <span>{when(video.publishedAt)}</span>
           <span className="inline-flex items-center gap-1 font-mono tabular-nums">

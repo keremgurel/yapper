@@ -95,10 +95,10 @@ export function fromPlatform(
   };
 }
 
-/** Whether Yapper can get at the master file, now or after an import. */
+/** Whether the post can open, including the step to attach an original. */
 export function canOpen(video: PosterVideo): boolean {
   if (video.kind === "yapper") return true;
-  return Boolean(video.mediaKey) || video.importable;
+  return Boolean(video.mediaKey) || video.importable || needsOriginal(video);
 }
 
 /** Where the master lives, for the cover studio and the publish sheet. */
@@ -116,4 +116,14 @@ export function mediaOf(video: PosterVideo): {
         mediaKey: video.mediaKey,
         previewUrl: video.previewUrl,
       };
+}
+
+/** These libraries expose metadata; the creator supplies the original file. */
+export function needsOriginal(video: PosterVideo): boolean {
+  return (
+    video.kind === "platform" &&
+    !video.mediaKey &&
+    !video.importable &&
+    (video.platform === "youtube" || video.platform === "tiktok")
+  );
 }
