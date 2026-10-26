@@ -215,6 +215,35 @@ describe("TikTok asynchronous status", () => {
       ),
     ).rejects.toMatchObject({ code: "access_token_invalid", logId: "log-1" });
   });
+  it("reads public post ids digit for digit from the raw body", async () => {
+    const statusBody = (ids: string) =>
+      new Response(
+        `{"data":{"status":"PUBLISH_COMPLETE","publicaly_available_post_id":${ids}}}`,
+        { headers: { "Content-Type": "application/json" } },
+      );
+    const workflow = createPublishWorkflow(new AbortController().signal);
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          statusBody('[7698419574521351445, "7698419574521351446"]'),
+        )
+        .mockResolvedValueOnce(statusBody("[null]")),
+    );
+    await expect(
+      fetchTikTokPostStatus("token", "publish-1", workflow),
+    ).resolves.toMatchObject({
+      publicaly_available_post_id: [
+        "7698419574521351445",
+        "7698419574521351446",
+      ],
+    });
+    expect(
+      (await fetchTikTokPostStatus("token", "publish-1", workflow))
+        .publicaly_available_post_id,
+    ).toBeUndefined();
+  });
   it("rejects pending share limits during initialization", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       Response.json({

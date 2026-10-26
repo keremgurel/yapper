@@ -47,6 +47,11 @@ export interface BoundedTextResponse {
   text: string;
 }
 
+export interface BoundedJsonTextResponse<T> extends BoundedJsonResponse<T> {
+  /** The decoded body, for values JSON.parse cannot represent exactly. */
+  text: string;
+}
+
 function validateOptions(options: BoundedFetchOptions): void {
   if (!Number.isSafeInteger(options.timeoutMs) || options.timeoutMs <= 0) {
     throw new TypeError("invalid_outbound_timeout");
@@ -293,11 +298,12 @@ function isJsonMediaType(value: string | null): boolean {
   );
 }
 
-export async function fetchBoundedJson<T = unknown>(
+/** fetchBoundedJson that also returns the decoded body it parsed. */
+export async function fetchBoundedJsonWithText<T = unknown>(
   input: RequestInfo | URL,
   init: RequestInit = {},
   options: BoundedFetchOptions,
-): Promise<BoundedJsonResponse<T>> {
+): Promise<BoundedJsonTextResponse<T>> {
   const { response, bytes } = await fetchBoundedResponse(input, init, options);
   if (!isJsonMediaType(response.headers.get("content-type"))) {
     throw new OutboundHttpError("invalid_response", {
@@ -306,9 +312,22 @@ export async function fetchBoundedJson<T = unknown>(
   }
   try {
     const text = decodeUtf8(bytes);
-    return { response, data: JSON.parse(text) as T };
+    return { response, data: JSON.parse(text) as T, text };
   } catch (cause) {
     if (cause instanceof OutboundHttpError) throw cause;
     throw new OutboundHttpError("invalid_response", { cause });
   }
+}
+
+export async function fetchBoundedJson<T = unknown>(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  options: BoundedFetchOptions,
+): Promise<BoundedJsonResponse<T>> {
+  const { response, data } = await fetchBoundedJsonWithText<T>(
+    input,
+    init,
+    options,
+  );
+  return { response, data };
 }

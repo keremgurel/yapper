@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   fetchBoundedJson,
+  fetchBoundedJsonWithText,
   fetchBoundedResponse,
   fetchBoundedText,
   OutboundHttpError,
@@ -412,6 +413,24 @@ describe("strict response decoding", () => {
       ).resolves.toMatchObject({ data: { ok: true } });
     },
   );
+
+  it("returns the decoded body alongside the parsed JSON", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        streamResponse([encoder.encode('{"id":7698419574521351445}')], {
+          headers: { "content-type": "application/json" },
+        }),
+      ),
+    );
+    await expect(
+      fetchBoundedJsonWithText(
+        "https://provider.test",
+        {},
+        { ...options, maxBytes: 64 },
+      ),
+    ).resolves.toMatchObject({ text: '{"id":7698419574521351445}' });
+  });
 
   it("rejects missing/wrong JSON media type, malformed JSON, and invalid UTF-8", async () => {
     for (const response of [
