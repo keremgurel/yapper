@@ -2,7 +2,7 @@
 
 A creator can send a post later instead of now. In Poster, and in the
 cross-post sheet opened from Ideas or a take, the publish area has a
-**Post now / Schedule** switch. Schedule shows a local date and time field,
+Post now / Schedule switch. Schedule shows a local date and time field,
 three quick picks (tomorrow 9:00, tomorrow 18:00, the coming Saturday 10:00)
 and the time zone the time is read in. The primary button names the exact time,
 for example "Schedule 3 posts for Thu, Oct 29, 9:00 AM".
