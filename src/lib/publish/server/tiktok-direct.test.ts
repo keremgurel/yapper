@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { publishTikTokDirect } from "./tiktok-direct";
 import { createPublishWorkflow } from "../workflow";
 const mocks = vi.hoisted(() => ({
@@ -93,6 +93,7 @@ beforeEach(() => {
   });
   mocks.status.mockResolvedValue({ status: "PROCESSING_DOWNLOAD" });
 });
+afterEach(() => vi.unstubAllGlobals());
 describe("TikTok Direct Post delivery", () => {
   it("requires consent before claiming or initiating a post", async () => {
     expect((await run({ consent: false })).status).toBe(400);
@@ -131,6 +132,27 @@ describe("TikTok Direct Post delivery", () => {
     });
     expect(mocks.start).not.toHaveBeenCalled();
     expect(mocks.media).not.toHaveBeenCalled();
+  });
+  it("stores the exact link when TikTok sends the post id as an int64 number", async () => {
+    const actual =
+      await vi.importActual<typeof import("../tiktok")>("../tiktok");
+    mocks.status.mockImplementation(actual.fetchTikTokPostStatus);
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            '{"data":{"status":"PUBLISH_COMPLETE","publicaly_available_post_id":[7698419574521351445]},"error":{"code":"ok"}}',
+            { headers: { "Content-Type": "application/json" } },
+          ),
+        ),
+    );
+    expect((await run()).status).toBe(200);
+    expect(mocks.complete).toHaveBeenCalledWith("job-1", {
+      externalPostId: "7698419574521351445",
+      externalUrl: "https://www.tiktok.com/@creator/video/7698419574521351445",
+    });
   });
   it("does not reinterpret an inbox attempt as a direct post", async () => {
     mocks.prior.mockResolvedValue({

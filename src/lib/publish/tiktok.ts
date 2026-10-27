@@ -15,6 +15,7 @@ const STATUS_FETCH =
 
 import {
   fetchBoundedJson,
+  fetchBoundedJsonWithText,
   fetchBoundedResponse,
   OutboundHttpError,
 } from "@/lib/http/outbound";
@@ -53,7 +54,18 @@ interface TikTokStatusData {
   status?: string;
   uploaded_bytes?: unknown;
   fail_reason?: string;
-  publicaly_available_post_id?: (string | number)[];
+  /** Exact decimal ids, read from the raw body by exactPublicPostIds. */
+  publicaly_available_post_id?: string[];
+}
+
+// TikTok sends public post ids as int64 numbers. Real ids run 19 digits, past
+// Number.MAX_SAFE_INTEGER, so JSON.parse rounds them into another video's id.
+// Read the digits from the raw body instead. An array holding anything but
+// digit runs (quoted or bare) yields no ids.
+const PUBLIC_POST_IDS = /"publicaly_available_post_id"\s*:\s*\[([\s\d",]*)\]/;
+
+function exactPublicPostIds(body: string): string[] | undefined {
+  return PUBLIC_POST_IDS.exec(body)?.[1].match(/\d+/g) ?? undefined;
 }
 
 export interface TikTokUploadResult {
@@ -175,8 +187,8 @@ export async function fetchTikTokPostStatus(
   publishId: string,
   workflow: PublishWorkflow,
 ): Promise<TikTokStatusData> {
-  const { response, data } = await fetchBoundedJson<{
-    data?: TikTokStatusData;
+  const { response, data, text } = await fetchBoundedJsonWithText<{
+    data?: Omit<TikTokStatusData, "publicaly_available_post_id">;
     error?: { code?: string; log_id?: string };
   }>(
     STATUS_FETCH,
@@ -199,7 +211,10 @@ export async function fetchTikTokPostStatus(
   }
   if (!response.ok) throw new Error(`tiktok_status_${response.status}`);
   if (!data.data?.status) throw new Error("tiktok_status_missing");
-  return data.data;
+  return {
+    ...data.data,
+    publicaly_available_post_id: exactPublicPostIds(text),
+  };
 }
 
 async function uploadedBytes(

@@ -207,13 +207,7 @@ async function checkDelivery(
     );
   }
   if (status.status !== "PUBLISH_COMPLETE") return pending(jobId);
-  const rawId = status.publicaly_available_post_id?.[0];
-  const id =
-    typeof rawId === "string" && /^\d+$/.test(rawId)
-      ? rawId
-      : typeof rawId === "number" && Number.isSafeInteger(rawId)
-        ? String(rawId)
-        : undefined;
+  const id = status.publicaly_available_post_id?.[0];
   const url =
     id && username
       ? `https://www.tiktok.com/@${encodeURIComponent(username)}/video/${id}`
@@ -221,7 +215,7 @@ async function checkDelivery(
   try {
     await persistPublishCompletion(() =>
       completePublishJob(jobId, {
-        externalPostId: id ? String(id) : publishId,
+        externalPostId: id ?? publishId,
         externalUrl: url,
       }),
     );
