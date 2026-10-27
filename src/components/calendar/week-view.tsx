@@ -3,7 +3,7 @@
 import type { ContentSummary } from "@/lib/content/client";
 import type { PostedGroup } from "@/lib/content/posted-days";
 import { dayKey, sameDay, weekDays } from "@/lib/content/calendar";
-import CalendarDayCell from "./calendar-day-cell";
+import CalendarDayCell, { type ScheduleLayer } from "./calendar-day-cell";
 
 /** The week grid: 7 tall day columns, each with its own dated header. */
 export default function WeekView({
@@ -11,6 +11,8 @@ export default function WeekView({
   byDay,
   postedByDay,
   today,
+  layer,
+  addHref,
   onOpenItem,
   onDropDay,
 }: {
@@ -18,6 +20,8 @@ export default function WeekView({
   byDay: Map<string, ContentSummary[]>;
   postedByDay: Map<string, PostedGroup[]>;
   today: Date;
+  layer: ScheduleLayer;
+  addHref: (day: Date) => string | null;
   onOpenItem: (id: string) => void;
   onDropDay: (id: string, day: Date) => void;
 }) {
@@ -42,6 +46,9 @@ export default function WeekView({
             <CalendarDayCell
               day={day}
               items={byDay.get(dayKey(day)) ?? []}
+              schedules={layer.byDay.get(dayKey(day)) ?? []}
+              addHref={addHref(day)}
+              layer={layer}
               posted={postedByDay.get(dayKey(day)) ?? []}
               inMonth
               isToday={isToday}

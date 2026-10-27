@@ -2,6 +2,7 @@ import { isPlatformEnabled } from "./availability";
 import { RequestBodyError, readBoundedJson } from "@/lib/http/bounded-body";
 import {
   readInstagramPublishRequest,
+  readTikTokDirectRequest,
   readTikTokPublishRequest,
   readYouTubePublishRequest,
 } from "./request";
@@ -80,12 +81,20 @@ export async function readScheduleInput(
       throw new RequestBodyError("invalid_body");
     if (!isPlatformEnabled(platform))
       throw new RequestBodyError("invalid_body");
+    // TikTok with reviewed settings is a Direct Post; without, a draft.
+    const direct =
+      platform === "tiktok" &&
+      typeof target.input === "object" &&
+      target.input !== null &&
+      "settings" in target.input;
     const read =
       platform === "youtube"
         ? readYouTubePublishRequest
         : platform === "instagram" || platform === "facebook"
           ? readInstagramPublishRequest
-          : readTikTokPublishRequest;
+          : direct
+            ? readTikTokDirectRequest
+            : readTikTokPublishRequest;
     const input = await read(
       new Request("https://schedule.internal", {
         method: "POST",
@@ -105,6 +114,17 @@ export async function readScheduleInput(
     if (
       platform === "youtube" &&
       (!("title" in input) || !input.title?.trim() || input.title.length > 100)
+    )
+      throw new RequestBodyError("invalid_body");
+    // The full check against the creator's TikTok settings runs in the route
+    // and again at send time; this only pins the account it was reviewed for.
+    if (
+      direct &&
+      (!("settings" in input) ||
+        !input.settings ||
+        typeof input.settings !== "object" ||
+        (input.settings as { accountId?: unknown }).accountId !==
+          target.expectedAccountId)
     )
       throw new RequestBodyError("invalid_body");
     targets.push({

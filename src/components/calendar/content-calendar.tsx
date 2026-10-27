@@ -9,20 +9,25 @@ import { useContentList } from "@/hooks/use-content-list";
 import { patchContent } from "@/lib/content/client";
 import { createRescheduler } from "@/lib/content/reschedule";
 import { Button } from "@/components/ui/button";
+import { CHIP_TONES } from "@/components/studio-ui/chip-tones";
 import {
   bucketByDay,
+  defaultPostTime,
   monthLabel,
   rescheduleIso,
   weekLabel,
 } from "@/lib/content/calendar";
 import CalendarHeader from "./calendar-header";
 import MonthView from "./month-view";
+import NeedsAttention from "./needs-attention";
 import WeekView from "./week-view";
 import { usePostedDays } from "./use-posted-days";
+import { useScheduleLayer } from "./use-schedule-layer";
 
-/** The content calendar: scheduled library items laid out by day, month or
- * week, with drag-to-reschedule. Owns the wiring (data + nav + reschedule); the
- * grids render, and the date math lives in lib/content/calendar. */
+/** The content calendar: posts scheduled to send, planned library items and
+ * what already went out, laid out by month or week, with drag-to-reschedule.
+ * Owns the wiring (data + nav + reschedule); the grids render, and the date
+ * math lives in lib/content/calendar. */
 export default function ContentCalendar() {
   const router = useRouter();
   const { isSignedIn } = useUser();
@@ -49,11 +54,20 @@ export default function ContentCalendar() {
   );
   const { view, setView, focus, next, prev, today } = useCalendarNav();
   const postedByDay = usePostedDays(!!isSignedIn);
+  const scheduled = useScheduleLayer(!!isSignedIn);
 
-  const byDay = useMemo(
-    () => bucketByDay(items ?? [], (i) => i.scheduledFor),
-    [items],
-  );
+  // A planned item whose posts are armed shows as those posts, not twice.
+  const byDay = useMemo(() => {
+    const armed = new Set(
+      [...scheduled.layer.byDay.values()]
+        .flat()
+        .map((row) => row.contentItemId),
+    );
+    return bucketByDay(
+      (items ?? []).filter((item) => !armed.has(item.id)),
+      (i) => i.scheduledFor,
+    );
+  }, [items, scheduled.layer.byDay]);
 
   const openItem = (id: string) => router.push(`/studio/library/${id}`);
 
@@ -67,6 +81,14 @@ export default function ContentCalendar() {
 
   const label = view === "month" ? monthLabel(focus) : weekLabel(focus);
   const now = new Date();
+  // Only offered when this server can actually send posts later.
+  const addHref = (day: Date) => {
+    if (!scheduled.enabled) return null;
+    const at = defaultPostTime(day, now);
+    return at
+      ? `/studio/poster?scheduleAt=${encodeURIComponent(at.toISOString())}`
+      : null;
+  };
 
   if (loadFailed) {
     return (
@@ -95,6 +117,22 @@ export default function ContentCalendar() {
 
   return (
     <div>
+      <NeedsAttention
+        schedules={scheduled.schedules}
+        enabled={scheduled.enabled}
+        onSaved={scheduled.layer.onSaved}
+      />
+      {scheduled.moveError && (
+        <p role="alert" className="text-destructive mb-4 text-sm">
+          {scheduled.moveError}
+        </p>
+      )}
+      {scheduled.loadFailed && (
+        <p role="alert" className="text-destructive mb-4 text-sm">
+          Scheduled posts couldn’t be loaded. The calendar tries again every 30
+          seconds.
+        </p>
+      )}
       {Object.entries(failedMoves).map(([id, retry]) => (
         <div
           key={id}
@@ -127,6 +165,8 @@ export default function ContentCalendar() {
           byDay={byDay}
           postedByDay={postedByDay}
           today={now}
+          layer={scheduled.layer}
+          addHref={addHref}
           onOpenItem={openItem}
           onDropDay={reschedule}
         />
@@ -136,25 +176,52 @@ export default function ContentCalendar() {
           byDay={byDay}
           postedByDay={postedByDay}
           today={now}
+          layer={scheduled.layer}
+          addHref={addHref}
           onOpenItem={openItem}
           onDropDay={reschedule}
         />
       )}
-      {byDay.size === 0 && postedByDay.size === 0 ? (
+      {byDay.size === 0 &&
+      postedByDay.size === 0 &&
+      scheduled.layer.byDay.size === 0 ? (
         <div className="text-muted-foreground mt-6 flex flex-col items-center gap-2 py-10 text-center text-sm">
           <CalendarDays className="h-6 w-6" />
           <p className="text-foreground font-semibold">Nothing scheduled yet</p>
           <p className="max-w-sm">
-            Mark an idea Ready and give it a date, and it shows up here. These
-            are planning dates; nothing publishes on its own.
+            In Poster, choose Schedule instead of Post now and the post shows up
+            here, then goes out at that time on its own.
           </p>
         </div>
       ) : (
-        <p className="text-muted-foreground mt-3 text-xs">
-          Drag a planned post to another day to reschedule it. Outlined badges
-          are posts already live on your channels.
-        </p>
+        <CalendarLegend />
       )}
     </div>
+  );
+}
+
+/** What each kind of entry on the grid means, drawn with the same surfaces. */
+function CalendarLegend() {
+  return (
+    <ul className="text-muted-foreground mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+      <li className="flex items-center gap-1.5">
+        <span
+          aria-hidden
+          className={`size-2.5 rounded-sm ${CHIP_TONES.yellow.bg}`}
+        />
+        Scheduled to post on its own. Drag to move it, keeping its time.
+      </li>
+      <li className="flex items-center gap-1.5">
+        <span aria-hidden className="bg-card size-2.5 rounded-sm border" />
+        Planned date only
+      </li>
+      <li className="flex items-center gap-1.5">
+        <span
+          aria-hidden
+          className="border-foreground/15 size-2.5 rounded-full border"
+        />
+        Already live
+      </li>
+    </ul>
   );
 }

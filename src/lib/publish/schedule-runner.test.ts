@@ -5,7 +5,12 @@ import { findPublishJobClaim, getConnectionRow } from "@/lib/db/publish";
 import { getContentItem } from "@/lib/db/content";
 import { publishYouTube } from "./server/youtube";
 import { publishTikTok } from "./server/tiktok";
-import { runScheduledDestination } from "./schedule-runner";
+import { publishTikTokDirect } from "./server/tiktok-direct";
+import {
+  MISSED_AFTER_MS,
+  RECHECK_WINDOW_MS,
+  runScheduledDestination,
+} from "./schedule-runner";
 
 vi.mock("@/lib/db/publish", () => ({
   findPublishJobClaim: vi.fn(),
@@ -15,6 +20,7 @@ vi.mock("@/lib/db/content", () => ({ getContentItem: vi.fn() }));
 vi.mock("./server/youtube", () => ({ publishYouTube: vi.fn() }));
 vi.mock("./server/instagram", () => ({ publishInstagram: vi.fn() }));
 vi.mock("./server/tiktok", () => ({ publishTikTok: vi.fn() }));
+vi.mock("./server/tiktok-direct", () => ({ publishTikTokDirect: vi.fn() }));
 const row = (patch: Partial<PublishingSchedule> = {}): PublishingSchedule => ({
   id: randomUUID(),
   userId: "user_test",
@@ -78,6 +84,14 @@ describe("scheduled destination execution", () => {
     expect(user).toBe(value.userId);
     expect(expectedAccount).toBe("original_account");
   });
+  it("does not start a post that is more than a day late", async () => {
+    expect(
+      await run(
+        row({ scheduledFor: new Date(Date.now() - MISSED_AFTER_MS - 60_000) }),
+      ),
+    ).toEqual({ status: "failed", error: "schedule_missed" });
+    expect(publishYouTube).not.toHaveBeenCalled();
+  });
   it("does not send after a different account is connected", async () => {
     vi.mocked(getConnectionRow).mockResolvedValue({
       externalAccountId: "replacement",
@@ -120,6 +134,70 @@ describe("scheduled destination execution", () => {
     );
     expect(await run(row({ platform: "tiktok" }))).toMatchObject({
       status: "draft",
+    });
+  });
+  it("sends a TikTok with reviewed settings as a Direct Post", async () => {
+    const settings = {
+      privacy: "PUBLIC_TO_EVERYONE" as const,
+      allowComment: true,
+      allowDuet: false,
+      allowStitch: false,
+      discloseCommercial: false,
+      ownBrand: false,
+      brandedContent: false,
+      aiGenerated: false,
+      consent: true,
+      accountId: "original_account",
+    };
+    vi.mocked(publishTikTokDirect).mockResolvedValue(
+      Response.json({ jobId: "direct", draft: false, url: "https://t/v/1" }),
+    );
+    expect(
+      await run(
+        row({
+          platform: "tiktok",
+          input: { mediaKey: "user_test/video.mp4", caption: "Hi", settings },
+        }),
+      ),
+    ).toMatchObject({ status: "published", externalUrl: "https://t/v/1" });
+    expect(publishTikTok).not.toHaveBeenCalled();
+    const [request] = vi.mocked(publishTikTokDirect).mock.calls[0];
+    expect(await request.json()).toMatchObject({ settings });
+  });
+  it("keeps a post the platform is still processing in flight for a recheck", async () => {
+    vi.mocked(publishTikTok).mockImplementation(async () =>
+      Response.json(
+        {
+          jobId: "pending",
+          error: "publish_state_pending",
+          reconcilable: true,
+        },
+        { status: 503 },
+      ),
+    );
+    expect(await run(row({ platform: "tiktok" }))).toEqual({
+      status: "processing",
+      publishJobId: "pending",
+    });
+    // A post first sent late still gets the full window, counted from the send.
+    vi.mocked(findPublishJobClaim).mockResolvedValueOnce({
+      ...prior("processing"),
+      createdAt: new Date(Date.now() - 60_000),
+    });
+    expect(
+      await run(
+        row({
+          platform: "tiktok",
+          scheduledFor: new Date(Date.now() - 3 * RECHECK_WINDOW_MS),
+        }),
+      ),
+    ).toMatchObject({ status: "processing" });
+    vi.mocked(findPublishJobClaim).mockResolvedValueOnce({
+      ...prior("processing"),
+      createdAt: new Date(Date.now() - RECHECK_WINDOW_MS - 1),
+    });
+    expect(await run(row({ platform: "tiktok" }))).toMatchObject({
+      status: "needs_attention",
     });
   });
   it.each(["publish_in_progress", "publish_state_pending"])(

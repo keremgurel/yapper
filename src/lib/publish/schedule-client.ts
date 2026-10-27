@@ -88,10 +88,40 @@ export function scheduleErrorMessage(error: unknown): string {
       "The previous sending attempt failed. Choose a new time to retry.",
     upload_failed: "The video could not be sent. Choose a new time to retry.",
     unauthorized: "Sign in again to manage your scheduled posts.",
+    schedule_missed:
+      "This post’s time passed more than a day ago before it could be sent. Choose a new time.",
+    too_many_scheduled:
+      "You can have up to 10 videos waiting to post. Let one go out or cancel one first.",
+    tiktok_preflight_failed:
+      "TikTok couldn’t be reached to check this post. Try scheduling again.",
+    tiktok_privacy_invalid:
+      "TikTok no longer offers that audience for your account. Choose another.",
+    tiktok_duration_check_failed:
+      "This video is longer than TikTok allows for your account.",
+    tiktok_interaction_disabled:
+      "Comments, Duet, or Stitch are turned off in your TikTok settings. Untick them here.",
+    tiktok_audit_required: "TikTok only allows private posts from Yapper yet.",
   };
   return (
     messages[code] ??
     "We couldn’t confirm the change. Refresh Calendar to check the saved result before trying again."
+  );
+}
+
+/** What went wrong with a saved post, in the creator's words. A provider's raw
+ * error text has no copy of its own, so it falls back by state. */
+export function scheduleRowErrorMessage(row: {
+  status: string;
+  error: string | null;
+}): string {
+  const known = scheduleErrorMessage(new Error(row.error ?? ""));
+  if (known !== scheduleErrorMessage(new Error(""))) return known;
+  return scheduleErrorMessage(
+    new Error(
+      row.status === "needs_attention"
+        ? "publish_state_pending"
+        : "publish_failed",
+    ),
   );
 }
 

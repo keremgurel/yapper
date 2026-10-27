@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import {
   changePublishingSchedule,
@@ -11,6 +12,8 @@ import {
 import { scheduleDate, UUID_PATTERN } from "@/lib/publish/schedule-input";
 import { scheduleSummary } from "@/lib/publish/schedule-summary";
 import { schedulingEnabled } from "@/lib/publish/schedule-types";
+import { wakePublishClock } from "@/lib/publish/schedule-wake";
+import { syncPlanDates } from "@/lib/publish/schedule-plan-date";
 
 export const runtime = "nodejs";
 
@@ -43,6 +46,10 @@ export async function PATCH(
       action === "cancel" ? undefined : scheduleDate(body.scheduledFor);
     const row = await changePublishingSchedule(userId, id, action, date);
     if (!row) return Response.json({ error: "not_found" }, { status: 404 });
+    if (date) {
+      await syncPlanDates(userId, [row.contentItemId], date);
+      after(() => wakePublishClock(date));
+    }
     return Response.json({ schedule: scheduleSummary(row) });
   } catch (error) {
     const badInput = requestBodyErrorResponse(error);

@@ -8,7 +8,7 @@ import {
   monthWeeks,
   sameDay,
 } from "@/lib/content/calendar";
-import CalendarDayCell from "./calendar-day-cell";
+import CalendarDayCell, { type ScheduleLayer } from "./calendar-day-cell";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -18,6 +18,8 @@ export default function MonthView({
   byDay,
   postedByDay,
   today,
+  layer,
+  addHref,
   onOpenItem,
   onDropDay,
 }: {
@@ -25,6 +27,8 @@ export default function MonthView({
   byDay: Map<string, ContentSummary[]>;
   postedByDay: Map<string, PostedGroup[]>;
   today: Date;
+  layer: ScheduleLayer;
+  addHref: (day: Date) => string | null;
   onOpenItem: (id: string) => void;
   onDropDay: (id: string, day: Date) => void;
 }) {
@@ -48,6 +52,9 @@ export default function MonthView({
             key={dayKey(day)}
             day={day}
             items={byDay.get(dayKey(day)) ?? []}
+            schedules={layer.byDay.get(dayKey(day)) ?? []}
+            addHref={addHref(day)}
+            layer={layer}
             posted={postedByDay.get(dayKey(day)) ?? []}
             inMonth={isSameMonth(day, focus)}
             isToday={sameDay(day, today)}

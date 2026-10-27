@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, inArray, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lte, min, or, sql } from "drizzle-orm";
 import { getDb, type DbTx } from "./client";
 import { lockStorageUserWithinTx } from "./storage-accounting";
 import { publishingSchedules, publishJobs, r2Objects } from "./schema";
@@ -51,7 +51,7 @@ export async function reconcileScheduleOutcomes() {
   return getDb()
     .update(publishingSchedules)
     .set({
-      status: sql`case when ${publishJobs.status} = 'failed' then 'failed' when ${publishingSchedules.platform} = 'tiktok' then 'draft' else 'published' end`,
+      status: sql`case when ${publishJobs.status} = 'failed' then 'failed' when ${publishingSchedules.platform} = 'tiktok' and ${publishingSchedules.input}->'settings' is null then 'draft' else 'published' end`,
       publishJobId: publishJobs.id,
       externalUrl: publishJobs.externalUrl,
       error: publishJobs.error,
@@ -67,7 +67,16 @@ export async function reconcileScheduleOutcomes() {
           publishJobs.idempotencyKey,
           sql`'schedule:' || ${publishingSchedules.id}::text || ':' || ${publishingSchedules.attempt}::text`,
         ),
-        inArray(publishJobs.status, ["published", "failed"]),
+        // Only rows whose state changes: a late success, or an unconfirmed
+        // post that turned out to fail. A failed row with a failed job is
+        // already settled and keeps its own error.
+        or(
+          eq(publishJobs.status, "published"),
+          and(
+            eq(publishJobs.status, "failed"),
+            eq(publishingSchedules.status, "needs_attention"),
+          ),
+        ),
       ),
     )
     .returning({ id: publishingSchedules.id });
@@ -189,6 +198,46 @@ export async function claimDueSchedules(limit = 3, now = new Date()) {
   });
 }
 
+/** The earliest moment the worker has something to do: a scheduled post
+ * coming due, or a sending post whose lease or recheck expires. Null when the
+ * queue is idle, so the publish clock can sleep until it is woken. */
+export async function nextScheduleWake(): Promise<Date | null> {
+  const [row] = await getDb()
+    .select({
+      at: min(
+        sql<Date>`case when ${publishingSchedules.status} = 'scheduled' then ${publishingSchedules.scheduledFor} else ${publishingSchedules.leaseExpiresAt} end`,
+      ),
+    })
+    .from(publishingSchedules)
+    .where(inArray(publishingSchedules.status, ["scheduled", "running"]));
+  return row?.at ? new Date(row.at) : null;
+}
+
+/** The platform accepted the post but is still processing it. Keep the row
+ * sending and let a later sweep ask again with the same publish key, which
+ * reconciles instead of posting twice. */
+export async function deferPublishingSchedule(
+  row: PublishingSchedule,
+  recheckAt: Date,
+  publishJobId?: string,
+) {
+  if (!row.leaseToken) throw new ScheduleConflict("schedule_not_claimed");
+  await getDb()
+    .update(publishingSchedules)
+    .set({
+      publishJobId: publishJobId ?? row.publishJobId,
+      leaseToken: null,
+      leaseExpiresAt: recheckAt,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(publishingSchedules.id, row.id),
+        eq(publishingSchedules.leaseToken, row.leaseToken),
+      ),
+    );
+}
+
 export async function settlePublishingSchedule(
   row: PublishingSchedule,
   outcome: {
@@ -262,8 +311,13 @@ export async function changePublishingSchedule(
       if (job) attempt++;
     } else if (
       !(
-        (action === "cancel" && row.status === "failed") ||
-        row.status === "scheduled"
+        // A post the platform couldn't confirm can be taken off the calendar
+        // once the creator has checked; that never touches the post itself.
+        (
+          (action === "cancel" &&
+            (row.status === "failed" || row.status === "needs_attention")) ||
+          row.status === "scheduled"
+        )
       )
     ) {
       throw new ScheduleConflict("schedule_already_started");

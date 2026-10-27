@@ -261,6 +261,7 @@ export default function IdeasPage() {
                     id: row.id,
                     title: row.title.trim() || "Untitled",
                     submissionId: row.submissionId!,
+                    contentItemId: row.id,
                   })
                 }
                 emptyLabel="Nothing matches those filters."

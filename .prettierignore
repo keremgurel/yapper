@@ -37,3 +37,7 @@ CLAUDE.md
 
 # Generated keyword datasets (one row per line for diffable updates)
 marketing/seo/keywords-*.json
+
+# Cloudflare Worker generated runtime types and local state
+workers/*/worker-configuration.d.ts
+workers/*/.wrangler

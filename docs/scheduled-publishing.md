@@ -1,77 +1,126 @@
 # Scheduled publishing
 
-Studio's Calendar dates remain planning dates. Sending is armed only through
-**Cross-post → Schedule for later**, after choosing the video, copy, cover,
-destination accounts, and a local time. Each destination receives its own
-immutable saved request. YouTube saves the chosen privacy, audience, and synthetic-media settings (the
-sheet defaults visibility to Private and requires an audience choice); Instagram publishes a Reel; TikTok receives a draft
-that the creator finishes in TikTok. Platform processing and worker load can
-delay completion beyond the selected time.
+A creator can send a post later instead of now. In Poster, and in the
+cross-post sheet opened from Ideas or a take, the publish area has a
+Post now / Schedule switch. Schedule shows a local date and time field,
+three quick picks (tomorrow 9:00, tomorrow 18:00, the coming Saturday 10:00)
+and the time zone the time is read in. The primary button names the exact time,
+for example "Schedule 3 posts for Thu, Oct 29, 9:00 AM".
 
-## Deployment
+Each destination gets its own immutable saved request: the video, cover, copy
+and the platform settings the creator reviewed. YouTube keeps its visibility,
+audience and synthetic-media answers. Instagram publishes a Reel. TikTok uses
+Direct Post with the reviewed audience, interaction and disclosure settings, or
+sends a draft to the TikTok inbox when the creator picked that method.
+Scheduling also moves the Library item's planning date to the post time, so the
+Poster card shows when the video goes out.
 
-1. Apply the committed Drizzle migrations, including
-   `0021_studio_publishing_schedules.sql`, to the intended deployment database.
-   The isolated database tests apply every migration; they do not use
-   `DATABASE_URL` or modify a deployed database.
-2. Configure `CRON_SECRET` and a worker with access to the same database,
-   encrypted OAuth connections, R2 storage, and provider configuration as
-   Studio. The existing deployment validation remains required.
-3. The worker needs a scheduler. The project is on the Vercel Hobby plan,
-   which permits daily cron schedules only (see the official
-   [cron limits](https://vercel.com/docs/cron-jobs/usage-and-pricing)), so the
-   per-minute cron is not in `vercel.json`: a deploy carrying it fails
-   validation. After upgrading to Pro, add it back next to the storage cleanup
-   entry:
+## Calendar
 
-   ```json
-   { "path": "/api/internal/publishing", "schedule": "* * * * *" }
-   ```
+Calendar shows scheduled posts on the month and week grids as chips with the
+platform, time and title, tinted by state: yellow while waiting, cyan while
+sending, green for a TikTok draft, red when the creator needs to act.
+Published posts appear as the platform's own posted badge with views, and
+cancelled ones disappear. A planned Library item whose posts are armed shows as
+those posts, not as a second chip.
 
-   Until then an external scheduler can call the protected endpoint with
-   `Authorization: Bearer <CRON_SECRET>` at the same cadence.
+Clicking a chip opens its details with Change time and Cancel post. A waiting
+post can be dragged to another day and keeps its time of day; a drop that lands
+in the past is refused with a message. Failed posts and posts the platform
+could not confirm are also listed above the grid with a Fix or Review action.
+Hovering a future day shows a "+" that opens Poster already set to Schedule at
+9:00 that day (or the next whole hour today). The "+" and the Schedule switch
+only appear when the server has scheduling enabled.
 
-4. Set `STUDIO_SCHEDULER_ENABLED=1` only when the worker is configured. The flag
-   is off by default. Creating/rescheduling/retrying posts is unavailable while
-   off; existing rows stay visible and can be cancelled. An already claimed
-   operation can finish after the flag is turned off.
-5. Verify in staging using controlled accounts: create, reload, reschedule,
-   cancel, run a due operation, inspect its actual provider result, and run the
-   worker again to confirm no second post. Exercise two worker processes and
-   an expired lease. The in-memory PostgreSQL tests validate SQL and durable
-   outcomes but use one connection; they do not prove production contention.
+On a phone the month cells are too narrow for text, so chips show only the
+platform icon. Tapping one opens the same details. Drag to move is desktop only.
 
-No deployed migrations, scheduler flags, or live provider posts were changed by
-implementation tests. The repository's `npm run build` applies production
-migrations; it is not a safe substitute for an isolated validation build.
+## How a post gets sent
+
+Schedules live in `publishing_schedules`. The worker endpoint
+`/api/internal/publishing` claims up to three due rows, sends each through the
+same guarded publisher that "Post now" uses, settles the outcome, and returns
+`nextDueAt`: the earliest scheduled time or sending recheck still in the queue,
+or null when the queue is empty.
+
+The endpoint is called by the publish clock, a Cloudflare Worker in
+`workers/publish-clock`. It holds one Durable Object with one alarm. Yapper
+calls the clock's `/wake` whenever a schedule is created, moved or retried
+(`src/lib/publish/schedule-wake.ts`), which moves the alarm earlier if needed.
+When the alarm fires, the clock calls the worker endpoint and sets the next
+alarm from `nextDueAt`, never sooner than five seconds out. A cron runs the
+clock every hour as well, so a lost wake delays a post by up to an hour instead
+of dropping it. If a sweep fails, Cloudflare retries the alarm with backoff.
+
+The database is only queried when something is due, about once an hour
+otherwise. A per-minute poll would keep the Neon compute awake around the clock.
+
+The endpoint accepts `Authorization: Bearer <PUBLISH_SCHEDULER_SECRET>` or
+`Bearer <CRON_SECRET>`, so a Vercel cron can drive it instead on a plan that
+allows per-minute crons.
+
+## TikTok
+
+A Direct Post schedule is checked twice against the creator's TikTok account:
+when it is scheduled (audience still offered, interactions allowed, video
+length within the account's limit) and again at send time, since the creator
+can change their TikTok settings in between. The saved settings are pinned to
+the account they were reviewed for.
+
+TikTok processes a Direct Post after accepting it. When it reports the post as
+still processing, the row stays in Sending and the worker asks again every 45
+seconds with the same publish key, which checks status rather than posting
+again. After an hour of processing it shows "Check the platform".
 
 ## Recovery and limits
 
-- Each worker claims up to three due destinations. A six-minute lease exceeds
-  the route's five-minute execution budget. A replacement worker reuses the
-  original per-platform publish key. Expired work is not silently reposted.
-- The saved request includes the expected external account ID. Reconnecting a
-  different account fails the schedule and requires a fresh reviewed request.
-  Token refresh cannot overwrite a connection that changed during refresh.
-- Cancel/reschedule takes a row lock and is permitted before sending starts.
-  A retry advances the publish key only after a durable known failure. Unknown
-  provider outcomes show **Check the platform**, with no automatic resend.
-- Delayed durable completions are reconciled on subsequent worker sweeps. A
-  provider success whose identifier never reached durable storage can still
-  require manual provider inspection; the system does not claim that case is
-  automatically resolved.
-- A lost create response can be retried with the same request key, including
-  after its original due time. Changed payloads using an existing key are
-  rejected. A source selected through two aliases cannot create duplicate
-  destinations in one selection.
-- Covers remain protected through the scheduled time plus one day, including
-  reschedules. Deleting a source video can make its scheduled post fail; the
-  normal ownership and file-readiness checks still apply when sending starts.
-- The creation limit is 20 destinations per reviewed selection, one minute to
-  90 days ahead. Calendar currently shows the latest 100 entries, prioritizing
-  pending and actionable work. Large-account history pagination remains an
-  explicit follow-up before scaling beyond this bound.
-- Worker response counts (`claimed`, `settled`, `deferred`, `reconciled`) are
-  operational signals. Deferred rows recover after lease expiry. Monitor cron
-  failures and queue age in the deployment's logs; this change does not add an
-  external monitoring service.
+- A post that never started sending and is more than a day late is not sent.
+  It fails with "Choose a new time" instead of going out at an unexpected hour.
+  Only a clock outage can make a post that late.
+- Each worker run claims at most three due posts under a six-minute lease, which
+  is longer than the route's five-minute limit. A replacement run reuses the
+  original publish key, so an expired lease cannot post twice.
+- The saved request records the external account it was reviewed for.
+  Reconnecting a different account fails the schedule; the creator schedules
+  again for the new account.
+- Cancel and change time take a row lock and work only before sending starts.
+  A retry moves to a new publish key only after a known failure. An unknown
+  provider outcome shows "Check the platform" and is never resent
+  automatically. Delayed completions are reconciled on later sweeps.
+- A lost create response can be replayed with the same request key. A changed
+  payload under an existing key is rejected.
+- Covers stay protected until the scheduled time plus one day, including after
+  a change of time. Deleting the source video makes its scheduled post fail
+  with a clear message.
+- One selection holds at most 20 destinations, one minute to 90 days ahead, and
+  an account can hold at most 10 scheduled videos in storage. Calendar loads the
+  latest 100 schedules, active ones first.
+
+## Turning it on
+
+1. Generate a secret (`openssl rand -hex 32`) and set it in both places.
+   Never print or commit it.
+
+   ```bash
+   cd workers/publish-clock && npm install
+   npx wrangler secret put PUBLISH_SCHEDULER_SECRET
+   npx wrangler deploy
+   ```
+
+2. In Vercel production, set `PUBLISH_SCHEDULER_SECRET` to the same value,
+   `PUBLISH_SCHEDULER_URL` to the deployed worker URL
+   (`https://yapper-publish-clock.<account>.workers.dev`) and
+   `STUDIO_SCHEDULER_ENABLED=1`, then redeploy. The flag is off by default;
+   while off, creating, moving and retrying schedules is unavailable and the
+   Schedule switch is hidden, but existing rows stay visible and cancellable.
+3. Check the clock with
+   `curl -H "Authorization: Bearer $SECRET" https://<worker>/status`. It returns
+   the next alarm, or null when nothing is queued.
+4. Rehearse with a controlled account: schedule a private YouTube upload a few
+   minutes out, watch it go from Scheduled to Sending to posted in Calendar,
+   confirm the visibility in YouTube Studio, then run the worker again and
+   confirm no second post.
+
+To use a Vercel per-minute cron instead (Pro plan), add
+`{ "path": "/api/internal/publishing", "schedule": "* * * * *" }` to
+`vercel.json` and skip the worker. Expect the database to stay awake.

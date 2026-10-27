@@ -12,6 +12,7 @@ import { canUsePremium } from "@/lib/billing/gate";
 import { getFreshAccessToken } from "./connection";
 import { listAutomationSourcePage } from "./automation-source";
 import { importInstagramVideo } from "./server/instagram-import";
+import { wakePublishClock } from "./schedule-wake";
 
 /** Revisit the head on every poll and advance a persisted cursor through the
  * rest. We do not rely on timestamp ordering or lose page 2 behind a limit. */
@@ -103,11 +104,15 @@ export async function runAutomations(signal: AbortSignal) {
   const prepared = await Promise.allSettled(
     runs.map((run) => prepareAutomationRun(run, deadline)),
   );
+  const imported = prepared.filter(
+    (result) => result.status === "fulfilled" && result.value,
+  ).length;
+  // Imported runs queue their deliveries due now; send them without waiting
+  // for the publish clock's hourly sweep.
+  if (imported) await wakePublishClock(new Date());
   return {
     checked: scans.filter((result) => result.status === "fulfilled").length,
-    imported: prepared.filter(
-      (result) => result.status === "fulfilled" && result.value,
-    ).length,
+    imported,
     deferred: [...scans, ...prepared].filter(
       (result) => result.status === "rejected",
     ).length,

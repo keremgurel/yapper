@@ -17,7 +17,9 @@ import {
   changePublishingSchedule,
   claimDueSchedules,
   createPublishingSchedules,
+  deferPublishingSchedule,
   listPublishingSchedules,
+  nextScheduleWake,
   reconcileScheduleOutcomes,
   scheduleAttemptKey,
   settlePublishingSchedule,
@@ -269,6 +271,113 @@ describe("durable publishing schedules", () => {
       status: "draft",
       publishJobId: job.id,
       error: null,
+    });
+  });
+  it("reports a TikTok Direct Post as published when it reconciles", async () => {
+    const settings = {
+      privacy: "PUBLIC_TO_EVERYONE" as const,
+      allowComment: true,
+      allowDuet: false,
+      allowStitch: false,
+      discloseCommercial: false,
+      ownBrand: false,
+      brandedContent: false,
+      aiGenerated: false,
+      consent: true,
+      accountId: "creator",
+    };
+    const [row] = await save([
+      entry({
+        platform: "tiktok",
+        input: { mediaKey, caption: "Reviewed", settings },
+        status: "needs_attention",
+        error: "publish_state_pending",
+      }),
+    ]);
+    await db.insert(schema.publishJobs).values({
+      userId: "user_test",
+      platform: "tiktok",
+      mediaKey,
+      idempotencyKey: scheduleAttemptKey(row),
+      status: "published",
+    });
+    await reconcileScheduleOutcomes();
+    expect((await listPublishingSchedules("user_test"))[0].status).toBe(
+      "published",
+    );
+  });
+
+  it("wakes at the earliest due post or sending recheck, and sleeps when idle", async () => {
+    expect(await nextScheduleWake()).toBeNull();
+    const later = new Date(now.getTime() + 2 * 3_600_000);
+    await save([entry({ scheduledFor: later })]);
+    expect(await nextScheduleWake()).toEqual(later);
+    const [due] = await save([entry({ scheduledFor: now })]);
+    expect(await nextScheduleWake()).toEqual(now);
+    const [claimed] = await claimDueSchedules(3, now);
+    expect(claimed.id).toBe(due.id);
+    const recheck = new Date(now.getTime() + 45_000);
+    await deferPublishingSchedule(claimed, recheck);
+    expect(await nextScheduleWake()).toEqual(recheck);
+    await changePublishingSchedule(
+      "user_test",
+      (await listPublishingSchedules("user_test")).find(
+        (row) => row.status === "scheduled",
+      )!.id,
+      "cancel",
+    );
+    expect(await nextScheduleWake()).toEqual(recheck);
+  });
+
+  it("keeps a processing post sending and rechecks it with the same publish key", async () => {
+    const [row] = await save();
+    const [claimed] = await claimDueSchedules(3, now);
+    const recheck = new Date(now.getTime() + 45_000);
+    await deferPublishingSchedule(claimed, recheck);
+    expect((await listPublishingSchedules("user_test"))[0]).toMatchObject({
+      status: "running",
+      leaseToken: null,
+    });
+    await expect(
+      changePublishingSchedule("user_test", row.id, "cancel"),
+    ).rejects.toThrow("schedule_already_started");
+    expect(
+      await claimDueSchedules(3, new Date(now.getTime() + 30_000)),
+    ).toEqual([]);
+    const [again] = await claimDueSchedules(3, recheck);
+    expect(scheduleAttemptKey(again)).toBe(scheduleAttemptKey(claimed));
+    // A worker whose lease was already handed on cannot defer the row again.
+    await expect(
+      deferPublishingSchedule({ ...claimed, leaseToken: null }, recheck),
+    ).rejects.toThrow("schedule_not_claimed");
+  });
+  it("lets the creator remove a post the platform couldn't confirm, but not retry it", async () => {
+    const [row] = await save([
+      entry({ status: "needs_attention", error: "publish_state_pending" }),
+    ]);
+    await expect(
+      changePublishingSchedule("user_test", row.id, "retry", now),
+    ).rejects.toThrow();
+    expect(
+      (await changePublishingSchedule("user_test", row.id, "cancel"))?.status,
+    ).toBe("cancelled");
+  });
+  it("leaves an already failed row and its own error alone on later sweeps", async () => {
+    const [row] = await save([
+      entry({ status: "failed", error: "upload_failed" }),
+    ]);
+    await db.insert(schema.publishJobs).values({
+      userId: "user_test",
+      platform: "youtube",
+      mediaKey,
+      idempotencyKey: scheduleAttemptKey(row),
+      status: "failed",
+      error: "connect ECONNREFUSED 127.0.0.1:9",
+    });
+    expect(await reconcileScheduleOutcomes()).toEqual([]);
+    expect((await listPublishingSchedules("user_test"))[0]).toMatchObject({
+      status: "failed",
+      error: "upload_failed",
     });
   });
 });
