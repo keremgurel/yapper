@@ -89,23 +89,3 @@ struct PosterReadiness: Equatable {
         state = blockers.isEmpty ? .ready : .blocked
     }
 }
-
-/// What the publish button says and whether it can be pressed.
-struct PosterPublishSummary: Equatable {
-    let ready: Int
-    let blocked: Int
-
-    init(_ readiness: [PosterReadiness]) {
-        ready = readiness.filter { $0.state == .ready }.count
-        blocked = readiness.filter { $0.state == .blocked || $0.state == .disconnected }.count
-    }
-
-    var canPublish: Bool { ready > 0 }
-    var label: String {
-        switch ready {
-        case 0: "Nothing ready to publish"
-        case 1: "Publish to 1 destination"
-        default: "Publish to \(ready) destinations"
-        }
-    }
-}

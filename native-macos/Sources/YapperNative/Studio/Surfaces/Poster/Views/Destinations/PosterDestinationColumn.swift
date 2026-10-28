@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Everywhere this video is going and whether each place can take it: the
-/// destinations, the caption writer, one card per destination, and the one
-/// publish button that counts them.
+/// Everywhere this video is going and everything it needs to get there: the
+/// destinations, the caption writer, one card per destination, the YouTube
+/// and TikTok settings, and the one button that prepares the video and sends
+/// it to every chosen destination. There is no second review step.
 struct PosterDestinationColumn: View {
     @ObservedObject private var projectPreparation = PosterProjectSync.shared
     let video: PosterVideo
@@ -11,113 +12,101 @@ struct PosterDestinationColumn: View {
     @ObservedObject var connections: PosterConnectionStore
     @ObservedObject var generator: PosterCaptionGenerator
     @ObservedObject var prep: PosterPublishPrep
+    @StateObject private var session = PosterPublishSession()
+    @StateObject private var schedule = PosterScheduleModel()
+    @StateObject private var tiktok = PosterTikTokReviewModel()
 
     var body: some View {
         let connected = connections.connected
-        let chosen = drafts.destinations(video, connected: connected)
+        let chosenSet = drafts.destinations(video, connected: connected)
+        let chosen = PublishPlatform.enabledCases.filter(chosenSet.contains)
         let captions = drafts.captions(video)
         let cover = drafts.cover(video)
-        let readiness = PublishPlatform.enabledCases.filter(chosen.contains).map { platform in
+        let readiness = chosen.map { platform in
             PosterReadiness(platform: platform, connected: connected.contains(platform), caption: captions.caption(for: platform),
                             hasCover: cover.image != nil, outcome: drafts.outcome(video, platform))
         }
-        let summary = PosterPublishSummary(readiness)
+        // Posted and scheduled destinations are done; failed and unconfirmed
+        // ones go again with the same attempt.
+        let remaining = chosen.filter { platform in
+            guard let outcome = drafts.outcome(video, platform) else { return true }
+            return outcome.status == .failed || outcome.status == .pending
+        }
+        let retrying = remaining.contains { drafts.outcome(video, $0) != nil }
+        let gate = PosterPublishGate(
+            remaining: remaining, readiness: readiness.filter { remaining.contains($0.platform) },
+            publishable: connections.publishable, videoReady: video.readyToPublish,
+            youtube: session.youtube, youtubeDescription: captions.caption(for: .youtube).rendered,
+            tiktokReady: tiktok.review(caption: captions.caption(for: .tiktok).rendered).ready
+        )
+        let busy = session.posting || prep.preparing || schedule.saving
+        let later = schedule.later && schedule.enabled == true && !remaining.contains(.tiktok) && !retrying
+        let finished = schedule.saved || (!chosen.isEmpty && remaining.isEmpty)
 
         ScrollView {
-        VStack(alignment: .leading, spacing: 14) {
-            PosterDestinationToggles(
-                chosen: chosen, connected: connected,
-                onToggle: { drafts.toggle($0, for: video, connected: connected) },
-                onConnect: connections.connect
-            )
-            if chosen.isEmpty {
-                Text("Choose at least one destination.").font(.system(size: 13)).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
-            } else {
-                writer(chosen: chosen)
-            }
-            ForEach(readiness, id: \.platform) { item in
-                PosterDestinationCard(
-                    readiness: item, caption: captions.caption(for: item.platform),
-                    sending: prep.preparing && item.state == .ready,
-                    onChange: { drafts.setCaption($0, for: video) },
-                    onRemove: { drafts.toggle(item.platform, for: video, connected: connected) },
-                    canReuse: chosen.count > 1 && !generator.generating,
-                    onCopy: { drafts.copyCaption(from: item.platform, to: chosen, for: video) },
-                    onGenerateOthers: {
-                        generate(PublishPlatform.enabledCases.filter { chosen.contains($0) && $0 != item.platform },
-                                 titleOnly: false, reference: captions.caption(for: item.platform).rendered)
-                    }
+            VStack(alignment: .leading, spacing: 14) {
+                PosterDestinationToggles(
+                    chosen: chosenSet, connected: connected,
+                    onToggle: { drafts.toggle($0, for: video, connected: connected) },
+                    onConnect: connections.connect
                 )
+                if chosen.isEmpty {
+                    Text("Choose at least one destination.").font(.system(size: 13)).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                } else {
+                    PosterCaptionWriter(video: video, chosen: chosenSet, drafts: drafts, generator: generator)
+                }
+                ForEach(readiness, id: \.platform) { item in
+                    PosterDestinationCard(
+                        readiness: item, caption: captions.caption(for: item.platform),
+                        sending: busy && remaining.contains(item.platform),
+                        onChange: { drafts.setCaption($0, for: video) },
+                        onRemove: { drafts.toggle(item.platform, for: video, connected: connected) },
+                        canReuse: chosen.count > 1 && !generator.generating,
+                        onCopy: { drafts.copyCaption(from: item.platform, to: chosenSet, for: video) },
+                        onGenerateOthers: {
+                            generate(chosen.filter { $0 != item.platform }, reference: captions.caption(for: item.platform).rendered)
+                        }
+                    )
+                }
+                if !chosen.isEmpty {
+                    PosterPublishOptions(
+                        video: video, chosen: remaining, youtubeDescriptionTooLong: gate.youtubeDescriptionTooLong,
+                        showsWhen: schedule.saved || (!finished && !retrying && !remaining.contains(.tiktok)),
+                        session: session, tiktok: tiktok, schedule: schedule
+                    )
+                }
+                PosterCaptionBriefView(value: drafts.brief(video), disabled: generator.generating) {
+                    drafts.setBrief($0, for: video)
+                }
             }
-            PosterCaptionBriefView(value: drafts.brief(video), disabled: generator.generating) {
-                drafts.setBrief($0, for: video)
-            }
-        }
+            .disabled(busy)
         }
         .safeAreaInset(edge: .bottom, spacing: 12) {
             if !chosen.isEmpty {
-                VStack(spacing: 8) {
-                    Button { publish(chosen: chosen, captions: captions, cover: cover) } label: {
-                        HStack(spacing: 6) {
-                            if prep.preparing { ProgressView().controlSize(.mini) }
-                            Text(prep.preparing || !video.readyToPublish ? preparationLabel : summary.label)
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(EditorPrimaryButtonStyle())
-                    .disabled(!summary.canPublish || prep.preparing || !video.readyToPublish)
-                    if summary.blocked > 0 {
-                        Text("\(summary.blocked) \(summary.blocked == 1 ? "needs" : "need") a fix first")
-                            .font(.system(size: 12)).foregroundStyle(.secondary)
-                    }
-                }
-                .nativeCard(padding: 12, radius: 12)
+                PosterPublishBar(
+                    label: label(remaining: remaining, later: later, retrying: retrying),
+                    busy: busy, canSend: gate.canSend, finished: finished,
+                    failures: chosen.filter { drafts.outcome(video, $0)?.status == .failed }.count,
+                    waiting: video.readyToPublish ? gate.waiting.map(\.label) : [],
+                    tiktokChosen: remaining.contains(.tiktok),
+                    onSend: { send(to: remaining, captions: captions, cover: cover, later: later) },
+                    onNext: next
+                )
             }
         }
     }
 
-    @ViewBuilder
-    private func writer(chosen: Set<PublishPlatform>) -> some View {
-        let hasOriginal = !(video.sourceCaption ?? "").isEmpty
-        let hasDescription = !drafts.description(video).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        let reading = generator.reading || (!hasDescription && (video.transcriptStatus == "pending" || (video.platform != nil && video.mediaKey == nil)))
-        VStack(alignment: .leading, spacing: 8) {
-            Text("What is this video about? Optional").font(.system(size: 12)).foregroundStyle(.secondary)
-            NativeTextArea(text: Binding(get: { drafts.description(video) }, set: { drafts.setDescription($0, for: video) }),
-                           placeholder: "Describe what happens or what you want to say.", font: .system(size: 13), minHeight: 64)
-                .accessibilityLabel("What is this video about? Optional")
-            if hasOriginal {
-                Text("Starts with your original caption.").font(.system(size: 12)).foregroundStyle(.secondary)
-                HStack(spacing: 8) {
-                    Button("Use original caption") { drafts.useOriginalCaption(for: video) }
-                        .buttonStyle(EditorGhostButtonStyle(size: .small))
-                        .disabled(generator.generating)
-                    if chosen.contains(.youtube) {
-                        Button("Generate YouTube title", systemImage: "sparkles") { generate([.youtube], titleOnly: true) }
-                            .buttonStyle(EditorSecondaryButtonStyle(size: .small))
-                            .disabled(generator.generating || reading)
-                    }
-                }
-            }
-            Button { generate(PublishPlatform.enabledCases.filter(chosen.contains), titleOnly: false) } label: {
-                HStack(spacing: 6) {
-                    if generator.generating || reading { ProgressView().controlSize(.mini) } else { Image(systemName: "sparkles") }
-                    Text(reading ? "Reading what the video says" : generator.generating ? "Writing"
-                         : hasOriginal ? "Rewrite the captions" : "Write the captions")
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(EditorSecondaryButtonStyle())
-            .disabled(generator.generating || reading)
-            Label(source(hasOriginal: hasOriginal, reading: reading),
-                  systemImage: video.transcriptStatus == "ready" ? "checkmark.circle" : "waveform")
-                .font(.system(size: 12)).foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity)
-            if generator.errorVideoID == video.id, let error = generator.error {
-                Text(error).font(.system(size: 12)).foregroundStyle(NativeChip.Tone.yellow.color)
-            }
+    private func label(remaining: [PublishPlatform], later: Bool, retrying: Bool) -> String {
+        if prep.preparing || !video.readyToPublish { return preparationLabel }
+        if schedule.saving { return "Scheduling…" }
+        if session.posting { return "Publishing \(min(session.outcomes.count + 1, remaining.count)) of \(remaining.count)…" }
+        if later {
+            let when = PosterQuickTimes.label(schedule.when)
+            return remaining.count == 1 ? "Schedule for \(when)" : "Schedule \(remaining.count) posts for \(when)"
         }
+        if retrying { return "Check publish status" }
+        return "Publish 1 video to \(remaining.count) platform\(remaining.count == 1 ? "" : "s")"
     }
 
     private var preparationLabel: String {
@@ -126,21 +115,34 @@ struct PosterDestinationColumn: View {
         return "Preparing video…"
     }
 
-    private func source(hasOriginal: Bool, reading: Bool) -> String {
-        if video.noSpeech { return "No speech detected. Describe the video or write a caption." }
-        if !drafts.description(video).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "From your description" }
-        if video.transcriptStatus == "ready" { return "From the video's transcript, one per platform" }
-        if reading { return "Transcript is being prepared" }
-        return hasOriginal ? "Generation reads the video transcript first" : "From the title and your caption prompt"
-    }
-
-    private func generate(_ platforms: [PublishPlatform], titleOnly: Bool, reference: String? = nil) {
+    private func generate(_ platforms: [PublishPlatform], reference: String) {
         Task {
-            await generator.generate(for: video, platforms: platforms, brief: drafts.brief(video), titleOnly: titleOnly, into: drafts, reference: reference)
+            await generator.generate(for: video, platforms: platforms, brief: drafts.brief(video), titleOnly: false, into: drafts, reference: reference)
         }
     }
 
-    private func publish(chosen: Set<PublishPlatform>, captions: PosterCaptionSet, cover: PosterCoverDraft) {
-        Task { await prep.prepare(video, cover: cover, captions: captions, destinations: chosen) }
+    /// One press: prepare the video, then send it everywhere still to go, or
+    /// save it to send later.
+    private func send(to remaining: [PublishPlatform], captions: PosterCaptionSet, cover: PosterCoverDraft, later: Bool) {
+        guard session.begin() else { return }
+        Task {
+            defer { session.end() }
+            guard let target = await prep.prepare(video, cover: cover, captions: captions, destinations: Set(remaining)) else { return }
+            if later {
+                guard await schedule.schedule([target], to: remaining, youtube: session.youtube, connections: connections) else { return }
+                for platform in remaining {
+                    drafts.record(PosterOutcome(videoID: target.id, videoTitle: target.title, platform: platform, status: .scheduled))
+                }
+            } else {
+                let copy = target.copy(for: .tiktok)
+                let review = remaining.contains(.tiktok) ? tiktok.review(caption: copy.body.isEmpty ? copy.title : copy.body) : nil
+                await session.publish(target, to: remaining, tiktok: review, connections: connections, drafts: drafts)
+            }
+        }
+    }
+
+    private func next() {
+        PosterBench.shared.close()
+        Task { await PosterLibraryStore.shared.refresh() }
     }
 }

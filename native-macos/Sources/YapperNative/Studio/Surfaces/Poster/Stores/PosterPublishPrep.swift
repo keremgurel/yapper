@@ -1,6 +1,6 @@
 import Foundation
 
-/// Turns the open video into what the publish sheet posts: the cover is
+/// Turns the open video into what the publish button posts: the cover is
 /// rendered and uploaded here, and the video carries its captions per
 /// platform. A cover that fails to upload never blocks the post.
 @MainActor
@@ -9,11 +9,11 @@ final class PosterPublishPrep: ObservableObject {
 
     @Published private(set) var preparing = false
     @Published private(set) var warning: String?
-    /// Set when the sheet should open.
-    @Published var sheet: PosterPublishSheetRequest?
 
-    func prepare(_ video: PosterVideo, cover: PosterCoverDraft, captions: PosterCaptionSet, destinations: Set<PublishPlatform>) async {
-        guard !preparing else { return }
+    /// The prepared target, or nil when the video could not be prepared and
+    /// `warning` says why.
+    func prepare(_ video: PosterVideo, cover: PosterCoverDraft, captions: PosterCaptionSet, destinations: Set<PublishPlatform>) async -> PosterPublishTarget? {
+        guard !preparing else { return nil }
         preparing = true
         warning = nil
         defer { preparing = false }
@@ -28,13 +28,13 @@ final class PosterPublishPrep: ObservableObject {
                 contentItemID = saved.id
             } catch {
                 warning = error.localizedDescription
-                return
+                return nil
             }
         }
         let thumbnailKey = await uploadedCover
         if needsCover && thumbnailKey == nil { warning = "The cover couldn't upload. The video is still ready to publish." }
         let headline = cover.headline.trimmingCharacters(in: .whitespacesAndNewlines)
-        let target = PosterPublishTarget(
+        return PosterPublishTarget(
             id: video.id,
             title: video.title,
             fallbackTitle: headline.isEmpty ? video.title : headline,
@@ -44,18 +44,10 @@ final class PosterPublishPrep: ObservableObject {
             contentItemID: contentItemID,
             thumbnailKey: thumbnailKey
         )
-        sheet = PosterPublishSheetRequest(targets: [target], platforms: destinations)
     }
+
     private func uploadCover(_ cover: PosterCoverDraft, needed: Bool) async -> String? {
         guard needed, let jpeg = PosterCoverRenderer.jpeg(cover) else { return nil }
         return try? await PosterFileUpload.uploadCover(jpeg: jpeg)
     }
-}
-
-/// What the sheet opens with: the prepared videos and the destinations
-/// chosen upstream, still visible and still removable there.
-struct PosterPublishSheetRequest: Identifiable {
-    let id = UUID()
-    let targets: [PosterPublishTarget]
-    let platforms: Set<PublishPlatform>
 }

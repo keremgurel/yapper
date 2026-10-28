@@ -81,13 +81,6 @@ struct PosterPage: View {
                 await refreshSource(force: true)
             }
         }
-        .nativeDrawer(item: $prep.sheet, dismissOnOutsideTap: false) { request in
-            PosterPublishSheet(request: request, connections: connections, drafts: drafts, onNext: {
-                prep.sheet = nil
-                bench.close()
-                Task { await library.refresh() }
-            }) { prep.sheet = nil }
-        }
     }
 
     @ViewBuilder

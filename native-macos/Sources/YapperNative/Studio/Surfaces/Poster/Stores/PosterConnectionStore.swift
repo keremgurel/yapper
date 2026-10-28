@@ -15,7 +15,7 @@ final class PosterConnectionStore: ObservableObject {
         return PublishPlatform.enabledCases.filter { active.contains($0.rawValue) }
     }
 
-    /// What the publish sheet may post to: Facebook also needs its Page.
+    /// What publishing may post to: Facebook also needs its Page.
     var publishable: [PublishPlatform] {
         connected.filter { $0 != .facebook || accountID(for: .facebook) != nil }
     }

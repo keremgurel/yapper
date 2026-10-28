@@ -170,7 +170,6 @@ struct PosterDecodingTests {
         #expect(blocked.blockers == ["A title is required."])
         let ready = PosterReadiness(platform: .instagram, connected: true, caption: caption, hasCover: false)
         #expect(ready.state == .ready)
-        #expect(PosterPublishSummary([blocked, ready]).label == "Publish to 1 destination")
         #expect(PosterHashtags.add("#growth, tips #growth", to: ["tips"]) == ["tips", "growth"])
     }
 

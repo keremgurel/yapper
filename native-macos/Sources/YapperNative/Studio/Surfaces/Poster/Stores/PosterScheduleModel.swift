@@ -4,10 +4,11 @@ import Foundation
 /// second press replays the same schedule instead of creating another.
 @MainActor
 final class PosterScheduleModel: ObservableObject {
-    @Published var open = false
+    /// Post now or schedule: the one publish button does whichever is chosen.
+    @Published var later = false
     @Published private(set) var enabled: Bool?
     @Published private(set) var loadFailed = false
-    @Published var when = Date().addingTimeInterval(24 * 60 * 60)
+    @Published var when = PosterQuickTimes.options(from: Date()).first?.date ?? Date().addingTimeInterval(24 * 60 * 60)
     @Published private(set) var saving = false
     @Published private(set) var saved = false
     @Published private(set) var error: String?

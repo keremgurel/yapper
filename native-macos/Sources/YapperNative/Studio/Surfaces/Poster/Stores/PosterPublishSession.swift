@@ -1,81 +1,48 @@
 import Foundation
 
-/// One press of publish: every chosen video to every chosen destination.
-/// Videos go one at a time so a batch never holds several large uploads;
-/// each video's destinations run in parallel and fail independently, so an
-/// Instagram error never blocks a YouTube upload. Keys are kept per target,
-/// so a retry checks the same attempt instead of sending a second copy.
+/// One press of publish for the open video: every chosen destination at
+/// once. Destinations run in parallel and fail independently, so an
+/// Instagram error never blocks a YouTube upload. Keys are kept per
+/// destination, so a retry checks the same attempt instead of sending a
+/// second copy.
 @MainActor
 final class PosterPublishSession: ObservableObject {
-    let targets: [PosterPublishTarget]
-    @Published var selected: Set<PublishPlatform>
     @Published private(set) var posting = false
     @Published private(set) var outcomes: [PosterOutcome] = []
-    @Published var scheduled = false
-    @Published var scheduling = false
-    @Published var tiktokReviews: [String: PosterTikTokReview] = [:]
     @Published var youtube = PosterYouTubeSettings()
     private var keys: [String: String] = [:]
 
-    init(_ request: PosterPublishSheetRequest) {
-        targets = request.targets
-        selected = request.platforms
-    }
-
-    func chosen(from publishable: [PublishPlatform]) -> [PublishPlatform] {
-        publishable.filter { selected.contains($0) }
-    }
-
-    func toggle(_ platform: PublishPlatform) {
-        if selected.contains(platform) { selected.remove(platform) } else { selected.insert(platform) }
-    }
-
-    func tiktokReady(_ chosen: [PublishPlatform]) -> Bool {
-        !chosen.contains(.tiktok) || targets.allSatisfy { tiktokReviews[$0.id]?.ready == true }
-    }
-
-    /// Any YouTube description past YouTube's byte limit.
-    var youtubeDescriptionTooLong: Bool {
-        targets.contains { PosterYouTubeSettings.descriptionTooLong($0.copy(for: .youtube).body) }
-    }
-
-    /// YouTube needs an audience declared and a description it will take.
-    func youtubeReady(_ chosen: [PublishPlatform]) -> Bool {
-        !chosen.contains(.youtube) || (youtube.madeForKids != nil && !youtubeDescriptionTooLong)
-    }
-
-    func done(_ chosen: [PublishPlatform]) -> Bool {
-        !outcomes.isEmpty && outcomes.count == targets.count * chosen.count
-    }
-
-    var failures: Int { outcomes.filter { $0.status == .failed }.count }
-
-    func publish(to chosen: [PublishPlatform], connections: PosterConnectionStore, drafts: PosterDraftStore) async {
-        guard !posting, !scheduled, !targets.isEmpty, !chosen.isEmpty, tiktokReady(chosen), youtubeReady(chosen) else { return }
+    /// Marks the start of a press, before the video is prepared, so the
+    /// whole column locks for the full send.
+    func begin() -> Bool {
+        guard !posting else { return false }
         posting = true
+        return true
+    }
+
+    func end() { posting = false }
+
+    func publish(_ target: PosterPublishTarget, to chosen: [PublishPlatform], tiktok: PosterTikTokReview?,
+                 connections: PosterConnectionStore, drafts: PosterDraftStore) async {
+        guard !chosen.isEmpty else { return }
         outcomes = []
-        defer { posting = false }
-        for target in targets {
-            await withTaskGroup(of: PosterOutcome.self) { group in
-                for platform in chosen {
-                    let key = attemptKey("\(target.id):\(platform.rawValue)")
-                    let review = tiktokReviews[target.id]
-                    let youtube = youtube
-                    let account = connections.accountID(for: platform)
-                    group.addTask { await Self.send(target, platform, key: key, review: review, youtube: youtube, account: account) }
-                }
-                for await outcome in group {
-                    outcomes.append(outcome)
-                    drafts.record(outcome)
-                }
+        await withTaskGroup(of: PosterOutcome.self) { group in
+            for platform in chosen {
+                let key = attemptKey("\(target.id):\(platform.rawValue)")
+                let youtube = youtube
+                let account = connections.accountID(for: platform)
+                group.addTask { await Self.send(target, platform, key: key, review: tiktok, youtube: youtube, account: account) }
             }
-            let results = outcomes.filter { $0.videoID == target.id }
-            if results.count == chosen.count, results.allSatisfy({ $0.status == .posted || $0.status == .draft }),
-               let id = target.contentItemID,
-               PosterLibraryStore.shared.items?.first(where: { $0.id == id })?.sourceUrl == "yapper://poster-upload" {
-                if let updated: PosterContentEnvelope = try? await PosterHTTP.patch("api/content/\(id)", body: ["sourceUrl": "yapper://poster-upload/completed"]) {
-                    PosterLibraryStore.shared.upsert(updated.item)
-                }
+            for await outcome in group {
+                outcomes.append(outcome)
+                drafts.record(outcome)
+            }
+        }
+        if outcomes.count == chosen.count, outcomes.allSatisfy({ $0.status == .posted || $0.status == .draft }),
+           let id = target.contentItemID,
+           PosterLibraryStore.shared.items?.first(where: { $0.id == id })?.sourceUrl == "yapper://poster-upload" {
+            if let updated: PosterContentEnvelope = try? await PosterHTTP.patch("api/content/\(id)", body: ["sourceUrl": "yapper://poster-upload/completed"]) {
+                PosterLibraryStore.shared.upsert(updated.item)
             }
         }
     }

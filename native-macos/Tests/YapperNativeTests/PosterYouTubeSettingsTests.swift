@@ -1,14 +1,15 @@
 import Testing
 @testable import YapperNative
 
-/// The same rules as the web's YouTube settings: private and undeclared until
-/// the creator chooses, and descriptions measured the way YouTube measures them.
+/// The same rules as the web's YouTube settings: public and not made for kids
+/// until the creator changes them, and descriptions measured the way YouTube
+/// measures them.
 @Suite
 struct PosterYouTubeSettingsTests {
-    @Test func startsPrivateWithNoAudience() {
+    @Test func startsPublicAndNotMadeForKids() {
         let settings = PosterYouTubeSettings()
-        #expect(settings.body["privacyStatus"] as? String == "private")
-        #expect((settings.body["selfDeclaredMadeForKids"] ?? nil) == nil)
+        #expect(settings.body["privacyStatus"] as? String == "public")
+        #expect(settings.body["selfDeclaredMadeForKids"] as? Bool == false)
         #expect(settings.body["containsSyntheticMedia"] as? Bool == false)
     }
 

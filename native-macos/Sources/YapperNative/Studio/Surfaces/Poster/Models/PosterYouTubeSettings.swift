@@ -2,9 +2,9 @@ import Foundation
 
 /// The YouTube upload choices the web's `youtube-settings.tsx` asks for:
 /// visibility, the made-for-kids declaration YouTube requires, and whether
-/// the video holds realistic altered or synthetic media. Uploads start
-/// private and the audience has no default, so nothing goes out public or
-/// mis-declared without the creator choosing it.
+/// the video holds realistic altered or synthetic media. Like the web's
+/// inline publish, uploads start public and not made for kids, the choices
+/// most posts want, and stay one disclosure away from changing.
 struct PosterYouTubeSettings: Equatable {
     enum Visibility: String, CaseIterable, Identifiable {
         case `private`, unlisted, `public`
@@ -21,8 +21,8 @@ struct PosterYouTubeSettings: Equatable {
     /// YouTube counts a description in bytes, so emoji and accents cost more.
     static let descriptionByteLimit = 5000
 
-    var visibility = Visibility.private
-    var madeForKids: Bool?
+    var visibility = Visibility.public
+    var madeForKids: Bool? = false
     var syntheticMedia = false
 
     /// The fields the YouTube routes read, added to an upload's body.

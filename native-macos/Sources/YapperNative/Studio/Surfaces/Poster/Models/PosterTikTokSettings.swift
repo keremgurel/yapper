@@ -36,7 +36,7 @@ struct PosterTikTokSettings: Codable, Equatable {
     }
 }
 
-/// One video's TikTok choices, as the publish sheet reads them.
+/// One video's TikTok choices, as publishing reads them.
 struct PosterTikTokReview: Equatable {
     enum Mode: String { case direct, inbox }
     var mode: Mode = .direct
