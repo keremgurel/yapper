@@ -29,7 +29,7 @@ extension EditorSession {
             "selectedClipIDs": try .encoding(selectedClips), "selectedCaptionIDs": try .encoding(Array(selectedCaptionIDs)),
             "selectedOverlayIDs": try .encoding(Array(selectedOverlayIDs)),
             "selectedOverlayID": selectedOverlayID.map { .string($0.uuidString) } ?? .null,
-            "clips": try .encoding(project.clips), "captions": try .encoding(project.storedCaptions),
+            "clips": try .encoding(project.clips),
             "captionsVisible": .bool(project.captionsEnabled == true),
             "captionStyle": try .encoding(project.captionStyleOrDefault),
             "textLayers": try .encoding(project.textLayers ?? []),
@@ -57,8 +57,8 @@ extension EditorSession {
                 .object(["id": .string($0.id.uuidString), "name": .string($0.name), "duration": .number($0.duration)])
             }),
             "soundLibrary": .array(SoundEffectDescriptor.library.map { .object(["id": .string($0.id), "name": .string($0.name)]) }),
-            "timelineItems": .array(timelineItemsForContext()),
-            "transcript": .array(transcriptForContext()),
+            "timelineItems": .array(try timelineItemsForContext()),
+            "transcript": .array(project.chirpyTranscript()),
             "recentResults": try .encoding(conversation.results.suffix(16)),
             "activeOperation": .bool(activeOperation != nil)
         ]
@@ -66,7 +66,9 @@ extension EditorSession {
 
     /// Every item on the timeline with its kind and timeline span, in play
     /// order, so a request like "delete the third clip" resolves to an ID.
-    private func timelineItemsForContext() -> [ActionJSON] {
+    /// Captions appear only here: the stored cards add word ID lists the
+    /// planner never needs, so only their lock and restyling come along.
+    private func timelineItemsForContext() throws -> [ActionJSON] {
         var items: [(start: Double, json: ActionJSON)] = []
         for clip in project.clips {
             let start = project.timelineStart(for: clip.id) ?? 0
@@ -74,9 +76,15 @@ extension EditorSession {
                 "start": .number(start), "end": .number(start + clip.duration), "locked": .bool(clip.locked),
                 "media": .string(project.media(for: clip)?.name ?? "")])))
         }
+        let captions = Dictionary(project.storedCaptions.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         for cue in project.captionCues {
-            items.append((cue.timelineStart, .object(["id": .string(cue.id.uuidString), "kind": .string("caption"),
-                "start": .number(cue.timelineStart), "end": .number(cue.timelineEnd), "text": .string(String(cue.text.prefix(80)))])))
+            var item: [String: ActionJSON] = ["id": .string(cue.id.uuidString), "kind": .string("caption"),
+                "start": .number(cue.timelineStart), "end": .number(cue.timelineEnd), "text": .string(String(cue.text.prefix(80)))]
+            if let caption = captions[cue.id] {
+                if caption.locked { item["locked"] = .bool(true) }
+                if caption.hasStyleOverrides { item["styleOverrides"] = try .encoding(caption.overrides) }
+            }
+            items.append((cue.timelineStart, .object(item)))
         }
         for layer in project.textLayers ?? [] {
             items.append((layer.timelineStart, .object(["id": .string(layer.id.uuidString), "kind": .string("text"),
@@ -91,15 +99,6 @@ extension EditorSession {
                 "start": .number(layer.timelineStart), "end": .number(layer.timelineStart + layer.duration), "name": .string(layer.name)])))
         }
         return items.sorted { $0.start < $1.start }.prefix(2000).map(\.json)
-    }
-
-    /// The transcript with word IDs and whether each word is still in the
-    /// edit, so word-level cuts and restores can name exactly what to change.
-    private func transcriptForContext() -> [ActionJSON] {
-        (project.transcript ?? []).prefix(4000).map { word in
-            .object(["id": .string(word.id.uuidString), "text": .string(word.text), "mediaID": .string(word.mediaID.uuidString),
-                     "start": .number(word.start), "end": .number(word.end), "kept": .bool(project.isWordKept(word))])
-        }
     }
 
     func runContextualAssistant(_ text: String) async {
@@ -162,8 +161,7 @@ enum ChirpyPlanningService {
         request.httpMethod = "POST"
         request.timeoutInterval = 55
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONEncoder().encode(body)
-        guard request.httpBody!.count <= 512 * 1024 else { throw AppActionError("This project is too large for Chirpy’s current context limit.") }
+        request.httpBody = try ChirpyRequestBudget.encode(body)
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw AppActionError("Chirpy returned no response.") }
         guard (200..<300).contains(http.statusCode) else { throw YapperAPI.failure(status: http.statusCode, body: data, action: "Planning the edit") }

@@ -244,6 +244,15 @@
       "input": "TranscriptWordsInput",
       "description": "Cut spoken words out of the edit (kept false) or put cut words back (kept true) by transcript word ID. Cutting removes that stretch of recording from the timeline; restoring brings it and its caption back.",
       "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "legacy": true
+    },
+    {
+      "id": "editor.transcript.setWordRangesKept",
+      "symbol": "transcriptWordRanges",
+      "input": "TranscriptWordRangesInput",
+      "description": "Cut spoken words out of the edit (kept false) or put cut words back (kept true) by the word numbers in context.transcript. Each range covers first through last inclusive; one word is a range with first equal to last. Cutting removes that stretch of recording from the timeline; restoring brings it and its caption back.",
+      "effect": "reversibleEdit",
       "requiresRebuild": true
     },
     {
@@ -1542,6 +1551,42 @@
           "items": {
             "type": "string",
             "format": "uuid"
+          }
+        },
+        "kept": {
+          "type": "boolean"
+        }
+      }
+    },
+    "TranscriptWordRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["first", "last"],
+      "properties": {
+        "first": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "last": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        }
+      }
+    },
+    "TranscriptWordRangesInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ranges", "kept"],
+      "properties": {
+        "ranges": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/TranscriptWordRange"
           }
         },
         "kept": {

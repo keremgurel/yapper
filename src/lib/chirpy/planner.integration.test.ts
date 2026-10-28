@@ -569,16 +569,15 @@ function importedMediaRequest(
         usedAsOverlay: false,
       })),
     ],
-    transcript:
-      "First I grind the coffee beans. Then I brew the coffee. Finally I look at our sales chart."
-        .split(" ")
-        .map((text, index) => ({
-          id: randomUUID(),
-          text,
-          start: index,
-          end: index + 1,
-          kept: true,
-        })),
+    transcript: [
+      {
+        mediaID: randomUUID(),
+        text: "First I grind the coffee beans. Then I brew the coffee. Finally I look at our sales chart."
+          .split(" ")
+          .map((word, index) => `${index}:${word}`)
+          .join(" "),
+      },
+    ],
   };
   return request;
 }
@@ -594,7 +593,7 @@ it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1")(
         [{ role: "user", content: importedPlacementPrompt }],
       ),
     );
-    expect(reply.actions).toHaveLength(1);
+    expect(reply.actions, JSON.stringify(reply)).toHaveLength(1);
     expect(reply.actions[0].action).toBe("editor.designOverlays");
     expect(reply.actions[0].arguments.mode).toBe("placeImported");
   },
@@ -670,6 +669,75 @@ it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1")(
     );
     expect(reply.actions, JSON.stringify(reply)).toHaveLength(1);
     expect(reply.actions[0].action).toBe("editor.overlays.add");
+  },
+  50_000,
+);
+
+it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1")(
+  "cuts a quoted sentence by its numbered transcript words",
+  async () => {
+    const reply = await planChirpy(
+      importedMediaRequest(
+        [],
+        [{ role: "user", content: "cut 'Then I brew the coffee.'" }],
+      ),
+    );
+    expect(reply.actions, JSON.stringify(reply)).toHaveLength(1);
+    expect(reply.actions[0].action).toBe("editor.transcript.setWordRangesKept");
+    const { ranges, kept } = reply.actions[0].arguments as {
+      ranges: Array<{ first: number; last: number }>;
+      kept: boolean;
+    };
+    const numbers = ranges.flatMap(({ first, last }) =>
+      Array.from({ length: last - first + 1 }, (_, index) => first + index),
+    );
+    expect(kept).toBe(false);
+    expect(new Set(numbers)).toEqual(new Set([6, 7, 8, 9, 10]));
+  },
+  50_000,
+);
+
+it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1")(
+  "adds a named sound at the first overlay from timeline items alone",
+  async () => {
+    const request = importedMediaRequest(
+      [],
+      [
+        {
+          role: "user",
+          content:
+            "add sound effects to some of the overlays. definitely the first one. snap shutter",
+        },
+      ],
+    );
+    const overlays = [4.2, 11.8, 19.5].map((start, index) => ({
+      id: randomUUID(),
+      kind: "overlay",
+      start,
+      end: start + 3,
+      media: `Screenshot ${index + 1}.png`,
+    }));
+    request.context = {
+      ...request.context,
+      timelineItems: overlays,
+      soundLibrary: [
+        { id: "mouse-click", name: "Mouse click" },
+        { id: "camera-shutter", name: "Camera shutter" },
+        { id: "woosh", name: "Woosh" },
+      ],
+      sounds: [],
+    };
+    const reply = await planChirpy(request);
+    const sound = reply.actions.find(
+      (action) => action.action === "editor.audio.addAt",
+    );
+    expect(sound, JSON.stringify(reply)).toBeDefined();
+    const { effectID, at } = sound!.arguments as {
+      effectID: string;
+      at: Array<{ kind: string; time?: number }>;
+    };
+    expect(effectID).toBe("camera-shutter");
+    expect(at.some((anchor) => anchor.time === 4.2)).toBe(true);
   },
   50_000,
 );
