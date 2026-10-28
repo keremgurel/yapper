@@ -156,10 +156,10 @@ struct TimelineActionTests {
         let ui = await session(project) { _ in throw AppActionError("unused") }
         let chat = await session(project) { instruction in
             instruction.contains("back")
-                ? try Self.reply(TranscriptWordsInput(wordIDs: [words[2].id], kept: true))
+                ? try Self.reply(TranscriptWordRangesInput(ranges: [.init(first: 2, last: 2)], kept: true))
                 : instruction.contains("pause")
                     ? try Self.reply(TranscriptPauseInput(mediaID: words[0].mediaID, start: 0.7, end: 1.2, kept: false))
-                    : try Self.reply(TranscriptWordsInput(wordIDs: [words[2].id, words[3].id], kept: false))
+                    : try Self.reply(TranscriptWordRangesInput(ranges: [.init(first: 2, last: 3)], kept: false))
         }
         await ui.deleteTranscriptWords([words[2], words[3]])
         await chat.runAssistant(instruction: "cut three and four")
@@ -180,5 +180,26 @@ struct TimelineActionTests {
         #expect(normalized(ui.project) == normalized(chat.project))
         #expect(chat.appActions.recentResults.last?.changes.first?.property == "pause 0.70-1.20")
         release(ui, chat)
+    }
+
+    @Test func chirpyReadsTheTranscriptAsNumberedWordsAndPauses() async throws {
+        let (project, root) = try await fixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let chat = await session(project) { _ in try Self.reply(TranscriptWordRangesInput(ranges: [.init(first: 4, last: 9)], kept: false)) }
+        await chat.deleteTranscriptPause(mediaID: project.media[0].id, start: 0.7, end: 1.2)
+        let context = try await chat.chirpyContext()
+        #expect(context["transcript"] == .array([.object(["mediaID": .string(project.media[0].id.uuidString), "text": .string(
+            "0:one [pause 0.700-1.200] 1:two (pause 1.700-2.200) 2:three (pause 2.700-3.200) 3:four (pause 3.700-4.200) 4:five (pause 4.700-5.200) 5:six")])]))
+        #expect(context["captions"] == nil)
+        let caption = try #require(context["timelineItems"]?.list?.first { $0["kind"] == .string("caption") })
+        #expect(caption["text"] == .string("one") && caption["wordIDs"] == nil && caption["locked"] == nil)
+        let catalog = chat.appActions.planningDescriptors.map(\.id)
+        #expect(catalog.contains("editor.transcript.setWordRangesKept") && !catalog.contains("editor.transcript.setWordsKept"))
+
+        await chat.runAssistant(instruction: "cut from five to the end")
+        let refused = try #require(chat.appActions.recentResults.last)
+        #expect(refused.status == .rejected && refused.message.contains("word number"))
+        #expect(chat.project.transcript!.allSatisfy { chat.project.isWordKept($0) })
+        release(chat)
     }
 }

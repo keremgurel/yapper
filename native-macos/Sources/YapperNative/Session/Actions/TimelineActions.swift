@@ -11,6 +11,7 @@ extension AppActionRegistry {
         registerClipReorder()
         registerTimelineShift()
         registerTranscriptWords()
+        registerTranscriptWordRanges()
         registerTranscriptPause()
     }
 
@@ -155,25 +156,48 @@ extension AppActionRegistry {
         }
     }
 
+    private static var transcriptAvailability: (EditorSession) -> AppActionAvailability {
+        { session in (session.project.transcript ?? []).isEmpty ? .init(reason: "Transcribe the video before cutting words.") : .available }
+    }
+
+    /// The transcript panel cuts by word ID.
     private func registerTranscriptWords() {
-        register(TranscriptWordsInput.self, availability: { session in
-            (session.project.transcript ?? []).isEmpty ? .init(reason: "Transcribe the video before cutting words.") : .available
-        }) { session, input in
+        register(TranscriptWordsInput.self, availability: Self.transcriptAvailability) { session, input in
             let ids = Set(input.wordIDs)
             guard ids.isSubset(of: Set((session.project.transcript ?? []).map(\.id))) else {
                 throw AppActionError("A requested transcript word no longer exists.")
             }
-            let words = session.setTranscriptWordsKept(ids, kept: input.kept)
-            let changes = words.map {
-                AppActionChange(targetID: $0.id, property: "kept", before: String(!input.kept), after: String(input.kept))
-            }
-            let seekTo = session.currentTime
-            let spoken = words.map(\.text).joined(separator: " ")
-            let message = words.isEmpty ? (input.kept ? "Those words are already in the edit." : "Those words are already cut.")
-                : (input.kept ? "Restored" : "Cut") + " \(Self.count(words.count, "word")) · “\(spoken.prefix(60))\(spoken.count > 60 ? "…" : "")”"
-            return AppActionMutation(message: message, changes: changes,
-                                     afterCommit: { if input.kept { session.seekToTimelineTime(seekTo) } })
+            return Self.setWordsKept(ids, kept: input.kept, in: session)
         }
+    }
+
+    /// Chirpy cuts by the word numbers in its context, which cost a few
+    /// characters each where a word ID costs a UUID.
+    private func registerTranscriptWordRanges() {
+        register(TranscriptWordRangesInput.self, availability: Self.transcriptAvailability) { session, input in
+            let words = session.project.chirpyNumberedWords
+            var ids: Set<UUID> = []
+            for range in input.ranges {
+                guard range.first <= range.last, range.last < words.count else {
+                    throw AppActionError("A requested transcript word number is not in the transcript.")
+                }
+                ids.formUnion(words[range.first...range.last].map(\.id))
+            }
+            return Self.setWordsKept(ids, kept: input.kept, in: session)
+        }
+    }
+
+    private static func setWordsKept(_ ids: Set<UUID>, kept: Bool, in session: EditorSession) -> AppActionMutation {
+        let words = session.setTranscriptWordsKept(ids, kept: kept)
+        let changes = words.map {
+            AppActionChange(targetID: $0.id, property: "kept", before: String(!kept), after: String(kept))
+        }
+        let seekTo = session.currentTime
+        let spoken = words.map(\.text).joined(separator: " ")
+        let message = words.isEmpty ? (kept ? "Those words are already in the edit." : "Those words are already cut.")
+            : (kept ? "Restored" : "Cut") + " \(count(words.count, "word")) · “\(spoken.prefix(60))\(spoken.count > 60 ? "…" : "")”"
+        return AppActionMutation(message: message, changes: changes,
+                                 afterCommit: { if kept { session.seekToTimelineTime(seekTo) } })
     }
 
     private func registerTranscriptPause() {
