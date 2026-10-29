@@ -1,6 +1,6 @@
 import Foundation
 
-/// One prepared video, as the publish sheet posts it: its master, its cover
+/// One prepared video, as the publish button posts it: its master, its cover
 /// key, and the captions written per platform in the Poster.
 struct PosterPublishTarget: Identifiable, Equatable {
     let id: String

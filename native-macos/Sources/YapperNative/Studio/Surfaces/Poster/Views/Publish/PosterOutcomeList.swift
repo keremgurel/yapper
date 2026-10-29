@@ -1,50 +1,5 @@
 import SwiftUI
 
-/// What is about to go out, per video and platform, exactly as written in
-/// the Poster. Read only: editing happens where the limits are shown.
-struct PosterPreparedCaptions: View {
-    let targets: [PosterPublishTarget]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            ForEach(targets) { target in
-                let written = PublishPlatform.enabledCases.filter { target.captions[$0]?.hasText == true }
-                VStack(alignment: .leading, spacing: 10) {
-                    if targets.count > 1 { Text(target.title).font(.system(size: 13, weight: .medium)).lineLimit(1) }
-                    if written.isEmpty {
-                        Text("No caption written. This one posts with its cover text as the title and nothing else.")
-                            .font(.system(size: 13)).foregroundStyle(.secondary)
-                    }
-                    ForEach(written) { platform in
-                        if let caption = target.captions[platform] { row(platform, caption) }
-                    }
-                }
-            }
-        }
-    }
-
-    private func row(_ platform: PublishPlatform, _ caption: PosterCaption) -> some View {
-        let spec = PosterCaptionSpec.of(platform)
-        return VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                Image(systemName: platform.symbol).font(.system(size: 11)).foregroundStyle(.secondary)
-                Text(spec.label).font(.system(size: 13, weight: .semibold))
-                Spacer()
-                Button("Copy", systemImage: "doc.on.doc") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(caption.rendered, forType: .string)
-                }
-                .buttonStyle(EditorGhostButtonStyle(size: .mini))
-            }
-            if spec.hasTitle && !caption.title.isEmpty {
-                Text(caption.title).font(.system(size: 13, weight: .medium))
-            }
-            Text(caption.rendered).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(4)
-        }
-        .nativeWell(padding: 10, radius: 8)
-    }
-}
-
 /// What happened, per video and destination. Failures stay beside successes.
 struct PosterOutcomeList: View {
     let outcomes: [PosterOutcome]

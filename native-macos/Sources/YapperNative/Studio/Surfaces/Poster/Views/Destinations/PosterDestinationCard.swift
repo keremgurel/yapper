@@ -14,7 +14,8 @@ struct PosterDestinationCard: View {
     var onCopy: () -> Void = {}
     var onGenerateOthers: () -> Void = {}
 
-    @State private var expanded = false
+    /// Open from the start: captions are edited here, with nothing to unlock first.
+    @State private var expanded = true
 
     private var done: Bool { [.posted, .scheduled].contains(readiness.state) }
 

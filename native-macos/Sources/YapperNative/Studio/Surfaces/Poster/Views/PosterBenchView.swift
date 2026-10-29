@@ -2,6 +2,7 @@ import SwiftUI
 
 /// One video open: the source's videos as a rail, the thumbnail in the
 /// middle, and the destinations with the one publish button on the right.
+/// The column is rebuilt per video, so publish settings never carry over.
 /// Stacks on narrow windows.
 struct PosterBenchView: View {
     var availableHeight: CGFloat = 540
@@ -57,6 +58,7 @@ struct PosterBenchView: View {
                 video: video, framePending: framePending, drafts: drafts, connections: connections,
                 generator: .shared, prep: .shared
             )
+            .id(video.id)
         }
     }
 }
