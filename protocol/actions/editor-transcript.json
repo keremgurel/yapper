@@ -1,0 +1,113 @@
+{
+  "description": "Keeping or cutting transcript words and pauses.",
+  "runtime": "client",
+  "actions": [
+    {
+      "id": "editor.transcript.setWordsKept",
+      "symbol": "transcriptWords",
+      "input": "TranscriptWordsInput",
+      "description": "Cut spoken words out of the edit (kept false) or put cut words back (kept true) by transcript word ID. Cutting removes that stretch of recording from the timeline; restoring brings it and its caption back.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "legacy": true
+    },
+    {
+      "id": "editor.transcript.setWordRangesKept",
+      "symbol": "transcriptWordRanges",
+      "input": "TranscriptWordRangesInput",
+      "description": "Cut spoken words out of the edit (kept false) or put cut words back (kept true) by the word numbers in context.transcript. Each range covers first through last inclusive; one word is a range with first equal to last. Cutting removes that stretch of recording from the timeline; restoring brings it and its caption back.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.transcript.setPauseKept",
+      "symbol": "transcriptPause",
+      "input": "TranscriptPauseInput",
+      "description": "Cut a pause (a stretch of a recording with no words, given in recording seconds for that media) out of the edit, or restore it.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    }
+  ],
+  "$defs": {
+    "TranscriptWordsInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wordIDs", "kept"],
+      "properties": {
+        "wordIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "kept": {
+          "type": "boolean"
+        }
+      }
+    },
+    "TranscriptWordRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["first", "last"],
+      "properties": {
+        "first": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "last": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        }
+      }
+    },
+    "TranscriptWordRangesInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ranges", "kept"],
+      "properties": {
+        "ranges": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/TranscriptWordRange"
+          }
+        },
+        "kept": {
+          "type": "boolean"
+        }
+      }
+    },
+    "TranscriptPauseInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mediaID", "start", "end", "kept"],
+      "properties": {
+        "mediaID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "start": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "end": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "kept": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

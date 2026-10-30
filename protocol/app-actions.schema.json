@@ -5,28 +5,112 @@
   "x-protocolVersion": 1,
   "x-actions": [
     {
-      "id": "editor.clips.extractAudio",
-      "symbol": "extractAudio",
-      "input": "ExtractAudioInput",
-      "description": "Extract audio from explicit video clip or overlay IDs into independent audio layers, preserving trim and speed and silencing the original clips. Locked, silent and already extracted clips are skipped.",
+      "id": "editor.audio.addAt",
+      "symbol": "soundAt",
+      "input": "SoundAtInput",
+      "description": "Place an installed library sound at one or more timing anchors: explicit timeline times, playhead, speechStart, exact phrase/occurrence, or a saved animation event ID. Uses the same timing resolver as keyframes. Repeating the same effect at the same time is a no-op. Changes audio only.",
       "effect": "reversibleEdit",
-      "requiresRebuild": true
+      "requiresRebuild": true,
+      "runtime": "client"
     },
     {
-      "id": "editor.clips.setSpeed",
-      "symbol": "clipSpeed",
-      "input": "ClipSpeedInput",
-      "description": "Set playback speed for explicit clip IDs, preserving voice pitch. Locked clips are skipped.",
+      "id": "editor.audio.addSaved",
+      "symbol": "savedAudioAdd",
+      "input": "SavedAudioAddInput",
+      "description": "Place existing audio from savedAudioLibrary at a timeline anchor. Keeps the library default volume and adds the actual saved source; no paths are accepted.",
       "effect": "reversibleEdit",
-      "requiresRebuild": true
+      "requiresRebuild": true,
+      "runtime": "client"
     },
     {
-      "id": "editor.timeline.setLocked",
-      "symbol": "timelineLock",
-      "input": "TimelineLockInput",
-      "description": "Lock or unlock explicit clips and captions to protect their edits.",
+      "id": "editor.audio.replace",
+      "symbol": "audioReplace",
+      "input": "AudioReplaceInput",
+      "description": "Replace existing sound layers with a built-in sound from soundLibrary, keeping timeline placement and volume. Resets source trim and rate to the new sound.",
       "effect": "reversibleEdit",
-      "requiresRebuild": false
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.audio.setVolume",
+      "symbol": "audioVolume",
+      "input": "AudioVolumeInput",
+      "description": "Set playback volume (0 silent, 1 unity, up to 2) on explicit audio layer IDs and, when videoTrack is true, on the speaker's own video track. Raising the video track above 0 also unmutes it.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.audio.trim",
+      "symbol": "audioTrim",
+      "input": "AudioTrimInput",
+      "description": "Set source in point and/or duration of existing audio layers. Preserve timeline position, volume and speed. SourceStart is recording seconds; duration is timeline seconds.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.background.set",
+      "symbol": "clipBackground",
+      "input": "ClipBackgroundInput",
+      "description": "Keep or remove the room behind the speaker on explicit clip IDs. When removed, the project backdrop colour shows behind the speaker. Locked clips are skipped.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.captions.add",
+      "symbol": "captionAdd",
+      "input": "CaptionAddInput",
+      "description": "Add a caption card. Either at a timeline anchor over spoken footage, or right after an existing caption (afterCaptionID). Optional text sets what the card says; otherwise it takes the spoken words there.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": false,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.captions.merge",
+      "symbol": "captionMerge",
+      "input": "CaptionMergeInput",
+      "description": "Merge two or more caption cards into one card spanning them, keeping their words in order.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": false,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.captions.remove",
+      "symbol": "captionRemove",
+      "input": "CaptionRemoveInput",
+      "description": "Remove explicit caption cards by ID. Locked captions are skipped. To hide all captions without deleting them use editor.captions.setVisible.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": false,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.captions.retime",
+      "symbol": "captionRetime",
+      "input": "CaptionRetimeInput",
+      "description": "Move a caption card to a new timeline start and end in seconds. A card can only sit over the footage it was spoken over.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": false,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.captions.setStyle",
+      "symbol": "captionStyle",
+      "input": "CaptionStyleInput",
+      "description": "Set caption style fields on explicit caption IDs, or on the shared caption style when applyToAll is true. Send only the fields to change; unmentioned fields keep their values. Locked captions are skipped. Position, width and fontScale are fractions of the frame; strokeWidth is a fraction of the font size.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": false,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.captions.setText",
+      "symbol": "captionText",
+      "input": "CaptionTextInput",
+      "description": "Replace the text of one caption card. The card stops following the transcript for that text.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": false,
+      "runtime": "client"
     },
     {
       "id": "editor.captions.setVisible",
@@ -34,7 +118,206 @@
       "input": "CaptionVisibilityInput",
       "description": "Show or hide existing captions, preserving their text and styling. If showing captions for the first time, generate them from speech using the caption workflow.",
       "effect": "reversibleEdit",
-      "requiresRebuild": false
+      "requiresRebuild": false,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.captions.splitAtWord",
+      "symbol": "captionSplit",
+      "input": "CaptionSplitInput",
+      "description": "Split one caption after a word count, as pressing Enter at a word boundary. Locked captions are skipped.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": false,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.cleanup",
+      "symbol": "cleanupWorkflow",
+      "input": "CleanupWorkflowInput",
+      "description": "Run the app one-click AI cleanup workflow on the project.",
+      "effect": "workflow",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.clips.extractAudio",
+      "symbol": "extractAudio",
+      "input": "ExtractAudioInput",
+      "description": "Extract audio from explicit video clip or overlay IDs into independent audio layers, preserving trim and speed and silencing the original clips. Locked, silent and already extracted clips are skipped.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.clips.reorder",
+      "symbol": "clipReorder",
+      "input": "ClipReorderInput",
+      "description": "Move explicit main-track clips as one block so it starts at insertionIndex among the remaining clips (0 is first). Cannot reorder across a locked clip.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.clips.setSpeed",
+      "symbol": "clipSpeed",
+      "input": "ClipSpeedInput",
+      "description": "Set playback speed for explicit clip IDs, preserving voice pitch. Locked clips are skipped.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.designOverlays",
+      "symbol": "overlayWorkflow",
+      "input": "OverlayWorkflowInput",
+      "description": "Overlays from the creator's own files or newly created visuals. mode placeImported puts media files the creator imported (media with onMainTrack and usedAsOverlay both false) on the timeline at the moments they fit the speech, with any sounds asked for on them, for example a cha-ching exactly when a number is said. mode create designs new visuals (charts, counters, animated graphics) that do not exist yet. Pass the creator's whole request as the instruction; the workflow reads the transcript and media itself. Never use this to edit existing masks.",
+      "effect": "workflow",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.export",
+      "symbol": "exportVideo",
+      "input": "ExportInput",
+      "description": "Export the current edited video. destination=file opens the normal save panel. Use poster only when explicitly asked to send the final video to Poster: it uploads the export and opens Poster without publishing. Runs alone.",
+      "effect": "workflow",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.history.restore",
+      "symbol": "history",
+      "input": "HistoryInput",
+      "description": "Undo or redo the last saved edit, including a whole Chirpy batch. Runs alone and uses the existing history stack. Check canUndo/canRedo.",
+      "effect": "workflow",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.masks.remove",
+      "symbol": "maskRemove",
+      "input": "MaskRemoveInput",
+      "description": "Remove one explicitly requested mask region and its opacity animation, leaving all other masks and original pixels intact.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.masks.setRegion",
+      "symbol": "maskRegion",
+      "input": "MaskRegionInput",
+      "description": "Create or edit a rectangular solid-color mask on an image or generated overlay. Coordinates are source-image fractions from its top left; RGB values are 0–1. Use the attached source image to locate any requested area (text, face, logo, chart, or other content); OCR is optional evidence, not a requirement. Omit regionID to create a mask; use a saved ID to edit one. opacityKeys animate the cover: 1 conceals the area, 0 exposes it. The first opacity is held before the first key and the last after the last key: include the initial covered state explicitly before a fade. Each key accepts a shared timing anchor, including exact speech phrases. New masks default to a solid cover. Geometry-only edits omit opacityKeys and policy to preserve existing timing. policy/revealTime are compatibility shortcuts; use opacityKeys for new animations. Image conversion supports scene source durations of 0.5–30 seconds. Preserve unmentioned masks and source pixels. Unsupported mask styles, shapes, or moving-object tracking must be reported as unavailable.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.media.edit",
+      "symbol": "mediaEdit",
+      "input": "MediaEditInput",
+      "description": "Append imported media to the main track, remove media and its timeline instances (original files kept), or reset its main-track cuts to the full source. Uses media IDs from context. Removing/resetting locked clips is rejected.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.media.import",
+      "symbol": "importPicker",
+      "input": "ImportPickerInput",
+      "description": "Open the same local file picker as Import media or Import audio, then import the creator-selected files. You cannot choose filesystem paths. Runs alone. The creator may cancel.",
+      "effect": "workflow",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.overlays.add",
+      "symbol": "overlayAdd",
+      "description": "Place one existing media item as an overlay at a known timeline anchor. Optional duration and sourceStart; defaults match Add as overlay. Use designOverlays/placeImported only when editorial placement across speech must be decided.",
+      "input": "OverlayAddInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.overlays.editTrack",
+      "symbol": "overlayTrack",
+      "description": "Remove an overlay lane and compact remaining lanes, or set every overlay on it hidden/shown. track is zero-based. Removing keeps original media.",
+      "input": "OverlayTrackInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.overlays.keyframe",
+      "symbol": "overlayKeyframe",
+      "input": "OverlayKeyframeInput",
+      "description": "Set, remove, move or clear a keyframe on an overlay. time and destination are seconds from the overlay start. A set with no box or crop captures the current frame. box uses fractions of the video frame; crop uses normalized source coordinates. clear freezes the frame at time.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.overlays.setCrop",
+      "symbol": "overlayCrop",
+      "input": "OverlayCropInput",
+      "description": "Crop explicit overlays to a source rectangle. Coordinates are normalized with top-left origin. Optional time sets the crop at that local overlay time when a single image or scene already has keyframes. Omitting time explicitly replaces crop animation with a static crop while preserving placement keyframes.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.overlays.setFrame",
+      "symbol": "overlayFrame",
+      "description": "Set size, position and rotation of existing overlays. Use all=true and overlayIDs=[] for every overlay in one action. fit=full is the manual Full frame control (x/y=0, width/height=1); fit=card resets the frame using each source aspect. Otherwise supply only changed fields. Width without height preserves source aspect and center. Omit time to apply throughout each overlay, including every placement key, preserving crop keys/easing. time edits one overlay at an overlay-local keyframe. Does not place or generate media.",
+      "input": "OverlayFrameInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.overlays.setProperties",
+      "symbol": "overlayProperties",
+      "description": "Edit existing overlays: visibility, behind-speaker depth, source in point, timeline start/duration, or zero-based lane. Only supplied fields change. all=true targets every overlay; otherwise use overlayIDs. Cannot put generated scenes behind the speaker, exceed video source bounds, or collide on a lane.",
+      "input": "OverlayPropertiesInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.overlays.zoom",
+      "symbol": "overlayZoom",
+      "input": "OverlayZoomInput",
+      "description": "Animate a zoom into a specific source region of an existing overlay, preserving its placement and masks. target is normalized source coordinates with a top-left origin. Times are seconds from the overlay start. Smooth zoom holds after endTime; optional returnStart and returnEnd zoom back. Use known region boxes or the supplied selected-overlay image to locate the requested section; ask if the target region is ambiguous.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.project.setBackdrop",
+      "symbol": "projectBackdrop",
+      "input": "ProjectBackdropInput",
+      "description": "Set the project backdrop colour that fills the frame where there is no picture, including behind a speaker whose background is removed.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.project.setSettings",
+      "symbol": "projectSettings",
+      "description": "Set project aspect ratio, visual filter/strength, video-track visibility or mute. Only supplied fields change. Applies the same project-wide settings as the manual controls.",
+      "input": "ProjectSettingsInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.retouch.set",
+      "symbol": "clipRetouch",
+      "input": "ClipRetouchInput",
+      "description": "Set face retouch strengths (0 to 1) on explicit clip IDs: clearBlemishes and whitenTeeth. Send only the fields to change. Locked clips are skipped.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
     },
     {
       "id": "editor.reveals.setPolicy",
@@ -43,7 +326,8 @@
       "description": "Set visibility policies for explicit regions of an image overlay. alwaysVisible removes only those masks; untilCue uses the saved spoken cue; alwaysHidden requires an explicit request to keep a value hidden.",
       "effect": "reversibleEdit",
       "requiresRebuild": true,
-      "legacy": true
+      "legacy": true,
+      "runtime": "client"
     },
     {
       "id": "editor.sounds.addAtReveals",
@@ -52,103 +336,17 @@
       "description": "Add a library sound at explicit saved reveal events, using the animation times already in the scene. Does not add or move overlays. Repeating the same sound at the same reveal is a no-op.",
       "effect": "reversibleEdit",
       "requiresRebuild": true,
-      "legacy": true
+      "legacy": true,
+      "runtime": "client"
     },
     {
-      "id": "editor.transcribe",
-      "symbol": "transcribeWorkflow",
-      "input": "TranscribeWorkflowInput",
-      "description": "Transcribe the project speech using the app transcription workflow.",
-      "effect": "workflow",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.cleanup",
-      "symbol": "cleanupWorkflow",
-      "input": "CleanupWorkflowInput",
-      "description": "Run the app one-click AI cleanup workflow on the project.",
-      "effect": "workflow",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.trimSilences",
-      "symbol": "silenceWorkflow",
-      "input": "SilenceWorkflowInput",
-      "description": "Trim silences using the app silence trimming workflow. With clipIDs, only silences inside those main-track clips are cut; without, the whole timeline is trimmed.",
-      "effect": "workflow",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.designOverlays",
-      "symbol": "overlayWorkflow",
-      "input": "OverlayWorkflowInput",
-      "description": "Overlays from the creator's own files or newly created visuals. mode placeImported puts media files the creator imported (media with onMainTrack and usedAsOverlay both false) on the timeline at the moments they fit the speech, with any sounds asked for on them, for example a cha-ching exactly when a number is said. mode create designs new visuals (charts, counters, animated graphics) that do not exist yet. Pass the creator's whole request as the instruction; the workflow reads the transcript and media itself. Never use this to edit existing masks.",
-      "effect": "workflow",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.overlays.zoom",
-      "symbol": "overlayZoom",
-      "input": "OverlayZoomInput",
-      "description": "Animate a zoom into a specific source region of an existing overlay, preserving its placement and masks. target is normalized source coordinates with a top-left origin. Times are seconds from the overlay start. Smooth zoom holds after endTime; optional returnStart and returnEnd zoom back. Use known region boxes or the supplied selected-overlay image to locate the requested section; ask if the target region is ambiguous.",
+      "id": "editor.text.add",
+      "symbol": "textLayerAdd",
+      "input": "TextLayerAddInput",
+      "description": "Add an on-screen text layer with the given text at a timeline anchor (default the playhead) for duration seconds (default 5). asHook places it at the very start with the hook look.",
       "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.overlays.keyframe",
-      "symbol": "overlayKeyframe",
-      "input": "OverlayKeyframeInput",
-      "description": "Set, remove, move or clear a keyframe on an overlay. time and destination are seconds from the overlay start. A set with no box or crop captures the current frame. box uses fractions of the video frame; crop uses normalized source coordinates. clear freezes the frame at time.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.overlays.setCrop",
-      "symbol": "overlayCrop",
-      "input": "OverlayCropInput",
-      "description": "Crop explicit overlays to a source rectangle. Coordinates are normalized with top-left origin. Optional time sets the crop at that local overlay time when a single image or scene already has keyframes. Omitting time explicitly replaces crop animation with a static crop while preserving placement keyframes.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.masks.setRegion",
-      "symbol": "maskRegion",
-      "input": "MaskRegionInput",
-      "description": "Create or edit a rectangular solid-color mask on an image or generated overlay. Coordinates are source-image fractions from its top left; RGB values are 0\u20131. Use the attached source image to locate any requested area (text, face, logo, chart, or other content); OCR is optional evidence, not a requirement. Omit regionID to create a mask; use a saved ID to edit one. opacityKeys animate the cover: 1 conceals the area, 0 exposes it. The first opacity is held before the first key and the last after the last key: include the initial covered state explicitly before a fade. Each key accepts a shared timing anchor, including exact speech phrases. New masks default to a solid cover. Geometry-only edits omit opacityKeys and policy to preserve existing timing. policy/revealTime are compatibility shortcuts; use opacityKeys for new animations. Image conversion supports scene source durations of 0.5\u201330 seconds. Preserve unmentioned masks and source pixels. Unsupported mask styles, shapes, or moving-object tracking must be reported as unavailable.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.masks.remove",
-      "symbol": "maskRemove",
-      "input": "MaskRemoveInput",
-      "description": "Remove one explicitly requested mask region and its opacity animation, leaving all other masks and original pixels intact.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.video.animateFraming",
-      "symbol": "framingAnimation",
-      "input": "FramingAnimationInput",
-      "description": "Animate main-video scale, position, and rotation with ordered keyframes. Each key has a timeline timing anchor and a scale multiplier relative to the existing framing; optional x/y are frame-fraction offsets and rotation is a degree offset. easing controls the segment leading to the next key. pivot face keeps the detected face in place while scaling; frameCenter uses the current framing center. Existing keys outside the key interval and all other tracks are preserved. Keys may span video cuts. Use real times or local phrase/speechStart anchors; ambiguous or missing cues are rejected. Include a final multiplier 1 with zero offsets when returning to the existing framing. There is no implicit entry key: to begin smoothly from the existing framing, explicitly include an initial scaleMultiplier 1 with zero offsets at the beginning of the move, followed by the changed framing at its arrival time.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.audio.addAt",
-      "symbol": "soundAt",
-      "input": "SoundAtInput",
-      "description": "Place an installed library sound at one or more timing anchors: explicit timeline times, playhead, speechStart, exact phrase/occurrence, or a saved animation event ID. Uses the same timing resolver as keyframes. Repeating the same effect at the same time is a no-op. Changes audio only.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.captions.setStyle",
-      "symbol": "captionStyle",
-      "input": "CaptionStyleInput",
-      "description": "Set caption style fields on explicit caption IDs, or on the shared caption style when applyToAll is true. Send only the fields to change; unmentioned fields keep their values. Locked captions are skipped. Position, width and fontScale are fractions of the frame; strokeWidth is a fraction of the font size.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": false
+      "requiresRebuild": false,
+      "runtime": "client"
     },
     {
       "id": "editor.text.setStyle",
@@ -156,55 +354,26 @@
       "input": "TextLayerStyleInput",
       "description": "Set style fields on explicit text layer IDs. Same fields and units as caption style; send only the fields to change.",
       "effect": "reversibleEdit",
-      "requiresRebuild": false
+      "requiresRebuild": false,
+      "runtime": "client"
     },
     {
-      "id": "editor.video.setFraming",
-      "symbol": "videoFraming",
-      "input": "VideoFramingInput",
-      "description": "Set the static framing of explicit main-video clip IDs: scale multiplier, x/y offset as frame fractions, rotation in degrees. Send only the fields to change. Clips with framing keyframes are rejected; use editor.video.animateFraming for those. Locked clips are skipped.",
+      "id": "editor.text.update",
+      "symbol": "textLayerUpdate",
+      "input": "TextLayerUpdateInput",
+      "description": "Change a text layer's words, timeline start, or duration. Send only the fields to change. Remove a layer with editor.timeline.delete.",
       "effect": "reversibleEdit",
-      "requiresRebuild": true
+      "requiresRebuild": false,
+      "runtime": "client"
     },
     {
-      "id": "editor.retouch.set",
-      "symbol": "clipRetouch",
-      "input": "ClipRetouchInput",
-      "description": "Set face retouch strengths (0 to 1) on explicit clip IDs: clearBlemishes and whitenTeeth. Send only the fields to change. Locked clips are skipped.",
+      "id": "editor.timeline.clearTrack",
+      "symbol": "clearTrack",
+      "input": "ClearTrackInput",
+      "description": "Clear all main-track clips, or all captions and caption visibility, as the manual clear-track control. Original media stays in the bin. Locked content is protected.",
       "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.background.set",
-      "symbol": "clipBackground",
-      "input": "ClipBackgroundInput",
-      "description": "Keep or remove the room behind the speaker on explicit clip IDs. When removed, the project backdrop colour shows behind the speaker. Locked clips are skipped.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.project.setBackdrop",
-      "symbol": "projectBackdrop",
-      "input": "ProjectBackdropInput",
-      "description": "Set the project backdrop colour that fills the frame where there is no picture, including behind a speaker whose background is removed.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.audio.setVolume",
-      "symbol": "audioVolume",
-      "input": "AudioVolumeInput",
-      "description": "Set playback volume (0 silent, 1 unity, up to 2) on explicit audio layer IDs and, when videoTrack is true, on the speaker's own video track. Raising the video track above 0 also unmutes it.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.timeline.split",
-      "symbol": "timelineSplit",
-      "input": "TimelineSplitInput",
-      "description": "Split explicit timeline items (clips, captions, text layers, overlays, sounds) at one timeline anchor. Items the anchor does not fall inside are left alone. Locked clips and captions are skipped. The receipt names each new tail ID.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
+      "requiresRebuild": true,
+      "runtime": "client"
     },
     {
       "id": "editor.timeline.delete",
@@ -212,23 +381,17 @@
       "input": "TimelineDeleteInput",
       "description": "Remove explicit timeline items by ID: clips, captions, text layers, overlays, or sounds. Removing a clip closes the gap. Locked clips and captions are skipped.",
       "effect": "reversibleEdit",
-      "requiresRebuild": true
+      "requiresRebuild": true,
+      "runtime": "client"
     },
     {
-      "id": "editor.timeline.trim",
-      "symbol": "timelineTrim",
-      "input": "TimelineTrimInput",
-      "description": "Move the leading or trailing edge of explicit timeline items to one timeline anchor. leading keeps everything after the anchor; trailing keeps everything before it. The anchor must fall inside each item. Locked items are skipped.",
+      "id": "editor.timeline.setLocked",
+      "symbol": "timelineLock",
+      "input": "TimelineLockInput",
+      "description": "Lock or unlock explicit clips and captions to protect their edits.",
       "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.clips.reorder",
-      "symbol": "clipReorder",
-      "input": "ClipReorderInput",
-      "description": "Move explicit main-track clips as one block so it starts at insertionIndex among the remaining clips (0 is first). Cannot reorder across a locked clip.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
+      "requiresRebuild": false,
+      "runtime": "client"
     },
     {
       "id": "editor.timeline.shift",
@@ -236,7 +399,62 @@
       "input": "TimelineShiftInput",
       "description": "Slide explicit captions, text layers, overlays, or sounds along the timeline by deltaSeconds (negative is earlier), clamped to the project. Clips are in a running order; use editor.clips.reorder for them.",
       "effect": "reversibleEdit",
-      "requiresRebuild": true
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.timeline.split",
+      "symbol": "timelineSplit",
+      "input": "TimelineSplitInput",
+      "description": "Split explicit timeline items (clips, captions, text layers, overlays, sounds) at one timeline anchor. Items the anchor does not fall inside are left alone. Locked clips and captions are skipped. The receipt names each new tail ID.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.timeline.transfer",
+      "symbol": "trackTransfer",
+      "input": "TrackTransferInput",
+      "description": "Move a clip to an overlay lane or an overlay onto the main track. toOverlay requires itemID of an unlocked clip and optional at/track; at is a timeline anchor. toMainTrack requires overlay itemID and insertionIndex (0-based). Keeps source trim and speed. At least one main-track clip must remain.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.timeline.trim",
+      "symbol": "timelineTrim",
+      "input": "TimelineTrimInput",
+      "description": "Move the leading or trailing edge of explicit timeline items to one timeline anchor. leading keeps everything after the anchor; trailing keeps everything before it. The anchor must fall inside each item. Locked items are skipped.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.transcribe",
+      "symbol": "transcribeWorkflow",
+      "input": "TranscribeWorkflowInput",
+      "description": "Transcribe the project speech using the app transcription workflow.",
+      "effect": "workflow",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.transcript.setPauseKept",
+      "symbol": "transcriptPause",
+      "input": "TranscriptPauseInput",
+      "description": "Cut a pause (a stretch of a recording with no words, given in recording seconds for that media) out of the edit, or restore it.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.transcript.setWordRangesKept",
+      "symbol": "transcriptWordRanges",
+      "input": "TranscriptWordRangesInput",
+      "description": "Cut spoken words out of the edit (kept false) or put cut words back (kept true) by the word numbers in context.transcript. Each range covers first through last inclusive; one word is a range with first equal to last. Cutting removes that stretch of recording from the timeline; restoring brings it and its caption back.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
     },
     {
       "id": "editor.transcript.setWordsKept",
@@ -245,135 +463,26 @@
       "description": "Cut spoken words out of the edit (kept false) or put cut words back (kept true) by transcript word ID. Cutting removes that stretch of recording from the timeline; restoring brings it and its caption back.",
       "effect": "reversibleEdit",
       "requiresRebuild": true,
-      "legacy": true
+      "legacy": true,
+      "runtime": "client"
     },
     {
-      "id": "editor.transcript.setWordRangesKept",
-      "symbol": "transcriptWordRanges",
-      "input": "TranscriptWordRangesInput",
-      "description": "Cut spoken words out of the edit (kept false) or put cut words back (kept true) by the word numbers in context.transcript. Each range covers first through last inclusive; one word is a range with first equal to last. Cutting removes that stretch of recording from the timeline; restoring brings it and its caption back.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
+      "id": "editor.trimSilences",
+      "symbol": "silenceWorkflow",
+      "input": "SilenceWorkflowInput",
+      "description": "Trim silences using the app silence trimming workflow. With clipIDs, only silences inside those main-track clips are cut; without, the whole timeline is trimmed.",
+      "effect": "workflow",
+      "requiresRebuild": true,
+      "runtime": "client"
     },
     {
-      "id": "editor.transcript.setPauseKept",
-      "symbol": "transcriptPause",
-      "input": "TranscriptPauseInput",
-      "description": "Cut a pause (a stretch of a recording with no words, given in recording seconds for that media) out of the edit, or restore it.",
+      "id": "editor.video.animateFraming",
+      "symbol": "framingAnimation",
+      "input": "FramingAnimationInput",
+      "description": "Animate main-video scale, position, and rotation with ordered keyframes. Each key has a timeline timing anchor and a scale multiplier relative to the existing framing; optional x/y are frame-fraction offsets and rotation is a degree offset. easing controls the segment leading to the next key. pivot face keeps the detected face in place while scaling; frameCenter uses the current framing center. Existing keys outside the key interval and all other tracks are preserved. Keys may span video cuts. Use real times or local phrase/speechStart anchors; ambiguous or missing cues are rejected. Include a final multiplier 1 with zero offsets when returning to the existing framing. There is no implicit entry key: to begin smoothly from the existing framing, explicitly include an initial scaleMultiplier 1 with zero offsets at the beginning of the move, followed by the changed framing at its arrival time.",
       "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.captions.add",
-      "symbol": "captionAdd",
-      "input": "CaptionAddInput",
-      "description": "Add a caption card. Either at a timeline anchor over spoken footage, or right after an existing caption (afterCaptionID). Optional text sets what the card says; otherwise it takes the spoken words there.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": false
-    },
-    {
-      "id": "editor.captions.remove",
-      "symbol": "captionRemove",
-      "input": "CaptionRemoveInput",
-      "description": "Remove explicit caption cards by ID. Locked captions are skipped. To hide all captions without deleting them use editor.captions.setVisible.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": false
-    },
-    {
-      "id": "editor.captions.merge",
-      "symbol": "captionMerge",
-      "input": "CaptionMergeInput",
-      "description": "Merge two or more caption cards into one card spanning them, keeping their words in order.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": false
-    },
-    {
-      "id": "editor.captions.setText",
-      "symbol": "captionText",
-      "input": "CaptionTextInput",
-      "description": "Replace the text of one caption card. The card stops following the transcript for that text.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": false
-    },
-    {
-      "id": "editor.captions.retime",
-      "symbol": "captionRetime",
-      "input": "CaptionRetimeInput",
-      "description": "Move a caption card to a new timeline start and end in seconds. A card can only sit over the footage it was spoken over.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": false
-    },
-    {
-      "id": "editor.text.add",
-      "symbol": "textLayerAdd",
-      "input": "TextLayerAddInput",
-      "description": "Add an on-screen text layer with the given text at a timeline anchor (default the playhead) for duration seconds (default 5). asHook places it at the very start with the hook look.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": false
-    },
-    {
-      "id": "editor.text.update",
-      "symbol": "textLayerUpdate",
-      "input": "TextLayerUpdateInput",
-      "description": "Change a text layer's words, timeline start, or duration. Send only the fields to change. Remove a layer with editor.timeline.delete.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": false
-    },
-    {
-      "id": "editor.overlays.setFrame",
-      "symbol": "overlayFrame",
-      "description": "Set size, position and rotation of existing overlays. Use all=true and overlayIDs=[] for every overlay in one action. fit=full is the manual Full frame control (x/y=0, width/height=1); fit=card resets the frame using each source aspect. Otherwise supply only changed fields. Width without height preserves source aspect and center. Omit time to apply throughout each overlay, including every placement key, preserving crop keys/easing. time edits one overlay at an overlay-local keyframe. Does not place or generate media.",
-      "input": "OverlayFrameInput",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.overlays.setProperties",
-      "symbol": "overlayProperties",
-      "description": "Edit existing overlays: visibility, behind-speaker depth, source in point, timeline start/duration, or zero-based lane. Only supplied fields change. all=true targets every overlay; otherwise use overlayIDs. Cannot put generated scenes behind the speaker, exceed video source bounds, or collide on a lane.",
-      "input": "OverlayPropertiesInput",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.overlays.add",
-      "symbol": "overlayAdd",
-      "description": "Place one existing media item as an overlay at a known timeline anchor. Optional duration and sourceStart; defaults match Add as overlay. Use designOverlays/placeImported only when editorial placement across speech must be decided.",
-      "input": "OverlayAddInput",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.overlays.editTrack",
-      "symbol": "overlayTrack",
-      "description": "Remove an overlay lane and compact remaining lanes, or set every overlay on it hidden/shown. track is zero-based. Removing keeps original media.",
-      "input": "OverlayTrackInput",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.project.setSettings",
-      "symbol": "projectSettings",
-      "description": "Set project aspect ratio, visual filter/strength, video-track visibility or mute. Only supplied fields change. Applies the same project-wide settings as the manual controls.",
-      "input": "ProjectSettingsInput",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.media.edit",
-      "symbol": "mediaEdit",
-      "input": "MediaEditInput",
-      "description": "Append imported media to the main track, remove media and its timeline instances (original files kept), or reset its main-track cuts to the full source. Uses media IDs from context. Removing/resetting locked clips is rejected.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.timeline.transfer",
-      "symbol": "trackTransfer",
-      "input": "TrackTransferInput",
-      "description": "Move a clip to an overlay lane or an overlay onto the main track. toOverlay requires itemID of an unlocked clip and optional at/track; at is a timeline anchor. toMainTrack requires overlay itemID and insertionIndex (0-based). Keeps source trim and speed. At least one main-track clip must remain.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
+      "requiresRebuild": true,
+      "runtime": "client"
     },
     {
       "id": "editor.video.framingKey",
@@ -381,162 +490,149 @@
       "input": "VideoFramingKeyInput",
       "description": "Set, remove, move or clear absolute video framing keys on a clip, like the manual diamonds. sourceTime/destination are recording seconds inside that clip, not timeline time. set without framing fields captures the current framing. clear leaves framing sampled at sourceTime. Locked clips are skipped.",
       "effect": "reversibleEdit",
-      "requiresRebuild": true
+      "requiresRebuild": true,
+      "runtime": "client"
     },
     {
-      "id": "editor.audio.replace",
-      "symbol": "audioReplace",
-      "input": "AudioReplaceInput",
-      "description": "Replace existing sound layers with a built-in sound from soundLibrary, keeping timeline placement and volume. Resets source trim and rate to the new sound.",
+      "id": "editor.video.setFraming",
+      "symbol": "videoFraming",
+      "input": "VideoFramingInput",
+      "description": "Set the static framing of explicit main-video clip IDs: scale multiplier, x/y offset as frame fractions, rotation in degrees. Send only the fields to change. Clips with framing keyframes are rejected; use editor.video.animateFraming for those. Locked clips are skipped.",
       "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.audio.trim",
-      "symbol": "audioTrim",
-      "input": "AudioTrimInput",
-      "description": "Set source in point and/or duration of existing audio layers. Preserve timeline position, volume and speed. SourceStart is recording seconds; duration is timeline seconds.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.captions.splitAtWord",
-      "symbol": "captionSplit",
-      "input": "CaptionSplitInput",
-      "description": "Split one caption after a word count, as pressing Enter at a word boundary. Locked captions are skipped.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": false
-    },
-    {
-      "id": "editor.timeline.clearTrack",
-      "symbol": "clearTrack",
-      "input": "ClearTrackInput",
-      "description": "Clear all main-track clips, or all captions and caption visibility, as the manual clear-track control. Original media stays in the bin. Locked content is protected.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.history.restore",
-      "symbol": "history",
-      "input": "HistoryInput",
-      "description": "Undo or redo the last saved edit, including a whole Chirpy batch. Runs alone and uses the existing history stack. Check canUndo/canRedo.",
-      "effect": "workflow",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.media.import",
-      "symbol": "importPicker",
-      "input": "ImportPickerInput",
-      "description": "Open the same local file picker as Import media or Import audio, then import the creator-selected files. You cannot choose filesystem paths. Runs alone. The creator may cancel.",
-      "effect": "workflow",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.export",
-      "symbol": "exportVideo",
-      "input": "ExportInput",
-      "description": "Export the current edited video. destination=file opens the normal save panel. Use poster only when explicitly asked to send the final video to Poster: it uploads the export and opens Poster without publishing. Runs alone.",
-      "effect": "workflow",
-      "requiresRebuild": true
-    },
-    {
-      "id": "editor.audio.addSaved",
-      "symbol": "savedAudioAdd",
-      "input": "SavedAudioAddInput",
-      "description": "Place existing audio from savedAudioLibrary at a timeline anchor. Keeps the library default volume and adds the actual saved source; no paths are accepted.",
-      "effect": "reversibleEdit",
-      "requiresRebuild": true
+      "requiresRebuild": true,
+      "runtime": "client"
     }
   ],
   "$defs": {
-    "ExtractAudioInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["clipIDs", "overlayIDs"],
-      "properties": {
-        "clipIDs": {
-          "type": "array",
-          "maxItems": 5000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "overlayIDs": {
-          "type": "array",
-          "maxItems": 5000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "format": "uuid"
-          }
-        }
-      }
+    "AppActionRuntime": {
+      "type": "string",
+      "description": "Where an action executes. Client actions run in the app's registry; server actions run inside the Chirpy turn loop.",
+      "enum": [
+        "client",
+        "server"
+      ]
     },
-    "ClipSpeedInput": {
+    "AppActionEffect": {
+      "type": "string",
+      "description": "What running an action does. destructive, external and standingRule actions must set confirm: true.",
+      "enum": [
+        "read",
+        "reversibleEdit",
+        "serverEdit",
+        "paidGeneration",
+        "destructive",
+        "external",
+        "standingRule",
+        "navigation",
+        "workflow"
+      ]
+    },
+    "ActionRect": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["clipIDs", "rate"],
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
       "properties": {
-        "clipIDs": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 5000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "rate": {
+        "x": {
           "type": "number",
-          "minimum": 0.25,
-          "maximum": 4
+          "minimum": 0,
+          "maximum": 1
+        },
+        "y": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0.005,
+          "maximum": 1
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0.005,
+          "maximum": 1
         }
       }
     },
-    "TimelineLockInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["clipIDs", "captionIDs", "locked"],
-      "properties": {
-        "clipIDs": {
-          "type": "array",
-          "maxItems": 5000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "captionIDs": {
-          "type": "array",
-          "maxItems": 5000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "locked": {
-          "type": "boolean"
-        }
-      }
+    "OverlayKeyOperation": {
+      "type": "string",
+      "enum": [
+        "set",
+        "remove",
+        "clear",
+        "move"
+      ]
     },
-    "CaptionVisibilityInput": {
+    "TimelineAnchorKind": {
+      "type": "string",
+      "enum": [
+        "time",
+        "playhead",
+        "speechStart",
+        "phrase",
+        "event"
+      ]
+    },
+    "TimelineAnchorInput": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["visible"],
       "properties": {
-        "visible": {
-          "type": "boolean"
+        "kind": {
+          "$ref": "#/$defs/TimelineAnchorKind",
+          "description": "speechStart is the beginning of speech, including entering/starting speaking; it requires no phrase. Use phrase for a specifically quoted part of speech, time for an explicit timestamp, playhead for here/now, event for an existing animation moment."
+        },
+        "time": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "phrase": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "occurrence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "eventID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "offset": {
+          "type": "number",
+          "minimum": -86400,
+          "maximum": 86400
         }
-      }
+      },
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false,
+      "description": "A reusable timeline cue resolved locally from the current edit. speechStart means the first kept spoken word: no phrase or timestamp is required. phrase finds exact words, accounting for trims, cuts and playback speed; occurrence selects a repeated match. playhead means the current position. time uses explicit timeline seconds. event uses a saved animationEvents ID. offset adds seconds after resolution (negative is before)."
+    },
+    "AnimationEase": {
+      "type": "string",
+      "enum": [
+        "linear",
+        "smooth"
+      ]
     },
     "AppActionStatus": {
       "type": "string",
-      "enum": ["applied", "unchanged", "rejected", "failed", "canceled"]
+      "enum": [
+        "applied",
+        "unchanged",
+        "rejected",
+        "failed",
+        "canceled"
+      ]
     },
     "AppActionRequest": {
       "type": "object",
@@ -580,7 +676,12 @@
     "AppActionChange": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["targetID", "property", "before", "after"],
+      "required": [
+        "targetID",
+        "property",
+        "before",
+        "after"
+      ],
       "properties": {
         "targetID": {
           "type": "string",
@@ -656,49 +757,81 @@
         }
       }
     },
-    "RevealPolicy": {
-      "type": "string",
-      "enum": ["alwaysVisible", "untilCue", "alwaysHidden"]
-    },
-    "RevealRegionPolicy": {
+    "ChirpyActionCall": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["regionID", "policy"],
+      "required": [
+        "action",
+        "arguments"
+      ],
       "properties": {
-        "regionID": {
+        "action": {
           "type": "string",
           "minLength": 1,
           "maxLength": 120
         },
-        "policy": {
-          "$ref": "#/$defs/RevealPolicy"
+        "arguments": {
+          "type": "object",
+          "additionalProperties": {}
         }
       }
     },
-    "RevealPolicyInput": {
+    "ChirpyPlanReply": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["overlayID", "regions"],
+      "required": [
+        "message",
+        "actions"
+      ],
       "properties": {
-        "overlayID": {
+        "message": {
           "type": "string",
-          "format": "uuid"
+          "maxLength": 2000
         },
-        "regions": {
+        "actions": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/RevealRegionPolicy"
+            "$ref": "#/$defs/ChirpyActionCall"
           },
-          "minItems": 1,
-          "maxItems": 32,
-          "uniqueItems": true
+          "maxItems": 8
+        }
+      }
+    },
+    "ExtractAudioInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clipIDs",
+        "overlayIDs"
+      ],
+      "properties": {
+        "clipIDs": {
+          "type": "array",
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "overlayIDs": {
+          "type": "array",
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
         }
       }
     },
     "RevealSoundsInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["effectID", "eventIDs"],
+      "required": [
+        "effectID",
+        "eventIDs"
+      ],
       "properties": {
         "effectID": {
           "type": "string",
@@ -718,438 +851,6 @@
         }
       }
     },
-    "ChirpyActionCall": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["action", "arguments"],
-      "properties": {
-        "action": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 120
-        },
-        "arguments": {
-          "type": "object",
-          "additionalProperties": {}
-        }
-      }
-    },
-    "ChirpyPlanReply": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["message", "actions"],
-      "properties": {
-        "message": {
-          "type": "string",
-          "maxLength": 2000
-        },
-        "actions": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/ChirpyActionCall"
-          },
-          "maxItems": 8
-        }
-      }
-    },
-    "TranscribeWorkflowInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["instruction"],
-      "properties": {
-        "instruction": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 4000
-        }
-      }
-    },
-    "CleanupWorkflowInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["instruction"],
-      "properties": {
-        "instruction": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 4000
-        }
-      }
-    },
-    "SilenceWorkflowInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["instruction"],
-      "properties": {
-        "instruction": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 4000
-        },
-        "clipIDs": {
-          "type": "array",
-          "maxItems": 5000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "format": "uuid"
-          }
-        }
-      }
-    },
-    "OverlayWorkflowInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["instruction"],
-      "properties": {
-        "instruction": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 4000
-        },
-        "mode": {
-          "type": "string",
-          "enum": ["placeImported", "create"]
-        }
-      }
-    },
-    "ActionRect": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["x", "y", "width", "height"],
-      "properties": {
-        "x": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "y": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "width": {
-          "type": "number",
-          "minimum": 0.005,
-          "maximum": 1
-        },
-        "height": {
-          "type": "number",
-          "minimum": 0.005,
-          "maximum": 1
-        }
-      }
-    },
-    "OverlayBoxInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["x", "y", "width", "height"],
-      "properties": {
-        "x": {
-          "type": "number",
-          "minimum": -2,
-          "maximum": 2
-        },
-        "y": {
-          "type": "number",
-          "minimum": -2,
-          "maximum": 2
-        },
-        "width": {
-          "type": "number",
-          "minimum": 0.01,
-          "maximum": 4
-        },
-        "height": {
-          "type": "number",
-          "minimum": 0.01,
-          "maximum": 4
-        }
-      }
-    },
-    "OverlayKeyOperation": {
-      "type": "string",
-      "enum": ["set", "remove", "clear", "move"]
-    },
-    "OverlayZoomInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["overlayID", "target", "startTime", "endTime"],
-      "properties": {
-        "overlayID": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "target": {
-          "$ref": "#/$defs/ActionRect"
-        },
-        "startTime": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 86400
-        },
-        "endTime": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 86400
-        },
-        "returnStart": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 86400
-        },
-        "returnEnd": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 86400
-        }
-      }
-    },
-    "OverlayKeyframeInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["overlayID", "time", "operation"],
-      "properties": {
-        "overlayID": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "time": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 86400
-        },
-        "operation": {
-          "$ref": "#/$defs/OverlayKeyOperation"
-        },
-        "destination": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 86400
-        },
-        "box": {
-          "$ref": "#/$defs/OverlayBoxInput"
-        },
-        "crop": {
-          "$ref": "#/$defs/ActionRect"
-        }
-      }
-    },
-    "OverlayCropInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["overlayIDs", "crop"],
-      "properties": {
-        "overlayIDs": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "minItems": 1,
-          "maxItems": 5000,
-          "uniqueItems": true
-        },
-        "crop": {
-          "$ref": "#/$defs/ActionRect"
-        },
-        "time": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 86400
-        }
-      }
-    },
-    "MaskRegionInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["overlayID", "label", "rect", "red", "green", "blue"],
-      "properties": {
-        "overlayID": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "regionID": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 120
-        },
-        "label": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 120
-        },
-        "rect": {
-          "$ref": "#/$defs/ActionRect"
-        },
-        "red": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "green": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "blue": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "policy": {
-          "$ref": "#/$defs/RevealPolicy"
-        },
-        "revealTime": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 86400
-        },
-        "opacityKeys": {
-          "type": "array",
-          "minItems": 2,
-          "maxItems": 32,
-          "items": {
-            "$ref": "#/$defs/MaskOpacityKey"
-          }
-        }
-      }
-    },
-    "MaskRemoveInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["overlayID", "regionID"],
-      "properties": {
-        "overlayID": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "regionID": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 120
-        }
-      }
-    },
-    "TimelineAnchorKind": {
-      "type": "string",
-      "enum": ["time", "playhead", "speechStart", "phrase", "event"]
-    },
-    "TimelineAnchorInput": {
-      "type": "object",
-      "properties": {
-        "kind": {
-          "$ref": "#/$defs/TimelineAnchorKind",
-          "description": "speechStart is the beginning of speech, including entering/starting speaking; it requires no phrase. Use phrase for a specifically quoted part of speech, time for an explicit timestamp, playhead for here/now, event for an existing animation moment."
-        },
-        "time": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 86400
-        },
-        "phrase": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 300
-        },
-        "occurrence": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 1000
-        },
-        "eventID": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
-        },
-        "offset": {
-          "type": "number",
-          "minimum": -86400,
-          "maximum": 86400
-        }
-      },
-      "required": ["kind"],
-      "additionalProperties": false,
-      "description": "A reusable timeline cue resolved locally from the current edit. speechStart means the first kept spoken word: no phrase or timestamp is required. phrase finds exact words, accounting for trims, cuts and playback speed; occurrence selects a repeated match. playhead means the current position. time uses explicit timeline seconds. event uses a saved animationEvents ID. offset adds seconds after resolution (negative is before)."
-    },
-    "AnimationEase": {
-      "type": "string",
-      "enum": ["linear", "smooth"]
-    },
-    "AnimationPivot": {
-      "type": "string",
-      "enum": ["frameCenter", "face"]
-    },
-    "FramingAnimationKey": {
-      "type": "object",
-      "properties": {
-        "at": {
-          "$ref": "#/$defs/TimelineAnchorInput"
-        },
-        "scaleMultiplier": {
-          "type": "number",
-          "minimum": 0.2,
-          "maximum": 5
-        },
-        "x": {
-          "type": "number",
-          "minimum": -1.5,
-          "maximum": 1.5
-        },
-        "y": {
-          "type": "number",
-          "minimum": -1.5,
-          "maximum": 1.5
-        },
-        "rotation": {
-          "type": "number",
-          "minimum": -180,
-          "maximum": 180
-        },
-        "easing": {
-          "$ref": "#/$defs/AnimationEase"
-        }
-      },
-      "required": ["at", "scaleMultiplier"],
-      "additionalProperties": false
-    },
-    "FramingAnimationInput": {
-      "type": "object",
-      "properties": {
-        "keys": {
-          "type": "array",
-          "minItems": 2,
-          "maxItems": 32,
-          "items": {
-            "$ref": "#/$defs/FramingAnimationKey"
-          }
-        },
-        "pivot": {
-          "$ref": "#/$defs/AnimationPivot"
-        }
-      },
-      "required": ["keys"],
-      "additionalProperties": false
-    },
-    "MaskOpacityKey": {
-      "type": "object",
-      "properties": {
-        "at": {
-          "$ref": "#/$defs/TimelineAnchorInput"
-        },
-        "opacity": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "easing": {
-          "$ref": "#/$defs/AnimationEase",
-          "description": "Controls the transition from this key to the following key. The final key has no outgoing transition."
-        }
-      },
-      "required": ["at", "opacity"],
-      "additionalProperties": false
-    },
     "SoundAtInput": {
       "type": "object",
       "properties": {
@@ -1167,16 +868,138 @@
           }
         }
       },
-      "required": ["effectID", "at"],
+      "required": [
+        "effectID",
+        "at"
+      ],
       "additionalProperties": false
+    },
+    "AudioVolumeInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "layerIDs",
+        "videoTrack",
+        "volume"
+      ],
+      "properties": {
+        "layerIDs": {
+          "type": "array",
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "videoTrack": {
+          "type": "boolean"
+        },
+        "volume": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        }
+      }
+    },
+    "AudioReplaceInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "layerIDs",
+        "effectID"
+      ],
+      "properties": {
+        "layerIDs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true
+        },
+        "effectID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      }
+    },
+    "AudioTrimInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "layerIDs"
+      ],
+      "properties": {
+        "layerIDs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true
+        },
+        "sourceStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0.02,
+          "maximum": 86400
+        }
+      }
+    },
+    "SavedAudioAddInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "savedAudioID",
+        "at"
+      ],
+      "properties": {
+        "savedAudioID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "at": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        }
+      }
+    },
+    "CaptionVisibilityInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visible"
+      ],
+      "properties": {
+        "visible": {
+          "type": "boolean"
+        }
+      }
     },
     "TextFontChoice": {
       "type": "string",
-      "enum": ["modern", "rounded", "editorial"]
+      "enum": [
+        "modern",
+        "rounded",
+        "editorial"
+      ]
     },
     "TextCaseChoice": {
       "type": "string",
-      "enum": ["asSpoken", "lower", "upper"]
+      "enum": [
+        "asSpoken",
+        "lower",
+        "upper"
+      ]
     },
     "TextStyleInput": {
       "type": "object",
@@ -1270,7 +1093,11 @@
     "CaptionStyleInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["captionIDs", "applyToAll", "style"],
+      "required": [
+        "captionIDs",
+        "applyToAll",
+        "style"
+      ],
       "properties": {
         "captionIDs": {
           "type": "array",
@@ -1292,7 +1119,10 @@
     "TextLayerStyleInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["textLayerIDs", "style"],
+      "required": [
+        "textLayerIDs",
+        "style"
+      ],
       "properties": {
         "textLayerIDs": {
           "type": "array",
@@ -1306,315 +1136,6 @@
         },
         "style": {
           "$ref": "#/$defs/TextStyleInput"
-        }
-      }
-    },
-    "VideoFramingInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["clipIDs"],
-      "properties": {
-        "clipIDs": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 5000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "scale": {
-          "type": "number",
-          "minimum": 0.2,
-          "maximum": 5
-        },
-        "x": {
-          "type": "number",
-          "minimum": -1.5,
-          "maximum": 1.5
-        },
-        "y": {
-          "type": "number",
-          "minimum": -1.5,
-          "maximum": 1.5
-        },
-        "rotation": {
-          "type": "number",
-          "minimum": -180,
-          "maximum": 180
-        }
-      }
-    },
-    "ClipRetouchInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["clipIDs"],
-      "properties": {
-        "clipIDs": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 5000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "clearBlemishes": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "whitenTeeth": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        }
-      }
-    },
-    "ClipBackgroundInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["clipIDs", "removed"],
-      "properties": {
-        "clipIDs": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 5000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "removed": {
-          "type": "boolean"
-        }
-      }
-    },
-    "ProjectBackdropInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["color"],
-      "properties": {
-        "color": {
-          "type": "string",
-          "minLength": 4,
-          "maxLength": 9,
-          "description": "Hex colour: #RGB, #RRGGBB or #RRGGBBAA."
-        }
-      }
-    },
-    "AudioVolumeInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["layerIDs", "videoTrack", "volume"],
-      "properties": {
-        "layerIDs": {
-          "type": "array",
-          "maxItems": 5000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "videoTrack": {
-          "type": "boolean"
-        },
-        "volume": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 2
-        }
-      }
-    },
-    "TimelineEdge": {
-      "type": "string",
-      "enum": ["leading", "trailing"]
-    },
-    "TimelineSplitInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["itemIDs", "at"],
-      "properties": {
-        "itemIDs": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 5000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "at": {
-          "$ref": "#/$defs/TimelineAnchorInput"
-        }
-      }
-    },
-    "TimelineDeleteInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["itemIDs"],
-      "properties": {
-        "itemIDs": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 5000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "format": "uuid"
-          }
-        }
-      }
-    },
-    "TimelineTrimInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["itemIDs", "edge", "to"],
-      "properties": {
-        "itemIDs": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 5000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "edge": {
-          "$ref": "#/$defs/TimelineEdge"
-        },
-        "to": {
-          "$ref": "#/$defs/TimelineAnchorInput"
-        }
-      }
-    },
-    "ClipReorderInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["clipIDs", "insertionIndex"],
-      "properties": {
-        "clipIDs": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 5000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "insertionIndex": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 5000
-        }
-      }
-    },
-    "TimelineShiftInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["itemIDs", "deltaSeconds"],
-      "properties": {
-        "itemIDs": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 5000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "deltaSeconds": {
-          "type": "number",
-          "minimum": -86400,
-          "maximum": 86400
-        }
-      }
-    },
-    "TranscriptWordsInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["wordIDs", "kept"],
-      "properties": {
-        "wordIDs": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 5000,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "kept": {
-          "type": "boolean"
-        }
-      }
-    },
-    "TranscriptWordRange": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["first", "last"],
-      "properties": {
-        "first": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 100000
-        },
-        "last": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 100000
-        }
-      }
-    },
-    "TranscriptWordRangesInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["ranges", "kept"],
-      "properties": {
-        "ranges": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 200,
-          "uniqueItems": true,
-          "items": {
-            "$ref": "#/$defs/TranscriptWordRange"
-          }
-        },
-        "kept": {
-          "type": "boolean"
-        }
-      }
-    },
-    "TranscriptPauseInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["mediaID", "start", "end", "kept"],
-      "properties": {
-        "mediaID": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "start": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 86400
-        },
-        "end": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 86400
-        },
-        "kept": {
-          "type": "boolean"
         }
       }
     },
@@ -1640,7 +1161,9 @@
     "CaptionRemoveInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["captionIDs"],
+      "required": [
+        "captionIDs"
+      ],
       "properties": {
         "captionIDs": {
           "type": "array",
@@ -1657,7 +1180,9 @@
     "CaptionMergeInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["captionIDs"],
+      "required": [
+        "captionIDs"
+      ],
       "properties": {
         "captionIDs": {
           "type": "array",
@@ -1674,7 +1199,10 @@
     "CaptionTextInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["captionID", "text"],
+      "required": [
+        "captionID",
+        "text"
+      ],
       "properties": {
         "captionID": {
           "type": "string",
@@ -1690,7 +1218,11 @@
     "CaptionRetimeInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["captionID", "timelineStart", "timelineEnd"],
+      "required": [
+        "captionID",
+        "timelineStart",
+        "timelineEnd"
+      ],
       "properties": {
         "captionID": {
           "type": "string",
@@ -1711,7 +1243,9 @@
     "TextLayerAddInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["text"],
+      "required": [
+        "text"
+      ],
       "properties": {
         "text": {
           "type": "string",
@@ -1734,7 +1268,9 @@
     "TextLayerUpdateInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["textLayerID"],
+      "required": [
+        "textLayerID"
+      ],
       "properties": {
         "textLayerID": {
           "type": "string",
@@ -1757,14 +1293,323 @@
         }
       }
     },
+    "CaptionSplitInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "captionID",
+        "afterWords"
+      ],
+      "properties": {
+        "captionID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "afterWords": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300
+        }
+      }
+    },
+    "RevealPolicy": {
+      "type": "string",
+      "enum": [
+        "alwaysVisible",
+        "untilCue",
+        "alwaysHidden"
+      ]
+    },
+    "RevealRegionPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "regionID",
+        "policy"
+      ],
+      "properties": {
+        "regionID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "policy": {
+          "$ref": "#/$defs/RevealPolicy"
+        }
+      }
+    },
+    "RevealPolicyInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overlayID",
+        "regions"
+      ],
+      "properties": {
+        "overlayID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "regions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RevealRegionPolicy"
+          },
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true
+        }
+      }
+    },
+    "OverlayBoxInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "properties": {
+        "x": {
+          "type": "number",
+          "minimum": -2,
+          "maximum": 2
+        },
+        "y": {
+          "type": "number",
+          "minimum": -2,
+          "maximum": 2
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 4
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 4
+        }
+      }
+    },
+    "OverlayZoomInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overlayID",
+        "target",
+        "startTime",
+        "endTime"
+      ],
+      "properties": {
+        "overlayID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "target": {
+          "$ref": "#/$defs/ActionRect"
+        },
+        "startTime": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "endTime": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "returnStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "returnEnd": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        }
+      }
+    },
+    "OverlayKeyframeInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overlayID",
+        "time",
+        "operation"
+      ],
+      "properties": {
+        "overlayID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "time": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "operation": {
+          "$ref": "#/$defs/OverlayKeyOperation"
+        },
+        "destination": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "box": {
+          "$ref": "#/$defs/OverlayBoxInput"
+        },
+        "crop": {
+          "$ref": "#/$defs/ActionRect"
+        }
+      }
+    },
+    "OverlayCropInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overlayIDs",
+        "crop"
+      ],
+      "properties": {
+        "overlayIDs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true
+        },
+        "crop": {
+          "$ref": "#/$defs/ActionRect"
+        },
+        "time": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        }
+      }
+    },
+    "MaskRegionInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overlayID",
+        "label",
+        "rect",
+        "red",
+        "green",
+        "blue"
+      ],
+      "properties": {
+        "overlayID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "regionID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "rect": {
+          "$ref": "#/$defs/ActionRect"
+        },
+        "red": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "green": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "blue": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "policy": {
+          "$ref": "#/$defs/RevealPolicy"
+        },
+        "revealTime": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "opacityKeys": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/MaskOpacityKey"
+          }
+        }
+      }
+    },
+    "MaskRemoveInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overlayID",
+        "regionID"
+      ],
+      "properties": {
+        "overlayID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "regionID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      }
+    },
+    "MaskOpacityKey": {
+      "type": "object",
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        },
+        "opacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "easing": {
+          "$ref": "#/$defs/AnimationEase",
+          "description": "Controls the transition from this key to the following key. The final key has no outgoing transition."
+        }
+      },
+      "required": [
+        "at",
+        "opacity"
+      ],
+      "additionalProperties": false
+    },
     "OverlayFrameFit": {
       "type": "string",
-      "enum": ["full", "card"]
+      "enum": [
+        "full",
+        "card"
+      ]
     },
     "OverlayFrameInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["overlayIDs"],
+      "required": [
+        "overlayIDs"
+      ],
       "properties": {
         "overlayIDs": {
           "type": "array",
@@ -1816,7 +1661,9 @@
     "OverlayPropertiesInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["overlayIDs"],
+      "required": [
+        "overlayIDs"
+      ],
       "properties": {
         "overlayIDs": {
           "type": "array",
@@ -1861,7 +1708,10 @@
     "OverlayAddInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["mediaID", "at"],
+      "required": [
+        "mediaID",
+        "at"
+      ],
       "properties": {
         "mediaID": {
           "type": "string",
@@ -1884,12 +1734,18 @@
     },
     "OverlayTrackOperation": {
       "type": "string",
-      "enum": ["remove", "setHidden"]
+      "enum": [
+        "remove",
+        "setHidden"
+      ]
     },
     "OverlayTrackInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["track", "operation"],
+      "required": [
+        "track",
+        "operation"
+      ],
       "properties": {
         "track": {
           "type": "integer",
@@ -1904,13 +1760,42 @@
         }
       }
     },
+    "ProjectBackdropInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "color"
+      ],
+      "properties": {
+        "color": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 9,
+          "description": "Hex colour: #RGB, #RRGGBB or #RRGGBBAA."
+        }
+      }
+    },
     "ProjectAspectInput": {
       "type": "string",
-      "enum": ["original", "portrait", "feedPortrait", "square", "landscape"]
+      "enum": [
+        "original",
+        "portrait",
+        "feedPortrait",
+        "square",
+        "landscape"
+      ]
     },
     "VisualFilterInput": {
       "type": "string",
-      "enum": ["original", "clean", "warm", "cool", "punch", "mono", "fade"]
+      "enum": [
+        "original",
+        "clean",
+        "warm",
+        "cool",
+        "punch",
+        "mono",
+        "fade"
+      ]
     },
     "ProjectSettingsInput": {
       "type": "object",
@@ -1938,12 +1823,19 @@
     },
     "MediaEditOperation": {
       "type": "string",
-      "enum": ["append", "remove", "resetToSource"]
+      "enum": [
+        "append",
+        "remove",
+        "resetToSource"
+      ]
     },
     "MediaEditInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["mediaIDs", "operation"],
+      "required": [
+        "mediaIDs",
+        "operation"
+      ],
       "properties": {
         "mediaIDs": {
           "type": "array",
@@ -1960,14 +1852,203 @@
         }
       }
     },
+    "ClipSpeedInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clipIDs",
+        "rate"
+      ],
+      "properties": {
+        "clipIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "rate": {
+          "type": "number",
+          "minimum": 0.25,
+          "maximum": 4
+        }
+      }
+    },
+    "TimelineLockInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clipIDs",
+        "captionIDs",
+        "locked"
+      ],
+      "properties": {
+        "clipIDs": {
+          "type": "array",
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "captionIDs": {
+          "type": "array",
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "locked": {
+          "type": "boolean"
+        }
+      }
+    },
+    "TimelineEdge": {
+      "type": "string",
+      "enum": [
+        "leading",
+        "trailing"
+      ]
+    },
+    "TimelineSplitInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "itemIDs",
+        "at"
+      ],
+      "properties": {
+        "itemIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "at": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        }
+      }
+    },
+    "TimelineDeleteInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "itemIDs"
+      ],
+      "properties": {
+        "itemIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "TimelineTrimInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "itemIDs",
+        "edge",
+        "to"
+      ],
+      "properties": {
+        "itemIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "edge": {
+          "$ref": "#/$defs/TimelineEdge"
+        },
+        "to": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        }
+      }
+    },
+    "ClipReorderInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clipIDs",
+        "insertionIndex"
+      ],
+      "properties": {
+        "clipIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "insertionIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000
+        }
+      }
+    },
+    "TimelineShiftInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "itemIDs",
+        "deltaSeconds"
+      ],
+      "properties": {
+        "itemIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "deltaSeconds": {
+          "type": "number",
+          "minimum": -86400,
+          "maximum": 86400
+        }
+      }
+    },
     "TrackTransferDirection": {
       "type": "string",
-      "enum": ["toOverlay", "toMainTrack"]
+      "enum": [
+        "toOverlay",
+        "toMainTrack"
+      ]
     },
     "TrackTransferInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["itemID", "direction"],
+      "required": [
+        "itemID",
+        "direction"
+      ],
       "properties": {
         "itemID": {
           "type": "string",
@@ -1991,10 +2072,281 @@
         }
       }
     },
+    "ClearTrackKind": {
+      "type": "string",
+      "enum": [
+        "video",
+        "captions"
+      ]
+    },
+    "ClearTrackInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "track"
+      ],
+      "properties": {
+        "track": {
+          "$ref": "#/$defs/ClearTrackKind"
+        }
+      }
+    },
+    "TranscriptWordsInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wordIDs",
+        "kept"
+      ],
+      "properties": {
+        "wordIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "kept": {
+          "type": "boolean"
+        }
+      }
+    },
+    "TranscriptWordRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "first",
+        "last"
+      ],
+      "properties": {
+        "first": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "last": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        }
+      }
+    },
+    "TranscriptWordRangesInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ranges",
+        "kept"
+      ],
+      "properties": {
+        "ranges": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/TranscriptWordRange"
+          }
+        },
+        "kept": {
+          "type": "boolean"
+        }
+      }
+    },
+    "TranscriptPauseInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mediaID",
+        "start",
+        "end",
+        "kept"
+      ],
+      "properties": {
+        "mediaID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "start": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "end": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "kept": {
+          "type": "boolean"
+        }
+      }
+    },
+    "AnimationPivot": {
+      "type": "string",
+      "enum": [
+        "frameCenter",
+        "face"
+      ]
+    },
+    "FramingAnimationKey": {
+      "type": "object",
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        },
+        "scaleMultiplier": {
+          "type": "number",
+          "minimum": 0.2,
+          "maximum": 5
+        },
+        "x": {
+          "type": "number",
+          "minimum": -1.5,
+          "maximum": 1.5
+        },
+        "y": {
+          "type": "number",
+          "minimum": -1.5,
+          "maximum": 1.5
+        },
+        "rotation": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "easing": {
+          "$ref": "#/$defs/AnimationEase"
+        }
+      },
+      "required": [
+        "at",
+        "scaleMultiplier"
+      ],
+      "additionalProperties": false
+    },
+    "FramingAnimationInput": {
+      "type": "object",
+      "properties": {
+        "keys": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/FramingAnimationKey"
+          }
+        },
+        "pivot": {
+          "$ref": "#/$defs/AnimationPivot"
+        }
+      },
+      "required": [
+        "keys"
+      ],
+      "additionalProperties": false
+    },
+    "VideoFramingInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clipIDs"
+      ],
+      "properties": {
+        "clipIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "scale": {
+          "type": "number",
+          "minimum": 0.2,
+          "maximum": 5
+        },
+        "x": {
+          "type": "number",
+          "minimum": -1.5,
+          "maximum": 1.5
+        },
+        "y": {
+          "type": "number",
+          "minimum": -1.5,
+          "maximum": 1.5
+        },
+        "rotation": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        }
+      }
+    },
+    "ClipRetouchInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clipIDs"
+      ],
+      "properties": {
+        "clipIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "clearBlemishes": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "whitenTeeth": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "ClipBackgroundInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clipIDs",
+        "removed"
+      ],
+      "properties": {
+        "clipIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "removed": {
+          "type": "boolean"
+        }
+      }
+    },
     "VideoFramingKeyInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["clipID", "sourceTime", "operation"],
+      "required": [
+        "clipID",
+        "sourceTime",
+        "operation"
+      ],
       "properties": {
         "clipID": {
           "type": "string",
@@ -2035,93 +2387,91 @@
         }
       }
     },
-    "AudioReplaceInput": {
+    "TranscribeWorkflowInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["layerIDs", "effectID"],
+      "required": [
+        "instruction"
+      ],
       "properties": {
-        "layerIDs": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "minItems": 1,
-          "maxItems": 5000,
-          "uniqueItems": true
-        },
-        "effectID": {
+        "instruction": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 120
+          "maxLength": 4000
         }
       }
     },
-    "AudioTrimInput": {
+    "CleanupWorkflowInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["layerIDs"],
+      "required": [
+        "instruction"
+      ],
       "properties": {
-        "layerIDs": {
+        "instruction": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      }
+    },
+    "SilenceWorkflowInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instruction"
+      ],
+      "properties": {
+        "instruction": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "clipIDs": {
           "type": "array",
+          "maxItems": 5000,
+          "uniqueItems": true,
           "items": {
             "type": "string",
             "format": "uuid"
-          },
-          "minItems": 1,
-          "maxItems": 5000,
-          "uniqueItems": true
-        },
-        "sourceStart": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 86400
-        },
-        "duration": {
-          "type": "number",
-          "minimum": 0.02,
-          "maximum": 86400
+          }
         }
       }
     },
-    "CaptionSplitInput": {
+    "OverlayWorkflowInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["captionID", "afterWords"],
+      "required": [
+        "instruction"
+      ],
       "properties": {
-        "captionID": {
+        "instruction": {
           "type": "string",
-          "format": "uuid"
+          "minLength": 1,
+          "maxLength": 4000
         },
-        "afterWords": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 300
-        }
-      }
-    },
-    "ClearTrackKind": {
-      "type": "string",
-      "enum": ["video", "captions"]
-    },
-    "ClearTrackInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["track"],
-      "properties": {
-        "track": {
-          "$ref": "#/$defs/ClearTrackKind"
+        "mode": {
+          "type": "string",
+          "enum": [
+            "placeImported",
+            "create"
+          ]
         }
       }
     },
     "HistoryDirectionInput": {
       "type": "string",
-      "enum": ["undo", "redo"]
+      "enum": [
+        "undo",
+        "redo"
+      ]
     },
     "HistoryInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["direction"],
+      "required": [
+        "direction"
+      ],
       "properties": {
         "direction": {
           "$ref": "#/$defs/HistoryDirectionInput"
@@ -2130,12 +2480,17 @@
     },
     "ImportKindInput": {
       "type": "string",
-      "enum": ["media", "audio"]
+      "enum": [
+        "media",
+        "audio"
+      ]
     },
     "ImportPickerInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "properties": {
         "kind": {
           "$ref": "#/$defs/ImportKindInput"
@@ -2144,29 +2499,20 @@
     },
     "ExportDestinationInput": {
       "type": "string",
-      "enum": ["file", "poster"]
+      "enum": [
+        "file",
+        "poster"
+      ]
     },
     "ExportInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["destination"],
+      "required": [
+        "destination"
+      ],
       "properties": {
         "destination": {
           "$ref": "#/$defs/ExportDestinationInput"
-        }
-      }
-    },
-    "SavedAudioAddInput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["savedAudioID", "at"],
-      "properties": {
-        "savedAudioID": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "at": {
-          "$ref": "#/$defs/TimelineAnchorInput"
         }
       }
     }

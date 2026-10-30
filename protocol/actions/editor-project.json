@@ -1,0 +1,101 @@
+{
+  "description": "Project-wide settings, backdrop and imported media edits.",
+  "runtime": "client",
+  "actions": [
+    {
+      "id": "editor.project.setBackdrop",
+      "symbol": "projectBackdrop",
+      "input": "ProjectBackdropInput",
+      "description": "Set the project backdrop colour that fills the frame where there is no picture, including behind a speaker whose background is removed.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.project.setSettings",
+      "symbol": "projectSettings",
+      "description": "Set project aspect ratio, visual filter/strength, video-track visibility or mute. Only supplied fields change. Applies the same project-wide settings as the manual controls.",
+      "input": "ProjectSettingsInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.media.edit",
+      "symbol": "mediaEdit",
+      "input": "MediaEditInput",
+      "description": "Append imported media to the main track, remove media and its timeline instances (original files kept), or reset its main-track cuts to the full source. Uses media IDs from context. Removing/resetting locked clips is rejected.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    }
+  ],
+  "$defs": {
+    "ProjectBackdropInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["color"],
+      "properties": {
+        "color": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 9,
+          "description": "Hex colour: #RGB, #RRGGBB or #RRGGBBAA."
+        }
+      }
+    },
+    "ProjectAspectInput": {
+      "type": "string",
+      "enum": ["original", "portrait", "feedPortrait", "square", "landscape"]
+    },
+    "VisualFilterInput": {
+      "type": "string",
+      "enum": ["original", "clean", "warm", "cool", "punch", "mono", "fade"]
+    },
+    "ProjectSettingsInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "aspectRatio": {
+          "$ref": "#/$defs/ProjectAspectInput"
+        },
+        "filter": {
+          "$ref": "#/$defs/VisualFilterInput"
+        },
+        "filterStrength": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "videoHidden": {
+          "type": "boolean"
+        },
+        "videoMuted": {
+          "type": "boolean"
+        }
+      }
+    },
+    "MediaEditOperation": {
+      "type": "string",
+      "enum": ["append", "remove", "resetToSource"]
+    },
+    "MediaEditInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mediaIDs", "operation"],
+      "properties": {
+        "mediaIDs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true
+        },
+        "operation": {
+          "$ref": "#/$defs/MediaEditOperation"
+        }
+      }
+    }
+  }
+}

@@ -126,9 +126,12 @@ export function parsePlanInput(raw: unknown): PlanInput | null {
     return null;
   // A newer client may advertise actions this server has not learned yet. Plan
   // over the ones both sides know rather than refusing the whole request; the
-  // client reports anything the plan cannot reach as unsupported.
+  // client reports anything the plan cannot reach as unsupported. Server-runtime
+  // actions never enter a client plan.
   const catalog = raw.catalog.filter((item) =>
-    contract["x-actions"].some((action) => action.id === item.id),
+    contract["x-actions"].some(
+      (action) => action.id === item.id && action.runtime === "client",
+    ),
   );
   if (!catalog.length) return null;
   if (

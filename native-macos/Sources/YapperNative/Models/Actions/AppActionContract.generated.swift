@@ -2,81 +2,114 @@
 import Foundation
 
 enum AppActionID: String, CaseIterable, Sendable {
-    case extractAudio = "editor.clips.extractAudio"
-    case clipSpeed = "editor.clips.setSpeed"
-    case timelineLock = "editor.timeline.setLocked"
-    case captionVisibility = "editor.captions.setVisible"
-    case revealPolicy = "editor.reveals.setPolicy"
-    case revealSounds = "editor.sounds.addAtReveals"
-    case transcribeWorkflow = "editor.transcribe"
-    case cleanupWorkflow = "editor.cleanup"
-    case silenceWorkflow = "editor.trimSilences"
-    case overlayWorkflow = "editor.designOverlays"
-    case overlayZoom = "editor.overlays.zoom"
-    case overlayKeyframe = "editor.overlays.keyframe"
-    case overlayCrop = "editor.overlays.setCrop"
-    case maskRegion = "editor.masks.setRegion"
-    case maskRemove = "editor.masks.remove"
-    case framingAnimation = "editor.video.animateFraming"
     case soundAt = "editor.audio.addAt"
-    case captionStyle = "editor.captions.setStyle"
-    case textLayerStyle = "editor.text.setStyle"
-    case videoFraming = "editor.video.setFraming"
-    case clipRetouch = "editor.retouch.set"
-    case clipBackground = "editor.background.set"
-    case projectBackdrop = "editor.project.setBackdrop"
+    case savedAudioAdd = "editor.audio.addSaved"
+    case audioReplace = "editor.audio.replace"
     case audioVolume = "editor.audio.setVolume"
-    case timelineSplit = "editor.timeline.split"
-    case timelineDelete = "editor.timeline.delete"
-    case timelineTrim = "editor.timeline.trim"
-    case clipReorder = "editor.clips.reorder"
-    case timelineShift = "editor.timeline.shift"
-    case transcriptWords = "editor.transcript.setWordsKept"
-    case transcriptWordRanges = "editor.transcript.setWordRangesKept"
-    case transcriptPause = "editor.transcript.setPauseKept"
+    case audioTrim = "editor.audio.trim"
+    case clipBackground = "editor.background.set"
     case captionAdd = "editor.captions.add"
-    case captionRemove = "editor.captions.remove"
     case captionMerge = "editor.captions.merge"
-    case captionText = "editor.captions.setText"
+    case captionRemove = "editor.captions.remove"
     case captionRetime = "editor.captions.retime"
-    case textLayerAdd = "editor.text.add"
-    case textLayerUpdate = "editor.text.update"
-    case overlayFrame = "editor.overlays.setFrame"
-    case overlayProperties = "editor.overlays.setProperties"
+    case captionStyle = "editor.captions.setStyle"
+    case captionText = "editor.captions.setText"
+    case captionVisibility = "editor.captions.setVisible"
+    case captionSplit = "editor.captions.splitAtWord"
+    case cleanupWorkflow = "editor.cleanup"
+    case extractAudio = "editor.clips.extractAudio"
+    case clipReorder = "editor.clips.reorder"
+    case clipSpeed = "editor.clips.setSpeed"
+    case overlayWorkflow = "editor.designOverlays"
+    case exportVideo = "editor.export"
+    case history = "editor.history.restore"
+    case maskRemove = "editor.masks.remove"
+    case maskRegion = "editor.masks.setRegion"
+    case mediaEdit = "editor.media.edit"
+    case importPicker = "editor.media.import"
     case overlayAdd = "editor.overlays.add"
     case overlayTrack = "editor.overlays.editTrack"
+    case overlayKeyframe = "editor.overlays.keyframe"
+    case overlayCrop = "editor.overlays.setCrop"
+    case overlayFrame = "editor.overlays.setFrame"
+    case overlayProperties = "editor.overlays.setProperties"
+    case overlayZoom = "editor.overlays.zoom"
+    case projectBackdrop = "editor.project.setBackdrop"
     case projectSettings = "editor.project.setSettings"
-    case mediaEdit = "editor.media.edit"
-    case trackTransfer = "editor.timeline.transfer"
-    case videoFramingKey = "editor.video.framingKey"
-    case audioReplace = "editor.audio.replace"
-    case audioTrim = "editor.audio.trim"
-    case captionSplit = "editor.captions.splitAtWord"
+    case clipRetouch = "editor.retouch.set"
+    case revealPolicy = "editor.reveals.setPolicy"
+    case revealSounds = "editor.sounds.addAtReveals"
+    case textLayerAdd = "editor.text.add"
+    case textLayerStyle = "editor.text.setStyle"
+    case textLayerUpdate = "editor.text.update"
     case clearTrack = "editor.timeline.clearTrack"
-    case history = "editor.history.restore"
-    case importPicker = "editor.media.import"
-    case exportVideo = "editor.export"
-    case savedAudioAdd = "editor.audio.addSaved"
+    case timelineDelete = "editor.timeline.delete"
+    case timelineLock = "editor.timeline.setLocked"
+    case timelineShift = "editor.timeline.shift"
+    case timelineSplit = "editor.timeline.split"
+    case trackTransfer = "editor.timeline.transfer"
+    case timelineTrim = "editor.timeline.trim"
+    case transcribeWorkflow = "editor.transcribe"
+    case transcriptPause = "editor.transcript.setPauseKept"
+    case transcriptWordRanges = "editor.transcript.setWordRangesKept"
+    case transcriptWords = "editor.transcript.setWordsKept"
+    case silenceWorkflow = "editor.trimSilences"
+    case framingAnimation = "editor.video.animateFraming"
+    case videoFramingKey = "editor.video.framingKey"
+    case videoFraming = "editor.video.setFraming"
 }
 
-struct ExtractAudioInput: Codable, Equatable, Sendable {
-    let clipIDs: [UUID]
-    let overlayIDs: [UUID]
+enum AppActionRuntime: String, Codable, Equatable, Sendable {
+    case client
+    case server
 }
 
-struct ClipSpeedInput: Codable, Equatable, Sendable {
-    let clipIDs: [UUID]
-    let rate: Double
+enum AppActionEffect: String, Codable, Equatable, Sendable {
+    case read
+    case reversibleEdit
+    case serverEdit
+    case paidGeneration
+    case destructive
+    case external
+    case standingRule
+    case navigation
+    case workflow
 }
 
-struct TimelineLockInput: Codable, Equatable, Sendable {
-    let clipIDs: [UUID]
-    let captionIDs: [UUID]
-    let locked: Bool
+struct ActionRect: Codable, Equatable, Sendable {
+    let x: Double
+    let y: Double
+    let width: Double
+    let height: Double
 }
 
-struct CaptionVisibilityInput: Codable, Equatable, Sendable {
-    let visible: Bool
+enum OverlayKeyOperation: String, Codable, Equatable, Sendable {
+    case set
+    case remove
+    case clear
+    case move
+}
+
+enum TimelineAnchorKind: String, Codable, Equatable, Sendable {
+    case time
+    case playhead
+    case speechStart
+    case phrase
+    case event
+}
+
+struct TimelineAnchorInput: Codable, Equatable, Sendable {
+    let kind: TimelineAnchorKind
+    let time: Double?
+    let phrase: String?
+    let occurrence: Int?
+    let eventID: String?
+    let offset: Double?
+}
+
+enum AnimationEase: String, Codable, Equatable, Sendable {
+    case linear
+    case smooth
 }
 
 enum AppActionStatus: String, Codable, Equatable, Sendable {
@@ -116,27 +149,6 @@ struct AppActionResult: Codable, Equatable, Sendable {
     let persisted: Bool
 }
 
-enum RevealPolicy: String, Codable, Equatable, Sendable {
-    case alwaysVisible
-    case untilCue
-    case alwaysHidden
-}
-
-struct RevealRegionPolicy: Codable, Equatable, Sendable {
-    let regionID: String
-    let policy: RevealPolicy
-}
-
-struct RevealPolicyInput: Codable, Equatable, Sendable {
-    let overlayID: UUID
-    let regions: [RevealRegionPolicy]
-}
-
-struct RevealSoundsInput: Codable, Equatable, Sendable {
-    let effectID: String
-    let eventIDs: [String]
-}
-
 struct ChirpyActionCall: Codable, Equatable, Sendable {
     let action: String
     let arguments: [String: ActionJSON]
@@ -147,137 +159,45 @@ struct ChirpyPlanReply: Codable, Equatable, Sendable {
     let actions: [ChirpyActionCall]
 }
 
-struct TranscribeWorkflowInput: Codable, Equatable, Sendable {
-    let instruction: String
-}
-
-struct CleanupWorkflowInput: Codable, Equatable, Sendable {
-    let instruction: String
-}
-
-struct SilenceWorkflowInput: Codable, Equatable, Sendable {
-    let instruction: String
-    let clipIDs: [UUID]?
-}
-
-struct OverlayWorkflowInput: Codable, Equatable, Sendable {
-    let instruction: String
-    let mode: String?
-}
-
-struct ActionRect: Codable, Equatable, Sendable {
-    let x: Double
-    let y: Double
-    let width: Double
-    let height: Double
-}
-
-struct OverlayBoxInput: Codable, Equatable, Sendable {
-    let x: Double
-    let y: Double
-    let width: Double
-    let height: Double
-}
-
-enum OverlayKeyOperation: String, Codable, Equatable, Sendable {
-    case set
-    case remove
-    case clear
-    case move
-}
-
-struct OverlayZoomInput: Codable, Equatable, Sendable {
-    let overlayID: UUID
-    let target: ActionRect
-    let startTime: Double
-    let endTime: Double
-    let returnStart: Double?
-    let returnEnd: Double?
-}
-
-struct OverlayKeyframeInput: Codable, Equatable, Sendable {
-    let overlayID: UUID
-    let time: Double
-    let operation: OverlayKeyOperation
-    let destination: Double?
-    let box: OverlayBoxInput?
-    let crop: ActionRect?
-}
-
-struct OverlayCropInput: Codable, Equatable, Sendable {
+struct ExtractAudioInput: Codable, Equatable, Sendable {
+    let clipIDs: [UUID]
     let overlayIDs: [UUID]
-    let crop: ActionRect
-    let time: Double?
 }
 
-struct MaskRegionInput: Codable, Equatable, Sendable {
-    let overlayID: UUID
-    let regionID: String?
-    let label: String
-    let rect: ActionRect
-    let red: Double
-    let green: Double
-    let blue: Double
-    let policy: RevealPolicy?
-    let revealTime: Double?
-    let opacityKeys: [MaskOpacityKey]?
-}
-
-struct MaskRemoveInput: Codable, Equatable, Sendable {
-    let overlayID: UUID
-    let regionID: String
-}
-
-enum TimelineAnchorKind: String, Codable, Equatable, Sendable {
-    case time
-    case playhead
-    case speechStart
-    case phrase
-    case event
-}
-
-struct TimelineAnchorInput: Codable, Equatable, Sendable {
-    let kind: TimelineAnchorKind
-    let time: Double?
-    let phrase: String?
-    let occurrence: Int?
-    let eventID: String?
-    let offset: Double?
-}
-
-enum AnimationEase: String, Codable, Equatable, Sendable {
-    case linear
-    case smooth
-}
-
-enum AnimationPivot: String, Codable, Equatable, Sendable {
-    case frameCenter
-    case face
-}
-
-struct FramingAnimationKey: Codable, Equatable, Sendable {
-    let at: TimelineAnchorInput
-    let scaleMultiplier: Double
-    let x: Double?
-    let y: Double?
-    let rotation: Double?
-    let easing: AnimationEase?
-}
-
-struct FramingAnimationInput: Codable, Equatable, Sendable {
-    let keys: [FramingAnimationKey]
-    let pivot: AnimationPivot?
-}
-
-struct MaskOpacityKey: Codable, Equatable, Sendable {
-    let at: TimelineAnchorInput
-    let opacity: Double
-    let easing: AnimationEase?
+struct RevealSoundsInput: Codable, Equatable, Sendable {
+    let effectID: String
+    let eventIDs: [String]
 }
 
 struct SoundAtInput: Codable, Equatable, Sendable {
     let effectID: String
     let at: [TimelineAnchorInput]
+}
+
+struct AudioVolumeInput: Codable, Equatable, Sendable {
+    let layerIDs: [UUID]
+    let videoTrack: Bool
+    let volume: Double
+}
+
+struct AudioReplaceInput: Codable, Equatable, Sendable {
+    let layerIDs: [UUID]
+    let effectID: String
+}
+
+struct AudioTrimInput: Codable, Equatable, Sendable {
+    let layerIDs: [UUID]
+    let sourceStart: Double?
+    let duration: Double?
+}
+
+struct SavedAudioAddInput: Codable, Equatable, Sendable {
+    let savedAudioID: UUID
+    let at: TimelineAnchorInput
+}
+
+struct CaptionVisibilityInput: Codable, Equatable, Sendable {
+    let visible: Bool
 }
 
 enum TextFontChoice: String, Codable, Equatable, Sendable {
@@ -323,87 +243,6 @@ struct TextLayerStyleInput: Codable, Equatable, Sendable {
     let style: TextStyleInput
 }
 
-struct VideoFramingInput: Codable, Equatable, Sendable {
-    let clipIDs: [UUID]
-    let scale: Double?
-    let x: Double?
-    let y: Double?
-    let rotation: Double?
-}
-
-struct ClipRetouchInput: Codable, Equatable, Sendable {
-    let clipIDs: [UUID]
-    let clearBlemishes: Double?
-    let whitenTeeth: Double?
-}
-
-struct ClipBackgroundInput: Codable, Equatable, Sendable {
-    let clipIDs: [UUID]
-    let removed: Bool
-}
-
-struct ProjectBackdropInput: Codable, Equatable, Sendable {
-    let color: String
-}
-
-struct AudioVolumeInput: Codable, Equatable, Sendable {
-    let layerIDs: [UUID]
-    let videoTrack: Bool
-    let volume: Double
-}
-
-enum TimelineEdge: String, Codable, Equatable, Sendable {
-    case leading
-    case trailing
-}
-
-struct TimelineSplitInput: Codable, Equatable, Sendable {
-    let itemIDs: [UUID]
-    let at: TimelineAnchorInput
-}
-
-struct TimelineDeleteInput: Codable, Equatable, Sendable {
-    let itemIDs: [UUID]
-}
-
-struct TimelineTrimInput: Codable, Equatable, Sendable {
-    let itemIDs: [UUID]
-    let edge: TimelineEdge
-    let to: TimelineAnchorInput
-}
-
-struct ClipReorderInput: Codable, Equatable, Sendable {
-    let clipIDs: [UUID]
-    let insertionIndex: Int
-}
-
-struct TimelineShiftInput: Codable, Equatable, Sendable {
-    let itemIDs: [UUID]
-    let deltaSeconds: Double
-}
-
-struct TranscriptWordsInput: Codable, Equatable, Sendable {
-    let wordIDs: [UUID]
-    let kept: Bool
-}
-
-struct TranscriptWordRange: Codable, Equatable, Sendable {
-    let first: Int
-    let last: Int
-}
-
-struct TranscriptWordRangesInput: Codable, Equatable, Sendable {
-    let ranges: [TranscriptWordRange]
-    let kept: Bool
-}
-
-struct TranscriptPauseInput: Codable, Equatable, Sendable {
-    let mediaID: UUID
-    let start: Double
-    let end: Double
-    let kept: Bool
-}
-
 struct CaptionAddInput: Codable, Equatable, Sendable {
     let at: TimelineAnchorInput?
     let afterCaptionID: UUID?
@@ -441,6 +280,82 @@ struct TextLayerUpdateInput: Codable, Equatable, Sendable {
     let text: String?
     let timelineStart: Double?
     let duration: Double?
+}
+
+struct CaptionSplitInput: Codable, Equatable, Sendable {
+    let captionID: UUID
+    let afterWords: Int
+}
+
+enum RevealPolicy: String, Codable, Equatable, Sendable {
+    case alwaysVisible
+    case untilCue
+    case alwaysHidden
+}
+
+struct RevealRegionPolicy: Codable, Equatable, Sendable {
+    let regionID: String
+    let policy: RevealPolicy
+}
+
+struct RevealPolicyInput: Codable, Equatable, Sendable {
+    let overlayID: UUID
+    let regions: [RevealRegionPolicy]
+}
+
+struct OverlayBoxInput: Codable, Equatable, Sendable {
+    let x: Double
+    let y: Double
+    let width: Double
+    let height: Double
+}
+
+struct OverlayZoomInput: Codable, Equatable, Sendable {
+    let overlayID: UUID
+    let target: ActionRect
+    let startTime: Double
+    let endTime: Double
+    let returnStart: Double?
+    let returnEnd: Double?
+}
+
+struct OverlayKeyframeInput: Codable, Equatable, Sendable {
+    let overlayID: UUID
+    let time: Double
+    let operation: OverlayKeyOperation
+    let destination: Double?
+    let box: OverlayBoxInput?
+    let crop: ActionRect?
+}
+
+struct OverlayCropInput: Codable, Equatable, Sendable {
+    let overlayIDs: [UUID]
+    let crop: ActionRect
+    let time: Double?
+}
+
+struct MaskRegionInput: Codable, Equatable, Sendable {
+    let overlayID: UUID
+    let regionID: String?
+    let label: String
+    let rect: ActionRect
+    let red: Double
+    let green: Double
+    let blue: Double
+    let policy: RevealPolicy?
+    let revealTime: Double?
+    let opacityKeys: [MaskOpacityKey]?
+}
+
+struct MaskRemoveInput: Codable, Equatable, Sendable {
+    let overlayID: UUID
+    let regionID: String
+}
+
+struct MaskOpacityKey: Codable, Equatable, Sendable {
+    let at: TimelineAnchorInput
+    let opacity: Double
+    let easing: AnimationEase?
 }
 
 enum OverlayFrameFit: String, Codable, Equatable, Sendable {
@@ -489,6 +404,10 @@ struct OverlayTrackInput: Codable, Equatable, Sendable {
     let hidden: Bool?
 }
 
+struct ProjectBackdropInput: Codable, Equatable, Sendable {
+    let color: String
+}
+
 enum ProjectAspectInput: String, Codable, Equatable, Sendable {
     case original
     case portrait
@@ -526,6 +445,47 @@ struct MediaEditInput: Codable, Equatable, Sendable {
     let operation: MediaEditOperation
 }
 
+struct ClipSpeedInput: Codable, Equatable, Sendable {
+    let clipIDs: [UUID]
+    let rate: Double
+}
+
+struct TimelineLockInput: Codable, Equatable, Sendable {
+    let clipIDs: [UUID]
+    let captionIDs: [UUID]
+    let locked: Bool
+}
+
+enum TimelineEdge: String, Codable, Equatable, Sendable {
+    case leading
+    case trailing
+}
+
+struct TimelineSplitInput: Codable, Equatable, Sendable {
+    let itemIDs: [UUID]
+    let at: TimelineAnchorInput
+}
+
+struct TimelineDeleteInput: Codable, Equatable, Sendable {
+    let itemIDs: [UUID]
+}
+
+struct TimelineTrimInput: Codable, Equatable, Sendable {
+    let itemIDs: [UUID]
+    let edge: TimelineEdge
+    let to: TimelineAnchorInput
+}
+
+struct ClipReorderInput: Codable, Equatable, Sendable {
+    let clipIDs: [UUID]
+    let insertionIndex: Int
+}
+
+struct TimelineShiftInput: Codable, Equatable, Sendable {
+    let itemIDs: [UUID]
+    let deltaSeconds: Double
+}
+
 enum TrackTransferDirection: String, Codable, Equatable, Sendable {
     case toOverlay
     case toMainTrack
@@ -539,6 +499,75 @@ struct TrackTransferInput: Codable, Equatable, Sendable {
     let insertionIndex: Int?
 }
 
+enum ClearTrackKind: String, Codable, Equatable, Sendable {
+    case video
+    case captions
+}
+
+struct ClearTrackInput: Codable, Equatable, Sendable {
+    let track: ClearTrackKind
+}
+
+struct TranscriptWordsInput: Codable, Equatable, Sendable {
+    let wordIDs: [UUID]
+    let kept: Bool
+}
+
+struct TranscriptWordRange: Codable, Equatable, Sendable {
+    let first: Int
+    let last: Int
+}
+
+struct TranscriptWordRangesInput: Codable, Equatable, Sendable {
+    let ranges: [TranscriptWordRange]
+    let kept: Bool
+}
+
+struct TranscriptPauseInput: Codable, Equatable, Sendable {
+    let mediaID: UUID
+    let start: Double
+    let end: Double
+    let kept: Bool
+}
+
+enum AnimationPivot: String, Codable, Equatable, Sendable {
+    case frameCenter
+    case face
+}
+
+struct FramingAnimationKey: Codable, Equatable, Sendable {
+    let at: TimelineAnchorInput
+    let scaleMultiplier: Double
+    let x: Double?
+    let y: Double?
+    let rotation: Double?
+    let easing: AnimationEase?
+}
+
+struct FramingAnimationInput: Codable, Equatable, Sendable {
+    let keys: [FramingAnimationKey]
+    let pivot: AnimationPivot?
+}
+
+struct VideoFramingInput: Codable, Equatable, Sendable {
+    let clipIDs: [UUID]
+    let scale: Double?
+    let x: Double?
+    let y: Double?
+    let rotation: Double?
+}
+
+struct ClipRetouchInput: Codable, Equatable, Sendable {
+    let clipIDs: [UUID]
+    let clearBlemishes: Double?
+    let whitenTeeth: Double?
+}
+
+struct ClipBackgroundInput: Codable, Equatable, Sendable {
+    let clipIDs: [UUID]
+    let removed: Bool
+}
+
 struct VideoFramingKeyInput: Codable, Equatable, Sendable {
     let clipID: UUID
     let sourceTime: Double
@@ -550,29 +579,22 @@ struct VideoFramingKeyInput: Codable, Equatable, Sendable {
     let rotation: Double?
 }
 
-struct AudioReplaceInput: Codable, Equatable, Sendable {
-    let layerIDs: [UUID]
-    let effectID: String
+struct TranscribeWorkflowInput: Codable, Equatable, Sendable {
+    let instruction: String
 }
 
-struct AudioTrimInput: Codable, Equatable, Sendable {
-    let layerIDs: [UUID]
-    let sourceStart: Double?
-    let duration: Double?
+struct CleanupWorkflowInput: Codable, Equatable, Sendable {
+    let instruction: String
 }
 
-struct CaptionSplitInput: Codable, Equatable, Sendable {
-    let captionID: UUID
-    let afterWords: Int
+struct SilenceWorkflowInput: Codable, Equatable, Sendable {
+    let instruction: String
+    let clipIDs: [UUID]?
 }
 
-enum ClearTrackKind: String, Codable, Equatable, Sendable {
-    case video
-    case captions
-}
-
-struct ClearTrackInput: Codable, Equatable, Sendable {
-    let track: ClearTrackKind
+struct OverlayWorkflowInput: Codable, Equatable, Sendable {
+    let instruction: String
+    let mode: String?
 }
 
 enum HistoryDirectionInput: String, Codable, Equatable, Sendable {
@@ -602,173 +624,104 @@ struct ExportInput: Codable, Equatable, Sendable {
     let destination: ExportDestinationInput
 }
 
-struct SavedAudioAddInput: Codable, Equatable, Sendable {
-    let savedAudioID: UUID
-    let at: TimelineAnchorInput
-}
-
-extension ExtractAudioInput: AppActionInput {
-    static var actionID: AppActionID { .extractAudio }
-}
-
-extension ClipSpeedInput: AppActionInput {
-    static var actionID: AppActionID { .clipSpeed }
-}
-
-extension TimelineLockInput: AppActionInput {
-    static var actionID: AppActionID { .timelineLock }
-}
-
-extension CaptionVisibilityInput: AppActionInput {
-    static var actionID: AppActionID { .captionVisibility }
-}
-
-extension RevealPolicyInput: AppActionInput {
-    static var actionID: AppActionID { .revealPolicy }
-}
-
-extension RevealSoundsInput: AppActionInput {
-    static var actionID: AppActionID { .revealSounds }
-}
-
-extension TranscribeWorkflowInput: AppActionInput {
-    static var actionID: AppActionID { .transcribeWorkflow }
-}
-
-extension CleanupWorkflowInput: AppActionInput {
-    static var actionID: AppActionID { .cleanupWorkflow }
-}
-
-extension SilenceWorkflowInput: AppActionInput {
-    static var actionID: AppActionID { .silenceWorkflow }
-}
-
-extension OverlayWorkflowInput: AppActionInput {
-    static var actionID: AppActionID { .overlayWorkflow }
-}
-
-extension OverlayZoomInput: AppActionInput {
-    static var actionID: AppActionID { .overlayZoom }
-}
-
-extension OverlayKeyframeInput: AppActionInput {
-    static var actionID: AppActionID { .overlayKeyframe }
-}
-
-extension OverlayCropInput: AppActionInput {
-    static var actionID: AppActionID { .overlayCrop }
-}
-
-extension MaskRegionInput: AppActionInput {
-    static var actionID: AppActionID { .maskRegion }
-}
-
-extension MaskRemoveInput: AppActionInput {
-    static var actionID: AppActionID { .maskRemove }
-}
-
-extension FramingAnimationInput: AppActionInput {
-    static var actionID: AppActionID { .framingAnimation }
-}
-
 extension SoundAtInput: AppActionInput {
     static var actionID: AppActionID { .soundAt }
 }
 
-extension CaptionStyleInput: AppActionInput {
-    static var actionID: AppActionID { .captionStyle }
+extension SavedAudioAddInput: AppActionInput {
+    static var actionID: AppActionID { .savedAudioAdd }
 }
 
-extension TextLayerStyleInput: AppActionInput {
-    static var actionID: AppActionID { .textLayerStyle }
-}
-
-extension VideoFramingInput: AppActionInput {
-    static var actionID: AppActionID { .videoFraming }
-}
-
-extension ClipRetouchInput: AppActionInput {
-    static var actionID: AppActionID { .clipRetouch }
-}
-
-extension ClipBackgroundInput: AppActionInput {
-    static var actionID: AppActionID { .clipBackground }
-}
-
-extension ProjectBackdropInput: AppActionInput {
-    static var actionID: AppActionID { .projectBackdrop }
+extension AudioReplaceInput: AppActionInput {
+    static var actionID: AppActionID { .audioReplace }
 }
 
 extension AudioVolumeInput: AppActionInput {
     static var actionID: AppActionID { .audioVolume }
 }
 
-extension TimelineSplitInput: AppActionInput {
-    static var actionID: AppActionID { .timelineSplit }
+extension AudioTrimInput: AppActionInput {
+    static var actionID: AppActionID { .audioTrim }
 }
 
-extension TimelineDeleteInput: AppActionInput {
-    static var actionID: AppActionID { .timelineDelete }
-}
-
-extension TimelineTrimInput: AppActionInput {
-    static var actionID: AppActionID { .timelineTrim }
-}
-
-extension ClipReorderInput: AppActionInput {
-    static var actionID: AppActionID { .clipReorder }
-}
-
-extension TimelineShiftInput: AppActionInput {
-    static var actionID: AppActionID { .timelineShift }
-}
-
-extension TranscriptWordsInput: AppActionInput {
-    static var actionID: AppActionID { .transcriptWords }
-}
-
-extension TranscriptWordRangesInput: AppActionInput {
-    static var actionID: AppActionID { .transcriptWordRanges }
-}
-
-extension TranscriptPauseInput: AppActionInput {
-    static var actionID: AppActionID { .transcriptPause }
+extension ClipBackgroundInput: AppActionInput {
+    static var actionID: AppActionID { .clipBackground }
 }
 
 extension CaptionAddInput: AppActionInput {
     static var actionID: AppActionID { .captionAdd }
 }
 
-extension CaptionRemoveInput: AppActionInput {
-    static var actionID: AppActionID { .captionRemove }
-}
-
 extension CaptionMergeInput: AppActionInput {
     static var actionID: AppActionID { .captionMerge }
 }
 
-extension CaptionTextInput: AppActionInput {
-    static var actionID: AppActionID { .captionText }
+extension CaptionRemoveInput: AppActionInput {
+    static var actionID: AppActionID { .captionRemove }
 }
 
 extension CaptionRetimeInput: AppActionInput {
     static var actionID: AppActionID { .captionRetime }
 }
 
-extension TextLayerAddInput: AppActionInput {
-    static var actionID: AppActionID { .textLayerAdd }
+extension CaptionStyleInput: AppActionInput {
+    static var actionID: AppActionID { .captionStyle }
 }
 
-extension TextLayerUpdateInput: AppActionInput {
-    static var actionID: AppActionID { .textLayerUpdate }
+extension CaptionTextInput: AppActionInput {
+    static var actionID: AppActionID { .captionText }
 }
 
-extension OverlayFrameInput: AppActionInput {
-    static var actionID: AppActionID { .overlayFrame }
+extension CaptionVisibilityInput: AppActionInput {
+    static var actionID: AppActionID { .captionVisibility }
 }
 
-extension OverlayPropertiesInput: AppActionInput {
-    static var actionID: AppActionID { .overlayProperties }
+extension CaptionSplitInput: AppActionInput {
+    static var actionID: AppActionID { .captionSplit }
+}
+
+extension CleanupWorkflowInput: AppActionInput {
+    static var actionID: AppActionID { .cleanupWorkflow }
+}
+
+extension ExtractAudioInput: AppActionInput {
+    static var actionID: AppActionID { .extractAudio }
+}
+
+extension ClipReorderInput: AppActionInput {
+    static var actionID: AppActionID { .clipReorder }
+}
+
+extension ClipSpeedInput: AppActionInput {
+    static var actionID: AppActionID { .clipSpeed }
+}
+
+extension OverlayWorkflowInput: AppActionInput {
+    static var actionID: AppActionID { .overlayWorkflow }
+}
+
+extension ExportInput: AppActionInput {
+    static var actionID: AppActionID { .exportVideo }
+}
+
+extension HistoryInput: AppActionInput {
+    static var actionID: AppActionID { .history }
+}
+
+extension MaskRemoveInput: AppActionInput {
+    static var actionID: AppActionID { .maskRemove }
+}
+
+extension MaskRegionInput: AppActionInput {
+    static var actionID: AppActionID { .maskRegion }
+}
+
+extension MediaEditInput: AppActionInput {
+    static var actionID: AppActionID { .mediaEdit }
+}
+
+extension ImportPickerInput: AppActionInput {
+    static var actionID: AppActionID { .importPicker }
 }
 
 extension OverlayAddInput: AppActionInput {
@@ -779,57 +732,121 @@ extension OverlayTrackInput: AppActionInput {
     static var actionID: AppActionID { .overlayTrack }
 }
 
+extension OverlayKeyframeInput: AppActionInput {
+    static var actionID: AppActionID { .overlayKeyframe }
+}
+
+extension OverlayCropInput: AppActionInput {
+    static var actionID: AppActionID { .overlayCrop }
+}
+
+extension OverlayFrameInput: AppActionInput {
+    static var actionID: AppActionID { .overlayFrame }
+}
+
+extension OverlayPropertiesInput: AppActionInput {
+    static var actionID: AppActionID { .overlayProperties }
+}
+
+extension OverlayZoomInput: AppActionInput {
+    static var actionID: AppActionID { .overlayZoom }
+}
+
+extension ProjectBackdropInput: AppActionInput {
+    static var actionID: AppActionID { .projectBackdrop }
+}
+
 extension ProjectSettingsInput: AppActionInput {
     static var actionID: AppActionID { .projectSettings }
 }
 
-extension MediaEditInput: AppActionInput {
-    static var actionID: AppActionID { .mediaEdit }
+extension ClipRetouchInput: AppActionInput {
+    static var actionID: AppActionID { .clipRetouch }
 }
 
-extension TrackTransferInput: AppActionInput {
-    static var actionID: AppActionID { .trackTransfer }
+extension RevealPolicyInput: AppActionInput {
+    static var actionID: AppActionID { .revealPolicy }
 }
 
-extension VideoFramingKeyInput: AppActionInput {
-    static var actionID: AppActionID { .videoFramingKey }
+extension RevealSoundsInput: AppActionInput {
+    static var actionID: AppActionID { .revealSounds }
 }
 
-extension AudioReplaceInput: AppActionInput {
-    static var actionID: AppActionID { .audioReplace }
+extension TextLayerAddInput: AppActionInput {
+    static var actionID: AppActionID { .textLayerAdd }
 }
 
-extension AudioTrimInput: AppActionInput {
-    static var actionID: AppActionID { .audioTrim }
+extension TextLayerStyleInput: AppActionInput {
+    static var actionID: AppActionID { .textLayerStyle }
 }
 
-extension CaptionSplitInput: AppActionInput {
-    static var actionID: AppActionID { .captionSplit }
+extension TextLayerUpdateInput: AppActionInput {
+    static var actionID: AppActionID { .textLayerUpdate }
 }
 
 extension ClearTrackInput: AppActionInput {
     static var actionID: AppActionID { .clearTrack }
 }
 
-extension HistoryInput: AppActionInput {
-    static var actionID: AppActionID { .history }
+extension TimelineDeleteInput: AppActionInput {
+    static var actionID: AppActionID { .timelineDelete }
 }
 
-extension ImportPickerInput: AppActionInput {
-    static var actionID: AppActionID { .importPicker }
+extension TimelineLockInput: AppActionInput {
+    static var actionID: AppActionID { .timelineLock }
 }
 
-extension ExportInput: AppActionInput {
-    static var actionID: AppActionID { .exportVideo }
+extension TimelineShiftInput: AppActionInput {
+    static var actionID: AppActionID { .timelineShift }
 }
 
-extension SavedAudioAddInput: AppActionInput {
-    static var actionID: AppActionID { .savedAudioAdd }
+extension TimelineSplitInput: AppActionInput {
+    static var actionID: AppActionID { .timelineSplit }
+}
+
+extension TrackTransferInput: AppActionInput {
+    static var actionID: AppActionID { .trackTransfer }
+}
+
+extension TimelineTrimInput: AppActionInput {
+    static var actionID: AppActionID { .timelineTrim }
+}
+
+extension TranscribeWorkflowInput: AppActionInput {
+    static var actionID: AppActionID { .transcribeWorkflow }
+}
+
+extension TranscriptPauseInput: AppActionInput {
+    static var actionID: AppActionID { .transcriptPause }
+}
+
+extension TranscriptWordRangesInput: AppActionInput {
+    static var actionID: AppActionID { .transcriptWordRanges }
+}
+
+extension TranscriptWordsInput: AppActionInput {
+    static var actionID: AppActionID { .transcriptWords }
+}
+
+extension SilenceWorkflowInput: AppActionInput {
+    static var actionID: AppActionID { .silenceWorkflow }
+}
+
+extension FramingAnimationInput: AppActionInput {
+    static var actionID: AppActionID { .framingAnimation }
+}
+
+extension VideoFramingKeyInput: AppActionInput {
+    static var actionID: AppActionID { .videoFramingKey }
+}
+
+extension VideoFramingInput: AppActionInput {
+    static var actionID: AppActionID { .videoFraming }
 }
 
 enum AppActionContract {
     static let version = 1
     static let schemaJSON = #"""
-{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://ypr.app/schemas/app-actions/v1","title":"Yapper shared app actions","x-protocolVersion":1,"x-actions":[{"id":"editor.clips.extractAudio","symbol":"extractAudio","input":"ExtractAudioInput","description":"Extract audio from explicit video clip or overlay IDs into independent audio layers, preserving trim and speed and silencing the original clips. Locked, silent and already extracted clips are skipped.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.clips.setSpeed","symbol":"clipSpeed","input":"ClipSpeedInput","description":"Set playback speed for explicit clip IDs, preserving voice pitch. Locked clips are skipped.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.timeline.setLocked","symbol":"timelineLock","input":"TimelineLockInput","description":"Lock or unlock explicit clips and captions to protect their edits.","effect":"reversibleEdit","requiresRebuild":false},{"id":"editor.captions.setVisible","symbol":"captionVisibility","input":"CaptionVisibilityInput","description":"Show or hide existing captions, preserving their text and styling. If showing captions for the first time, generate them from speech using the caption workflow.","effect":"reversibleEdit","requiresRebuild":false},{"id":"editor.reveals.setPolicy","symbol":"revealPolicy","input":"RevealPolicyInput","description":"Set visibility policies for explicit regions of an image overlay. alwaysVisible removes only those masks; untilCue uses the saved spoken cue; alwaysHidden requires an explicit request to keep a value hidden.","effect":"reversibleEdit","requiresRebuild":true,"legacy":true},{"id":"editor.sounds.addAtReveals","symbol":"revealSounds","input":"RevealSoundsInput","description":"Add a library sound at explicit saved reveal events, using the animation times already in the scene. Does not add or move overlays. Repeating the same sound at the same reveal is a no-op.","effect":"reversibleEdit","requiresRebuild":true,"legacy":true},{"id":"editor.transcribe","symbol":"transcribeWorkflow","input":"TranscribeWorkflowInput","description":"Transcribe the project speech using the app transcription workflow.","effect":"workflow","requiresRebuild":true},{"id":"editor.cleanup","symbol":"cleanupWorkflow","input":"CleanupWorkflowInput","description":"Run the app one-click AI cleanup workflow on the project.","effect":"workflow","requiresRebuild":true},{"id":"editor.trimSilences","symbol":"silenceWorkflow","input":"SilenceWorkflowInput","description":"Trim silences using the app silence trimming workflow. With clipIDs, only silences inside those main-track clips are cut; without, the whole timeline is trimmed.","effect":"workflow","requiresRebuild":true},{"id":"editor.designOverlays","symbol":"overlayWorkflow","input":"OverlayWorkflowInput","description":"Overlays from the creator's own files or newly created visuals. mode placeImported puts media files the creator imported (media with onMainTrack and usedAsOverlay both false) on the timeline at the moments they fit the speech, with any sounds asked for on them, for example a cha-ching exactly when a number is said. mode create designs new visuals (charts, counters, animated graphics) that do not exist yet. Pass the creator's whole request as the instruction; the workflow reads the transcript and media itself. Never use this to edit existing masks.","effect":"workflow","requiresRebuild":true},{"id":"editor.overlays.zoom","symbol":"overlayZoom","input":"OverlayZoomInput","description":"Animate a zoom into a specific source region of an existing overlay, preserving its placement and masks. target is normalized source coordinates with a top-left origin. Times are seconds from the overlay start. Smooth zoom holds after endTime; optional returnStart and returnEnd zoom back. Use known region boxes or the supplied selected-overlay image to locate the requested section; ask if the target region is ambiguous.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.overlays.keyframe","symbol":"overlayKeyframe","input":"OverlayKeyframeInput","description":"Set, remove, move or clear a keyframe on an overlay. time and destination are seconds from the overlay start. A set with no box or crop captures the current frame. box uses fractions of the video frame; crop uses normalized source coordinates. clear freezes the frame at time.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.overlays.setCrop","symbol":"overlayCrop","input":"OverlayCropInput","description":"Crop explicit overlays to a source rectangle. Coordinates are normalized with top-left origin. Optional time sets the crop at that local overlay time when a single image or scene already has keyframes. Omitting time explicitly replaces crop animation with a static crop while preserving placement keyframes.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.masks.setRegion","symbol":"maskRegion","input":"MaskRegionInput","description":"Create or edit a rectangular solid-color mask on an image or generated overlay. Coordinates are source-image fractions from its top left; RGB values are 0\u20131. Use the attached source image to locate any requested area (text, face, logo, chart, or other content); OCR is optional evidence, not a requirement. Omit regionID to create a mask; use a saved ID to edit one. opacityKeys animate the cover: 1 conceals the area, 0 exposes it. The first opacity is held before the first key and the last after the last key: include the initial covered state explicitly before a fade. Each key accepts a shared timing anchor, including exact speech phrases. New masks default to a solid cover. Geometry-only edits omit opacityKeys and policy to preserve existing timing. policy/revealTime are compatibility shortcuts; use opacityKeys for new animations. Image conversion supports scene source durations of 0.5\u201330 seconds. Preserve unmentioned masks and source pixels. Unsupported mask styles, shapes, or moving-object tracking must be reported as unavailable.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.masks.remove","symbol":"maskRemove","input":"MaskRemoveInput","description":"Remove one explicitly requested mask region and its opacity animation, leaving all other masks and original pixels intact.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.video.animateFraming","symbol":"framingAnimation","input":"FramingAnimationInput","description":"Animate main-video scale, position, and rotation with ordered keyframes. Each key has a timeline timing anchor and a scale multiplier relative to the existing framing; optional x/y are frame-fraction offsets and rotation is a degree offset. easing controls the segment leading to the next key. pivot face keeps the detected face in place while scaling; frameCenter uses the current framing center. Existing keys outside the key interval and all other tracks are preserved. Keys may span video cuts. Use real times or local phrase/speechStart anchors; ambiguous or missing cues are rejected. Include a final multiplier 1 with zero offsets when returning to the existing framing. There is no implicit entry key: to begin smoothly from the existing framing, explicitly include an initial scaleMultiplier 1 with zero offsets at the beginning of the move, followed by the changed framing at its arrival time.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.audio.addAt","symbol":"soundAt","input":"SoundAtInput","description":"Place an installed library sound at one or more timing anchors: explicit timeline times, playhead, speechStart, exact phrase/occurrence, or a saved animation event ID. Uses the same timing resolver as keyframes. Repeating the same effect at the same time is a no-op. Changes audio only.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.captions.setStyle","symbol":"captionStyle","input":"CaptionStyleInput","description":"Set caption style fields on explicit caption IDs, or on the shared caption style when applyToAll is true. Send only the fields to change; unmentioned fields keep their values. Locked captions are skipped. Position, width and fontScale are fractions of the frame; strokeWidth is a fraction of the font size.","effect":"reversibleEdit","requiresRebuild":false},{"id":"editor.text.setStyle","symbol":"textLayerStyle","input":"TextLayerStyleInput","description":"Set style fields on explicit text layer IDs. Same fields and units as caption style; send only the fields to change.","effect":"reversibleEdit","requiresRebuild":false},{"id":"editor.video.setFraming","symbol":"videoFraming","input":"VideoFramingInput","description":"Set the static framing of explicit main-video clip IDs: scale multiplier, x/y offset as frame fractions, rotation in degrees. Send only the fields to change. Clips with framing keyframes are rejected; use editor.video.animateFraming for those. Locked clips are skipped.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.retouch.set","symbol":"clipRetouch","input":"ClipRetouchInput","description":"Set face retouch strengths (0 to 1) on explicit clip IDs: clearBlemishes and whitenTeeth. Send only the fields to change. Locked clips are skipped.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.background.set","symbol":"clipBackground","input":"ClipBackgroundInput","description":"Keep or remove the room behind the speaker on explicit clip IDs. When removed, the project backdrop colour shows behind the speaker. Locked clips are skipped.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.project.setBackdrop","symbol":"projectBackdrop","input":"ProjectBackdropInput","description":"Set the project backdrop colour that fills the frame where there is no picture, including behind a speaker whose background is removed.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.audio.setVolume","symbol":"audioVolume","input":"AudioVolumeInput","description":"Set playback volume (0 silent, 1 unity, up to 2) on explicit audio layer IDs and, when videoTrack is true, on the speaker's own video track. Raising the video track above 0 also unmutes it.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.timeline.split","symbol":"timelineSplit","input":"TimelineSplitInput","description":"Split explicit timeline items (clips, captions, text layers, overlays, sounds) at one timeline anchor. Items the anchor does not fall inside are left alone. Locked clips and captions are skipped. The receipt names each new tail ID.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.timeline.delete","symbol":"timelineDelete","input":"TimelineDeleteInput","description":"Remove explicit timeline items by ID: clips, captions, text layers, overlays, or sounds. Removing a clip closes the gap. Locked clips and captions are skipped.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.timeline.trim","symbol":"timelineTrim","input":"TimelineTrimInput","description":"Move the leading or trailing edge of explicit timeline items to one timeline anchor. leading keeps everything after the anchor; trailing keeps everything before it. The anchor must fall inside each item. Locked items are skipped.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.clips.reorder","symbol":"clipReorder","input":"ClipReorderInput","description":"Move explicit main-track clips as one block so it starts at insertionIndex among the remaining clips (0 is first). Cannot reorder across a locked clip.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.timeline.shift","symbol":"timelineShift","input":"TimelineShiftInput","description":"Slide explicit captions, text layers, overlays, or sounds along the timeline by deltaSeconds (negative is earlier), clamped to the project. Clips are in a running order; use editor.clips.reorder for them.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.transcript.setWordsKept","symbol":"transcriptWords","input":"TranscriptWordsInput","description":"Cut spoken words out of the edit (kept false) or put cut words back (kept true) by transcript word ID. Cutting removes that stretch of recording from the timeline; restoring brings it and its caption back.","effect":"reversibleEdit","requiresRebuild":true,"legacy":true},{"id":"editor.transcript.setWordRangesKept","symbol":"transcriptWordRanges","input":"TranscriptWordRangesInput","description":"Cut spoken words out of the edit (kept false) or put cut words back (kept true) by the word numbers in context.transcript. Each range covers first through last inclusive; one word is a range with first equal to last. Cutting removes that stretch of recording from the timeline; restoring brings it and its caption back.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.transcript.setPauseKept","symbol":"transcriptPause","input":"TranscriptPauseInput","description":"Cut a pause (a stretch of a recording with no words, given in recording seconds for that media) out of the edit, or restore it.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.captions.add","symbol":"captionAdd","input":"CaptionAddInput","description":"Add a caption card. Either at a timeline anchor over spoken footage, or right after an existing caption (afterCaptionID). Optional text sets what the card says; otherwise it takes the spoken words there.","effect":"reversibleEdit","requiresRebuild":false},{"id":"editor.captions.remove","symbol":"captionRemove","input":"CaptionRemoveInput","description":"Remove explicit caption cards by ID. Locked captions are skipped. To hide all captions without deleting them use editor.captions.setVisible.","effect":"reversibleEdit","requiresRebuild":false},{"id":"editor.captions.merge","symbol":"captionMerge","input":"CaptionMergeInput","description":"Merge two or more caption cards into one card spanning them, keeping their words in order.","effect":"reversibleEdit","requiresRebuild":false},{"id":"editor.captions.setText","symbol":"captionText","input":"CaptionTextInput","description":"Replace the text of one caption card. The card stops following the transcript for that text.","effect":"reversibleEdit","requiresRebuild":false},{"id":"editor.captions.retime","symbol":"captionRetime","input":"CaptionRetimeInput","description":"Move a caption card to a new timeline start and end in seconds. A card can only sit over the footage it was spoken over.","effect":"reversibleEdit","requiresRebuild":false},{"id":"editor.text.add","symbol":"textLayerAdd","input":"TextLayerAddInput","description":"Add an on-screen text layer with the given text at a timeline anchor (default the playhead) for duration seconds (default 5). asHook places it at the very start with the hook look.","effect":"reversibleEdit","requiresRebuild":false},{"id":"editor.text.update","symbol":"textLayerUpdate","input":"TextLayerUpdateInput","description":"Change a text layer's words, timeline start, or duration. Send only the fields to change. Remove a layer with editor.timeline.delete.","effect":"reversibleEdit","requiresRebuild":false},{"id":"editor.overlays.setFrame","symbol":"overlayFrame","description":"Set size, position and rotation of existing overlays. Use all=true and overlayIDs=[] for every overlay in one action. fit=full is the manual Full frame control (x/y=0, width/height=1); fit=card resets the frame using each source aspect. Otherwise supply only changed fields. Width without height preserves source aspect and center. Omit time to apply throughout each overlay, including every placement key, preserving crop keys/easing. time edits one overlay at an overlay-local keyframe. Does not place or generate media.","input":"OverlayFrameInput","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.overlays.setProperties","symbol":"overlayProperties","description":"Edit existing overlays: visibility, behind-speaker depth, source in point, timeline start/duration, or zero-based lane. Only supplied fields change. all=true targets every overlay; otherwise use overlayIDs. Cannot put generated scenes behind the speaker, exceed video source bounds, or collide on a lane.","input":"OverlayPropertiesInput","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.overlays.add","symbol":"overlayAdd","description":"Place one existing media item as an overlay at a known timeline anchor. Optional duration and sourceStart; defaults match Add as overlay. Use designOverlays/placeImported only when editorial placement across speech must be decided.","input":"OverlayAddInput","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.overlays.editTrack","symbol":"overlayTrack","description":"Remove an overlay lane and compact remaining lanes, or set every overlay on it hidden/shown. track is zero-based. Removing keeps original media.","input":"OverlayTrackInput","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.project.setSettings","symbol":"projectSettings","description":"Set project aspect ratio, visual filter/strength, video-track visibility or mute. Only supplied fields change. Applies the same project-wide settings as the manual controls.","input":"ProjectSettingsInput","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.media.edit","symbol":"mediaEdit","input":"MediaEditInput","description":"Append imported media to the main track, remove media and its timeline instances (original files kept), or reset its main-track cuts to the full source. Uses media IDs from context. Removing/resetting locked clips is rejected.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.timeline.transfer","symbol":"trackTransfer","input":"TrackTransferInput","description":"Move a clip to an overlay lane or an overlay onto the main track. toOverlay requires itemID of an unlocked clip and optional at/track; at is a timeline anchor. toMainTrack requires overlay itemID and insertionIndex (0-based). Keeps source trim and speed. At least one main-track clip must remain.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.video.framingKey","symbol":"videoFramingKey","input":"VideoFramingKeyInput","description":"Set, remove, move or clear absolute video framing keys on a clip, like the manual diamonds. sourceTime/destination are recording seconds inside that clip, not timeline time. set without framing fields captures the current framing. clear leaves framing sampled at sourceTime. Locked clips are skipped.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.audio.replace","symbol":"audioReplace","input":"AudioReplaceInput","description":"Replace existing sound layers with a built-in sound from soundLibrary, keeping timeline placement and volume. Resets source trim and rate to the new sound.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.audio.trim","symbol":"audioTrim","input":"AudioTrimInput","description":"Set source in point and/or duration of existing audio layers. Preserve timeline position, volume and speed. SourceStart is recording seconds; duration is timeline seconds.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.captions.splitAtWord","symbol":"captionSplit","input":"CaptionSplitInput","description":"Split one caption after a word count, as pressing Enter at a word boundary. Locked captions are skipped.","effect":"reversibleEdit","requiresRebuild":false},{"id":"editor.timeline.clearTrack","symbol":"clearTrack","input":"ClearTrackInput","description":"Clear all main-track clips, or all captions and caption visibility, as the manual clear-track control. Original media stays in the bin. Locked content is protected.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.history.restore","symbol":"history","input":"HistoryInput","description":"Undo or redo the last saved edit, including a whole Chirpy batch. Runs alone and uses the existing history stack. Check canUndo/canRedo.","effect":"workflow","requiresRebuild":true},{"id":"editor.media.import","symbol":"importPicker","input":"ImportPickerInput","description":"Open the same local file picker as Import media or Import audio, then import the creator-selected files. You cannot choose filesystem paths. Runs alone. The creator may cancel.","effect":"workflow","requiresRebuild":true},{"id":"editor.export","symbol":"exportVideo","input":"ExportInput","description":"Export the current edited video. destination=file opens the normal save panel. Use poster only when explicitly asked to send the final video to Poster: it uploads the export and opens Poster without publishing. Runs alone.","effect":"workflow","requiresRebuild":true},{"id":"editor.audio.addSaved","symbol":"savedAudioAdd","input":"SavedAudioAddInput","description":"Place existing audio from savedAudioLibrary at a timeline anchor. Keeps the library default volume and adds the actual saved source; no paths are accepted.","effect":"reversibleEdit","requiresRebuild":true}],"$defs":{"ExtractAudioInput":{"type":"object","additionalProperties":false,"required":["clipIDs","overlayIDs"],"properties":{"clipIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"overlayIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}}}},"ClipSpeedInput":{"type":"object","additionalProperties":false,"required":["clipIDs","rate"],"properties":{"clipIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"rate":{"type":"number","minimum":0.25,"maximum":4}}},"TimelineLockInput":{"type":"object","additionalProperties":false,"required":["clipIDs","captionIDs","locked"],"properties":{"clipIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"captionIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"locked":{"type":"boolean"}}},"CaptionVisibilityInput":{"type":"object","additionalProperties":false,"required":["visible"],"properties":{"visible":{"type":"boolean"}}},"AppActionStatus":{"type":"string","enum":["applied","unchanged","rejected","failed","canceled"]},"AppActionRequest":{"type":"object","additionalProperties":false,"required":["protocolVersion","id","projectID","revision","action","arguments"],"properties":{"protocolVersion":{"type":"integer","const":1},"id":{"type":"string","format":"uuid"},"projectID":{"type":"string","format":"uuid"},"revision":{"type":"integer","minimum":0},"action":{"type":"string","minLength":1,"maxLength":120},"arguments":{"type":"object","additionalProperties":{}}}},"AppActionChange":{"type":"object","additionalProperties":false,"required":["targetID","property","before","after"],"properties":{"targetID":{"type":"string","format":"uuid"},"property":{"type":"string"},"before":{"type":"string"},"after":{"type":"string"}}},"AppActionResult":{"type":"object","additionalProperties":false,"required":["protocolVersion","invocationID","projectID","revision","action","status","message","changes","skippedIDs","persisted"],"properties":{"protocolVersion":{"type":"integer","const":1},"invocationID":{"type":"string","format":"uuid"},"projectID":{"type":"string","format":"uuid"},"revision":{"type":"integer","minimum":0},"action":{"type":"string"},"status":{"$ref":"#/$defs/AppActionStatus"},"message":{"type":"string"},"changes":{"type":"array","items":{"$ref":"#/$defs/AppActionChange"}},"skippedIDs":{"type":"array","items":{"type":"string","format":"uuid"}},"persisted":{"type":"boolean"}}},"RevealPolicy":{"type":"string","enum":["alwaysVisible","untilCue","alwaysHidden"]},"RevealRegionPolicy":{"type":"object","additionalProperties":false,"required":["regionID","policy"],"properties":{"regionID":{"type":"string","minLength":1,"maxLength":120},"policy":{"$ref":"#/$defs/RevealPolicy"}}},"RevealPolicyInput":{"type":"object","additionalProperties":false,"required":["overlayID","regions"],"properties":{"overlayID":{"type":"string","format":"uuid"},"regions":{"type":"array","items":{"$ref":"#/$defs/RevealRegionPolicy"},"minItems":1,"maxItems":32,"uniqueItems":true}}},"RevealSoundsInput":{"type":"object","additionalProperties":false,"required":["effectID","eventIDs"],"properties":{"effectID":{"type":"string","minLength":1,"maxLength":120},"eventIDs":{"type":"array","items":{"type":"string","minLength":1,"maxLength":200},"minItems":1,"maxItems":64,"uniqueItems":true}}},"ChirpyActionCall":{"type":"object","additionalProperties":false,"required":["action","arguments"],"properties":{"action":{"type":"string","minLength":1,"maxLength":120},"arguments":{"type":"object","additionalProperties":{}}}},"ChirpyPlanReply":{"type":"object","additionalProperties":false,"required":["message","actions"],"properties":{"message":{"type":"string","maxLength":2000},"actions":{"type":"array","items":{"$ref":"#/$defs/ChirpyActionCall"},"maxItems":8}}},"TranscribeWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000}}},"CleanupWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000}}},"SilenceWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000},"clipIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}}}},"OverlayWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000},"mode":{"type":"string","enum":["placeImported","create"]}}},"ActionRect":{"type":"object","additionalProperties":false,"required":["x","y","width","height"],"properties":{"x":{"type":"number","minimum":0,"maximum":1},"y":{"type":"number","minimum":0,"maximum":1},"width":{"type":"number","minimum":0.005,"maximum":1},"height":{"type":"number","minimum":0.005,"maximum":1}}},"OverlayBoxInput":{"type":"object","additionalProperties":false,"required":["x","y","width","height"],"properties":{"x":{"type":"number","minimum":-2,"maximum":2},"y":{"type":"number","minimum":-2,"maximum":2},"width":{"type":"number","minimum":0.01,"maximum":4},"height":{"type":"number","minimum":0.01,"maximum":4}}},"OverlayKeyOperation":{"type":"string","enum":["set","remove","clear","move"]},"OverlayZoomInput":{"type":"object","additionalProperties":false,"required":["overlayID","target","startTime","endTime"],"properties":{"overlayID":{"type":"string","format":"uuid"},"target":{"$ref":"#/$defs/ActionRect"},"startTime":{"type":"number","minimum":0,"maximum":86400},"endTime":{"type":"number","minimum":0,"maximum":86400},"returnStart":{"type":"number","minimum":0,"maximum":86400},"returnEnd":{"type":"number","minimum":0,"maximum":86400}}},"OverlayKeyframeInput":{"type":"object","additionalProperties":false,"required":["overlayID","time","operation"],"properties":{"overlayID":{"type":"string","format":"uuid"},"time":{"type":"number","minimum":0,"maximum":86400},"operation":{"$ref":"#/$defs/OverlayKeyOperation"},"destination":{"type":"number","minimum":0,"maximum":86400},"box":{"$ref":"#/$defs/OverlayBoxInput"},"crop":{"$ref":"#/$defs/ActionRect"}}},"OverlayCropInput":{"type":"object","additionalProperties":false,"required":["overlayIDs","crop"],"properties":{"overlayIDs":{"type":"array","items":{"type":"string","format":"uuid"},"minItems":1,"maxItems":5000,"uniqueItems":true},"crop":{"$ref":"#/$defs/ActionRect"},"time":{"type":"number","minimum":0,"maximum":86400}}},"MaskRegionInput":{"type":"object","additionalProperties":false,"required":["overlayID","label","rect","red","green","blue"],"properties":{"overlayID":{"type":"string","format":"uuid"},"regionID":{"type":"string","minLength":1,"maxLength":120},"label":{"type":"string","minLength":1,"maxLength":120},"rect":{"$ref":"#/$defs/ActionRect"},"red":{"type":"number","minimum":0,"maximum":1},"green":{"type":"number","minimum":0,"maximum":1},"blue":{"type":"number","minimum":0,"maximum":1},"policy":{"$ref":"#/$defs/RevealPolicy"},"revealTime":{"type":"number","minimum":0,"maximum":86400},"opacityKeys":{"type":"array","minItems":2,"maxItems":32,"items":{"$ref":"#/$defs/MaskOpacityKey"}}}},"MaskRemoveInput":{"type":"object","additionalProperties":false,"required":["overlayID","regionID"],"properties":{"overlayID":{"type":"string","format":"uuid"},"regionID":{"type":"string","minLength":1,"maxLength":120}}},"TimelineAnchorKind":{"type":"string","enum":["time","playhead","speechStart","phrase","event"]},"TimelineAnchorInput":{"type":"object","properties":{"kind":{"$ref":"#/$defs/TimelineAnchorKind","description":"speechStart is the beginning of speech, including entering/starting speaking; it requires no phrase. Use phrase for a specifically quoted part of speech, time for an explicit timestamp, playhead for here/now, event for an existing animation moment."},"time":{"type":"number","minimum":0,"maximum":86400},"phrase":{"type":"string","minLength":1,"maxLength":300},"occurrence":{"type":"integer","minimum":1,"maximum":1000},"eventID":{"type":"string","minLength":1,"maxLength":200},"offset":{"type":"number","minimum":-86400,"maximum":86400}},"required":["kind"],"additionalProperties":false,"description":"A reusable timeline cue resolved locally from the current edit. speechStart means the first kept spoken word: no phrase or timestamp is required. phrase finds exact words, accounting for trims, cuts and playback speed; occurrence selects a repeated match. playhead means the current position. time uses explicit timeline seconds. event uses a saved animationEvents ID. offset adds seconds after resolution (negative is before)."},"AnimationEase":{"type":"string","enum":["linear","smooth"]},"AnimationPivot":{"type":"string","enum":["frameCenter","face"]},"FramingAnimationKey":{"type":"object","properties":{"at":{"$ref":"#/$defs/TimelineAnchorInput"},"scaleMultiplier":{"type":"number","minimum":0.2,"maximum":5},"x":{"type":"number","minimum":-1.5,"maximum":1.5},"y":{"type":"number","minimum":-1.5,"maximum":1.5},"rotation":{"type":"number","minimum":-180,"maximum":180},"easing":{"$ref":"#/$defs/AnimationEase"}},"required":["at","scaleMultiplier"],"additionalProperties":false},"FramingAnimationInput":{"type":"object","properties":{"keys":{"type":"array","minItems":2,"maxItems":32,"items":{"$ref":"#/$defs/FramingAnimationKey"}},"pivot":{"$ref":"#/$defs/AnimationPivot"}},"required":["keys"],"additionalProperties":false},"MaskOpacityKey":{"type":"object","properties":{"at":{"$ref":"#/$defs/TimelineAnchorInput"},"opacity":{"type":"number","minimum":0,"maximum":1},"easing":{"$ref":"#/$defs/AnimationEase","description":"Controls the transition from this key to the following key. The final key has no outgoing transition."}},"required":["at","opacity"],"additionalProperties":false},"SoundAtInput":{"type":"object","properties":{"effectID":{"type":"string","minLength":1,"maxLength":100},"at":{"type":"array","minItems":1,"maxItems":32,"items":{"$ref":"#/$defs/TimelineAnchorInput"}}},"required":["effectID","at"],"additionalProperties":false},"TextFontChoice":{"type":"string","enum":["modern","rounded","editorial"]},"TextCaseChoice":{"type":"string","enum":["asSpoken","lower","upper"]},"TextStyleInput":{"type":"object","additionalProperties":false,"required":[],"properties":{"x":{"type":"number","minimum":0.05,"maximum":0.95,"description":"Horizontal centre as a fraction of frame width."},"y":{"type":"number","minimum":0.05,"maximum":0.95,"description":"Vertical centre as a fraction of frame height; 0 is the top."},"width":{"type":"number","minimum":0.2,"maximum":1},"rotation":{"type":"number","minimum":-180,"maximum":180},"font":{"$ref":"#/$defs/TextFontChoice"},"fontScale":{"type":"number","minimum":0.012,"maximum":0.22,"description":"Cap height as a fraction of frame height. Captions default near 0.05."},"textCase":{"$ref":"#/$defs/TextCaseChoice"},"color":{"type":"string","minLength":4,"maxLength":9,"description":"Hex colour: #RGB, #RRGGBB or #RRGGBBAA."},"strokeEnabled":{"type":"boolean"},"strokeColor":{"type":"string","minLength":4,"maxLength":9,"description":"Hex colour: #RGB, #RRGGBB or #RRGGBBAA."},"strokeWidth":{"type":"number","minimum":0,"maximum":0.24},"backgroundEnabled":{"type":"boolean"},"backgroundColor":{"type":"string","minLength":4,"maxLength":9,"description":"Hex colour: #RGB, #RRGGBB or #RRGGBBAA."},"cornerRadius":{"type":"number","minimum":0,"maximum":1},"shadowEnabled":{"type":"boolean"},"shadowColor":{"type":"string","minLength":4,"maxLength":9,"description":"Hex colour: #RGB, #RRGGBB or #RRGGBBAA."},"shadowRadius":{"type":"number","minimum":0,"maximum":1}}},"CaptionStyleInput":{"type":"object","additionalProperties":false,"required":["captionIDs","applyToAll","style"],"properties":{"captionIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"applyToAll":{"type":"boolean"},"style":{"$ref":"#/$defs/TextStyleInput"}}},"TextLayerStyleInput":{"type":"object","additionalProperties":false,"required":["textLayerIDs","style"],"properties":{"textLayerIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"style":{"$ref":"#/$defs/TextStyleInput"}}},"VideoFramingInput":{"type":"object","additionalProperties":false,"required":["clipIDs"],"properties":{"clipIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"scale":{"type":"number","minimum":0.2,"maximum":5},"x":{"type":"number","minimum":-1.5,"maximum":1.5},"y":{"type":"number","minimum":-1.5,"maximum":1.5},"rotation":{"type":"number","minimum":-180,"maximum":180}}},"ClipRetouchInput":{"type":"object","additionalProperties":false,"required":["clipIDs"],"properties":{"clipIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"clearBlemishes":{"type":"number","minimum":0,"maximum":1},"whitenTeeth":{"type":"number","minimum":0,"maximum":1}}},"ClipBackgroundInput":{"type":"object","additionalProperties":false,"required":["clipIDs","removed"],"properties":{"clipIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"removed":{"type":"boolean"}}},"ProjectBackdropInput":{"type":"object","additionalProperties":false,"required":["color"],"properties":{"color":{"type":"string","minLength":4,"maxLength":9,"description":"Hex colour: #RGB, #RRGGBB or #RRGGBBAA."}}},"AudioVolumeInput":{"type":"object","additionalProperties":false,"required":["layerIDs","videoTrack","volume"],"properties":{"layerIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"videoTrack":{"type":"boolean"},"volume":{"type":"number","minimum":0,"maximum":2}}},"TimelineEdge":{"type":"string","enum":["leading","trailing"]},"TimelineSplitInput":{"type":"object","additionalProperties":false,"required":["itemIDs","at"],"properties":{"itemIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"at":{"$ref":"#/$defs/TimelineAnchorInput"}}},"TimelineDeleteInput":{"type":"object","additionalProperties":false,"required":["itemIDs"],"properties":{"itemIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}}}},"TimelineTrimInput":{"type":"object","additionalProperties":false,"required":["itemIDs","edge","to"],"properties":{"itemIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"edge":{"$ref":"#/$defs/TimelineEdge"},"to":{"$ref":"#/$defs/TimelineAnchorInput"}}},"ClipReorderInput":{"type":"object","additionalProperties":false,"required":["clipIDs","insertionIndex"],"properties":{"clipIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"insertionIndex":{"type":"integer","minimum":0,"maximum":5000}}},"TimelineShiftInput":{"type":"object","additionalProperties":false,"required":["itemIDs","deltaSeconds"],"properties":{"itemIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"deltaSeconds":{"type":"number","minimum":-86400,"maximum":86400}}},"TranscriptWordsInput":{"type":"object","additionalProperties":false,"required":["wordIDs","kept"],"properties":{"wordIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"kept":{"type":"boolean"}}},"TranscriptWordRange":{"type":"object","additionalProperties":false,"required":["first","last"],"properties":{"first":{"type":"integer","minimum":0,"maximum":100000},"last":{"type":"integer","minimum":0,"maximum":100000}}},"TranscriptWordRangesInput":{"type":"object","additionalProperties":false,"required":["ranges","kept"],"properties":{"ranges":{"type":"array","minItems":1,"maxItems":200,"uniqueItems":true,"items":{"$ref":"#/$defs/TranscriptWordRange"}},"kept":{"type":"boolean"}}},"TranscriptPauseInput":{"type":"object","additionalProperties":false,"required":["mediaID","start","end","kept"],"properties":{"mediaID":{"type":"string","format":"uuid"},"start":{"type":"number","minimum":0,"maximum":86400},"end":{"type":"number","minimum":0,"maximum":86400},"kept":{"type":"boolean"}}},"CaptionAddInput":{"type":"object","additionalProperties":false,"required":[],"properties":{"at":{"$ref":"#/$defs/TimelineAnchorInput"},"afterCaptionID":{"type":"string","format":"uuid"},"text":{"type":"string","minLength":1,"maxLength":300}}},"CaptionRemoveInput":{"type":"object","additionalProperties":false,"required":["captionIDs"],"properties":{"captionIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}}}},"CaptionMergeInput":{"type":"object","additionalProperties":false,"required":["captionIDs"],"properties":{"captionIDs":{"type":"array","minItems":2,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}}}},"CaptionTextInput":{"type":"object","additionalProperties":false,"required":["captionID","text"],"properties":{"captionID":{"type":"string","format":"uuid"},"text":{"type":"string","minLength":1,"maxLength":300}}},"CaptionRetimeInput":{"type":"object","additionalProperties":false,"required":["captionID","timelineStart","timelineEnd"],"properties":{"captionID":{"type":"string","format":"uuid"},"timelineStart":{"type":"number","minimum":0,"maximum":86400},"timelineEnd":{"type":"number","minimum":0,"maximum":86400}}},"TextLayerAddInput":{"type":"object","additionalProperties":false,"required":["text"],"properties":{"text":{"type":"string","minLength":1,"maxLength":300},"at":{"$ref":"#/$defs/TimelineAnchorInput"},"duration":{"type":"number","minimum":0.3,"maximum":600},"asHook":{"type":"boolean"}}},"TextLayerUpdateInput":{"type":"object","additionalProperties":false,"required":["textLayerID"],"properties":{"textLayerID":{"type":"string","format":"uuid"},"text":{"type":"string","minLength":1,"maxLength":300},"timelineStart":{"type":"number","minimum":0,"maximum":86400},"duration":{"type":"number","minimum":0.3,"maximum":600}}},"OverlayFrameFit":{"type":"string","enum":["full","card"]},"OverlayFrameInput":{"type":"object","additionalProperties":false,"required":["overlayIDs"],"properties":{"overlayIDs":{"type":"array","items":{"type":"string","format":"uuid"},"maxItems":5000,"uniqueItems":true},"all":{"type":"boolean"},"fit":{"$ref":"#/$defs/OverlayFrameFit"},"x":{"type":"number","minimum":-2,"maximum":2},"y":{"type":"number","minimum":-2,"maximum":2},"width":{"type":"number","minimum":0.01,"maximum":4},"height":{"type":"number","minimum":0.01,"maximum":4},"rotation":{"type":"number","minimum":-180,"maximum":180},"time":{"type":"number","minimum":0,"maximum":86400}}},"OverlayPropertiesInput":{"type":"object","additionalProperties":false,"required":["overlayIDs"],"properties":{"overlayIDs":{"type":"array","items":{"type":"string","format":"uuid"},"maxItems":5000,"uniqueItems":true},"all":{"type":"boolean"},"hidden":{"type":"boolean"},"behindSpeaker":{"type":"boolean"},"sourceStart":{"type":"number","minimum":0,"maximum":86400},"timelineStart":{"type":"number","minimum":0,"maximum":86400},"duration":{"type":"number","minimum":0.1,"maximum":86400},"track":{"type":"integer","minimum":0,"maximum":5000}}},"OverlayAddInput":{"type":"object","additionalProperties":false,"required":["mediaID","at"],"properties":{"mediaID":{"type":"string","format":"uuid"},"at":{"$ref":"#/$defs/TimelineAnchorInput"},"duration":{"type":"number","minimum":0.1,"maximum":86400},"sourceStart":{"type":"number","minimum":0,"maximum":86400}}},"OverlayTrackOperation":{"type":"string","enum":["remove","setHidden"]},"OverlayTrackInput":{"type":"object","additionalProperties":false,"required":["track","operation"],"properties":{"track":{"type":"integer","minimum":0,"maximum":5000},"operation":{"$ref":"#/$defs/OverlayTrackOperation"},"hidden":{"type":"boolean"}}},"ProjectAspectInput":{"type":"string","enum":["original","portrait","feedPortrait","square","landscape"]},"VisualFilterInput":{"type":"string","enum":["original","clean","warm","cool","punch","mono","fade"]},"ProjectSettingsInput":{"type":"object","additionalProperties":false,"required":[],"properties":{"aspectRatio":{"$ref":"#/$defs/ProjectAspectInput"},"filter":{"$ref":"#/$defs/VisualFilterInput"},"filterStrength":{"type":"number","minimum":0,"maximum":1},"videoHidden":{"type":"boolean"},"videoMuted":{"type":"boolean"}}},"MediaEditOperation":{"type":"string","enum":["append","remove","resetToSource"]},"MediaEditInput":{"type":"object","additionalProperties":false,"required":["mediaIDs","operation"],"properties":{"mediaIDs":{"type":"array","items":{"type":"string","format":"uuid"},"minItems":1,"maxItems":5000,"uniqueItems":true},"operation":{"$ref":"#/$defs/MediaEditOperation"}}},"TrackTransferDirection":{"type":"string","enum":["toOverlay","toMainTrack"]},"TrackTransferInput":{"type":"object","additionalProperties":false,"required":["itemID","direction"],"properties":{"itemID":{"type":"string","format":"uuid"},"direction":{"$ref":"#/$defs/TrackTransferDirection"},"at":{"$ref":"#/$defs/TimelineAnchorInput"},"track":{"type":"integer","minimum":0,"maximum":5000},"insertionIndex":{"type":"integer","minimum":0,"maximum":5000}}},"VideoFramingKeyInput":{"type":"object","additionalProperties":false,"required":["clipID","sourceTime","operation"],"properties":{"clipID":{"type":"string","format":"uuid"},"sourceTime":{"type":"number","minimum":0,"maximum":86400},"operation":{"$ref":"#/$defs/OverlayKeyOperation"},"destination":{"type":"number","minimum":0,"maximum":86400},"scale":{"type":"number","minimum":0.2,"maximum":5},"x":{"type":"number","minimum":-1.5,"maximum":1.5},"y":{"type":"number","minimum":-1.5,"maximum":1.5},"rotation":{"type":"number","minimum":-180,"maximum":180}}},"AudioReplaceInput":{"type":"object","additionalProperties":false,"required":["layerIDs","effectID"],"properties":{"layerIDs":{"type":"array","items":{"type":"string","format":"uuid"},"minItems":1,"maxItems":5000,"uniqueItems":true},"effectID":{"type":"string","minLength":1,"maxLength":120}}},"AudioTrimInput":{"type":"object","additionalProperties":false,"required":["layerIDs"],"properties":{"layerIDs":{"type":"array","items":{"type":"string","format":"uuid"},"minItems":1,"maxItems":5000,"uniqueItems":true},"sourceStart":{"type":"number","minimum":0,"maximum":86400},"duration":{"type":"number","minimum":0.02,"maximum":86400}}},"CaptionSplitInput":{"type":"object","additionalProperties":false,"required":["captionID","afterWords"],"properties":{"captionID":{"type":"string","format":"uuid"},"afterWords":{"type":"integer","minimum":1,"maximum":300}}},"ClearTrackKind":{"type":"string","enum":["video","captions"]},"ClearTrackInput":{"type":"object","additionalProperties":false,"required":["track"],"properties":{"track":{"$ref":"#/$defs/ClearTrackKind"}}},"HistoryDirectionInput":{"type":"string","enum":["undo","redo"]},"HistoryInput":{"type":"object","additionalProperties":false,"required":["direction"],"properties":{"direction":{"$ref":"#/$defs/HistoryDirectionInput"}}},"ImportKindInput":{"type":"string","enum":["media","audio"]},"ImportPickerInput":{"type":"object","additionalProperties":false,"required":["kind"],"properties":{"kind":{"$ref":"#/$defs/ImportKindInput"}}},"ExportDestinationInput":{"type":"string","enum":["file","poster"]},"ExportInput":{"type":"object","additionalProperties":false,"required":["destination"],"properties":{"destination":{"$ref":"#/$defs/ExportDestinationInput"}}},"SavedAudioAddInput":{"type":"object","additionalProperties":false,"required":["savedAudioID","at"],"properties":{"savedAudioID":{"type":"string","format":"uuid"},"at":{"$ref":"#/$defs/TimelineAnchorInput"}}}}}
+{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://ypr.app/schemas/app-actions/v1","title":"Yapper shared app actions","x-protocolVersion":1,"x-actions":[{"id":"editor.audio.addAt","symbol":"soundAt","input":"SoundAtInput","description":"Place an installed library sound at one or more timing anchors: explicit timeline times, playhead, speechStart, exact phrase/occurrence, or a saved animation event ID. Uses the same timing resolver as keyframes. Repeating the same effect at the same time is a no-op. Changes audio only.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.audio.addSaved","symbol":"savedAudioAdd","input":"SavedAudioAddInput","description":"Place existing audio from savedAudioLibrary at a timeline anchor. Keeps the library default volume and adds the actual saved source; no paths are accepted.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.audio.replace","symbol":"audioReplace","input":"AudioReplaceInput","description":"Replace existing sound layers with a built-in sound from soundLibrary, keeping timeline placement and volume. Resets source trim and rate to the new sound.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.audio.setVolume","symbol":"audioVolume","input":"AudioVolumeInput","description":"Set playback volume (0 silent, 1 unity, up to 2) on explicit audio layer IDs and, when videoTrack is true, on the speaker's own video track. Raising the video track above 0 also unmutes it.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.audio.trim","symbol":"audioTrim","input":"AudioTrimInput","description":"Set source in point and/or duration of existing audio layers. Preserve timeline position, volume and speed. SourceStart is recording seconds; duration is timeline seconds.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.background.set","symbol":"clipBackground","input":"ClipBackgroundInput","description":"Keep or remove the room behind the speaker on explicit clip IDs. When removed, the project backdrop colour shows behind the speaker. Locked clips are skipped.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.captions.add","symbol":"captionAdd","input":"CaptionAddInput","description":"Add a caption card. Either at a timeline anchor over spoken footage, or right after an existing caption (afterCaptionID). Optional text sets what the card says; otherwise it takes the spoken words there.","effect":"reversibleEdit","requiresRebuild":false,"runtime":"client"},{"id":"editor.captions.merge","symbol":"captionMerge","input":"CaptionMergeInput","description":"Merge two or more caption cards into one card spanning them, keeping their words in order.","effect":"reversibleEdit","requiresRebuild":false,"runtime":"client"},{"id":"editor.captions.remove","symbol":"captionRemove","input":"CaptionRemoveInput","description":"Remove explicit caption cards by ID. Locked captions are skipped. To hide all captions without deleting them use editor.captions.setVisible.","effect":"reversibleEdit","requiresRebuild":false,"runtime":"client"},{"id":"editor.captions.retime","symbol":"captionRetime","input":"CaptionRetimeInput","description":"Move a caption card to a new timeline start and end in seconds. A card can only sit over the footage it was spoken over.","effect":"reversibleEdit","requiresRebuild":false,"runtime":"client"},{"id":"editor.captions.setStyle","symbol":"captionStyle","input":"CaptionStyleInput","description":"Set caption style fields on explicit caption IDs, or on the shared caption style when applyToAll is true. Send only the fields to change; unmentioned fields keep their values. Locked captions are skipped. Position, width and fontScale are fractions of the frame; strokeWidth is a fraction of the font size.","effect":"reversibleEdit","requiresRebuild":false,"runtime":"client"},{"id":"editor.captions.setText","symbol":"captionText","input":"CaptionTextInput","description":"Replace the text of one caption card. The card stops following the transcript for that text.","effect":"reversibleEdit","requiresRebuild":false,"runtime":"client"},{"id":"editor.captions.setVisible","symbol":"captionVisibility","input":"CaptionVisibilityInput","description":"Show or hide existing captions, preserving their text and styling. If showing captions for the first time, generate them from speech using the caption workflow.","effect":"reversibleEdit","requiresRebuild":false,"runtime":"client"},{"id":"editor.captions.splitAtWord","symbol":"captionSplit","input":"CaptionSplitInput","description":"Split one caption after a word count, as pressing Enter at a word boundary. Locked captions are skipped.","effect":"reversibleEdit","requiresRebuild":false,"runtime":"client"},{"id":"editor.cleanup","symbol":"cleanupWorkflow","input":"CleanupWorkflowInput","description":"Run the app one-click AI cleanup workflow on the project.","effect":"workflow","requiresRebuild":true,"runtime":"client"},{"id":"editor.clips.extractAudio","symbol":"extractAudio","input":"ExtractAudioInput","description":"Extract audio from explicit video clip or overlay IDs into independent audio layers, preserving trim and speed and silencing the original clips. Locked, silent and already extracted clips are skipped.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.clips.reorder","symbol":"clipReorder","input":"ClipReorderInput","description":"Move explicit main-track clips as one block so it starts at insertionIndex among the remaining clips (0 is first). Cannot reorder across a locked clip.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.clips.setSpeed","symbol":"clipSpeed","input":"ClipSpeedInput","description":"Set playback speed for explicit clip IDs, preserving voice pitch. Locked clips are skipped.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.designOverlays","symbol":"overlayWorkflow","input":"OverlayWorkflowInput","description":"Overlays from the creator's own files or newly created visuals. mode placeImported puts media files the creator imported (media with onMainTrack and usedAsOverlay both false) on the timeline at the moments they fit the speech, with any sounds asked for on them, for example a cha-ching exactly when a number is said. mode create designs new visuals (charts, counters, animated graphics) that do not exist yet. Pass the creator's whole request as the instruction; the workflow reads the transcript and media itself. Never use this to edit existing masks.","effect":"workflow","requiresRebuild":true,"runtime":"client"},{"id":"editor.export","symbol":"exportVideo","input":"ExportInput","description":"Export the current edited video. destination=file opens the normal save panel. Use poster only when explicitly asked to send the final video to Poster: it uploads the export and opens Poster without publishing. Runs alone.","effect":"workflow","requiresRebuild":true,"runtime":"client"},{"id":"editor.history.restore","symbol":"history","input":"HistoryInput","description":"Undo or redo the last saved edit, including a whole Chirpy batch. Runs alone and uses the existing history stack. Check canUndo/canRedo.","effect":"workflow","requiresRebuild":true,"runtime":"client"},{"id":"editor.masks.remove","symbol":"maskRemove","input":"MaskRemoveInput","description":"Remove one explicitly requested mask region and its opacity animation, leaving all other masks and original pixels intact.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.masks.setRegion","symbol":"maskRegion","input":"MaskRegionInput","description":"Create or edit a rectangular solid-color mask on an image or generated overlay. Coordinates are source-image fractions from its top left; RGB values are 0\u20131. Use the attached source image to locate any requested area (text, face, logo, chart, or other content); OCR is optional evidence, not a requirement. Omit regionID to create a mask; use a saved ID to edit one. opacityKeys animate the cover: 1 conceals the area, 0 exposes it. The first opacity is held before the first key and the last after the last key: include the initial covered state explicitly before a fade. Each key accepts a shared timing anchor, including exact speech phrases. New masks default to a solid cover. Geometry-only edits omit opacityKeys and policy to preserve existing timing. policy/revealTime are compatibility shortcuts; use opacityKeys for new animations. Image conversion supports scene source durations of 0.5\u201330 seconds. Preserve unmentioned masks and source pixels. Unsupported mask styles, shapes, or moving-object tracking must be reported as unavailable.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.media.edit","symbol":"mediaEdit","input":"MediaEditInput","description":"Append imported media to the main track, remove media and its timeline instances (original files kept), or reset its main-track cuts to the full source. Uses media IDs from context. Removing/resetting locked clips is rejected.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.media.import","symbol":"importPicker","input":"ImportPickerInput","description":"Open the same local file picker as Import media or Import audio, then import the creator-selected files. You cannot choose filesystem paths. Runs alone. The creator may cancel.","effect":"workflow","requiresRebuild":true,"runtime":"client"},{"id":"editor.overlays.add","symbol":"overlayAdd","description":"Place one existing media item as an overlay at a known timeline anchor. Optional duration and sourceStart; defaults match Add as overlay. Use designOverlays/placeImported only when editorial placement across speech must be decided.","input":"OverlayAddInput","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.overlays.editTrack","symbol":"overlayTrack","description":"Remove an overlay lane and compact remaining lanes, or set every overlay on it hidden/shown. track is zero-based. Removing keeps original media.","input":"OverlayTrackInput","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.overlays.keyframe","symbol":"overlayKeyframe","input":"OverlayKeyframeInput","description":"Set, remove, move or clear a keyframe on an overlay. time and destination are seconds from the overlay start. A set with no box or crop captures the current frame. box uses fractions of the video frame; crop uses normalized source coordinates. clear freezes the frame at time.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.overlays.setCrop","symbol":"overlayCrop","input":"OverlayCropInput","description":"Crop explicit overlays to a source rectangle. Coordinates are normalized with top-left origin. Optional time sets the crop at that local overlay time when a single image or scene already has keyframes. Omitting time explicitly replaces crop animation with a static crop while preserving placement keyframes.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.overlays.setFrame","symbol":"overlayFrame","description":"Set size, position and rotation of existing overlays. Use all=true and overlayIDs=[] for every overlay in one action. fit=full is the manual Full frame control (x/y=0, width/height=1); fit=card resets the frame using each source aspect. Otherwise supply only changed fields. Width without height preserves source aspect and center. Omit time to apply throughout each overlay, including every placement key, preserving crop keys/easing. time edits one overlay at an overlay-local keyframe. Does not place or generate media.","input":"OverlayFrameInput","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.overlays.setProperties","symbol":"overlayProperties","description":"Edit existing overlays: visibility, behind-speaker depth, source in point, timeline start/duration, or zero-based lane. Only supplied fields change. all=true targets every overlay; otherwise use overlayIDs. Cannot put generated scenes behind the speaker, exceed video source bounds, or collide on a lane.","input":"OverlayPropertiesInput","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.overlays.zoom","symbol":"overlayZoom","input":"OverlayZoomInput","description":"Animate a zoom into a specific source region of an existing overlay, preserving its placement and masks. target is normalized source coordinates with a top-left origin. Times are seconds from the overlay start. Smooth zoom holds after endTime; optional returnStart and returnEnd zoom back. Use known region boxes or the supplied selected-overlay image to locate the requested section; ask if the target region is ambiguous.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.project.setBackdrop","symbol":"projectBackdrop","input":"ProjectBackdropInput","description":"Set the project backdrop colour that fills the frame where there is no picture, including behind a speaker whose background is removed.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.project.setSettings","symbol":"projectSettings","description":"Set project aspect ratio, visual filter/strength, video-track visibility or mute. Only supplied fields change. Applies the same project-wide settings as the manual controls.","input":"ProjectSettingsInput","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.retouch.set","symbol":"clipRetouch","input":"ClipRetouchInput","description":"Set face retouch strengths (0 to 1) on explicit clip IDs: clearBlemishes and whitenTeeth. Send only the fields to change. Locked clips are skipped.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.reveals.setPolicy","symbol":"revealPolicy","input":"RevealPolicyInput","description":"Set visibility policies for explicit regions of an image overlay. alwaysVisible removes only those masks; untilCue uses the saved spoken cue; alwaysHidden requires an explicit request to keep a value hidden.","effect":"reversibleEdit","requiresRebuild":true,"legacy":true,"runtime":"client"},{"id":"editor.sounds.addAtReveals","symbol":"revealSounds","input":"RevealSoundsInput","description":"Add a library sound at explicit saved reveal events, using the animation times already in the scene. Does not add or move overlays. Repeating the same sound at the same reveal is a no-op.","effect":"reversibleEdit","requiresRebuild":true,"legacy":true,"runtime":"client"},{"id":"editor.text.add","symbol":"textLayerAdd","input":"TextLayerAddInput","description":"Add an on-screen text layer with the given text at a timeline anchor (default the playhead) for duration seconds (default 5). asHook places it at the very start with the hook look.","effect":"reversibleEdit","requiresRebuild":false,"runtime":"client"},{"id":"editor.text.setStyle","symbol":"textLayerStyle","input":"TextLayerStyleInput","description":"Set style fields on explicit text layer IDs. Same fields and units as caption style; send only the fields to change.","effect":"reversibleEdit","requiresRebuild":false,"runtime":"client"},{"id":"editor.text.update","symbol":"textLayerUpdate","input":"TextLayerUpdateInput","description":"Change a text layer's words, timeline start, or duration. Send only the fields to change. Remove a layer with editor.timeline.delete.","effect":"reversibleEdit","requiresRebuild":false,"runtime":"client"},{"id":"editor.timeline.clearTrack","symbol":"clearTrack","input":"ClearTrackInput","description":"Clear all main-track clips, or all captions and caption visibility, as the manual clear-track control. Original media stays in the bin. Locked content is protected.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.timeline.delete","symbol":"timelineDelete","input":"TimelineDeleteInput","description":"Remove explicit timeline items by ID: clips, captions, text layers, overlays, or sounds. Removing a clip closes the gap. Locked clips and captions are skipped.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.timeline.setLocked","symbol":"timelineLock","input":"TimelineLockInput","description":"Lock or unlock explicit clips and captions to protect their edits.","effect":"reversibleEdit","requiresRebuild":false,"runtime":"client"},{"id":"editor.timeline.shift","symbol":"timelineShift","input":"TimelineShiftInput","description":"Slide explicit captions, text layers, overlays, or sounds along the timeline by deltaSeconds (negative is earlier), clamped to the project. Clips are in a running order; use editor.clips.reorder for them.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.timeline.split","symbol":"timelineSplit","input":"TimelineSplitInput","description":"Split explicit timeline items (clips, captions, text layers, overlays, sounds) at one timeline anchor. Items the anchor does not fall inside are left alone. Locked clips and captions are skipped. The receipt names each new tail ID.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.timeline.transfer","symbol":"trackTransfer","input":"TrackTransferInput","description":"Move a clip to an overlay lane or an overlay onto the main track. toOverlay requires itemID of an unlocked clip and optional at/track; at is a timeline anchor. toMainTrack requires overlay itemID and insertionIndex (0-based). Keeps source trim and speed. At least one main-track clip must remain.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.timeline.trim","symbol":"timelineTrim","input":"TimelineTrimInput","description":"Move the leading or trailing edge of explicit timeline items to one timeline anchor. leading keeps everything after the anchor; trailing keeps everything before it. The anchor must fall inside each item. Locked items are skipped.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.transcribe","symbol":"transcribeWorkflow","input":"TranscribeWorkflowInput","description":"Transcribe the project speech using the app transcription workflow.","effect":"workflow","requiresRebuild":true,"runtime":"client"},{"id":"editor.transcript.setPauseKept","symbol":"transcriptPause","input":"TranscriptPauseInput","description":"Cut a pause (a stretch of a recording with no words, given in recording seconds for that media) out of the edit, or restore it.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.transcript.setWordRangesKept","symbol":"transcriptWordRanges","input":"TranscriptWordRangesInput","description":"Cut spoken words out of the edit (kept false) or put cut words back (kept true) by the word numbers in context.transcript. Each range covers first through last inclusive; one word is a range with first equal to last. Cutting removes that stretch of recording from the timeline; restoring brings it and its caption back.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.transcript.setWordsKept","symbol":"transcriptWords","input":"TranscriptWordsInput","description":"Cut spoken words out of the edit (kept false) or put cut words back (kept true) by transcript word ID. Cutting removes that stretch of recording from the timeline; restoring brings it and its caption back.","effect":"reversibleEdit","requiresRebuild":true,"legacy":true,"runtime":"client"},{"id":"editor.trimSilences","symbol":"silenceWorkflow","input":"SilenceWorkflowInput","description":"Trim silences using the app silence trimming workflow. With clipIDs, only silences inside those main-track clips are cut; without, the whole timeline is trimmed.","effect":"workflow","requiresRebuild":true,"runtime":"client"},{"id":"editor.video.animateFraming","symbol":"framingAnimation","input":"FramingAnimationInput","description":"Animate main-video scale, position, and rotation with ordered keyframes. Each key has a timeline timing anchor and a scale multiplier relative to the existing framing; optional x/y are frame-fraction offsets and rotation is a degree offset. easing controls the segment leading to the next key. pivot face keeps the detected face in place while scaling; frameCenter uses the current framing center. Existing keys outside the key interval and all other tracks are preserved. Keys may span video cuts. Use real times or local phrase/speechStart anchors; ambiguous or missing cues are rejected. Include a final multiplier 1 with zero offsets when returning to the existing framing. There is no implicit entry key: to begin smoothly from the existing framing, explicitly include an initial scaleMultiplier 1 with zero offsets at the beginning of the move, followed by the changed framing at its arrival time.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.video.framingKey","symbol":"videoFramingKey","input":"VideoFramingKeyInput","description":"Set, remove, move or clear absolute video framing keys on a clip, like the manual diamonds. sourceTime/destination are recording seconds inside that clip, not timeline time. set without framing fields captures the current framing. clear leaves framing sampled at sourceTime. Locked clips are skipped.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"},{"id":"editor.video.setFraming","symbol":"videoFraming","input":"VideoFramingInput","description":"Set the static framing of explicit main-video clip IDs: scale multiplier, x/y offset as frame fractions, rotation in degrees. Send only the fields to change. Clips with framing keyframes are rejected; use editor.video.animateFraming for those. Locked clips are skipped.","effect":"reversibleEdit","requiresRebuild":true,"runtime":"client"}],"$defs":{"AppActionRuntime":{"type":"string","description":"Where an action executes. Client actions run in the app's registry; server actions run inside the Chirpy turn loop.","enum":["client","server"]},"AppActionEffect":{"type":"string","description":"What running an action does. destructive, external and standingRule actions must set confirm: true.","enum":["read","reversibleEdit","serverEdit","paidGeneration","destructive","external","standingRule","navigation","workflow"]},"ActionRect":{"type":"object","additionalProperties":false,"required":["x","y","width","height"],"properties":{"x":{"type":"number","minimum":0,"maximum":1},"y":{"type":"number","minimum":0,"maximum":1},"width":{"type":"number","minimum":0.005,"maximum":1},"height":{"type":"number","minimum":0.005,"maximum":1}}},"OverlayKeyOperation":{"type":"string","enum":["set","remove","clear","move"]},"TimelineAnchorKind":{"type":"string","enum":["time","playhead","speechStart","phrase","event"]},"TimelineAnchorInput":{"type":"object","properties":{"kind":{"$ref":"#/$defs/TimelineAnchorKind","description":"speechStart is the beginning of speech, including entering/starting speaking; it requires no phrase. Use phrase for a specifically quoted part of speech, time for an explicit timestamp, playhead for here/now, event for an existing animation moment."},"time":{"type":"number","minimum":0,"maximum":86400},"phrase":{"type":"string","minLength":1,"maxLength":300},"occurrence":{"type":"integer","minimum":1,"maximum":1000},"eventID":{"type":"string","minLength":1,"maxLength":200},"offset":{"type":"number","minimum":-86400,"maximum":86400}},"required":["kind"],"additionalProperties":false,"description":"A reusable timeline cue resolved locally from the current edit. speechStart means the first kept spoken word: no phrase or timestamp is required. phrase finds exact words, accounting for trims, cuts and playback speed; occurrence selects a repeated match. playhead means the current position. time uses explicit timeline seconds. event uses a saved animationEvents ID. offset adds seconds after resolution (negative is before)."},"AnimationEase":{"type":"string","enum":["linear","smooth"]},"AppActionStatus":{"type":"string","enum":["applied","unchanged","rejected","failed","canceled"]},"AppActionRequest":{"type":"object","additionalProperties":false,"required":["protocolVersion","id","projectID","revision","action","arguments"],"properties":{"protocolVersion":{"type":"integer","const":1},"id":{"type":"string","format":"uuid"},"projectID":{"type":"string","format":"uuid"},"revision":{"type":"integer","minimum":0},"action":{"type":"string","minLength":1,"maxLength":120},"arguments":{"type":"object","additionalProperties":{}}}},"AppActionChange":{"type":"object","additionalProperties":false,"required":["targetID","property","before","after"],"properties":{"targetID":{"type":"string","format":"uuid"},"property":{"type":"string"},"before":{"type":"string"},"after":{"type":"string"}}},"AppActionResult":{"type":"object","additionalProperties":false,"required":["protocolVersion","invocationID","projectID","revision","action","status","message","changes","skippedIDs","persisted"],"properties":{"protocolVersion":{"type":"integer","const":1},"invocationID":{"type":"string","format":"uuid"},"projectID":{"type":"string","format":"uuid"},"revision":{"type":"integer","minimum":0},"action":{"type":"string"},"status":{"$ref":"#/$defs/AppActionStatus"},"message":{"type":"string"},"changes":{"type":"array","items":{"$ref":"#/$defs/AppActionChange"}},"skippedIDs":{"type":"array","items":{"type":"string","format":"uuid"}},"persisted":{"type":"boolean"}}},"ChirpyActionCall":{"type":"object","additionalProperties":false,"required":["action","arguments"],"properties":{"action":{"type":"string","minLength":1,"maxLength":120},"arguments":{"type":"object","additionalProperties":{}}}},"ChirpyPlanReply":{"type":"object","additionalProperties":false,"required":["message","actions"],"properties":{"message":{"type":"string","maxLength":2000},"actions":{"type":"array","items":{"$ref":"#/$defs/ChirpyActionCall"},"maxItems":8}}},"ExtractAudioInput":{"type":"object","additionalProperties":false,"required":["clipIDs","overlayIDs"],"properties":{"clipIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"overlayIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}}}},"RevealSoundsInput":{"type":"object","additionalProperties":false,"required":["effectID","eventIDs"],"properties":{"effectID":{"type":"string","minLength":1,"maxLength":120},"eventIDs":{"type":"array","items":{"type":"string","minLength":1,"maxLength":200},"minItems":1,"maxItems":64,"uniqueItems":true}}},"SoundAtInput":{"type":"object","properties":{"effectID":{"type":"string","minLength":1,"maxLength":100},"at":{"type":"array","minItems":1,"maxItems":32,"items":{"$ref":"#/$defs/TimelineAnchorInput"}}},"required":["effectID","at"],"additionalProperties":false},"AudioVolumeInput":{"type":"object","additionalProperties":false,"required":["layerIDs","videoTrack","volume"],"properties":{"layerIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"videoTrack":{"type":"boolean"},"volume":{"type":"number","minimum":0,"maximum":2}}},"AudioReplaceInput":{"type":"object","additionalProperties":false,"required":["layerIDs","effectID"],"properties":{"layerIDs":{"type":"array","items":{"type":"string","format":"uuid"},"minItems":1,"maxItems":5000,"uniqueItems":true},"effectID":{"type":"string","minLength":1,"maxLength":120}}},"AudioTrimInput":{"type":"object","additionalProperties":false,"required":["layerIDs"],"properties":{"layerIDs":{"type":"array","items":{"type":"string","format":"uuid"},"minItems":1,"maxItems":5000,"uniqueItems":true},"sourceStart":{"type":"number","minimum":0,"maximum":86400},"duration":{"type":"number","minimum":0.02,"maximum":86400}}},"SavedAudioAddInput":{"type":"object","additionalProperties":false,"required":["savedAudioID","at"],"properties":{"savedAudioID":{"type":"string","format":"uuid"},"at":{"$ref":"#/$defs/TimelineAnchorInput"}}},"CaptionVisibilityInput":{"type":"object","additionalProperties":false,"required":["visible"],"properties":{"visible":{"type":"boolean"}}},"TextFontChoice":{"type":"string","enum":["modern","rounded","editorial"]},"TextCaseChoice":{"type":"string","enum":["asSpoken","lower","upper"]},"TextStyleInput":{"type":"object","additionalProperties":false,"required":[],"properties":{"x":{"type":"number","minimum":0.05,"maximum":0.95,"description":"Horizontal centre as a fraction of frame width."},"y":{"type":"number","minimum":0.05,"maximum":0.95,"description":"Vertical centre as a fraction of frame height; 0 is the top."},"width":{"type":"number","minimum":0.2,"maximum":1},"rotation":{"type":"number","minimum":-180,"maximum":180},"font":{"$ref":"#/$defs/TextFontChoice"},"fontScale":{"type":"number","minimum":0.012,"maximum":0.22,"description":"Cap height as a fraction of frame height. Captions default near 0.05."},"textCase":{"$ref":"#/$defs/TextCaseChoice"},"color":{"type":"string","minLength":4,"maxLength":9,"description":"Hex colour: #RGB, #RRGGBB or #RRGGBBAA."},"strokeEnabled":{"type":"boolean"},"strokeColor":{"type":"string","minLength":4,"maxLength":9,"description":"Hex colour: #RGB, #RRGGBB or #RRGGBBAA."},"strokeWidth":{"type":"number","minimum":0,"maximum":0.24},"backgroundEnabled":{"type":"boolean"},"backgroundColor":{"type":"string","minLength":4,"maxLength":9,"description":"Hex colour: #RGB, #RRGGBB or #RRGGBBAA."},"cornerRadius":{"type":"number","minimum":0,"maximum":1},"shadowEnabled":{"type":"boolean"},"shadowColor":{"type":"string","minLength":4,"maxLength":9,"description":"Hex colour: #RGB, #RRGGBB or #RRGGBBAA."},"shadowRadius":{"type":"number","minimum":0,"maximum":1}}},"CaptionStyleInput":{"type":"object","additionalProperties":false,"required":["captionIDs","applyToAll","style"],"properties":{"captionIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"applyToAll":{"type":"boolean"},"style":{"$ref":"#/$defs/TextStyleInput"}}},"TextLayerStyleInput":{"type":"object","additionalProperties":false,"required":["textLayerIDs","style"],"properties":{"textLayerIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"style":{"$ref":"#/$defs/TextStyleInput"}}},"CaptionAddInput":{"type":"object","additionalProperties":false,"required":[],"properties":{"at":{"$ref":"#/$defs/TimelineAnchorInput"},"afterCaptionID":{"type":"string","format":"uuid"},"text":{"type":"string","minLength":1,"maxLength":300}}},"CaptionRemoveInput":{"type":"object","additionalProperties":false,"required":["captionIDs"],"properties":{"captionIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}}}},"CaptionMergeInput":{"type":"object","additionalProperties":false,"required":["captionIDs"],"properties":{"captionIDs":{"type":"array","minItems":2,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}}}},"CaptionTextInput":{"type":"object","additionalProperties":false,"required":["captionID","text"],"properties":{"captionID":{"type":"string","format":"uuid"},"text":{"type":"string","minLength":1,"maxLength":300}}},"CaptionRetimeInput":{"type":"object","additionalProperties":false,"required":["captionID","timelineStart","timelineEnd"],"properties":{"captionID":{"type":"string","format":"uuid"},"timelineStart":{"type":"number","minimum":0,"maximum":86400},"timelineEnd":{"type":"number","minimum":0,"maximum":86400}}},"TextLayerAddInput":{"type":"object","additionalProperties":false,"required":["text"],"properties":{"text":{"type":"string","minLength":1,"maxLength":300},"at":{"$ref":"#/$defs/TimelineAnchorInput"},"duration":{"type":"number","minimum":0.3,"maximum":600},"asHook":{"type":"boolean"}}},"TextLayerUpdateInput":{"type":"object","additionalProperties":false,"required":["textLayerID"],"properties":{"textLayerID":{"type":"string","format":"uuid"},"text":{"type":"string","minLength":1,"maxLength":300},"timelineStart":{"type":"number","minimum":0,"maximum":86400},"duration":{"type":"number","minimum":0.3,"maximum":600}}},"CaptionSplitInput":{"type":"object","additionalProperties":false,"required":["captionID","afterWords"],"properties":{"captionID":{"type":"string","format":"uuid"},"afterWords":{"type":"integer","minimum":1,"maximum":300}}},"RevealPolicy":{"type":"string","enum":["alwaysVisible","untilCue","alwaysHidden"]},"RevealRegionPolicy":{"type":"object","additionalProperties":false,"required":["regionID","policy"],"properties":{"regionID":{"type":"string","minLength":1,"maxLength":120},"policy":{"$ref":"#/$defs/RevealPolicy"}}},"RevealPolicyInput":{"type":"object","additionalProperties":false,"required":["overlayID","regions"],"properties":{"overlayID":{"type":"string","format":"uuid"},"regions":{"type":"array","items":{"$ref":"#/$defs/RevealRegionPolicy"},"minItems":1,"maxItems":32,"uniqueItems":true}}},"OverlayBoxInput":{"type":"object","additionalProperties":false,"required":["x","y","width","height"],"properties":{"x":{"type":"number","minimum":-2,"maximum":2},"y":{"type":"number","minimum":-2,"maximum":2},"width":{"type":"number","minimum":0.01,"maximum":4},"height":{"type":"number","minimum":0.01,"maximum":4}}},"OverlayZoomInput":{"type":"object","additionalProperties":false,"required":["overlayID","target","startTime","endTime"],"properties":{"overlayID":{"type":"string","format":"uuid"},"target":{"$ref":"#/$defs/ActionRect"},"startTime":{"type":"number","minimum":0,"maximum":86400},"endTime":{"type":"number","minimum":0,"maximum":86400},"returnStart":{"type":"number","minimum":0,"maximum":86400},"returnEnd":{"type":"number","minimum":0,"maximum":86400}}},"OverlayKeyframeInput":{"type":"object","additionalProperties":false,"required":["overlayID","time","operation"],"properties":{"overlayID":{"type":"string","format":"uuid"},"time":{"type":"number","minimum":0,"maximum":86400},"operation":{"$ref":"#/$defs/OverlayKeyOperation"},"destination":{"type":"number","minimum":0,"maximum":86400},"box":{"$ref":"#/$defs/OverlayBoxInput"},"crop":{"$ref":"#/$defs/ActionRect"}}},"OverlayCropInput":{"type":"object","additionalProperties":false,"required":["overlayIDs","crop"],"properties":{"overlayIDs":{"type":"array","items":{"type":"string","format":"uuid"},"minItems":1,"maxItems":5000,"uniqueItems":true},"crop":{"$ref":"#/$defs/ActionRect"},"time":{"type":"number","minimum":0,"maximum":86400}}},"MaskRegionInput":{"type":"object","additionalProperties":false,"required":["overlayID","label","rect","red","green","blue"],"properties":{"overlayID":{"type":"string","format":"uuid"},"regionID":{"type":"string","minLength":1,"maxLength":120},"label":{"type":"string","minLength":1,"maxLength":120},"rect":{"$ref":"#/$defs/ActionRect"},"red":{"type":"number","minimum":0,"maximum":1},"green":{"type":"number","minimum":0,"maximum":1},"blue":{"type":"number","minimum":0,"maximum":1},"policy":{"$ref":"#/$defs/RevealPolicy"},"revealTime":{"type":"number","minimum":0,"maximum":86400},"opacityKeys":{"type":"array","minItems":2,"maxItems":32,"items":{"$ref":"#/$defs/MaskOpacityKey"}}}},"MaskRemoveInput":{"type":"object","additionalProperties":false,"required":["overlayID","regionID"],"properties":{"overlayID":{"type":"string","format":"uuid"},"regionID":{"type":"string","minLength":1,"maxLength":120}}},"MaskOpacityKey":{"type":"object","properties":{"at":{"$ref":"#/$defs/TimelineAnchorInput"},"opacity":{"type":"number","minimum":0,"maximum":1},"easing":{"$ref":"#/$defs/AnimationEase","description":"Controls the transition from this key to the following key. The final key has no outgoing transition."}},"required":["at","opacity"],"additionalProperties":false},"OverlayFrameFit":{"type":"string","enum":["full","card"]},"OverlayFrameInput":{"type":"object","additionalProperties":false,"required":["overlayIDs"],"properties":{"overlayIDs":{"type":"array","items":{"type":"string","format":"uuid"},"maxItems":5000,"uniqueItems":true},"all":{"type":"boolean"},"fit":{"$ref":"#/$defs/OverlayFrameFit"},"x":{"type":"number","minimum":-2,"maximum":2},"y":{"type":"number","minimum":-2,"maximum":2},"width":{"type":"number","minimum":0.01,"maximum":4},"height":{"type":"number","minimum":0.01,"maximum":4},"rotation":{"type":"number","minimum":-180,"maximum":180},"time":{"type":"number","minimum":0,"maximum":86400}}},"OverlayPropertiesInput":{"type":"object","additionalProperties":false,"required":["overlayIDs"],"properties":{"overlayIDs":{"type":"array","items":{"type":"string","format":"uuid"},"maxItems":5000,"uniqueItems":true},"all":{"type":"boolean"},"hidden":{"type":"boolean"},"behindSpeaker":{"type":"boolean"},"sourceStart":{"type":"number","minimum":0,"maximum":86400},"timelineStart":{"type":"number","minimum":0,"maximum":86400},"duration":{"type":"number","minimum":0.1,"maximum":86400},"track":{"type":"integer","minimum":0,"maximum":5000}}},"OverlayAddInput":{"type":"object","additionalProperties":false,"required":["mediaID","at"],"properties":{"mediaID":{"type":"string","format":"uuid"},"at":{"$ref":"#/$defs/TimelineAnchorInput"},"duration":{"type":"number","minimum":0.1,"maximum":86400},"sourceStart":{"type":"number","minimum":0,"maximum":86400}}},"OverlayTrackOperation":{"type":"string","enum":["remove","setHidden"]},"OverlayTrackInput":{"type":"object","additionalProperties":false,"required":["track","operation"],"properties":{"track":{"type":"integer","minimum":0,"maximum":5000},"operation":{"$ref":"#/$defs/OverlayTrackOperation"},"hidden":{"type":"boolean"}}},"ProjectBackdropInput":{"type":"object","additionalProperties":false,"required":["color"],"properties":{"color":{"type":"string","minLength":4,"maxLength":9,"description":"Hex colour: #RGB, #RRGGBB or #RRGGBBAA."}}},"ProjectAspectInput":{"type":"string","enum":["original","portrait","feedPortrait","square","landscape"]},"VisualFilterInput":{"type":"string","enum":["original","clean","warm","cool","punch","mono","fade"]},"ProjectSettingsInput":{"type":"object","additionalProperties":false,"required":[],"properties":{"aspectRatio":{"$ref":"#/$defs/ProjectAspectInput"},"filter":{"$ref":"#/$defs/VisualFilterInput"},"filterStrength":{"type":"number","minimum":0,"maximum":1},"videoHidden":{"type":"boolean"},"videoMuted":{"type":"boolean"}}},"MediaEditOperation":{"type":"string","enum":["append","remove","resetToSource"]},"MediaEditInput":{"type":"object","additionalProperties":false,"required":["mediaIDs","operation"],"properties":{"mediaIDs":{"type":"array","items":{"type":"string","format":"uuid"},"minItems":1,"maxItems":5000,"uniqueItems":true},"operation":{"$ref":"#/$defs/MediaEditOperation"}}},"ClipSpeedInput":{"type":"object","additionalProperties":false,"required":["clipIDs","rate"],"properties":{"clipIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"rate":{"type":"number","minimum":0.25,"maximum":4}}},"TimelineLockInput":{"type":"object","additionalProperties":false,"required":["clipIDs","captionIDs","locked"],"properties":{"clipIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"captionIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"locked":{"type":"boolean"}}},"TimelineEdge":{"type":"string","enum":["leading","trailing"]},"TimelineSplitInput":{"type":"object","additionalProperties":false,"required":["itemIDs","at"],"properties":{"itemIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"at":{"$ref":"#/$defs/TimelineAnchorInput"}}},"TimelineDeleteInput":{"type":"object","additionalProperties":false,"required":["itemIDs"],"properties":{"itemIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}}}},"TimelineTrimInput":{"type":"object","additionalProperties":false,"required":["itemIDs","edge","to"],"properties":{"itemIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"edge":{"$ref":"#/$defs/TimelineEdge"},"to":{"$ref":"#/$defs/TimelineAnchorInput"}}},"ClipReorderInput":{"type":"object","additionalProperties":false,"required":["clipIDs","insertionIndex"],"properties":{"clipIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"insertionIndex":{"type":"integer","minimum":0,"maximum":5000}}},"TimelineShiftInput":{"type":"object","additionalProperties":false,"required":["itemIDs","deltaSeconds"],"properties":{"itemIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"deltaSeconds":{"type":"number","minimum":-86400,"maximum":86400}}},"TrackTransferDirection":{"type":"string","enum":["toOverlay","toMainTrack"]},"TrackTransferInput":{"type":"object","additionalProperties":false,"required":["itemID","direction"],"properties":{"itemID":{"type":"string","format":"uuid"},"direction":{"$ref":"#/$defs/TrackTransferDirection"},"at":{"$ref":"#/$defs/TimelineAnchorInput"},"track":{"type":"integer","minimum":0,"maximum":5000},"insertionIndex":{"type":"integer","minimum":0,"maximum":5000}}},"ClearTrackKind":{"type":"string","enum":["video","captions"]},"ClearTrackInput":{"type":"object","additionalProperties":false,"required":["track"],"properties":{"track":{"$ref":"#/$defs/ClearTrackKind"}}},"TranscriptWordsInput":{"type":"object","additionalProperties":false,"required":["wordIDs","kept"],"properties":{"wordIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"kept":{"type":"boolean"}}},"TranscriptWordRange":{"type":"object","additionalProperties":false,"required":["first","last"],"properties":{"first":{"type":"integer","minimum":0,"maximum":100000},"last":{"type":"integer","minimum":0,"maximum":100000}}},"TranscriptWordRangesInput":{"type":"object","additionalProperties":false,"required":["ranges","kept"],"properties":{"ranges":{"type":"array","minItems":1,"maxItems":200,"uniqueItems":true,"items":{"$ref":"#/$defs/TranscriptWordRange"}},"kept":{"type":"boolean"}}},"TranscriptPauseInput":{"type":"object","additionalProperties":false,"required":["mediaID","start","end","kept"],"properties":{"mediaID":{"type":"string","format":"uuid"},"start":{"type":"number","minimum":0,"maximum":86400},"end":{"type":"number","minimum":0,"maximum":86400},"kept":{"type":"boolean"}}},"AnimationPivot":{"type":"string","enum":["frameCenter","face"]},"FramingAnimationKey":{"type":"object","properties":{"at":{"$ref":"#/$defs/TimelineAnchorInput"},"scaleMultiplier":{"type":"number","minimum":0.2,"maximum":5},"x":{"type":"number","minimum":-1.5,"maximum":1.5},"y":{"type":"number","minimum":-1.5,"maximum":1.5},"rotation":{"type":"number","minimum":-180,"maximum":180},"easing":{"$ref":"#/$defs/AnimationEase"}},"required":["at","scaleMultiplier"],"additionalProperties":false},"FramingAnimationInput":{"type":"object","properties":{"keys":{"type":"array","minItems":2,"maxItems":32,"items":{"$ref":"#/$defs/FramingAnimationKey"}},"pivot":{"$ref":"#/$defs/AnimationPivot"}},"required":["keys"],"additionalProperties":false},"VideoFramingInput":{"type":"object","additionalProperties":false,"required":["clipIDs"],"properties":{"clipIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"scale":{"type":"number","minimum":0.2,"maximum":5},"x":{"type":"number","minimum":-1.5,"maximum":1.5},"y":{"type":"number","minimum":-1.5,"maximum":1.5},"rotation":{"type":"number","minimum":-180,"maximum":180}}},"ClipRetouchInput":{"type":"object","additionalProperties":false,"required":["clipIDs"],"properties":{"clipIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"clearBlemishes":{"type":"number","minimum":0,"maximum":1},"whitenTeeth":{"type":"number","minimum":0,"maximum":1}}},"ClipBackgroundInput":{"type":"object","additionalProperties":false,"required":["clipIDs","removed"],"properties":{"clipIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"removed":{"type":"boolean"}}},"VideoFramingKeyInput":{"type":"object","additionalProperties":false,"required":["clipID","sourceTime","operation"],"properties":{"clipID":{"type":"string","format":"uuid"},"sourceTime":{"type":"number","minimum":0,"maximum":86400},"operation":{"$ref":"#/$defs/OverlayKeyOperation"},"destination":{"type":"number","minimum":0,"maximum":86400},"scale":{"type":"number","minimum":0.2,"maximum":5},"x":{"type":"number","minimum":-1.5,"maximum":1.5},"y":{"type":"number","minimum":-1.5,"maximum":1.5},"rotation":{"type":"number","minimum":-180,"maximum":180}}},"TranscribeWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000}}},"CleanupWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000}}},"SilenceWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000},"clipIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}}}},"OverlayWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000},"mode":{"type":"string","enum":["placeImported","create"]}}},"HistoryDirectionInput":{"type":"string","enum":["undo","redo"]},"HistoryInput":{"type":"object","additionalProperties":false,"required":["direction"],"properties":{"direction":{"$ref":"#/$defs/HistoryDirectionInput"}}},"ImportKindInput":{"type":"string","enum":["media","audio"]},"ImportPickerInput":{"type":"object","additionalProperties":false,"required":["kind"],"properties":{"kind":{"$ref":"#/$defs/ImportKindInput"}}},"ExportDestinationInput":{"type":"string","enum":["file","poster"]},"ExportInput":{"type":"object","additionalProperties":false,"required":["destination"],"properties":{"destination":{"$ref":"#/$defs/ExportDestinationInput"}}}}}
 """#
 }

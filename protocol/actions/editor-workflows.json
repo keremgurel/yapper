@@ -1,0 +1,167 @@
+{
+  "description": "Long operations that own their transaction and run alone: transcription, cleanup, overlay design, history, import, export.",
+  "runtime": "client",
+  "actions": [
+    {
+      "id": "editor.transcribe",
+      "symbol": "transcribeWorkflow",
+      "input": "TranscribeWorkflowInput",
+      "description": "Transcribe the project speech using the app transcription workflow.",
+      "effect": "workflow",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.cleanup",
+      "symbol": "cleanupWorkflow",
+      "input": "CleanupWorkflowInput",
+      "description": "Run the app one-click AI cleanup workflow on the project.",
+      "effect": "workflow",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.trimSilences",
+      "symbol": "silenceWorkflow",
+      "input": "SilenceWorkflowInput",
+      "description": "Trim silences using the app silence trimming workflow. With clipIDs, only silences inside those main-track clips are cut; without, the whole timeline is trimmed.",
+      "effect": "workflow",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.designOverlays",
+      "symbol": "overlayWorkflow",
+      "input": "OverlayWorkflowInput",
+      "description": "Overlays from the creator's own files or newly created visuals. mode placeImported puts media files the creator imported (media with onMainTrack and usedAsOverlay both false) on the timeline at the moments they fit the speech, with any sounds asked for on them, for example a cha-ching exactly when a number is said. mode create designs new visuals (charts, counters, animated graphics) that do not exist yet. Pass the creator's whole request as the instruction; the workflow reads the transcript and media itself. Never use this to edit existing masks.",
+      "effect": "workflow",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.history.restore",
+      "symbol": "history",
+      "input": "HistoryInput",
+      "description": "Undo or redo the last saved edit, including a whole Chirpy batch. Runs alone and uses the existing history stack. Check canUndo/canRedo.",
+      "effect": "workflow",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.media.import",
+      "symbol": "importPicker",
+      "input": "ImportPickerInput",
+      "description": "Open the same local file picker as Import media or Import audio, then import the creator-selected files. You cannot choose filesystem paths. Runs alone. The creator may cancel.",
+      "effect": "workflow",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.export",
+      "symbol": "exportVideo",
+      "input": "ExportInput",
+      "description": "Export the current edited video. destination=file opens the normal save panel. Use poster only when explicitly asked to send the final video to Poster: it uploads the export and opens Poster without publishing. Runs alone.",
+      "effect": "workflow",
+      "requiresRebuild": true
+    }
+  ],
+  "$defs": {
+    "TranscribeWorkflowInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instruction"],
+      "properties": {
+        "instruction": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      }
+    },
+    "CleanupWorkflowInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instruction"],
+      "properties": {
+        "instruction": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      }
+    },
+    "SilenceWorkflowInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instruction"],
+      "properties": {
+        "instruction": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "clipIDs": {
+          "type": "array",
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "OverlayWorkflowInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instruction"],
+      "properties": {
+        "instruction": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["placeImported", "create"]
+        }
+      }
+    },
+    "HistoryDirectionInput": {
+      "type": "string",
+      "enum": ["undo", "redo"]
+    },
+    "HistoryInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["direction"],
+      "properties": {
+        "direction": {
+          "$ref": "#/$defs/HistoryDirectionInput"
+        }
+      }
+    },
+    "ImportKindInput": {
+      "type": "string",
+      "enum": ["media", "audio"]
+    },
+    "ImportPickerInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/ImportKindInput"
+        }
+      }
+    },
+    "ExportDestinationInput": {
+      "type": "string",
+      "enum": ["file", "poster"]
+    },
+    "ExportInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["destination"],
+      "properties": {
+        "destination": {
+          "$ref": "#/$defs/ExportDestinationInput"
+        }
+      }
+    }
+  }
+}
