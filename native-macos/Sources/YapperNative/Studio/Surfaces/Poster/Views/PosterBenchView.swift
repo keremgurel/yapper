@@ -45,10 +45,25 @@ struct PosterBenchView: View {
         }
     }
 
+    /// The thumbnail tools, or the attach step for a post with no file yet.
+    /// A channel title can be a whole caption, so a long one folds away.
     private var cover: some View {
-        NativeSection(title: "Thumbnail", meta: video.title) {
-            PosterCoverStudio(video: video, drafts: drafts, framePending: $framePending)
-                .id(video.id)
+        let long = video.title.count > 120
+        return NativeSection(title: video.needsOriginal ? "Attach original video" : "Thumbnail", meta: long ? nil : video.title) {
+            VStack(alignment: .leading, spacing: 12) {
+                if long {
+                    PosterDisclosure(title: "View original post title") {
+                        Text(video.title).font(.system(size: 13)).textSelection(.enabled)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                if video.needsOriginal {
+                    PosterAttachOriginal(video: video, upload: upload)
+                } else {
+                    PosterCoverStudio(video: video, drafts: drafts, framePending: $framePending)
+                        .id(video.id)
+                }
+            }
         }
     }
 

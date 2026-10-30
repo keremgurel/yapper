@@ -71,7 +71,9 @@ struct PosterDecodingTests {
          "viewCount":88,"publishedAt":"2026-09-10T08:00:00Z","privacyStatus":"public",
          "url":"https://youtube.com/shorts/yt1","durationSec":42}]}
         """)
-        #expect(!PosterVideo(platform: .youtube, video: youtube.videos[0]).canOpen)
+        // A YouTube post Yapper kept no file for opens on the attach step.
+        let short = PosterVideo(platform: .youtube, video: youtube.videos[0])
+        #expect(short.canOpen && short.needsOriginal && !short.readyToPublish)
     }
 
     @Test func connectionsWithAccountIDs() throws {

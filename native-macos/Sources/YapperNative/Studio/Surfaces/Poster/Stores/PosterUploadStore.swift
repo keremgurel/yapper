@@ -3,7 +3,8 @@ import UniformTypeIdentifiers
 
 /// Adding finished videos from disk, by picker or by drop: presign, upload
 /// with progress, register, create the library row, then hear the video so
-/// captions are written from what it says.
+/// captions are written from what it says. The same path attaches a channel
+/// post's original, which stays on the bench as that post.
 @MainActor
 final class PosterUploadStore: ObservableObject {
     enum Phase: Equatable { case idle, uploading, preparing, failed }
@@ -17,7 +18,9 @@ final class PosterUploadStore: ObservableObject {
     /// The video holding the one waiting slot, when an upload was refused
     /// because of it, and the file that was refused, to add once it is gone.
     @Published private(set) var waiting: PosterWaitingVideo?
-    private var refusedFile: URL?
+    /// The channel post the current or last failed upload is attaching to.
+    @Published private(set) var attachingID: String?
+    private var refused: (file: URL, original: PosterVideo?)?
     @Published private(set) var discarding = false
 
     var busy: Bool { phase == .uploading || phase == .preparing }
@@ -37,6 +40,18 @@ final class PosterUploadStore: ObservableObject {
         add(panel.urls)
     }
 
+    /// Picks the original for a channel post Yapper has no file for. Its title
+    /// and caption go with the upload, which also appears in Uploads.
+    func attach(to original: PosterVideo) {
+        guard !busy else { return }
+        let panel = NSOpenPanel()
+        panel.title = "Attach the original video"
+        panel.allowedContentTypes = [.movie]
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        Task { await upload(url, attachingTo: original) }
+    }
+
     /// Sequential, because each upload streams a whole video.
     func add(_ urls: [URL]) {
         guard !urls.isEmpty, !busy else { return }
@@ -45,14 +60,15 @@ final class PosterUploadStore: ObservableObject {
         }
     }
 
-    private func upload(_ file: URL) async {
+    private func upload(_ file: URL, attachingTo original: PosterVideo? = nil) async {
+        attachingID = original?.id
         guard let mimeType = Self.videoType(for: file) else {
             errorCode = "not_video"
             phase = .failed
             return
         }
         let localVideo = PosterVideo(file: file)
-        onSelected(localVideo)
+        if original == nil { onSelected(localVideo) }
         phase = .uploading
         progress = 0
         errorCode = nil
@@ -60,7 +76,7 @@ final class PosterUploadStore: ObservableObject {
         do {
             let bytes = (try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
             guard bytes > 0 else { throw PosterUploadFailure("not_video") }
-            let title = file.deletingPathExtension().lastPathComponent
+            let title = original?.title ?? file.deletingPathExtension().lastPathComponent
             let ext = String(mimeType.split(separator: "/").last ?? "mp4")
             let ticket = try await PosterFileUpload.ticket(bytes: bytes, mimeType: mimeType, ext: ext, purpose: .recording)
             guard let target = URL(string: ticket.url) else { throw PosterUploadFailure("failed") }
@@ -68,14 +84,18 @@ final class PosterUploadStore: ObservableObject {
                 Task { @MainActor in self.progress = value }
             }
             let submission = try await register(key: ticket.key, title: title)
-            let created: PosterContentEnvelope = try await PosterHTTP.post("api/content", body: [
+            let created: PosterContentEnvelope = try await PosterHTTP.post("api/content", body: .compact([
                 "title": title.isEmpty ? "Untitled video" : title,
                 "submissionId": submission,
                 "sourceUrl": "yapper://poster-upload",
                 "sourceTitle": "Poster upload",
                 "transcriptStatus": "pending",
-            ])
-            if PosterBench.shared.active?.id == localVideo.id {
+                "originalNote": original?.sourceCaption,
+            ]))
+            if let original {
+                PosterBench.shared.attach(original.withAttachedOriginal(file: file, submissionID: submission, contentItemID: created.item.id))
+                attachingID = nil
+            } else if PosterBench.shared.active?.id == localVideo.id {
                 var prepared = localVideo
                 prepared.preparedSubmissionID = submission
                 prepared.preparedContentItemID = created.item.id
@@ -88,7 +108,7 @@ final class PosterUploadStore: ObservableObject {
         } catch let failure as PosterUploadFailure {
             if failure.code == "slot_busy", let waiting = failure.waiting {
                 self.waiting = waiting
-                refusedFile = file
+                refused = (file, original)
                 phase = .idle
                 return
             }
@@ -109,9 +129,9 @@ final class PosterUploadStore: ObservableObject {
             try await StudioJSONClient.delete("api/submissions/\(waiting.id)")
             self.waiting = nil
             onDiscarded()
-            if let file = refusedFile {
-                refusedFile = nil
-                await upload(file)
+            if let refused {
+                self.refused = nil
+                await upload(refused.file, attachingTo: refused.original)
             }
         } catch {
             errorCode = "failed"
@@ -122,7 +142,7 @@ final class PosterUploadStore: ObservableObject {
     /// Keeps the waiting video and drops the refused file.
     func keepWaiting() {
         waiting = nil
-        refusedFile = nil
+        refused = nil
     }
 
     /// Set by the page: refresh the library after a discard.

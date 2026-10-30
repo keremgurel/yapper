@@ -14,9 +14,10 @@ struct PosterBanners: View {
             if let waiting = upload.waiting {
                 PosterWaitingNotice(upload: upload, waiting: waiting)
             }
-            if let code = upload.errorCode, upload.phase == .failed {
+            // An attach shows its own progress and errors on the attach step.
+            if upload.attachingID == nil, let code = upload.errorCode, upload.phase == .failed {
                 warning(PosterErrorCopy.upload(code))
-            } else if upload.busy {
+            } else if upload.attachingID == nil && upload.busy {
                 progress
             } else if bench.active?.transcriptStatus == "unavailable" {
                 warning("The video uploaded, but its transcript could not be prepared. Describe the video or write a caption to continue.")
