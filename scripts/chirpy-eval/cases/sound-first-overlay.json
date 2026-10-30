@@ -1,0 +1,71 @@
+{
+  "id": "sound-first-overlay",
+  "from": "planner.integration.test.ts: adds a named sound at the first overlay from timeline items alone",
+  "tags": ["audio"],
+  "catalog": "current",
+  "base": "imported-media",
+  "context": {
+    "timelineItems": [
+      {
+        "id": "5B3AA239-197A-4576-AEC7-73A217BC60C8",
+        "kind": "overlay",
+        "start": 4.2,
+        "end": 7.2,
+        "media": "Screenshot 1.png"
+      },
+      {
+        "id": "870368D0-094A-46BC-ABAC-EA814CEE6F7D",
+        "kind": "overlay",
+        "start": 11.8,
+        "end": 14.8,
+        "media": "Screenshot 2.png"
+      },
+      {
+        "id": "0465356D-B145-4078-ABF9-059AF49015E0",
+        "kind": "overlay",
+        "start": 19.5,
+        "end": 22.5,
+        "media": "Screenshot 3.png"
+      }
+    ],
+    "soundLibrary": [
+      {
+        "id": "mouse-click",
+        "name": "Mouse click"
+      },
+      {
+        "id": "camera-shutter",
+        "name": "Camera shutter"
+      },
+      {
+        "id": "woosh",
+        "name": "Woosh"
+      }
+    ],
+    "sounds": []
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "add sound effects to some of the overlays. definitely the first one. snap shutter"
+    }
+  ],
+  "expect": {
+    "includes": ["editor.audio.addAt"],
+    "args": [
+      {
+        "action": "editor.audio.addAt",
+        "pointer": "/effectID",
+        "equals": "camera-shutter"
+      },
+      {
+        "action": "editor.audio.addAt",
+        "pointer": "/at",
+        "some": {
+          "pointer": "/time",
+          "equals": 4.2
+        }
+      }
+    ]
+  }
+}

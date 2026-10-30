@@ -1,0 +1,272 @@
+{
+  "id": "overlays-full-screen-bulk",
+  "from": "planner.integration.test.ts: edits all existing overlays in one bulk action after placement, even with unused imports",
+  "tags": ["overlays", "multi-turn"],
+  "catalog": "current",
+  "base": "google-ads",
+  "context": {
+    "overlays": [
+      {
+        "id": "BD25213B-0547-4FBA-A458-F4BFC2A5073A",
+        "mediaID": "33A13CC1-04D6-4FB4-A7E3-B5E82C15543C",
+        "timelineStart": 0,
+        "duration": 3,
+        "x": 0.55,
+        "y": 0.07,
+        "width": 0.38,
+        "height": 0.38,
+        "track": 0
+      },
+      {
+        "id": "9F7A91D3-03DC-4FD3-A997-5D6D53873A31",
+        "mediaID": "11FE7E3C-DF2C-4C51-A317-1FD917EED7C9",
+        "timelineStart": 4,
+        "duration": 3,
+        "x": 0.55,
+        "y": 0.07,
+        "width": 0.38,
+        "height": 0.38,
+        "track": 1
+      },
+      {
+        "id": "2580C4A7-8962-4C29-A0F2-99203CCFCDE0",
+        "mediaID": "336A4D4D-758C-487D-AB51-1B7D250443B3",
+        "timelineStart": 8,
+        "duration": 3,
+        "x": 0.55,
+        "y": 0.07,
+        "width": 0.38,
+        "height": 0.38,
+        "track": 2
+      },
+      {
+        "id": "33A12500-52A9-4B79-A4DF-91852D9C8A60",
+        "mediaID": "126CDA8F-2B19-4056-A1AD-771F285238D8",
+        "timelineStart": 12,
+        "duration": 3,
+        "x": 0.55,
+        "y": 0.07,
+        "width": 0.38,
+        "height": 0.38,
+        "track": 0
+      },
+      {
+        "id": "D13E9026-9630-4690-A69B-92AA9DDE2332",
+        "mediaID": "55F9B5C8-A0E7-4B51-A3D9-75FB8C8CD1C0",
+        "timelineStart": 16,
+        "duration": 3,
+        "x": 0.55,
+        "y": 0.07,
+        "width": 0.38,
+        "height": 0.38,
+        "track": 1
+      },
+      {
+        "id": "4782E28D-543C-43FD-AEDE-622E1C2D3441",
+        "mediaID": "D7B6B18C-EC9A-4AF6-A1AD-9A935A24628E",
+        "timelineStart": 20,
+        "duration": 3,
+        "x": 0.55,
+        "y": 0.07,
+        "width": 0.38,
+        "height": 0.38,
+        "track": 2
+      },
+      {
+        "id": "E7D46C5A-F0D9-43E5-A6AE-C0DAED758BB1",
+        "mediaID": "5DB2C9D3-9DC4-4F81-A1C2-FC82A9479592",
+        "timelineStart": 24,
+        "duration": 3,
+        "x": 0.55,
+        "y": 0.07,
+        "width": 0.38,
+        "height": 0.38,
+        "track": 0
+      },
+      {
+        "id": "7E9FC5DB-389D-438F-A6B0-22075CEB221C",
+        "mediaID": "460A11E6-08EF-4F45-A0C8-2058888E133B",
+        "timelineStart": 28,
+        "duration": 3,
+        "x": 0.55,
+        "y": 0.07,
+        "width": 0.38,
+        "height": 0.38,
+        "track": 1
+      },
+      {
+        "id": "CEE533FD-F66D-4F34-A48A-B3DDE06AF318",
+        "mediaID": "8D388E95-24E9-4836-AAC2-342C905D4870",
+        "timelineStart": 32,
+        "duration": 3,
+        "x": 0.55,
+        "y": 0.07,
+        "width": 0.38,
+        "height": 0.38,
+        "track": 2
+      },
+      {
+        "id": "7B0BE61F-2FAC-46FC-AE6C-B9F8D095F4AC",
+        "mediaID": "AF171BDE-56D4-42C6-AD03-F405F3B0CC2A",
+        "timelineStart": 36,
+        "duration": 3,
+        "x": 0.55,
+        "y": 0.07,
+        "width": 0.38,
+        "height": 0.38,
+        "track": 0
+      },
+      {
+        "id": "3FDE2A24-5B6E-470A-A4D9-7EFAB99C4731",
+        "mediaID": "920B94E8-1E0C-431A-AF1A-D04256489D9E",
+        "timelineStart": 40,
+        "duration": 3,
+        "x": 0.55,
+        "y": 0.07,
+        "width": 0.38,
+        "height": 0.38,
+        "track": 1
+      },
+      {
+        "id": "6562A68B-D89C-4881-AFF7-817B49F5EC32",
+        "mediaID": "1D0D6670-DB32-4300-AAD2-073D12351A1F",
+        "timelineStart": 44,
+        "duration": 3,
+        "x": 0.55,
+        "y": 0.07,
+        "width": 0.38,
+        "height": 0.38,
+        "track": 2
+      }
+    ],
+    "selectedOverlayID": "BD25213B-0547-4FBA-A458-F4BFC2A5073A",
+    "media": [
+      {
+        "id": "33A13CC1-04D6-4FB4-A7E3-B5E82C15543C",
+        "name": "Uploaded clip 0.mov",
+        "kind": "video",
+        "onMainTrack": false,
+        "usedAsOverlay": true
+      },
+      {
+        "id": "11FE7E3C-DF2C-4C51-A317-1FD917EED7C9",
+        "name": "Uploaded clip 1.mov",
+        "kind": "video",
+        "onMainTrack": false,
+        "usedAsOverlay": true
+      },
+      {
+        "id": "336A4D4D-758C-487D-AB51-1B7D250443B3",
+        "name": "Uploaded clip 2.mov",
+        "kind": "video",
+        "onMainTrack": false,
+        "usedAsOverlay": true
+      },
+      {
+        "id": "126CDA8F-2B19-4056-A1AD-771F285238D8",
+        "name": "Uploaded clip 3.mov",
+        "kind": "video",
+        "onMainTrack": false,
+        "usedAsOverlay": true
+      },
+      {
+        "id": "55F9B5C8-A0E7-4B51-A3D9-75FB8C8CD1C0",
+        "name": "Uploaded clip 4.mov",
+        "kind": "video",
+        "onMainTrack": false,
+        "usedAsOverlay": true
+      },
+      {
+        "id": "D7B6B18C-EC9A-4AF6-A1AD-9A935A24628E",
+        "name": "Uploaded clip 5.mov",
+        "kind": "video",
+        "onMainTrack": false,
+        "usedAsOverlay": true
+      },
+      {
+        "id": "5DB2C9D3-9DC4-4F81-A1C2-FC82A9479592",
+        "name": "Uploaded clip 6.mov",
+        "kind": "video",
+        "onMainTrack": false,
+        "usedAsOverlay": true
+      },
+      {
+        "id": "460A11E6-08EF-4F45-A0C8-2058888E133B",
+        "name": "Uploaded clip 7.mov",
+        "kind": "video",
+        "onMainTrack": false,
+        "usedAsOverlay": true
+      },
+      {
+        "id": "8D388E95-24E9-4836-AAC2-342C905D4870",
+        "name": "Uploaded clip 8.mov",
+        "kind": "video",
+        "onMainTrack": false,
+        "usedAsOverlay": true
+      },
+      {
+        "id": "AF171BDE-56D4-42C6-AD03-F405F3B0CC2A",
+        "name": "Uploaded clip 9.mov",
+        "kind": "video",
+        "onMainTrack": false,
+        "usedAsOverlay": true
+      },
+      {
+        "id": "920B94E8-1E0C-431A-AF1A-D04256489D9E",
+        "name": "Uploaded clip 10.mov",
+        "kind": "video",
+        "onMainTrack": false,
+        "usedAsOverlay": true
+      },
+      {
+        "id": "1D0D6670-DB32-4300-AAD2-073D12351A1F",
+        "name": "Uploaded clip 11.mov",
+        "kind": "video",
+        "onMainTrack": false,
+        "usedAsOverlay": true
+      },
+      {
+        "id": "BCFA7766-7CAC-4BE9-AEAF-E7813A6B8E93",
+        "name": "unused.png",
+        "kind": "image",
+        "onMainTrack": false,
+        "usedAsOverlay": false
+      }
+    ]
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "i uploaded a ton of media to use as overlays. overlay parts of them wherever they make sense"
+    },
+    {
+      "role": "assistant",
+      "content": "Placed 12 changes · ⌘Z to undo"
+    },
+    {
+      "role": "user",
+      "content": "make all overlays full screen please"
+    }
+  ],
+  "expect": {
+    "actions": ["editor.overlays.setFrame"],
+    "args": [
+      {
+        "pointer": "/overlayIDs",
+        "equals": []
+      },
+      {
+        "pointer": "/all",
+        "equals": true
+      },
+      {
+        "pointer": "/fit",
+        "equals": "full"
+      },
+      {
+        "pointer": "/time",
+        "absent": true
+      }
+    ]
+  }
+}

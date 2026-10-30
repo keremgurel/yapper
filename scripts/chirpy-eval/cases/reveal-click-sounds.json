@@ -1,0 +1,33 @@
+{
+  "id": "reveal-click-sounds",
+  "from": "planner.integration.test.ts: binds the exact sound request to saved click and cost reveals",
+  "tags": ["reveals", "audio"],
+  "catalog": "legacy-client",
+  "base": "google-ads",
+  "messages": [
+    {
+      "role": "user",
+      "content": "add click sound effects when we reveal the clicks and cost"
+    }
+  ],
+  "expect": {
+    "actions": ["editor.sounds.addAtReveals"],
+    "args": [
+      {
+        "pointer": "",
+        "keys": ["effectID", "eventIDs"]
+      },
+      {
+        "pointer": "/effectID",
+        "equals": "mouse-click"
+      },
+      {
+        "pointer": "/eventIDs",
+        "sameSet": [
+          "1385EF9B-98A4-4480-B58F-954A2685609B/number-3",
+          "1385EF9B-98A4-4480-B58F-954A2685609B/number-0"
+        ]
+      }
+    ]
+  }
+}

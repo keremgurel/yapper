@@ -1,0 +1,36 @@
+{
+  "id": "reveal-policy-correction",
+  "from": "planner.integration.test.ts: interprets the reported masking correction without touching cost or clicks",
+  "tags": ["reveals"],
+  "catalog": "legacy-client",
+  "base": "google-ads",
+  "messages": [
+    {
+      "role": "user",
+      "content": "well i still see the google ads overlay hide the impression and cpc. Keep those visible at all times."
+    }
+  ],
+  "expect": {
+    "actions": ["editor.reveals.setPolicy"],
+    "args": [
+      {
+        "pointer": "/overlayID",
+        "equals": "1385EF9B-98A4-4480-B58F-954A2685609B"
+      },
+      {
+        "pointer": "/regions",
+        "length": 2,
+        "containsAll": [
+          {
+            "regionID": "number-1",
+            "policy": "alwaysVisible"
+          },
+          {
+            "regionID": "number-2",
+            "policy": "alwaysVisible"
+          }
+        ]
+      }
+    ]
+  }
+}

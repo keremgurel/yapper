@@ -1,0 +1,47 @@
+{
+  "id": "imports-descriptive-place",
+  "from": "planner.integration.test.ts: places descriptively named imports without asking about main or already placed generic files",
+  "tags": ["imports"],
+  "catalog": "current",
+  "base": "imported-media",
+  "append": {
+    "media": [
+      {
+        "id": "89001F73-2A4F-4A18-AD01-53CE94B3D8A4",
+        "name": "coffee-grinding.mov",
+        "kind": "video",
+        "onMainTrack": false,
+        "usedAsOverlay": false
+      },
+      {
+        "id": "CD66CB6B-167C-4507-A32F-95EB0B7E9121",
+        "name": "coffee-brewing.mov",
+        "kind": "video",
+        "onMainTrack": false,
+        "usedAsOverlay": false
+      },
+      {
+        "id": "3B65E744-6778-4B61-A44E-E4CD3CA4AFD9",
+        "name": "sales-chart.png",
+        "kind": "image",
+        "onMainTrack": false,
+        "usedAsOverlay": false
+      }
+    ]
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "i uploaded a ton of meda to use as overlays. overlay parts of them wherever they make sense"
+    }
+  ],
+  "expect": {
+    "actions": ["editor.designOverlays"],
+    "args": [
+      {
+        "pointer": "/mode",
+        "equals": "placeImported"
+      }
+    ]
+  }
+}

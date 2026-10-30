@@ -1,0 +1,20 @@
+{
+  "id": "captured-reveal-sounds",
+  "from": "planner.integration.test.ts: plans the sound request from captured native project context",
+  "tags": ["captured", "reveals", "audio"],
+  "payload": "$CHIRPY_QA_CONTEXT",
+  "requiresEnv": ["CHIRPY_QA_CONTEXT"],
+  "expect": {
+    "actions": ["editor.sounds.addAtReveals"],
+    "args": [
+      {
+        "pointer": "/effectID",
+        "equals": "mouse-click"
+      },
+      {
+        "pointer": "/eventIDs",
+        "length": 2
+      }
+    ]
+  }
+}

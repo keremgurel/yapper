@@ -1,0 +1,26 @@
+{
+  "id": "cut-quoted-sentence",
+  "from": "planner.integration.test.ts: cuts a quoted sentence by its numbered transcript words",
+  "tags": ["transcript"],
+  "catalog": "current",
+  "base": "imported-media",
+  "messages": [
+    {
+      "role": "user",
+      "content": "cut 'Then I brew the coffee.'"
+    }
+  ],
+  "expect": {
+    "actions": ["editor.transcript.setWordRangesKept"],
+    "args": [
+      {
+        "pointer": "/kept",
+        "equals": false
+      },
+      {
+        "pointer": "/ranges",
+        "rangeNumbers": [6, 7, 8, 9, 10]
+      }
+    ]
+  }
+}

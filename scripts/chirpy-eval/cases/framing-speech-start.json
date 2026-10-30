@@ -1,0 +1,69 @@
+{
+  "id": "framing-speech-start",
+  "from": "planner.integration.test.ts: composes framing keys with local speech anchors",
+  "tags": ["framing", "speech-anchors"],
+  "catalog": "current",
+  "base": "google-ads",
+  "context": {
+    "speechAvailable": true,
+    "clips": [
+      {
+        "id": "clip-speaker",
+        "mediaID": "media-speaker",
+        "sourceStart": 0,
+        "sourceEnd": 90
+      }
+    ],
+    "media": [
+      {
+        "id": "media-speaker",
+        "name": "Speech.mp4",
+        "kind": "video"
+      }
+    ]
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "Quickly zoom in and out of me as I enter my speech"
+    }
+  ],
+  "expect": {
+    "actions": ["editor.video.animateFraming"],
+    "args": [
+      {
+        "pointer": "/keys",
+        "minLength": 3
+      },
+      {
+        "pointer": "/keys/0/scaleMultiplier",
+        "equals": 1
+      },
+      {
+        "pointer": "/keys/-1/scaleMultiplier",
+        "equals": 1
+      },
+      {
+        "pointer": "/keys",
+        "some": {
+          "pointer": "/scaleMultiplier",
+          "gt": 1
+        }
+      },
+      {
+        "pointer": "/keys",
+        "every": {
+          "pointer": "/at/kind",
+          "equals": "speechStart"
+        }
+      },
+      {
+        "pointer": "/keys",
+        "every": {
+          "pointer": "/at/time",
+          "absent": true
+        }
+      }
+    ]
+  }
+}
