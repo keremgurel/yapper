@@ -92,3 +92,22 @@ it.each(["gpt-5.4", "claude-haiku-5.5"])(
     );
   },
 );
+
+it("leaves JSON mode off when tools are offered, which stalls gpt-5.4", async () => {
+  await callSceneModel({
+    model: "gpt-5.4",
+    system: "Plan",
+    user: "cut the coffee sentence",
+    tools: [
+      {
+        type: "function",
+        function: { name: "read_transcript", description: "", parameters: {} },
+      },
+    ],
+    maxCompletionTokens: 100,
+    timeoutMs: 1000,
+  });
+  const body = JSON.parse(outbound.mock.calls[0][1].body);
+  expect(body.response_format).toBeUndefined();
+  expect(body.tool_choice).toBe("auto");
+});

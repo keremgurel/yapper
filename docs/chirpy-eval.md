@@ -118,6 +118,19 @@ The planner now sends the action catalog and schemas as a second system message 
 
 gpt-5.4 fails the same cases as on v1 (`repeated-phrase-clarify` twice, `imports-descriptive-place` once). Haiku's one miss was `mask-from-image` drawing a cover 0.4 tall where the block is 0.6. The p95 list cost for gpt-5.4 is still $0.031: the first turn after the cache goes cold pays full price.
 
+## Read loop (P3a), first run, 2026-10-30: not ready
+
+`CHIRPY_PLANNER=reads` plans with the project's large sections withheld and read through tools (`src/lib/chirpy/loop/`). On the 20 cases, 2 runs:
+
+| Setting             | Model            | Pass | Calls/turn | List $/turn |           Errors |
+| ------------------- | ---------------- | ---: | ---------: | ----------: | ---------------: |
+| default budget      | gpt-5.4          |  90% |       1.00 |     $0.0099 |       2 timeouts |
+| default budget      | claude-haiku-5.5 |  88% |       2.65 |     $0.0015 |  4 invalid plans |
+| everything withheld | gpt-5.4          |  18% |       1.00 |     $0.0016 |      33 timeouts |
+| everything withheld | claude-haiku-5.5 |  73% |       3.42 |     $0.0018 | 11 invalid plans |
+
+The gpt-5.4 timeouts come from JSON mode combined with tools: through the gateway that request never answers (45 s), while the same request without `response_format` returns a tool call in 2 s. `callSceneModel` now drops JSON mode when tools are offered; rerun before drawing conclusions about gpt-5.4. Haiku reads even when every section is inline (2.65 calls a turn on fixtures where nothing is withheld) and ends some turns with plans that fail validation. Both need fixing before the loop can be compared with v1. A real 119 KB project (`ACL update 1 month`) captured with `ChirpyProjectAcceptanceTests` is the next test input: at the default 16 KB budget the overview is about 15 KB, with the transcript (29 KB), timeline items (39 KB) and overlays withheld.
+
 ## Probes
 
 The probes in `scripts/chirpy-eval/probes/` answer the plan's early checks. Each writes JSON to `scripts/chirpy-eval/results/` and prints a markdown table.

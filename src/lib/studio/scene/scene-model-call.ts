@@ -24,19 +24,54 @@ export interface SceneModelCall {
   user: string;
   /** Validated JPEG data, supplied by the native composition inspector. */
   images?: readonly string[];
+  /** Function tools the model may call instead of answering. */
+  tools?: readonly ChatTool[];
+  /** "none" forces an answer, for the last call of a tool loop. */
+  toolChoice?: "auto" | "none";
+  /** Earlier turns of a tool loop, appended after the user message. */
+  followUp?: readonly ChatMessage[];
   maxCompletionTokens: number;
   /** Wall clock for every attempt together. */
   timeoutMs: number;
   signal?: AbortSignal;
 }
 
+export interface ChatTool {
+  type: "function";
+  function: { name: string; description: string; parameters: object };
+}
+
+export interface ChatToolCall {
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+}
+
+export type ChatMessage =
+  | { role: "assistant"; content: string | null; tool_calls?: ChatToolCall[] }
+  | { role: "tool"; tool_call_id: string; content: string }
+  | {
+      role: "user";
+      content:
+        | string
+        | Array<
+            | { type: "text"; text: string }
+            | { type: "image_url"; image_url: { url: string; detail: string } }
+          >;
+    };
+
 export interface SceneModelReply {
   content: string;
+  /** Present when the model called tools instead of answering. */
+  toolCalls?: ChatToolCall[];
   finishReason?: string;
 }
 
 interface ChatCompletionResponse {
-  choices?: { message?: { content?: string }; finish_reason?: string }[];
+  choices?: {
+    message?: { content?: string | null; tool_calls?: ChatToolCall[] };
+    finish_reason?: string;
+  }[];
   /** The gateway answers 200 and puts the provider's failure in the body. */
   error?: { code?: number; message?: string };
 }
@@ -96,11 +131,16 @@ export async function callSceneModel(
             max_completion_tokens: call.maxCompletionTokens,
             // The gateway forwards Claude requests without translating this
             // OpenAI-only option. The prompt + parser still require JSON.
-            ...(!call.model.startsWith("claude-")
+            // With tools, gpt-5.4 through the gateway never answers when JSON
+            // mode is also on (probe, 2026-10-30): 45 s timeout against 2 s.
+            ...(!call.model.startsWith("claude-") && !call.tools?.length
               ? { response_format: { type: "json_object" } }
               : {}),
             ...(call.promptCacheKey && call.model.startsWith("gpt-")
               ? { prompt_cache_key: call.promptCacheKey }
+              : {}),
+            ...(call.tools?.length
+              ? { tools: call.tools, tool_choice: call.toolChoice ?? "auto" }
               : {}),
             messages: [
               { role: "system", content: call.system },
@@ -122,6 +162,7 @@ export async function callSceneModel(
                     ]
                   : call.user,
               },
+              ...(call.followUp ?? []),
             ],
           }),
         },
@@ -137,6 +178,10 @@ export async function callSceneModel(
         throw new Error("answer_truncated");
       }
       const content = choice?.message?.content ?? "";
+      const toolCalls = choice?.message?.tool_calls ?? [];
+      if (toolCalls.length && !data.error) {
+        return { content, toolCalls, finishReason: choice?.finish_reason };
+      }
       if (content.trim() && !data.error) {
         return { content, finishReason: choice?.finish_reason };
       }
