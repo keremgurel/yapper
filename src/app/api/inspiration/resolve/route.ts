@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import {
@@ -47,7 +48,7 @@ interface SourceDetails {
   referenceType?: ReferenceContentType;
 }
 
-export async function POST(req: Request) {
+async function trackedPOST(req: Request) {
   const { userId } = await auth();
   if (!userId)
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -294,3 +295,5 @@ function creatorFallback(platform: ResolvedLink["platform"]): string {
       return "Creator";
   }
 }
+
+export const POST = withProductAnalytics("inspiration_resolved", trackedPOST);

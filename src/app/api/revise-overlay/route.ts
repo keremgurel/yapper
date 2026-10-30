@@ -1,6 +1,9 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { handleSceneRequest } from "@/lib/studio/scene/route-handler";
 export const runtime = "nodejs";
 export const maxDuration = 300;
-export async function POST(req: Request) {
+async function trackedPOST(req: Request) {
   return handleSceneRequest(req, "revise");
 }
+
+export const POST = withProductAnalytics("overlay_revised", trackedPOST);

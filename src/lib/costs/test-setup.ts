@@ -3,4 +3,5 @@ import { vi } from "vitest";
 // The budget's own database and egress tests explicitly unmock this module.
 vi.mock("@/lib/costs/provider-budget", () => ({
   guardProviderEgress: vi.fn(() => null),
+  settleProviderBudget: vi.fn(),
 }));

@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import {
   preflightPaidActionOrResponse,
@@ -150,7 +151,7 @@ const SYSTEM =
  *
  * Responds 501 when no key is configured, like the other AI passes.
  */
-export async function POST(req: Request): Promise<Response> {
+async function trackedPOST(req: Request): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const ingressLimited = await guardProviderIngress(req);
@@ -296,3 +297,5 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 }
+
+export const POST = withProductAnalytics("overlays_placed", trackedPOST);

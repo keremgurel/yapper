@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import {
@@ -33,7 +34,7 @@ type Params = { params: Promise<{ id: string; format: string }> };
  * the body names a different one) and save it. Billed like drafting an idea,
  * and refunded when the writing fails, so a failed attempt costs nothing.
  */
-export async function POST(req: NextRequest, { params }: Params) {
+async function trackedPOST(req: NextRequest, { params }: Params) {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const ingressLimited = await guardProviderIngress(req);
@@ -112,3 +113,5 @@ export async function POST(req: NextRequest, { params }: Params) {
     return Response.json({ error: "version_failed", detail }, { status });
   }
 }
+
+export const POST = withProductAnalytics("idea_version_written", trackedPOST);

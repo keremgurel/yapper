@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import {
@@ -32,7 +33,7 @@ const FEED_CACHE_MS = 12 * 60 * 60 * 1000;
  * erroring, so saving a creator never hard-fails on the feed being unavailable.
  * Which source serves the feed is `fetchCreatorFeed`'s business, not this
  * route's. */
-export async function POST(req: Request) {
+async function trackedPOST(req: Request) {
   const { userId } = await auth();
   if (!userId)
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -106,3 +107,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ videos: [], error: detail }, { status: 200 });
   }
 }
+
+export const POST = withProductAnalytics("creator_analyzed", trackedPOST);

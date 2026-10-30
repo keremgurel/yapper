@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import {
   PosterSlotBusyError,
   posterSlotBusyResponse,
@@ -80,7 +81,7 @@ interface FeedbackResult {
  * crash before commit leaves the user uncharged (we absorb the compute) rather
  * than charged-without-result. No refund path, no reconcile sweep.
  */
-export async function POST(req: NextRequest): Promise<Response> {
+async function trackedPOST(req: NextRequest): Promise<Response> {
   const workflow = createFeedbackWorkflow(req.signal);
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
@@ -349,3 +350,5 @@ async function runTier(
   const metrics = words.length ? computeMetrics(words) : undefined;
   return { metrics, coaching, words, mediaBytes };
 }
+
+export const POST = withProductAnalytics("feedback_generated", trackedPOST);

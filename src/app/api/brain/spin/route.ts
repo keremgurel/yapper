@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import {
@@ -29,7 +30,7 @@ export const maxDuration = 60;
  * the creator's own brain, and so a client cannot deal itself a combination the
  * creator never set up.
  */
-export async function POST(req: NextRequest): Promise<Response> {
+async function trackedPOST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const ingressLimited = await guardProviderIngress(req);
@@ -95,3 +96,5 @@ export async function POST(req: NextRequest): Promise<Response> {
     return Response.json({ error: "spin_failed" }, { status: 502 });
   }
 }
+
+export const POST = withProductAnalytics("brain_spin_generated", trackedPOST);

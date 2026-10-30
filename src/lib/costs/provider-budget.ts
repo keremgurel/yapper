@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
+import { modelPrice } from "./model-prices";
 
 export class ProviderBudgetError extends Error {
   constructor() {
@@ -17,25 +18,58 @@ function limit(name: string, fallback: number): number {
   return Math.floor(value * 1_000_000);
 }
 
+/** What one admission claimed, so a reply with known usage can settle it. */
+export interface ProviderReservation {
+  microusd: number;
+  at: Date;
+}
+
+function globalWindowKeys(at: Date): [string, string] {
+  const day = at.toISOString().slice(0, 10);
+  return [`day:${day}`, `month:${day.slice(0, 7)}`];
+}
+
 /** Reserve before every paid attempt, including retries and background work.
- * Reservations are deliberately never refunded: a timeout/customer refund is
- * not evidence that the provider did no billable work. Fixed UTC windows avoid
- * a token bucket's burst-plus-refill exceeding the advertised daily ceiling. */
+ * A failure or timeout keeps its whole reservation: it is not evidence that
+ * the provider did no billable work. Only a successful reply that reports its
+ * token usage settles down to list cost (settleProviderBudget). Fixed UTC
+ * windows avoid a token bucket's burst-plus-refill exceeding the daily cap. */
 export async function reserveProviderBudget(
   microusd: number,
   now = new Date(),
-): Promise<void> {
+): Promise<ProviderReservation> {
   if (!Number.isSafeInteger(microusd) || microusd <= 0)
     throw new ProviderBudgetError();
-  const day = now.toISOString().slice(0, 10);
+  const [day, month] = globalWindowKeys(now);
   const windows = [
-    { key: `day:${day}`, cap: limit("PROVIDER_DAILY_BUDGET_USD", 25) },
-    {
-      key: `month:${day.slice(0, 7)}`,
-      cap: limit("PROVIDER_MONTHLY_BUDGET_USD", 250),
-    },
+    { key: day, cap: limit("PROVIDER_DAILY_BUDGET_USD", 25) },
+    { key: month, cap: limit("PROVIDER_MONTHLY_BUDGET_USD", 250) },
   ];
-  return reserveWindows(microusd, windows, now);
+  await reserveWindows(microusd, windows, now);
+  return { microusd, at: now };
+}
+
+/** Return the part of a reservation the call did not use. Admission reserves a
+ * worst case (request bytes as tokens, the full completion cap), which on a
+ * long Chirpy request is over a dollar; without settling, a few dozen calls a
+ * day would exhaust the ceiling. Best effort: a failed settle only leaves the
+ * window conservative. */
+export async function settleProviderBudget(
+  reservation: ProviderReservation,
+  actualMicrousd: number,
+): Promise<void> {
+  const refund = reservation.microusd - Math.ceil(actualMicrousd);
+  if (!Number.isFinite(refund) || refund <= 0) return;
+  const [day, month] = globalWindowKeys(reservation.at);
+  try {
+    await getDb().execute(sql`
+      update provider_spend_windows
+      set reserved_microusd = greatest(reserved_microusd - ${refund}, 0)
+      where "window" in (${day}, ${month})
+    `);
+  } catch {
+    console.warn("[costs] provider settlement failed", { refund });
+  }
 }
 
 /** Feature-specific reservations supplement the global provider ceilings. */
@@ -121,15 +155,10 @@ export function providerAllowance(
       }
       return value;
     });
-    const model = String(body.model ?? "");
-    const [inputRate, outputRate] =
-      model === "gpt-5.4-mini"
-        ? [0.75, 4.5]
-        : model === "gpt-5.4"
-          ? [2.5, 15]
-          : [10, 50];
+    const price = modelPrice(String(body.model ?? ""));
     return Math.ceil(
-      (Buffer.byteLength(text) + imageTokens) * inputRate + tokens * outputRate,
+      (Buffer.byteLength(text) + imageTokens) * price.input +
+        tokens * price.output,
     );
   }
   if (url.hostname === "api.deepgram.com" && url.pathname === "/v1/listen")
@@ -149,7 +178,7 @@ export function providerAllowance(
 export function guardProviderEgress(
   input: RequestInfo | URL,
   init: RequestInit,
-): Promise<void> | null {
+): Promise<ProviderReservation> | null {
   const allowance = providerAllowance(input, init);
   return allowance === null ? null : reserveProviderBudget(allowance);
 }
