@@ -1,0 +1,100 @@
+{
+  "description": "The creator's transcription dictionary: spellings the transcriber should use, with the mishearings (aliases) to correct. It belongs to the account, not the project, so changes are not part of Undo.",
+  "runtime": "client",
+  "actions": [
+    {
+      "id": "app.dictionary.addTerm",
+      "symbol": "dictionaryAdd",
+      "input": "DictionaryAddInput",
+      "description": "Add a spelling to the dictionary, with optional aliases it is often misheard as. Adding a term that exists replaces its aliases.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": false
+    },
+    {
+      "id": "app.dictionary.editTerm",
+      "symbol": "dictionaryEdit",
+      "input": "DictionaryEditInput",
+      "description": "Change a term listed in dictionary: respell it, add aliases, or remove aliases. Send only what changes.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": false
+    },
+    {
+      "id": "app.dictionary.removeTerm",
+      "symbol": "dictionaryRemove",
+      "input": "DictionaryRemoveInput",
+      "description": "Remove a term listed in dictionary, with its aliases.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": false
+    }
+  ],
+  "$defs": {
+    "DictionaryAddInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["term"],
+      "properties": {
+        "term": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "aliases": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        }
+      }
+    },
+    "DictionaryEditInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["term"],
+      "properties": {
+        "term": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "newTerm": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "addAliases": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        },
+        "removeAliases": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        }
+      }
+    },
+    "DictionaryRemoveInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["term"],
+      "properties": {
+        "term": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
+      }
+    }
+  }
+}

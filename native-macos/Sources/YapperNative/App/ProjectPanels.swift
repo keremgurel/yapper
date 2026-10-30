@@ -29,7 +29,7 @@ enum ProjectPanels {
             initial: "Untitled project",
             action: "Create"
         ) else { return }
-        Task { await session.createProject(named: name) }
+        Task { await session.performAppAction(ProjectCreateInput(name: String(name.prefix(120)))) }
     }
 
     static func renameProject(for session: EditorSession) {
@@ -39,7 +39,7 @@ enum ProjectPanels {
             initial: session.project.name,
             action: "Rename"
         ) else { return }
-        Task { await session.renameCurrentProject(to: name) }
+        Task { await session.performAppAction(ProjectRenameInput(name: String(name.prefix(120)))) }
     }
 
     static func openProject(for session: EditorSession) {

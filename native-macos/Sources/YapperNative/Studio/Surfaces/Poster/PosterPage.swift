@@ -105,7 +105,7 @@ struct PosterPage: View {
             PosterVideoGrid(source: source, videos: videos, loading: sourceLoading, connected: sourceConnected,
                             bench: bench, upload: upload, onConnect: connections.connect, onTrashProject: { listing in
                                 Task {
-                                    await session.trashProject(listing.package)
+                                    await session.performAppAction(ProjectTrashInput(projectID: listing.summary.id))
                                     await library.refresh()
                                 }
                             })

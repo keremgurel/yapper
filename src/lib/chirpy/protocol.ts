@@ -157,6 +157,12 @@ export function discoveredCatalog(input: PlanInput) {
     .filter((action) => ids.has(action.id))
     .map((action) => ({ ...action, parameters: definitions[action.input] }));
 }
+/** Workflows own their transaction, and app.* actions change which project
+ * is open or act outside it, so neither can share an atomic batch. */
+function runsAlone(action: { id: string; effect: string }): boolean {
+  return action.effect === "workflow" || action.id.startsWith("app.");
+}
+
 export function parsePlanReply(
   raw: unknown,
   input: PlanInput,
@@ -167,7 +173,7 @@ export function parsePlanReply(
   for (const call of reply.actions) {
     const action = catalog.find((item) => item.id === call.action);
     if (!action || !validate(call.arguments, action.parameters)) return null;
-    if (action.effect === "workflow" && reply.actions.length !== 1) return null;
+    if (runsAlone(action) && reply.actions.length !== 1) return null;
   }
   return reply;
 }
@@ -202,8 +208,10 @@ export function planValidationIssue(raw: unknown, input: PlanInput): string {
       return "An action is not in this client's catalog. Use only advertised IDs or return no actions and explain the limitation.";
     if (!validate(call.arguments, action.parameters))
       return `Arguments for ${action.id} do not match its schema. Check required fields, enum values, UUIDs, numeric ranges and extra fields.`;
-    if (action.effect === "workflow" && reply.actions.length !== 1)
-      return "A workflow must run alone. Do not mix it with other actions.";
+    if (runsAlone(action) && reply.actions.length !== 1)
+      return action.effect === "workflow"
+        ? "A workflow must run alone. Do not mix it with other actions."
+        : "Project and dictionary actions must run alone. Do not mix them with other actions.";
   }
   return "Return a plan matching the supplied schemas.";
 }

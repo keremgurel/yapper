@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   parsePlanInput,
   parsePlanReply,
+  planValidationIssue,
   discoveredCatalog,
   schemaDefinitions,
   type PlanInput,
@@ -165,4 +166,31 @@ it("discovers only the definitions used by available feature actions", () => {
   expect(definitions.RevealPolicyInput).toBeUndefined();
   expect(definitions.MaskRegionInput).toBeUndefined();
   expect(definitions.ChirpyPlanReply).toBeUndefined();
+});
+
+it("lets a project or dictionary action run only on its own", () => {
+  const withApp: PlanInput = {
+    ...input,
+    catalog: [
+      { id: "app.dictionary.addTerm" },
+      { id: "editor.captions.setVisible" },
+    ],
+  };
+  const add = {
+    action: "app.dictionary.addTerm",
+    arguments: { term: "Yapper" },
+  };
+  const hide = {
+    action: "editor.captions.setVisible",
+    arguments: { visible: false },
+  };
+  expect(
+    parsePlanReply({ message: "", actions: [add] }, withApp),
+  ).not.toBeNull();
+  expect(
+    parsePlanReply({ message: "", actions: [add, hide] }, withApp),
+  ).toBeNull();
+  expect(
+    planValidationIssue({ message: "", actions: [add, hide] }, withApp),
+  ).toContain("Project and dictionary actions must run alone");
 });

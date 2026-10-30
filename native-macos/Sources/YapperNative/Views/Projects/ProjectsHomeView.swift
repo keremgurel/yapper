@@ -27,11 +27,11 @@ struct ProjectsHomeView: View {
                             ProjectCard(
                                 listing: listing,
                                 isOpen: navigation.currentPackage == listing.package,
-                                onOpen: { Task { await session.openProject(listing.package) } },
+                                onOpen: { Task { await session.performAppAction(ProjectOpenInput(projectID: listing.summary.id)) } },
                                 onRename: { rename(listing) },
-                                onDuplicate: { Task { await session.duplicateProject(listing.package) } },
+                                onDuplicate: { Task { await session.performAppAction(ProjectDuplicateInput(projectID: listing.summary.id)) } },
                                 onReveal: { ProjectPanels.revealInFinder(listing.package) },
-                                onTrash: { Task { await session.trashProject(listing.package) } }
+                                onTrash: { Task { await session.performAppAction(ProjectTrashInput(projectID: listing.summary.id)) } }
                             )
                         }
                     }
@@ -110,7 +110,7 @@ struct ProjectsHomeView: View {
     private func rename(_ listing: ProjectListing) {
         if navigation.currentPackage != listing.package {
             Task {
-                await session.openProject(listing.package)
+                await session.performAppAction(ProjectOpenInput(projectID: listing.summary.id))
                 ProjectPanels.renameProject(for: session)
             }
         } else {

@@ -60,8 +60,23 @@ extension EditorSession {
             "timelineItems": .array(try timelineItemsForContext()),
             "transcript": .array(project.chirpyTranscript()),
             "recentResults": try .encoding(conversation.results.suffix(16)),
-            "activeOperation": .bool(activeOperation != nil)
+            "activeOperation": .bool(activeOperation != nil),
+            "projectLibrary": .array(await projectLibraryForContext()),
+            "dictionary": .array(dictionaryEntries.prefix(TranscriptionDictionary.maximumEntries).map {
+                .object(["term": .string($0.term), "aliases": .array($0.aliases.map(ActionJSON.string))])
+            })
         ]
+    }
+
+    /// The newest projects with the IDs the app.projects actions take. Names
+    /// only: other projects' contents never enter this project's context.
+    private func projectLibraryForContext() async -> [ActionJSON] {
+        let listings = (try? await library.listings()) ?? []
+        return listings.prefix(50).map { listing in
+            .object(["id": .string(listing.summary.id.uuidString), "name": .string(listing.summary.name),
+                     "updatedAt": .string(listing.summary.updatedAt.ISO8601Format()),
+                     "open": .bool(isOpen(listing))])
+        }
     }
 
     /// Every item on the timeline with its kind and timeline span, in play

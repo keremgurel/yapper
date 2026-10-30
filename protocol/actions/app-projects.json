@@ -1,0 +1,106 @@
+{
+  "description": "The project library: create, open, rename, duplicate and move projects to the Trash. These change which project is open or its folder, so each runs on its own and is not part of Undo.",
+  "runtime": "client",
+  "actions": [
+    {
+      "id": "app.projects.create",
+      "symbol": "projectCreate",
+      "input": "ProjectCreateInput",
+      "description": "Create a new empty project with this name and open it. The open project is saved first. Ends the current editing conversation, so run it alone.",
+      "effect": "navigation",
+      "requiresRebuild": false
+    },
+    {
+      "id": "app.projects.open",
+      "symbol": "projectOpen",
+      "input": "ProjectOpenInput",
+      "description": "Open a project from projectLibrary by its id. The open project is saved first.",
+      "effect": "navigation",
+      "requiresRebuild": false
+    },
+    {
+      "id": "app.projects.rename",
+      "symbol": "projectRename",
+      "input": "ProjectRenameInput",
+      "description": "Rename the open project and its folder in the library.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": false
+    },
+    {
+      "id": "app.projects.duplicate",
+      "symbol": "projectDuplicate",
+      "input": "ProjectDuplicateInput",
+      "description": "Copy a project from projectLibrary, the open one included, and open the copy.",
+      "effect": "navigation",
+      "requiresRebuild": false
+    },
+    {
+      "id": "app.projects.trash",
+      "symbol": "projectTrash",
+      "input": "ProjectTrashInput",
+      "description": "Move a project from projectLibrary to the Finder Trash, where the creator can restore it. The creator is asked to confirm first.",
+      "effect": "destructive",
+      "confirm": true,
+      "requiresRebuild": false
+    }
+  ],
+  "$defs": {
+    "ProjectCreateInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      }
+    },
+    "ProjectOpenInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projectID"],
+      "properties": {
+        "projectID": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "ProjectRenameInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      }
+    },
+    "ProjectDuplicateInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projectID"],
+      "properties": {
+        "projectID": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "ProjectTrashInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projectID"],
+      "properties": {
+        "projectID": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    }
+  }
+}

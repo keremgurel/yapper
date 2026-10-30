@@ -120,7 +120,7 @@ struct YapperNativeApp: App {
                 Divider()
                 Button("Rename Project…") { ProjectPanels.renameProject(for: session) }
                     .disabled(session.projectNavigation.currentPackage == nil)
-                Button("Duplicate Project") { Task { await session.duplicateCurrentProject() } }
+                Button("Duplicate Project") { Task { await session.performAppAction(ProjectDuplicateInput(projectID: session.project.id)) } }
                     .disabled(session.projectNavigation.currentPackage == nil || session.isBusy)
                 Button("Save a Copy…") { ProjectPanels.saveCopy(for: session) }
                     .keyboardShortcut("s", modifiers: [.command, .shift])
