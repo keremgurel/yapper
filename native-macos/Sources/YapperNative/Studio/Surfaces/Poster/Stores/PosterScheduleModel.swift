@@ -1,7 +1,9 @@
 import Foundation
 
 /// Saving the prepared posts to send later. The request key is kept, so a
-/// second press replays the same schedule instead of creating another.
+/// second press replays the same schedule instead of creating another,
+/// unless the server said nothing was saved and the creator has to change
+/// something first.
 @MainActor
 final class PosterScheduleModel: ObservableObject {
     /// Post now or schedule: the one publish button does whichever is chosen.
@@ -30,6 +32,7 @@ final class PosterScheduleModel: ObservableObject {
         _ targets: [PosterPublishTarget],
         to platforms: [PublishPlatform],
         youtube: PosterYouTubeSettings,
+        tiktok: PosterTikTokReview?,
         connections: PosterConnectionStore
     ) async -> Bool {
         let count = targets.count * platforms.count
@@ -50,7 +53,7 @@ final class PosterScheduleModel: ObservableObject {
                 [
                     "platform": platform.rawValue,
                     "expectedAccountId": connections.accountID(for: platform) ?? "",
-                    "input": Dictionary.compact(Self.input(target, platform, youtube: youtube)),
+                    "input": Dictionary.compact(Self.input(target, platform, youtube: youtube, tiktok: tiktok)),
                 ] as [String: Any]
             }
         }
@@ -64,6 +67,7 @@ final class PosterScheduleModel: ObservableObject {
             saved = true
             return true
         } catch let failure as PosterHTTPError {
+            if Self.notSaved(failure.code) { requestKey = nil }
             error = PosterErrorCopy.schedule(failure.code)
         } catch {
             self.error = PosterErrorCopy.schedule(nil)
@@ -71,7 +75,22 @@ final class PosterScheduleModel: ObservableObject {
         return false
     }
 
-    private static func input(_ target: PosterPublishTarget, _ platform: PublishPlatform, youtube: PosterYouTubeSettings) -> [String: Any?] {
+    /// Codes for a schedule the server refused outright. The next press is a
+    /// new request, so the corrected posts are not compared with the refused
+    /// ones. Same set as the web's `use-schedule-submit`.
+    static func notSaved(_ code: String?) -> Bool {
+        guard let code else { return false }
+        return code.hasPrefix("tiktok_") || [
+            "invalid_body", "destination_not_connected", "destination_account_changed", "thumbnail_unavailable",
+            "media_unavailable", "media_not_found", "content_item_unavailable", "duplicate_destination", "too_many_scheduled",
+        ].contains(code)
+    }
+
+    /// What one destination sends when its time comes: the same copy, cover
+    /// and settings a post now would. TikTok carries its reviewed Direct Post
+    /// caption and settings, or nothing extra for an inbox draft.
+    static func input(_ target: PosterPublishTarget, _ platform: PublishPlatform, youtube: PosterYouTubeSettings,
+                      tiktok: PosterTikTokReview?) -> [String: Any?] {
         var input = target.sourceBody
         input["thumbnailKey"] = target.thumbnailKey
         let copy = target.copy(for: platform)
@@ -83,7 +102,10 @@ final class PosterScheduleModel: ObservableObject {
         case .instagram, .facebook:
             input["caption"] = copy.body.isEmpty ? copy.title : copy.body
         case .tiktok:
-            break
+            if let tiktok, tiktok.mode == .direct {
+                input["caption"] = tiktok.caption
+                input["settings"] = PosterPublishAPI.settingsBody(tiktok.settings)
+            }
         }
         return input
     }

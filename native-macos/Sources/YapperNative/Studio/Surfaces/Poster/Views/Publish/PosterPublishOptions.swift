@@ -26,7 +26,9 @@ struct PosterPublishOptions: View {
                 PosterTikTokSettingsView(model: tiktok, video: video)
             }
             if showsWhen {
-                PosterWhenPicker(model: schedule) { StudioNavigation.shared.goTo(.calendar) }
+                PosterWhenPicker(model: schedule, tiktokInbox: chosen.contains(.tiktok) && tiktok.mode == .inbox) {
+                    StudioNavigation.shared.goTo(.calendar)
+                }
             }
             PosterOutcomeList(outcomes: session.outcomes)
         }

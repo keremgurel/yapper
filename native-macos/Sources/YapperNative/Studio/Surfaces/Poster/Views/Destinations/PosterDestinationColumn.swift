@@ -40,7 +40,7 @@ struct PosterDestinationColumn: View {
             tiktokReady: tiktok.review(caption: captions.caption(for: .tiktok).rendered).ready
         )
         let busy = session.posting || prep.preparing || schedule.saving
-        let later = schedule.later && schedule.enabled == true && !remaining.contains(.tiktok) && !retrying
+        let later = schedule.later && schedule.enabled == true && !retrying
         let finished = schedule.saved || (!chosen.isEmpty && remaining.isEmpty)
 
         ScrollView {
@@ -72,7 +72,7 @@ struct PosterDestinationColumn: View {
                 if !chosen.isEmpty {
                     PosterPublishOptions(
                         video: video, chosen: remaining, youtubeDescriptionTooLong: gate.youtubeDescriptionTooLong,
-                        showsWhen: schedule.saved || (!finished && !retrying && !remaining.contains(.tiktok)),
+                        showsWhen: schedule.saved || (!finished && !retrying),
                         session: session, tiktok: tiktok, schedule: schedule
                     )
                 }
@@ -129,14 +129,14 @@ struct PosterDestinationColumn: View {
         Task {
             defer { session.end() }
             guard let target = await prep.prepare(video, cover: cover, captions: captions, destinations: Set(remaining)) else { return }
+            let copy = target.copy(for: .tiktok)
+            let review = remaining.contains(.tiktok) ? tiktok.review(caption: copy.body.isEmpty ? copy.title : copy.body) : nil
             if later {
-                guard await schedule.schedule([target], to: remaining, youtube: session.youtube, connections: connections) else { return }
+                guard await schedule.schedule([target], to: remaining, youtube: session.youtube, tiktok: review, connections: connections) else { return }
                 for platform in remaining {
                     drafts.record(PosterOutcome(videoID: target.id, videoTitle: target.title, platform: platform, status: .scheduled))
                 }
             } else {
-                let copy = target.copy(for: .tiktok)
-                let review = remaining.contains(.tiktok) ? tiktok.review(caption: copy.body.isEmpty ? copy.title : copy.body) : nil
                 await session.publish(target, to: remaining, tiktok: review, connections: connections, drafts: drafts)
             }
         }
