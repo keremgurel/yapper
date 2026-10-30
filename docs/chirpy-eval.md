@@ -107,6 +107,17 @@ Nearly every turn was one provider call. The planner's repair call ran on 3 of 6
 
 Effort settings made no measurable difference on v1. On the Snowflake route `reasoning_effort` is dropped (below), and a separate Haiku run with `effort-low` and `effort-high` passed 20 of 20 both ways at the same cost.
 
+## After moving the catalog ahead of the turn (P1), 2026-10-30
+
+The planner now sends the action catalog and schemas as a second system message before the conversation and project, with a `prompt_cache_key` for OpenAI models. Same 20 cases, 2 runs, baseline variant:
+
+| Model            | Turns | Pass | Safety | Cache hit (v1) |  List $/turn (v1) | Settled $/turn (v1) |
+| ---------------- | ----: | ---: | -----: | -------------: | ----------------: | ------------------: |
+| gpt-5.4          |    40 |  93% |   8/10 |       66% (8%) | $0.0135 ($0.0283) | $0.00013 ($0.00063) |
+| claude-haiku-5.5 |    40 |  98% |  10/10 |      83% (13%) | $0.0007 ($0.0021) | $0.00058 ($0.00172) |
+
+gpt-5.4 fails the same cases as on v1 (`repeated-phrase-clarify` twice, `imports-descriptive-place` once). Haiku's one miss was `mask-from-image` drawing a cover 0.4 tall where the block is 0.6. The p95 list cost for gpt-5.4 is still $0.031: the first turn after the cache goes cold pays full price.
+
 ## Probes
 
 The probes in `scripts/chirpy-eval/probes/` answer the plan's early checks. Each writes JSON to `scripts/chirpy-eval/results/` and prints a markdown table.

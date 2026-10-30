@@ -15,6 +15,12 @@ import { fetchBoundedJson, OutboundHttpError } from "@/lib/http/outbound";
 export interface SceneModelCall {
   model: string;
   system: string;
+  /** Material that is the same on every request, such as a tool catalog, sent
+   * as a second system message ahead of `user` so the provider can serve it
+   * from its prompt cache instead of billing it at the full input rate. */
+  reference?: string;
+  /** Groups requests that share a prefix onto one cache (OpenAI models). */
+  promptCacheKey?: string;
   user: string;
   /** Validated JPEG data, supplied by the native composition inspector. */
   images?: readonly string[];
@@ -93,8 +99,14 @@ export async function callSceneModel(
             ...(!call.model.startsWith("claude-")
               ? { response_format: { type: "json_object" } }
               : {}),
+            ...(call.promptCacheKey && call.model.startsWith("gpt-")
+              ? { prompt_cache_key: call.promptCacheKey }
+              : {}),
             messages: [
               { role: "system", content: call.system },
+              ...(call.reference
+                ? [{ role: "system", content: call.reference }]
+                : []),
               {
                 role: "user",
                 content: call.images?.length
