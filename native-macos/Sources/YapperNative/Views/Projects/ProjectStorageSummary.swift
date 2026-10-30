@@ -12,7 +12,7 @@ struct ProjectStorageSummary: View {
                 let snapshot = listings
                 bytes = await Task.detached(priority: .utility) {
                     snapshot.reduce(Int64(0)) { total, listing in
-                        total + ProjectDiskUsage.bytes(in: listing.package.url) + ProjectDiskUsage.bytes(in: ProjectStore.directory.appending(path: "Poster renders/\(listing.summary.id.uuidString)"))
+                        total + ProjectDiskUsage.bytes(in: listing.package.url) + ProjectDiskUsage.bytes(in: PosterRenderCache.folder(for: listing.summary.id))
                     }
                 }.value
             }
