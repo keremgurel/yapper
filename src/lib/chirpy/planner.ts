@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { PAID_ACTIONS } from "@/lib/billing/paid-actions";
 import { callSceneModel } from "@/lib/studio/scene/scene-model-call";
 import { extractJsonObject } from "@/lib/studio/scene/reply-json";
@@ -32,9 +33,19 @@ export async function planChirpy(input: PlanInput, signal?: AbortSignal) {
         detectedRegions?: unknown;
       }
     | undefined;
+  // The catalog and its schemas are the same for every turn from one app
+  // version, so they go ahead of the conversation and project, which change
+  // every turn. Placed after them, as before, nothing past the system prompt
+  // could come from the provider's prompt cache.
+  const reference = JSON.stringify({
+    catalog: discoveredCatalog(input),
+    definitions: schemaDefinitions(input),
+  });
   const request = {
     model: process.env.AI_CHIRPY_MODEL ?? "gpt-5.4",
     system: CHIRPY_SYSTEM,
+    reference,
+    promptCacheKey: `chirpy-${createHash("sha256").update(CHIRPY_SYSTEM).update(reference).digest("hex").slice(0, 16)}`,
     user: JSON.stringify({
       messages: input.messages,
       context: {
@@ -50,8 +61,6 @@ export async function planChirpy(input: PlanInput, signal?: AbortSignal) {
             }
           : undefined,
       },
-      catalog: discoveredCatalog(input),
-      definitions: schemaDefinitions(input),
     }),
     images: image?.jpeg ? [image.jpeg] : undefined,
     maxCompletionTokens: 6000,

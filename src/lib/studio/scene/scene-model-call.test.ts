@@ -69,3 +69,26 @@ it("rejects truncated scene replies", async () => {
     }),
   ).rejects.toThrow("answer_truncated");
 });
+it.each(["gpt-5.4", "claude-haiku-5.5"])(
+  "puts shared reference material before the request for %s, keyed for OpenAI only",
+  async (model) => {
+    await callSceneModel({
+      model,
+      system: "Plan",
+      reference: '{"catalog":[]}',
+      promptCacheKey: "chirpy-abc",
+      user: "make captions bigger",
+      maxCompletionTokens: 100,
+      timeoutMs: 1000,
+    });
+    const body = JSON.parse(outbound.mock.calls[0][1].body);
+    expect(body.messages).toEqual([
+      { role: "system", content: "Plan" },
+      { role: "system", content: '{"catalog":[]}' },
+      { role: "user", content: "make captions bigger" },
+    ]);
+    expect(body.prompt_cache_key).toBe(
+      model.startsWith("gpt-") ? "chirpy-abc" : undefined,
+    );
+  },
+);

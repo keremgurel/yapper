@@ -25,7 +25,7 @@ it("sends the selected overlay image as vision input without duplicating base64 
   const request = vi.mocked(callSceneModel).mock.calls[0][0];
   expect(request.images).toEqual(["/9j/AA=="]);
   expect(request.user).not.toContain("/9j/AA==");
-  expect(request.user).toContain("editor.overlays.zoom");
+  expect(request.reference).toContain("editor.overlays.zoom");
 });
 
 const bulkInput: PlanInput = {
@@ -91,4 +91,32 @@ it("does not retry provider failures as a schema repair", async () => {
   vi.mocked(callSceneModel).mockRejectedValue(new Error("timeout"));
   await expect(planChirpy(bulkInput)).rejects.toThrow("timeout");
   expect(callSceneModel).toHaveBeenCalledTimes(1);
+});
+
+it("sends the catalog ahead of the turn, identical across turns, so it can be cached", async () => {
+  vi.mocked(callSceneModel).mockClear();
+  vi.mocked(callSceneModel).mockResolvedValue({
+    content: JSON.stringify(fullFrameReply),
+  });
+  await planChirpy(bulkInput);
+  await planChirpy({
+    ...bulkInput,
+    executionID: "44444444-4444-4444-8444-444444444444",
+    revision: 3,
+    context: { overlays: [], playhead: 4.2 },
+    messages: [
+      ...bulkInput.messages,
+      { role: "assistant", content: "Done." },
+      { role: "user", content: "now undo that" },
+    ],
+  });
+  const [first, second] = vi
+    .mocked(callSceneModel)
+    .mock.calls.map(([request]) => request);
+  expect(first.reference).toContain("editor.overlays.setFrame");
+  expect(first.user).not.toContain('"catalog"');
+  expect(first.user).not.toContain('"definitions"');
+  expect(second.reference).toBe(first.reference);
+  expect(second.promptCacheKey).toBe(first.promptCacheKey);
+  expect(second.user).not.toBe(first.user);
 });
