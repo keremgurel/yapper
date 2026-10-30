@@ -64,13 +64,16 @@ import Testing
         let cards = session.captions
         marquee(session, cards)
 
-        session.moveCaption(cards[1].id, x: 0.32, y: 0.18)
+        _ = await session.moveCaption(cards[1].id, x: 0.32, y: 0.18).value
 
         for card in cards {
             let moved = position(session, card.id)
             #expect(moved.x == 0.32)
             #expect(moved.y == 0.18)
         }
+        // The drop is committed by the same action Chirpy plans.
+        #expect(session.appActions.recentResults.last?.action == "editor.captions.setStyle")
+        #expect(session.appActions.recentResults.last?.status == .applied)
     }
 
     /// Dragging a card outside the selection is how that card gets picked up,
@@ -80,7 +83,7 @@ import Testing
         let cards = session.captions
         marquee(session, Array(cards.prefix(2)))
 
-        session.moveCaption(cards[3].id, x: 0.4, y: 0.9)
+        _ = await session.moveCaption(cards[3].id, x: 0.4, y: 0.9).value
 
         #expect(session.selectedCaptionIDs == [cards[3].id])
         #expect(position(session, cards[3].id).x == 0.4)
@@ -94,7 +97,7 @@ import Testing
         let cards = session.captions
         marquee(session, cards)
 
-        session.resizeCaption(cards[0].id, width: 0.55)
+        _ = await session.resizeCaption(cards[0].id, width: 0.55).value
 
         #expect(session.captions.allSatisfy { $0.overrides.width == 0.55 })
     }
@@ -108,7 +111,7 @@ import Testing
         session.toggleCaptionApplyToAll()
         #expect(session.captionApplyToAll)
 
-        session.moveCaption(cards[0].id, x: 0.25, y: 0.75)
+        _ = await session.moveCaption(cards[0].id, x: 0.25, y: 0.75).value
 
         #expect(session.captionStyle.x == 0.25)
         #expect(session.captionStyle.y == 0.75)

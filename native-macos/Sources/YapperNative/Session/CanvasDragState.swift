@@ -141,6 +141,20 @@ final class CanvasDragState: ObservableObject {
         return textLayer
     }
 
+    /// Ends the gesture but keeps its draft on screen until the committed edit
+    /// replaces it: the commit is an action that waits for the edit slot, and
+    /// without the draft the layer would jump back for a frame.
+    func holdText() -> ProjectTextLayer? {
+        textOrigin = nil
+        return textLayer
+    }
+
+    /// Drops a held draft once its edit is in, unless another drag took over.
+    func releaseText(_ id: UUID) {
+        guard textOrigin == nil, textLayer?.id == id else { return }
+        textLayer = nil
+    }
+
     // MARK: - Caption
 
     func beginCaption(_ draft: CaptionDraft) {
@@ -163,5 +177,16 @@ final class CanvasDragState: ObservableObject {
             captionOrigin = nil
         }
         return caption
+    }
+
+    /// See `holdText()`.
+    func holdCaption() -> CaptionDraft? {
+        captionOrigin = nil
+        return caption
+    }
+
+    func releaseCaption(_ id: UUID) {
+        guard captionOrigin == nil, caption?.id == id else { return }
+        caption = nil
     }
 }

@@ -110,30 +110,29 @@ extension EditorSession {
         setStatus("Caption look: \(template.name)")
     }
 
-    /// A drag on the preview. Moving a card always writes where it was dropped;
-    /// with Apply-to-all on that becomes the shared position.
-    func moveCaption(_ id: UUID, x: Double, y: Double) {
-        applyCaptionStyle(
-            TextStylePatch(x: x, y: y),
-            coalescing: true,
-            layoutTargets: layoutTargets(draggedBy: id)
-        )
+    /// A drag on the preview, committed through the same caption style action
+    /// Chirpy uses. Moving a card always writes where it was dropped; with
+    /// Apply-to-all on that becomes the shared position.
+    @discardableResult
+    func moveCaption(_ id: UUID, x: Double, y: Double) -> Task<AppActionResult?, Never> {
+        commitCaptionDrag(TextStylePatch(x: TextStyle.clampPosition(x), y: TextStyle.clampPosition(y)), draggedBy: id)
     }
 
-    func rotateCaption(_ id: UUID, rotation: Double) {
-        applyCaptionStyle(
-            TextStylePatch(rotation: rotation),
-            coalescing: true,
-            layoutTargets: layoutTargets(draggedBy: id)
-        )
+    @discardableResult
+    func rotateCaption(_ id: UUID, rotation: Double) -> Task<AppActionResult?, Never> {
+        commitCaptionDrag(TextStylePatch(rotation: TextStyle.clampRotation(rotation)), draggedBy: id)
     }
 
-    func resizeCaption(_ id: UUID, width: Double) {
-        applyCaptionStyle(
-            TextStylePatch(width: width),
-            coalescing: true,
-            layoutTargets: layoutTargets(draggedBy: id)
-        )
+    @discardableResult
+    func resizeCaption(_ id: UUID, width: Double) -> Task<AppActionResult?, Never> {
+        commitCaptionDrag(TextStylePatch(width: TextStyle.clampWidth(width)), draggedBy: id)
+    }
+
+    private func commitCaptionDrag(_ patch: TextStylePatch, draggedBy id: UUID) -> Task<AppActionResult?, Never> {
+        let targets = layoutTargets(draggedBy: id)
+        let input = CaptionStyleInput(captionIDs: captionApplyToAll ? [] : Array(targets),
+                                      applyToAll: captionApplyToAll, style: TextStyleInput(patch))
+        return Task { await performAppAction(input) }
     }
 
     /// Grouping is a property of the cards, so changing it rebuilds them.
