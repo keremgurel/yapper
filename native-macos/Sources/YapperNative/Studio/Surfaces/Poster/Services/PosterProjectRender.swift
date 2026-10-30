@@ -67,12 +67,27 @@ actor PosterProjectRender {
         return FileManager.default.fileExists(atPath: file.path) ? file : nil
     }
 
+    /// Run at launch for what earlier builds left behind: renders of earlier
+    /// edits, and folders of projects that left the library outside the app,
+    /// such as a package deleted in Finder. An empty library is more likely an
+    /// unmounted projects folder than no projects, so it removes nothing.
+    func removeStaleRenders(in library: ProjectLibrary = .shared) async {
+        guard let listings = try? await library.listings(), !listings.isEmpty else { return }
+        let projects = Set(listings.map(\.summary.id)).union(projectTasks.keys)
+        PosterRenderCache.removeFolders(in: PosterRenderCache.root, except: projects)
+        for listing in listings {
+            guard let current = await cached(listing) else { continue }
+            let revision = current.deletingPathExtension().lastPathComponent
+            PosterRenderCache.removeRenders(in: current.deletingLastPathComponent(), except: Set(inFlight.keys).union([revision]))
+        }
+    }
+
     func render(_ listing: ProjectListing) async throws -> URL {
         guard let project = try await ProjectPackageStore(package: listing.package).load(), !project.clips.isEmpty else {
             throw NativeEditorError.exportFailed("Open this project in Editor and add a clip first.")
         }
         let revision = try Self.revision(project)
-        let directory = ProjectStore.directory.appending(path: "Poster renders/\(project.id.uuidString)")
+        let directory = PosterRenderCache.folder(for: project.id)
         let output = directory.appending(path: "\(revision).mp4")
         if FileManager.default.fileExists(atPath: output.path) { return output }
         if let task = inFlight[revision] { return try await task.value }
@@ -89,6 +104,10 @@ actor PosterProjectRender {
         inFlight[revision] = task
         lastRender = task
         defer { inFlight[revision] = nil; projectTasks[project.id]?[revision] = nil }
-        return try await task.value
+        let rendered = try await task.value
+        // Every edit is a new revision of hundreds of MB or more, and only the
+        // latest is shown or posted. Spare any revision still being written.
+        PosterRenderCache.removeRenders(in: directory, except: Set(inFlight.keys))
+        return rendered
     }
 }

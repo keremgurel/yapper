@@ -133,8 +133,7 @@ actor ProjectLibrary {
         let projectID = summary(for: package)?.id
         try FileManager.default.trashItem(at: package.url, resultingItemURL: nil)
         if let projectID {
-            let cache = ProjectStore.directory.appending(path: "Poster renders/\(projectID.uuidString)")
-            try? FileManager.default.removeItem(at: cache)
+            try? FileManager.default.removeItem(at: PosterRenderCache.folder(for: projectID))
         }
         RecentProjects.forget(package.url)
     }

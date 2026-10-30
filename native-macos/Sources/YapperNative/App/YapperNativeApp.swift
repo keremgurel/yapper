@@ -13,6 +13,7 @@ final class YapperNativeAppDelegate: NSObject, NSApplicationDelegate {
         // Dock presence. Explicitly promote and activate it so development
         // launches behave like the packaged application.
         NativeAnalytics.shared.start()
+        Task.detached(priority: .utility) { await PosterProjectRender.shared.removeStaleRenders() }
         NSApp.setActivationPolicy(.regular)
         DispatchQueue.main.async {
             NSApp.activate(ignoringOtherApps: true)
