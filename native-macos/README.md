@@ -50,12 +50,13 @@ button actions are free. Deploy migration `0028_chirpy_plans` with the planning
 endpoint before distributing this native build. The package script embeds the
 source revision in the app's `YapperBuildCommit` Info.plist key.
 
-To add a registered feature, define its action and input in
-`protocol/app-actions.schema.json`, regenerate the Swift and TypeScript contract,
-then register its availability and executor in the feature layer. Use that action
-from UI entry points. Do not edit generated types or add an assistant-only
-executor. The schema validator intentionally supports a small subset; add
-validation before introducing another JSON Schema keyword.
+To add a registered feature, define its action and input in its group file under
+`protocol/actions/` (never in the generated `protocol/app-actions.schema.json`),
+regenerate the Swift and TypeScript contract, then register its availability and
+executor in the feature layer. Use that action from UI entry points. Do not edit
+generated types or add an assistant-only executor. The schema validator
+intentionally supports a small subset; add validation before introducing another
+JSON Schema keyword.
 
 From the repository root:
 

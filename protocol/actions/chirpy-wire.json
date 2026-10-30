@@ -1,0 +1,161 @@
+{
+  "description": "Envelopes for invoking an action and for the Chirpy plan reply.",
+  "$defs": {
+    "AppActionStatus": {
+      "type": "string",
+      "enum": ["applied", "unchanged", "rejected", "failed", "canceled"]
+    },
+    "AppActionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocolVersion",
+        "id",
+        "projectID",
+        "revision",
+        "action",
+        "arguments"
+      ],
+      "properties": {
+        "protocolVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "projectID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "arguments": {
+          "type": "object",
+          "additionalProperties": {}
+        }
+      }
+    },
+    "AppActionChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetID", "property", "before", "after"],
+      "properties": {
+        "targetID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "property": {
+          "type": "string"
+        },
+        "before": {
+          "type": "string"
+        },
+        "after": {
+          "type": "string"
+        }
+      }
+    },
+    "AppActionResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocolVersion",
+        "invocationID",
+        "projectID",
+        "revision",
+        "action",
+        "status",
+        "message",
+        "changes",
+        "skippedIDs",
+        "persisted"
+      ],
+      "properties": {
+        "protocolVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "invocationID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "projectID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "action": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/AppActionStatus"
+        },
+        "message": {
+          "type": "string"
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AppActionChange"
+          }
+        },
+        "skippedIDs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "persisted": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ChirpyActionCall": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "arguments"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "arguments": {
+          "type": "object",
+          "additionalProperties": {}
+        }
+      }
+    },
+    "ChirpyPlanReply": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message", "actions"],
+      "properties": {
+        "message": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChirpyActionCall"
+          },
+          "maxItems": 8
+        }
+      }
+    }
+  }
+}

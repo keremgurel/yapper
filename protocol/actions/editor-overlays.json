@@ -1,0 +1,481 @@
+{
+  "description": "Overlay framing, crop, keyframes and lanes, plus image masks and the legacy reveal policy.",
+  "runtime": "client",
+  "actions": [
+    {
+      "id": "editor.reveals.setPolicy",
+      "symbol": "revealPolicy",
+      "input": "RevealPolicyInput",
+      "description": "Set visibility policies for explicit regions of an image overlay. alwaysVisible removes only those masks; untilCue uses the saved spoken cue; alwaysHidden requires an explicit request to keep a value hidden.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "legacy": true
+    },
+    {
+      "id": "editor.overlays.zoom",
+      "symbol": "overlayZoom",
+      "input": "OverlayZoomInput",
+      "description": "Animate a zoom into a specific source region of an existing overlay, preserving its placement and masks. target is normalized source coordinates with a top-left origin. Times are seconds from the overlay start. Smooth zoom holds after endTime; optional returnStart and returnEnd zoom back. Use known region boxes or the supplied selected-overlay image to locate the requested section; ask if the target region is ambiguous.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.overlays.keyframe",
+      "symbol": "overlayKeyframe",
+      "input": "OverlayKeyframeInput",
+      "description": "Set, remove, move or clear a keyframe on an overlay. time and destination are seconds from the overlay start. A set with no box or crop captures the current frame. box uses fractions of the video frame; crop uses normalized source coordinates. clear freezes the frame at time.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.overlays.setCrop",
+      "symbol": "overlayCrop",
+      "input": "OverlayCropInput",
+      "description": "Crop explicit overlays to a source rectangle. Coordinates are normalized with top-left origin. Optional time sets the crop at that local overlay time when a single image or scene already has keyframes. Omitting time explicitly replaces crop animation with a static crop while preserving placement keyframes.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.masks.setRegion",
+      "symbol": "maskRegion",
+      "input": "MaskRegionInput",
+      "description": "Create or edit a rectangular solid-color mask on an image or generated overlay. Coordinates are source-image fractions from its top left; RGB values are 0–1. Use the attached source image to locate any requested area (text, face, logo, chart, or other content); OCR is optional evidence, not a requirement. Omit regionID to create a mask; use a saved ID to edit one. opacityKeys animate the cover: 1 conceals the area, 0 exposes it. The first opacity is held before the first key and the last after the last key: include the initial covered state explicitly before a fade. Each key accepts a shared timing anchor, including exact speech phrases. New masks default to a solid cover. Geometry-only edits omit opacityKeys and policy to preserve existing timing. policy/revealTime are compatibility shortcuts; use opacityKeys for new animations. Image conversion supports scene source durations of 0.5–30 seconds. Preserve unmentioned masks and source pixels. Unsupported mask styles, shapes, or moving-object tracking must be reported as unavailable.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.masks.remove",
+      "symbol": "maskRemove",
+      "input": "MaskRemoveInput",
+      "description": "Remove one explicitly requested mask region and its opacity animation, leaving all other masks and original pixels intact.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.overlays.setFrame",
+      "symbol": "overlayFrame",
+      "description": "Set size, position and rotation of existing overlays. Use all=true and overlayIDs=[] for every overlay in one action. fit=full is the manual Full frame control (x/y=0, width/height=1); fit=card resets the frame using each source aspect. Otherwise supply only changed fields. Width without height preserves source aspect and center. Omit time to apply throughout each overlay, including every placement key, preserving crop keys/easing. time edits one overlay at an overlay-local keyframe. Does not place or generate media.",
+      "input": "OverlayFrameInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.overlays.setProperties",
+      "symbol": "overlayProperties",
+      "description": "Edit existing overlays: visibility, behind-speaker depth, source in point, timeline start/duration, or zero-based lane. Only supplied fields change. all=true targets every overlay; otherwise use overlayIDs. Cannot put generated scenes behind the speaker, exceed video source bounds, or collide on a lane.",
+      "input": "OverlayPropertiesInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.overlays.add",
+      "symbol": "overlayAdd",
+      "description": "Place one existing media item as an overlay at a known timeline anchor. Optional duration and sourceStart; defaults match Add as overlay. Use designOverlays/placeImported only when editorial placement across speech must be decided.",
+      "input": "OverlayAddInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.overlays.editTrack",
+      "symbol": "overlayTrack",
+      "description": "Remove an overlay lane and compact remaining lanes, or set every overlay on it hidden/shown. track is zero-based. Removing keeps original media.",
+      "input": "OverlayTrackInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    }
+  ],
+  "$defs": {
+    "RevealPolicy": {
+      "type": "string",
+      "enum": ["alwaysVisible", "untilCue", "alwaysHidden"]
+    },
+    "RevealRegionPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["regionID", "policy"],
+      "properties": {
+        "regionID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "policy": {
+          "$ref": "#/$defs/RevealPolicy"
+        }
+      }
+    },
+    "RevealPolicyInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overlayID", "regions"],
+      "properties": {
+        "overlayID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "regions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RevealRegionPolicy"
+          },
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true
+        }
+      }
+    },
+    "OverlayBoxInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": {
+          "type": "number",
+          "minimum": -2,
+          "maximum": 2
+        },
+        "y": {
+          "type": "number",
+          "minimum": -2,
+          "maximum": 2
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 4
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 4
+        }
+      }
+    },
+    "OverlayZoomInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overlayID", "target", "startTime", "endTime"],
+      "properties": {
+        "overlayID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "target": {
+          "$ref": "#/$defs/ActionRect"
+        },
+        "startTime": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "endTime": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "returnStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "returnEnd": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        }
+      }
+    },
+    "OverlayKeyframeInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overlayID", "time", "operation"],
+      "properties": {
+        "overlayID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "time": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "operation": {
+          "$ref": "#/$defs/OverlayKeyOperation"
+        },
+        "destination": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "box": {
+          "$ref": "#/$defs/OverlayBoxInput"
+        },
+        "crop": {
+          "$ref": "#/$defs/ActionRect"
+        }
+      }
+    },
+    "OverlayCropInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overlayIDs", "crop"],
+      "properties": {
+        "overlayIDs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true
+        },
+        "crop": {
+          "$ref": "#/$defs/ActionRect"
+        },
+        "time": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        }
+      }
+    },
+    "MaskRegionInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overlayID", "label", "rect", "red", "green", "blue"],
+      "properties": {
+        "overlayID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "regionID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "rect": {
+          "$ref": "#/$defs/ActionRect"
+        },
+        "red": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "green": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "blue": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "policy": {
+          "$ref": "#/$defs/RevealPolicy"
+        },
+        "revealTime": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "opacityKeys": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/MaskOpacityKey"
+          }
+        }
+      }
+    },
+    "MaskRemoveInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overlayID", "regionID"],
+      "properties": {
+        "overlayID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "regionID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      }
+    },
+    "MaskOpacityKey": {
+      "type": "object",
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        },
+        "opacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "easing": {
+          "$ref": "#/$defs/AnimationEase",
+          "description": "Controls the transition from this key to the following key. The final key has no outgoing transition."
+        }
+      },
+      "required": ["at", "opacity"],
+      "additionalProperties": false
+    },
+    "OverlayFrameFit": {
+      "type": "string",
+      "enum": ["full", "card"]
+    },
+    "OverlayFrameInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overlayIDs"],
+      "properties": {
+        "overlayIDs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "maxItems": 5000,
+          "uniqueItems": true
+        },
+        "all": {
+          "type": "boolean"
+        },
+        "fit": {
+          "$ref": "#/$defs/OverlayFrameFit"
+        },
+        "x": {
+          "type": "number",
+          "minimum": -2,
+          "maximum": 2
+        },
+        "y": {
+          "type": "number",
+          "minimum": -2,
+          "maximum": 2
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 4
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 4
+        },
+        "rotation": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "time": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        }
+      }
+    },
+    "OverlayPropertiesInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overlayIDs"],
+      "properties": {
+        "overlayIDs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "maxItems": 5000,
+          "uniqueItems": true
+        },
+        "all": {
+          "type": "boolean"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "behindSpeaker": {
+          "type": "boolean"
+        },
+        "sourceStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "timelineStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 86400
+        },
+        "track": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000
+        }
+      }
+    },
+    "OverlayAddInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mediaID", "at"],
+      "properties": {
+        "mediaID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "at": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 86400
+        },
+        "sourceStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        }
+      }
+    },
+    "OverlayTrackOperation": {
+      "type": "string",
+      "enum": ["remove", "setHidden"]
+    },
+    "OverlayTrackInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["track", "operation"],
+      "properties": {
+        "track": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000
+        },
+        "operation": {
+          "$ref": "#/$defs/OverlayTrackOperation"
+        },
+        "hidden": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

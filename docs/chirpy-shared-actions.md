@@ -23,21 +23,59 @@ No custom model training is needed to establish this architecture. Model selecti
 
 Define a versioned action protocol that native and web feature modules implement. Each action registration contains:
 
-| Field         | Purpose                                                                                            |
-| ------------- | -------------------------------------------------------------------------------------------------- |
-| Stable ID     | For example, `editor.overlay.update` or `studio.idea.create`; independent of translated UI labels. |
-| Description   | What the action does and when to use it.                                                           |
-| Input schema  | Typed arguments, explicit units, ranges, optional fields, and allowed values.                      |
-| Result schema | Actual affected IDs, before/after values, persistence status, and errors.                          |
-| Availability  | Whether it can run in the current scope, plus a reason when unavailable.                           |
-| Effects       | Read, reversible edit, navigation, generation, export, or external publication.                    |
-| Executor      | The existing feature operation, including validation and persistence.                              |
+| Field         | Purpose                                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Stable ID     | For example, `editor.overlay.update` or `studio.idea.create`; independent of translated UI labels.                  |
+| Description   | What the action does and when to use it.                                                                            |
+| Input schema  | Typed arguments, explicit units, ranges, optional fields, and allowed values.                                       |
+| Result schema | Actual affected IDs, before/after values, persistence status, and errors.                                           |
+| Availability  | Whether it can run in the current scope, plus a reason when unavailable.                                            |
+| Runtime       | `client` runs in the app's action registry; `server` runs inside the Chirpy turn loop.                              |
+| Effects       | One value from the effect vocabulary below; destructive, external and standing-rule actions also need confirmation. |
+| Executor      | The existing feature operation, including validation and persistence.                                               |
 
 The same definition supplies model tool schemas, UI availability, and command discovery. Registration is the normal feature boundary. There must not be a parallel handwritten assistant catalog or an assistant-only switch over action IDs.
 
-Native and web will have distinct executors using a common wire protocol. The source of truth is `protocol/app-actions.schema.json`; `scripts/app-actions/generate.py` generates Swift request/input/result types and TypeScript declarations. CI rejects stale generated files. Swift validates inputs against the embedded generated schema before Codable decoding. The web executor is not implemented yet. Each runtime advertises its installed capabilities and protocol version. The server reasons over those capabilities; it does not pretend that every client version supports every action. Server-side operations independently enforce the signed-in user's access; a client-advertised catalog never grants authority.
+Native and web will have distinct executors using a common wire protocol. The hand-edited source is the set of group files in `protocol/actions/` (see where to add an action, below); `scripts/app-actions/generate.py` bundles them into `protocol/app-actions.schema.json` and generates Swift request/input/result types and TypeScript declarations from the bundle. CI rejects stale generated files. Swift validates inputs against the embedded generated schema before Codable decoding. The web executor is not implemented yet. Each runtime advertises its installed capabilities and protocol version. The server reasons over those capabilities; it does not pretend that every client version supports every action. Server-side operations independently enforce the signed-in user's access; a client-advertised catalog never grants authority.
 
 For property inspectors, a property set is one action whose input carries any subset of a feature's fields, each with its type and range in the schema. Caption style, text layer style, static video framing, retouch, background, backdrop, and volume are registered this way (`editor.captions.setStyle`, `editor.text.setStyle`, `editor.video.setFraming`, `editor.retouch.set`, `editor.background.set`, `editor.project.setBackdrop`, `editor.audio.setVolume`). The executor writes the fields the inspector writes and reports before/after values per field from the encoded state, so a picker and Chirpy share one validator and one receipt shape. Discrete inspector controls and the end of a colour or fader gesture go through the action. A slider that streams while dragged still commits through the coalesced preview path; making that preview non-persisting so the final value also goes through the action is follow-up work, and those controls are listed as UI-only in the inventory. Complex actions such as transcription and export remain explicit operations rather than generic field writes.
+
+## Where to add an action
+
+Edit the group files in `protocol/actions/`, never the generated files. `python3 scripts/app-actions/generate.py` bundles the groups and writes four committed outputs: `protocol/app-actions.schema.json`, `protocol/app-actions.generated.ts`, `src/lib/chirpy/studio/registry.generated.ts` and `native-macos/Sources/YapperNative/Models/Actions/AppActionContract.generated.swift`. CI runs it with `--check` and fails on any difference.
+
+| File                                                                                                                                                                                                                                       | What it holds                                                                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `common.json`                                                                                                                                                                                                                              | The bundle header, the `AppActionRuntime` and `AppActionEffect` vocabularies, and definitions used by more than one group (`ActionRect`, `TimelineAnchorInput`, `AnimationEase`, `OverlayKeyOperation`) |
+| `chirpy-wire.json`                                                                                                                                                                                                                         | Invocation request, result and change envelopes, and the Chirpy plan reply                                                                                                                              |
+| `editor-audio.json`, `editor-captions.json` (captions and text layers), `editor-overlays.json` (overlays and masks), `editor-project.json`, `editor-timeline.json`, `editor-transcript.json`, `editor-video.json`, `editor-workflows.json` | Client actions for one editor feature each, with their input definitions                                                                                                                                |
+| `app.json`, `studio-<surface>.json`                                                                                                                                                                                                        | Not created yet. `app.*` actions such as switching tab or opening an idea run on the client; each Studio surface gets its own server group                                                              |
+
+Put a new action in the group that owns the feature. For a new feature, add `<namespace>-<feature>.json` with `description`, `runtime`, `actions` and `$defs`. Run the generator and commit the group file together with the regenerated outputs. When two branches that each add a group conflict in the generated files, keep either side and run the generator again.
+
+The generator refuses a contract that breaks these rules:
+
+- An action ID starts with its file's namespace (`editor-*.json` holds `editor.*` IDs), and the namespace fixes the group's `runtime`: `editor` and `app` are `client`, `studio` is `server`.
+- The action's `input` is defined in the same file. Definitions may reference their own file and the two shared files only, so a definition that a second group needs moves to `common.json`.
+- Definition names, action IDs and Swift symbols are unique across all files.
+- Client actions carry a Swift `symbol` and `requiresRebuild`; server actions carry neither.
+- `effect` comes from the table below, and `destructive`, `external` and `standingRule` actions must set `confirm: true`.
+
+`runtime` is written once per group and copied onto every action in the bundle. Swift receives only the shared files and the client groups, so a Studio PR leaves the native build untouched. Server actions appear in the TypeScript contract and in `STUDIO_ACTIONS` in the Studio registry, where `StudioActionInputs` maps each ID to its input type. The v1 planning endpoint (`/api/chirpy/plan`) plans client actions only.
+
+| Effect           | Meaning                                                                            |
+| ---------------- | ---------------------------------------------------------------------------------- |
+| `read`           | Returns state without changing it                                                  |
+| `reversibleEdit` | Editor edit that one Undo reverts; client only                                     |
+| `serverEdit`     | Saved change to the user's Studio data; server only                                |
+| `paidGeneration` | Spends credits on a provider call                                                  |
+| `destructive`    | Removes something Undo cannot bring back; needs `confirm`                          |
+| `external`       | Acts on a connected platform or another outside service; needs `confirm`           |
+| `standingRule`   | Sets up behaviour that keeps running later, such as an automation; needs `confirm` |
+| `navigation`     | Changes what the app shows, such as the tab or the open idea                       |
+| `workflow`       | Long operation that owns its transaction and runs alone                            |
+
+The contract only describes the action. A client action still needs its availability and executor registered in the feature layer (for native, see `native-macos/README.md`). Server executors will live in `src/lib/chirpy/studio/<surface>/` once the turn loop lands.
 
 ## Decisions settled before implementation
 

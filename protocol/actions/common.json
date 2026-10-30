@@ -1,0 +1,105 @@
+{
+  "description": "Bundle header and definitions shared by more than one group. Every group may reference these.",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ypr.app/schemas/app-actions/v1",
+  "title": "Yapper shared app actions",
+  "x-protocolVersion": 1,
+  "$defs": {
+    "AppActionRuntime": {
+      "type": "string",
+      "description": "Where an action executes. Client actions run in the app's registry; server actions run inside the Chirpy turn loop.",
+      "enum": ["client", "server"]
+    },
+    "AppActionEffect": {
+      "type": "string",
+      "description": "What running an action does. destructive, external and standingRule actions must set confirm: true.",
+      "enum": [
+        "read",
+        "reversibleEdit",
+        "serverEdit",
+        "paidGeneration",
+        "destructive",
+        "external",
+        "standingRule",
+        "navigation",
+        "workflow"
+      ]
+    },
+    "ActionRect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "y": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0.005,
+          "maximum": 1
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0.005,
+          "maximum": 1
+        }
+      }
+    },
+    "OverlayKeyOperation": {
+      "type": "string",
+      "enum": ["set", "remove", "clear", "move"]
+    },
+    "TimelineAnchorKind": {
+      "type": "string",
+      "enum": ["time", "playhead", "speechStart", "phrase", "event"]
+    },
+    "TimelineAnchorInput": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/TimelineAnchorKind",
+          "description": "speechStart is the beginning of speech, including entering/starting speaking; it requires no phrase. Use phrase for a specifically quoted part of speech, time for an explicit timestamp, playhead for here/now, event for an existing animation moment."
+        },
+        "time": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "phrase": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "occurrence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "eventID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "offset": {
+          "type": "number",
+          "minimum": -86400,
+          "maximum": 86400
+        }
+      },
+      "required": ["kind"],
+      "additionalProperties": false,
+      "description": "A reusable timeline cue resolved locally from the current edit. speechStart means the first kept spoken word: no phrase or timestamp is required. phrase finds exact words, accounting for trims, cuts and playback speed; occurrence selects a repeated match. playhead means the current position. time uses explicit timeline seconds. event uses a saved animationEvents ID. offset adds seconds after resolution (negative is before)."
+    },
+    "AnimationEase": {
+      "type": "string",
+      "enum": ["linear", "smooth"]
+    }
+  }
+}

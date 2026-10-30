@@ -19,6 +19,8 @@ package-lock.json
 # generated
 next-env.d.ts
 protocol/app-actions.generated.ts
+protocol/app-actions.schema.json
+src/lib/chirpy/studio/registry.generated.ts
 
 # misc
 .vercel
