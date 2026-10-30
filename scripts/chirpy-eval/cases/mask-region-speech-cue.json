@@ -1,0 +1,105 @@
+{
+  "id": "mask-region-speech-cue",
+  "from": "planner.integration.test.ts: masks a nonnumeric region and uses exact speech cues without redesigning it",
+  "tags": ["masks", "speech-anchors"],
+  "catalog": "current",
+  "replaceContext": true,
+  "context": {
+    "duration": 12,
+    "speechAvailable": true,
+    "selectedOverlayID": "1385EF9B-98A4-4480-B58F-954A2685609B",
+    "overlays": [
+      {
+        "id": "1385EF9B-98A4-4480-B58F-954A2685609B",
+        "timelineStart": 0,
+        "duration": 12
+      }
+    ],
+    "masks": [
+      {
+        "overlayID": "1385EF9B-98A4-4480-B58F-954A2685609B",
+        "regions": [
+          {
+            "id": "mask-logo",
+            "label": "Logo",
+            "rect": {
+              "x": 0.2,
+              "y": 0.3,
+              "width": 0.2,
+              "height": 0.2
+            },
+            "red": 1,
+            "green": 1,
+            "blue": 1
+          }
+        ]
+      }
+    ]
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "Keep the Logo area covered in white, fade the cover away as I say \"our new identity\", then cover it again two seconds later. Leave all other areas unchanged."
+    }
+  ],
+  "expect": {
+    "actions": ["editor.masks.setRegion"],
+    "args": [
+      {
+        "pointer": "/regionID",
+        "equals": "mask-logo"
+      },
+      {
+        "pointer": "/opacityKeys/0/opacity",
+        "equals": 1
+      },
+      {
+        "pointer": "/opacityKeys",
+        "some": {
+          "pointer": "/opacity",
+          "equals": 0
+        }
+      },
+      {
+        "pointer": "/opacityKeys/-1/opacity",
+        "equals": 1
+      },
+      {
+        "pointer": "/opacityKeys",
+        "every": {
+          "anyOf": [
+            {
+              "allOf": [
+                {
+                  "pointer": "/at/kind",
+                  "equals": "phrase"
+                },
+                {
+                  "pointer": "/at/phrase",
+                  "equals": "our new identity"
+                }
+              ]
+            },
+            {
+              "allOf": [
+                {
+                  "pointer": "/at/kind",
+                  "equals": "time"
+                },
+                {
+                  "pointer": "/at/time",
+                  "equals": 0
+                },
+                {
+                  "pointer": "/opacity",
+                  "equals": 1
+                }
+              ]
+            }
+          ]
+        },
+        "note": "The test also required the time-0 key to be the first one; this allows it anywhere."
+      }
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "note": "importedMediaRequest() from planner.integration.test.ts: a main recording, one placed screenshot and a numbered transcript. Cases append the imported files.",
+  "context": {
+    "speechAvailable": true,
+    "duration": 30,
+    "playhead": 0,
+    "media": [
+      {
+        "id": "FEB4BD5C-12A6-425B-ADAF-01A1B7BDCD42",
+        "name": "IMG_0001.MOV",
+        "onMainTrack": true,
+        "usedAsOverlay": false
+      },
+      {
+        "id": "9655C569-B411-4E04-A6A6-3D310D03A507",
+        "name": "Screenshot 2026-10-16.png",
+        "onMainTrack": false,
+        "usedAsOverlay": true
+      }
+    ],
+    "transcript": [
+      {
+        "mediaID": "49E08990-CDB2-4021-A141-89314D8E02A6",
+        "text": "0:First 1:I 2:grind 3:the 4:coffee 5:beans. 6:Then 7:I 8:brew 9:the 10:coffee. 11:Finally 12:I 13:look 14:at 15:our 16:sales 17:chart."
+      }
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/lib/costs/provider-budget": ["./stubs/provider-budget.ts"],
+      "@/*": ["../../src/*"]
+    }
+  }
+}

@@ -66,3 +66,6 @@ next-env.d.ts
 
 # Private analytics backups
 /.analytics-private/
+
+# Chirpy eval raw runs (baselines worth keeping go in scripts/chirpy-eval/baselines/)
+scripts/chirpy-eval/results/

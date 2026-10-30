@@ -1,0 +1,76 @@
+{
+  "id": "audio-at-animation-events",
+  "from": "planner.integration.test.ts: places audio using general animation events and preserves visuals",
+  "tags": ["audio"],
+  "catalog": "current",
+  "replaceContext": true,
+  "context": {
+    "duration": 12,
+    "soundLibrary": [
+      {
+        "id": "mouse-click",
+        "name": "Mouse click"
+      }
+    ],
+    "animationEvents": [
+      {
+        "id": "1385EF9B-98A4-4480-B58F-954A2685609B/number-3/opacity/1",
+        "overlayID": "1385EF9B-98A4-4480-B58F-954A2685609B",
+        "regionID": "number-3",
+        "label": "Cost",
+        "text": "CA$37.47",
+        "timelineTime": 6.524,
+        "property": "opacity",
+        "value": 0
+      },
+      {
+        "id": "1385EF9B-98A4-4480-B58F-954A2685609B/number-0/opacity/1",
+        "overlayID": "1385EF9B-98A4-4480-B58F-954A2685609B",
+        "regionID": "number-0",
+        "label": "Clicks",
+        "text": "34",
+        "timelineTime": 8.249,
+        "property": "opacity",
+        "value": 0
+      }
+    ],
+    "sounds": []
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "Add click sounds when Clicks and Cost become visible."
+    }
+  ],
+  "expect": {
+    "actions": ["editor.audio.addAt"],
+    "args": [
+      {
+        "pointer": "/effectID",
+        "equals": "mouse-click"
+      },
+      {
+        "pointer": "/at",
+        "length": 2,
+        "every": {
+          "pointer": "/kind",
+          "equals": "event"
+        }
+      },
+      {
+        "pointer": "/at",
+        "some": {
+          "pointer": "/eventID",
+          "equals": "1385EF9B-98A4-4480-B58F-954A2685609B/number-3/opacity/1"
+        }
+      },
+      {
+        "pointer": "/at",
+        "some": {
+          "pointer": "/eventID",
+          "equals": "1385EF9B-98A4-4480-B58F-954A2685609B/number-0/opacity/1"
+        }
+      }
+    ]
+  }
+}

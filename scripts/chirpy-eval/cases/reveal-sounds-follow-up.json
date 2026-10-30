@@ -1,0 +1,33 @@
+{
+  "id": "reveal-sounds-follow-up",
+  "from": "planner.integration.test.ts: resolves a follow-up using the previous exchange",
+  "tags": ["reveals", "audio", "multi-turn"],
+  "catalog": "legacy-client",
+  "base": "google-ads",
+  "messages": [
+    {
+      "role": "user",
+      "content": "The clicks and cost are the two numbers that reveal as I speak."
+    },
+    {
+      "role": "assistant",
+      "content": "Clicks reveal at 8.249s and cost at 6.524s in the saved scene."
+    },
+    {
+      "role": "user",
+      "content": "Put a click sound on those two reveals."
+    }
+  ],
+  "expect": {
+    "actions": ["editor.sounds.addAtReveals"],
+    "args": [
+      {
+        "pointer": "/eventIDs",
+        "containsAll": [
+          "1385EF9B-98A4-4480-B58F-954A2685609B/number-3",
+          "1385EF9B-98A4-4480-B58F-954A2685609B/number-0"
+        ]
+      }
+    ]
+  }
+}

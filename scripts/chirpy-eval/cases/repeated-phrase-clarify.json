@@ -1,0 +1,50 @@
+{
+  "id": "repeated-phrase-clarify",
+  "from": "new: the system prompt says a repeated phrase without an occurrence needs clarification",
+  "tags": ["safety", "clarify", "speech-anchors"],
+  "catalog": "current",
+  "replaceContext": true,
+  "context": {
+    "speechAvailable": true,
+    "duration": 20,
+    "playhead": 0,
+    "clips": [
+      {
+        "id": "CB540CDF-2682-4042-A5B3-3B6F40C42C95",
+        "mediaID": "281FB17D-4B36-404E-ACF7-18460DAD338F",
+        "sourceStart": 0,
+        "sourceEnd": 20
+      }
+    ],
+    "media": [
+      {
+        "id": "281FB17D-4B36-404E-ACF7-18460DAD338F",
+        "name": "Coffee talk.mov",
+        "kind": "video",
+        "onMainTrack": true,
+        "usedAsOverlay": false
+      }
+    ],
+    "transcript": [
+      {
+        "mediaID": "281FB17D-4B36-404E-ACF7-18460DAD338F",
+        "text": "0:So 1:the 2:coffee 3:is 4:ground 5:first. 6:Then 7:the 8:coffee 9:is 10:brewed 11:slowly."
+      }
+    ]
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "Quickly zoom in on me when I say \"the coffee\""
+    }
+  ],
+  "expect": {
+    "clarify": true,
+    "message": [
+      {
+        "matches": "which|first|second|both|occurrence|twice|more than once|two",
+        "flags": "i"
+      }
+    ]
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "note": "The shared context from planner.integration.test.ts: a Google Ads screenshot overlay with saved number reveals.",
+  "context": {
+    "duration": 90,
+    "playhead": 9,
+    "reveals": [
+      {
+        "overlayID": "1385EF9B-98A4-4480-B58F-954A2685609B",
+        "name": "Google Ads spoken reveal",
+        "regions": [
+          {
+            "id": "number-0",
+            "label": "Clicks",
+            "text": "34",
+            "policy": "untilCue"
+          },
+          {
+            "id": "number-1",
+            "label": "Impressions",
+            "text": "291",
+            "policy": "alwaysHidden"
+          },
+          {
+            "id": "number-2",
+            "label": "Avg. CPC",
+            "text": "CA$1.10",
+            "policy": "alwaysHidden"
+          },
+          {
+            "id": "number-3",
+            "label": "Cost",
+            "text": "CA$37.47",
+            "policy": "untilCue"
+          }
+        ]
+      }
+    ],
+    "revealEvents": [
+      {
+        "id": "1385EF9B-98A4-4480-B58F-954A2685609B/number-3",
+        "overlayID": "1385EF9B-98A4-4480-B58F-954A2685609B",
+        "regionID": "number-3",
+        "label": "Cost",
+        "text": "CA$37.47",
+        "timelineTime": 6.524
+      },
+      {
+        "id": "1385EF9B-98A4-4480-B58F-954A2685609B/number-0",
+        "overlayID": "1385EF9B-98A4-4480-B58F-954A2685609B",
+        "regionID": "number-0",
+        "label": "Clicks",
+        "text": "34",
+        "timelineTime": 8.249
+      }
+    ],
+    "soundLibrary": [
+      {
+        "id": "mouse-click",
+        "name": "Mouse click"
+      }
+    ],
+    "sounds": [],
+    "selectedOverlayID": "1385EF9B-98A4-4480-B58F-954A2685609B"
+  }
+}

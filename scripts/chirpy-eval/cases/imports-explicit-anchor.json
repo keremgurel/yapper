@@ -1,0 +1,27 @@
+{
+  "id": "imports-explicit-anchor",
+  "from": "planner.integration.test.ts: places a generic file at an explicit anchor without asking for its subject",
+  "tags": ["imports"],
+  "catalog": "current",
+  "base": "imported-media",
+  "append": {
+    "media": [
+      {
+        "id": "F058E673-7D8A-4212-ADD7-755A2E93D327",
+        "name": "IMG_1234.mov",
+        "kind": "video",
+        "onMainTrack": false,
+        "usedAsOverlay": false
+      }
+    ]
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "Place IMG_1234.mov as an overlay at the playhead for 3 seconds."
+    }
+  ],
+  "expect": {
+    "actions": ["editor.overlays.add"]
+  }
+}

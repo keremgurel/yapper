@@ -1,0 +1,70 @@
+{
+  "id": "overlay-zoom-named-metric",
+  "from": "planner.integration.test.ts: zooms into a named metric using the registered crop action and saved region",
+  "tags": ["overlays"],
+  "catalog": "legacy-client",
+  "base": "google-ads",
+  "context": {
+    "overlays": [
+      {
+        "id": "1385EF9B-98A4-4480-B58F-954A2685609B",
+        "timelineStart": 3.668,
+        "duration": 6
+      }
+    ],
+    "reveals": [
+      {
+        "overlayID": "1385EF9B-98A4-4480-B58F-954A2685609B",
+        "name": "Google Ads",
+        "regions": [
+          {
+            "id": "number-3",
+            "label": "Cost",
+            "text": "CA$37.47",
+            "box": [
+              [0.75, 0.4],
+              [0.2, 0.25]
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "Zoom into Cost on the Google Ads overlay from 1 to 2 seconds into the overlay, hold it, then zoom back out from 4 to 5 seconds. Keep all masks unchanged."
+    }
+  ],
+  "expect": {
+    "actions": ["editor.overlays.zoom"],
+    "args": [
+      {
+        "pointer": "/overlayID",
+        "equals": "1385EF9B-98A4-4480-B58F-954A2685609B"
+      },
+      {
+        "pointer": "/startTime",
+        "equals": 1
+      },
+      {
+        "pointer": "/endTime",
+        "equals": 2
+      },
+      {
+        "pointer": "/returnStart",
+        "equals": 4
+      },
+      {
+        "pointer": "/returnEnd",
+        "equals": 5
+      },
+      {
+        "pointer": "/target",
+        "centerX": {
+          "gt": 0.7
+        }
+      }
+    ]
+  }
+}
