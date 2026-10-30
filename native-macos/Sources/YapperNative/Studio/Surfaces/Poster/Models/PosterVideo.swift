@@ -69,7 +69,7 @@ struct PosterVideo: Identifiable, Equatable {
             publishedAt: video.publishedAt,
             url: video.url,
             mediaKey: video.mediaKey,
-            importable: platform == .instagram && (video.sourceFileUrl?.isEmpty == false || !video.url.isEmpty)
+            importable: (platform == .instagram || platform == .tiktok) && (video.sourceFileUrl?.isEmpty == false || !video.url.isEmpty)
         )
     }
 
@@ -106,12 +106,22 @@ struct PosterVideo: Identifiable, Equatable {
         return nil
     }
 
-    /// Whether Yapper can get at the master file, now or after an import.
+    /// Whether Yapper can get at the master file, now, after an import, or
+    /// once the creator attaches the original. A YouTube post always opens,
+    /// on the attach step until its original is there.
     var canOpen: Bool {
         switch origin {
         case .yapper, .project, .file: true
-        case let .platform(_, _, _, _, _, _, _, mediaKey, importable): mediaKey != nil || importable
+        case let .platform(platform, _, _, _, _, _, _, mediaKey, importable): mediaKey != nil || importable || platform == .youtube
         }
+    }
+
+    /// A YouTube post Yapper kept no file for and cannot import: it opens on
+    /// the step that attaches the creator's own original. Same rule as the
+    /// web's `needsOriginal`.
+    var needsOriginal: Bool {
+        guard case let .platform(platform, _, _, _, _, _, _, mediaKey, importable) = origin else { return false }
+        return platform == .youtube && mediaKey == nil && !importable && submissionID == nil
     }
 
     /// The master behind this video, for previews, frames and publishing.
@@ -124,8 +134,19 @@ struct PosterVideo: Identifiable, Equatable {
         case .project: previewURL?.isFileURL == true
         case .file: submissionID != nil
         case .yapper: true
-        case .platform: mediaKey != nil
+        case .platform: mediaKey != nil || submissionID != nil
         }
+    }
+
+    /// This post with the creator's attached original behind it. It keeps the
+    /// post's id, title and caption, so drafts made before the upload stay.
+    func withAttachedOriginal(file: URL, submissionID: String, contentItemID: String) -> PosterVideo {
+        var copy = self
+        copy.previewURL = file
+        copy.preparedSubmissionID = submissionID
+        copy.preparedContentItemID = contentItemID
+        copy.preparedTranscriptStatus = "pending"
+        return copy
     }
 
     /// Same-origin bytes of an Instagram post's original cover.

@@ -30,6 +30,9 @@ struct PosterVideoCard: View {
                         .font(.system(size: 13, weight: .semibold))
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
+                    if video.needsOriginal {
+                        Text("Attach original video").font(.system(size: 12)).foregroundStyle(.secondary)
+                    }
                     meta
                 }
                 .padding(.horizontal, 12)
@@ -42,6 +45,7 @@ struct PosterVideoCard: View {
         }
         .buttonStyle(.studioPlain)
         .disabled(!video.canOpen || importing)
+        .accessibilityHint(video.needsOriginal ? "Opens the step to attach this post's original video" : "")
         .overlay(alignment: .topTrailing) {
             if case let .yapper(_, id, _, _, _) = video.origin,
                PosterLibraryStore.shared.items?.first(where: { $0.id == id })?.sourceUrl == "yapper://poster-upload" {

@@ -110,6 +110,7 @@ struct PosterDestinationColumn: View {
     }
 
     private var preparationLabel: String {
+        if video.needsOriginal { return "Attach the original video first" }
         if case let .project(listing) = video.origin,
            let status = projectPreparation.status[listing.summary.id] { return status }
         return "Preparing video…"

@@ -169,11 +169,7 @@ struct PosterPage: View {
         }
         upload.onUpdated = { item in
             library.upsert(item)
-            if var active = bench.active, active.contentItemID == item.id {
-                active.preparedTranscriptStatus = item.transcriptStatus
-                active.noSpeech = item.transcriptStatus == "ready" && item.recordedTranscript == ""
-                bench.active = active
-            }
+            bench.apply(item)
         }
         takeHandoff()
         async let connectionsLoad: Void = connections.refresh()
