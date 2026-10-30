@@ -1,4 +1,5 @@
 import { guardProviderEgress } from "@/lib/costs/provider-budget";
+import { recordProviderResponse } from "@/lib/costs/provider-usage";
 
 export type OutboundHttpErrorCode =
   | "timeout"
@@ -143,7 +144,8 @@ export async function fetchBoundedResponse(
     throw new OutboundHttpError("aborted");
   // Outside the network catch: budget refusals must not look retryable.
   const admission = guardProviderEgress(input, init);
-  if (admission) await admission;
+  const reservation = admission ? await admission : null;
+  const startedAt = performance.now();
   const timeoutSignal = AbortSignal.timeout(options.timeoutMs);
   const signals = [init.signal, options.signal, timeoutSignal].filter(
     (signal): signal is AbortSignal => signal != null,
@@ -268,7 +270,18 @@ export async function fetchBoundedResponse(
     }
   }
 
-  return { response, bytes: storage.slice(0, total) };
+  const bytes = storage.slice(0, total);
+  if (reservation) {
+    await recordProviderResponse({
+      input,
+      init,
+      reservation,
+      status: response.status,
+      bytes,
+      latencyMs: performance.now() - startedAt,
+    });
+  }
+  return { response, bytes };
 }
 
 function decodeUtf8(bytes: Uint8Array): string {

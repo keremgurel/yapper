@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { canUsePremium } from "@/lib/billing/gate";
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
@@ -20,7 +21,7 @@ export const maxDuration = 60;
  * so a creator's own words there are never overwritten. Free: the credits
  * were spent listening.
  */
-export async function POST(req: NextRequest): Promise<Response> {
+async function trackedPOST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const ingressLimited = await guardProviderIngress(req);
@@ -60,3 +61,5 @@ export async function POST(req: NextRequest): Promise<Response> {
     return Response.json({ error: "derive_failed" }, { status: 502 });
   }
 }
+
+export const POST = withProductAnalytics("voice_profile_derived", trackedPOST);

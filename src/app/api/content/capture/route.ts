@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import {
@@ -27,7 +28,7 @@ const strArr = (v: unknown, max: number): string[] =>
  * content item and persist it. FREE (no credits) — this is the frictionless
  * front door; the credited deep generation stays in the workbench.
  */
-export async function POST(req: NextRequest): Promise<Response> {
+async function trackedPOST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const ingressLimited = await guardProviderIngress(req);
@@ -82,3 +83,5 @@ export async function POST(req: NextRequest): Promise<Response> {
     return Response.json({ error: "capture_failed", detail }, { status: 502 });
   }
 }
+
+export const POST = withProductAnalytics("content_captured", trackedPOST);

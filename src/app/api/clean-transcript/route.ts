@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import {
   preflightPaidActionOrResponse,
@@ -81,7 +82,7 @@ function isRetryableProviderFailure(error: unknown): boolean {
  * could not be told apart from the wrong attempt at the same line, cannot
  * happen. A response that does not describe a coherent edit is refused whole.
  */
-export async function POST(req: Request): Promise<Response> {
+async function trackedPOST(req: Request): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const ingressLimited = await guardProviderIngress(req);
@@ -240,3 +241,5 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 }
+
+export const POST = withProductAnalytics("transcript_cleaned", trackedPOST);

@@ -20,6 +20,7 @@ import {
   captureVerifiedEvent,
   withProductAnalytics,
 } from "./server";
+import { recordProviderResponse } from "@/lib/costs/provider-usage";
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv("NEXT_PUBLIC_POSTHOG_KEY", "phc_test");
@@ -120,4 +121,45 @@ it("authoritative webhook delivery rejects on ingestion failure so the sender re
   await expect(
     captureVerifiedEvent("user_a", "signup_verified", {}),
   ).rejects.toThrow("not configured");
+});
+
+it("attributes the action's model calls and adds their cost to the action event", async () => {
+  const chat = (model: string, usage: Record<string, unknown>) =>
+    recordProviderResponse({
+      input: "https://api.surplusintelligence.ai/v1/chat/completions",
+      init: { method: "POST", body: JSON.stringify({ model }) },
+      reservation: { microusd: 1_000_000, at: new Date() },
+      status: 200,
+      bytes: new TextEncoder().encode(JSON.stringify({ usage })),
+      latencyMs: 500,
+    });
+  await withProductAnalytics("chirpy_plan_created", async () => {
+    await chat("gpt-5.4", {
+      prompt_tokens: 1000,
+      completion_tokens: 100,
+      prompt_tokens_details: { cached_tokens: 800 },
+      buyer_cost_micro: 9,
+    });
+    await chat("gpt-5.4-mini", { prompt_tokens: 200, completion_tokens: 20 });
+    return Response.json({});
+  })(new Request("https://ypr.app/api/chirpy/plan", { method: "POST" }));
+  await mocks.after.mock.calls[0][0]();
+  const events = mocks.capture.mock.calls.map(([event]) => event);
+  expect(
+    events.filter((event) => event.event === "$ai_generation"),
+  ).toHaveLength(2);
+  expect(
+    events.find((event) => event.event === "product_action_completed")
+      ?.properties,
+  ).toMatchObject({
+    action: "chirpy_plan_created",
+    ai_calls: 2,
+    ai_input_tokens: 1200,
+    ai_cached_input_tokens: 800,
+    ai_output_tokens: 120,
+    // gpt-5.4: 200 x 2.5 + 800 x 0.25 + 100 x 15; mini: 200 x 0.75 + 20 x 4.5
+    ai_list_cost_microusd: 2200 + 240,
+    // The mini reply did not report a settled cost.
+    ai_buyer_cost_microusd: null,
+  });
 });

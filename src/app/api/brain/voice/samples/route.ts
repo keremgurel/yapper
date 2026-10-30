@@ -1,3 +1,4 @@
+import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import {
@@ -41,7 +42,7 @@ const KNOWN_FAILURES = new Set([
  * (one per three minutes, at least one, YouTube captions free) and settled on
  * the length actually heard.
  */
-export async function POST(req: NextRequest): Promise<Response> {
+async function trackedPOST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const ingressLimited = await guardProviderIngress(req);
@@ -128,3 +129,5 @@ export async function POST(req: NextRequest): Promise<Response> {
     );
   }
 }
+
+export const POST = withProductAnalytics("voice_samples_added", trackedPOST);

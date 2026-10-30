@@ -82,7 +82,10 @@ before network work. This applies to retries, internal QA and background work.
 Database transactions serialize the fixed UTC day/month counters across all
 serverless instances. If either counter is exhausted or unavailable, no new
 paid request starts. Failed attempts retain their reservation even when the
-customer gets a credit refund. Unpaid HTTP metadata/storage reads do not consume
+customer gets a credit refund. A successful Chat Completions reply that reports
+its token usage settles its reservation down to that usage at list price
+(`settleProviderBudget`), because the worst-case allowance for one long Chirpy
+request is over a dollar. Unpaid HTTP metadata/storage reads do not consume
 this allowance.
 
 Defaults are **$25/day and $250/calendar month of reserved allowances**, set by
@@ -96,11 +99,27 @@ timeout and a $0.50 maximum charge for each actor run.
 
 The counters are **not settled spend or provider-enforced dollar caps**. Text
 allowances use input bytes, a per-image token allowance, and bounded maximum
-output tokens. ASR and Gemini calls currently reserve $1 per attempt; Apify
+output tokens, at the list rates in `src/lib/costs/model-prices.ts`. ASR and Gemini calls currently reserve $1 per attempt; Apify
 $0.50; Reader $0.05. Model price changes, unusual media and provider billing
 semantics can differ. Reservations cover this application's outbound code, not
 other applications sharing a provider key. Query `provider_spend_windows` to
 see admitted attempts and reservations; do not book those values as expenses.
+
+## What each AI call cost
+
+Every Chat Completions reply that passes through the outbound boundary is
+measured (`src/lib/costs/provider-usage.ts`): input, cached input, output and
+reasoning tokens, the list cost from `model-prices.ts`, and the cost Surplus
+actually settled (`usage.buyer_cost_micro`). Each call becomes a PostHog
+`$ai_generation` event, and `withProductAnalytics` adds the totals
+(`ai_calls`, `ai_list_cost_microusd`, `ai_buyer_cost_microusd` and the token
+counts) to the action's `product_action_completed` or `product_action_failed`
+event. A call made outside a wrapped route reports itself with
+`action: "unattributed"`. Prompt and reply text are never sent.
+
+```bash
+node scripts/posthog-query.mjs "select properties.action, count(), avg(properties.ai_list_cost_microusd), avg(properties.ai_buyer_cost_microusd) from events where event = 'product_action_completed' and properties.ai_calls > 0 and timestamp > now() - interval 7 day group by 1 order by 3 desc"
+```
 
 ## Storage, database and analytics backstops
 

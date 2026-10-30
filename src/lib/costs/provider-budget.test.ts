@@ -11,6 +11,7 @@ import {
   providerAllowance,
   reserveProviderBudget,
   reserveTikTokImportBudget,
+  settleProviderBudget,
 } from "./provider-budget";
 import { fetchBoundedJson } from "@/lib/http/outbound";
 const now = new Date("2026-09-29T12:00:00Z");
@@ -118,4 +119,49 @@ it("caps concurrent TikTok fallback reservations independently of the global bud
     rows.find((row) => row.window === "tiktok-import:month:2026-09")
       ?.reservedMicrousd,
   ).toBe(60_000);
+});
+
+it("settles a reservation down to actual cost, never below zero", async () => {
+  const reservation = await reserveProviderBudget(1_000_000, now);
+  await settleProviderBudget(reservation, 250_000);
+  for (const window of await db.select().from(schema.providerSpendWindows))
+    expect(window.reservedMicrousd).toBe(250_000);
+  // A cost above the reservation leaves the window alone.
+  await settleProviderBudget(reservation, 5_000_000);
+  for (const window of await db.select().from(schema.providerSpendWindows))
+    expect(window.reservedMicrousd).toBe(250_000);
+  await settleProviderBudget({ microusd: 9_000_000, at: now }, 0);
+  for (const window of await db.select().from(schema.providerSpendWindows)) {
+    expect(window.reservedMicrousd).toBe(0);
+    expect(window.attempts).toBe(1);
+  }
+});
+
+it("a Chat Completions reply settles its worst-case admission to the tokens it used", async () => {
+  vi.stubEnv("NEXT_PUBLIC_POSTHOG_KEY", "");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(
+      Response.json({
+        choices: [{ message: { content: "{}" } }],
+        usage: { prompt_tokens: 1000, completion_tokens: 100 },
+      }),
+    ),
+  );
+  await fetchBoundedJson(
+    "https://api.surplusintelligence.ai/v1/chat/completions",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        model: "gpt-5.4",
+        max_completion_tokens: 6000,
+        messages: [{ role: "user", content: "x".repeat(20_000) }],
+      }),
+    },
+    { timeoutMs: 1000, maxBytes: 10_000 },
+  );
+  // Admission claimed about 140,000; the reply used 1000 x 2.5 + 100 x 15.
+  const windows = await db.select().from(schema.providerSpendWindows);
+  expect(windows).toHaveLength(2);
+  for (const window of windows) expect(window.reservedMicrousd).toBe(4000);
 });
