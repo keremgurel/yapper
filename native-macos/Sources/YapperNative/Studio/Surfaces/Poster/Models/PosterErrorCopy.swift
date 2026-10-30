@@ -68,6 +68,12 @@ enum PosterErrorCopy {
         case "schedule_request_changed": "An earlier version of this schedule was already saved. Check Calendar before creating another."
         case "duplicate_destination": "The same video was selected more than once for a destination. Keep one copy and try again."
         case "unauthorized": "Sign in again to manage your scheduled posts."
+        case "too_many_scheduled": "You can have up to 10 videos waiting to post. Let one go out or cancel one first."
+        case "tiktok_preflight_failed": "TikTok couldn't be reached to check this post. Try scheduling again."
+        case "tiktok_privacy_invalid": "TikTok no longer offers that audience for your account. Choose another."
+        case "tiktok_duration_check_failed": "This video is longer than TikTok allows for your account."
+        case "tiktok_interaction_disabled": "Comments, Duet, or Stitch are turned off in your TikTok settings. Untick them here."
+        case "tiktok_audit_required": "TikTok only allows private posts from Yapper yet."
         default: "We couldn't confirm the schedule. Check Calendar before trying again."
         }
     }

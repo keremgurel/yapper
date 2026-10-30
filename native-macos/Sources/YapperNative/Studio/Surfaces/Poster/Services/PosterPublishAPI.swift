@@ -69,7 +69,8 @@ enum PosterPublishAPI {
         return body
     }
 
-    private static func settingsBody(_ settings: PosterTikTokSettings) -> [String: Any] {
+    /// The Direct Post settings as the TikTok routes read them, now or scheduled.
+    static func settingsBody(_ settings: PosterTikTokSettings) -> [String: Any] {
         let data = (try? JSONEncoder().encode(settings)) ?? Data()
         return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
     }

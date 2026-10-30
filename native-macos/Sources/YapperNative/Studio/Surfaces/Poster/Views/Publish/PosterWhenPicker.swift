@@ -5,6 +5,8 @@ import SwiftUI
 /// schedule, and it can be changed or cancelled from Calendar before sending.
 struct PosterWhenPicker: View {
     @ObservedObject var model: PosterScheduleModel
+    /// TikTok in inbox mode gets a draft at the time, not a post.
+    let tiktokInbox: Bool
     let onCalendar: () -> Void
 
     var body: some View {
@@ -48,6 +50,9 @@ struct PosterWhenPicker: View {
                     }
                 }
                 Text("Your time zone: \(model.timezone).").font(.system(size: 12)).foregroundStyle(.secondary)
+                if tiktokInbox {
+                    Text("TikTok gets a draft at that time, to finish in the app.").font(.system(size: 12)).foregroundStyle(.secondary)
+                }
             }
             if let error = model.error {
                 Text(error).font(.system(size: 12)).foregroundStyle(Color.studioDanger)
