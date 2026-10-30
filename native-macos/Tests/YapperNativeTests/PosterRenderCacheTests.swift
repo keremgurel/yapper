@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import Testing
 @testable import YapperNative
 
@@ -58,6 +58,28 @@ import Testing
         PosterRenderCache.removeFolders(in: root, except: [kept])
 
         #expect(try names(in: root) == [kept.uuidString, "Not a project"])
+    }
+
+    @Test func aFinishedRenderRemovesEarlierRevisions() async throws {
+        let projects = try scratch()
+        defer { try? FileManager.default.removeItem(at: projects) }
+        let source = projects.appending(path: "take.mov")
+        try await SyntheticVideo.write(color: NSColor.black.cgColor, size: CGSize(width: 160, height: 90), to: source)
+        let library = ProjectLibrary(directory: projects)
+        let package = try await library.create(named: "Edit")
+        var project = EditorProject(name: "Edit")
+        let media = ProjectMedia(url: source, name: "Take", duration: 1, width: 160, height: 90, hasAudio: false)
+        project.media = [media]
+        project.clips = [TimelineClip(mediaID: media.id, sourceStart: 0, sourceEnd: 1)]
+        try await ProjectPackageStore(package: package).save(project)
+        let listing = try #require(try await library.listings().first)
+        let folder = PosterRenderCache.folder(for: project.id)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try touch(folder.appending(path: "\(String(repeating: "f", count: 64)).mp4"))
+
+        let rendered = try await PosterProjectRender().render(listing)
+
+        #expect(try names(in: folder) == [rendered.lastPathComponent])
     }
 
     @Test func launchKeepsOnlyTheCurrentRenderOfEachProject() async throws {
