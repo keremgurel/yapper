@@ -8,6 +8,7 @@ extension AppActionRegistry {
         registerTimelineSplit()
         registerTimelineDelete()
         registerTimelineTrim()
+        registerClipSourceRange()
         registerClipReorder()
         registerTimelineShift()
         registerTranscriptWords()
@@ -105,6 +106,39 @@ extension AppActionRegistry {
                 ? (skipped.isEmpty ? "Nothing spans \(String(format: "%.2f", time))s to trim." : "Nothing trimmed; locked items were skipped.")
                 : "Trimmed \(Self.count(changed.count, "item")) \(edge == .leading ? "to start" : "to end") at \(String(format: "%.2f", time))s"
             return AppActionMutation(message: message, changes: changes, skippedIDs: skipped)
+        }
+    }
+
+    /// A clip's edges dragged on the timeline, inward or out: the part of its
+    /// recording it plays. The same core as the drag, which also keeps the
+    /// transcript's edge words with the clip.
+    private func registerClipSourceRange() {
+        register(ClipSourceRangeInput.self, availability: Self.timelineAvailability) { session, input in
+            guard let clip = session.project.clips.first(where: { $0.id == input.clipID }) else {
+                throw AppActionError("That clip no longer exists.")
+            }
+            if clip.locked { throw AppActionError("That clip is locked; unlock it before trimming it.") }
+            guard let media = session.project.media.first(where: { $0.id == clip.mediaID }) else {
+                throw AppActionError("That clip's recording is missing.")
+            }
+            let shortest = clip.resolvedPlaybackRate / 30 - 0.000_001
+            guard input.sourceEnd - input.sourceStart >= shortest,
+                  media.isImage || input.sourceEnd <= media.duration + 0.000_001 else {
+                throw AppActionError("Keep the clip inside its recording and at least a frame long.")
+            }
+            var updated = clip
+            updated.sourceStart = input.sourceStart
+            updated.sourceEnd = input.sourceEnd
+            guard updated != clip else { return AppActionMutation(message: "The clip already plays that part.") }
+            var project = session.project
+            guard project.applyManualClipTrim(updated) else { throw AppActionError("That clip could not be trimmed.") }
+            session.updateProject { $0 = project }
+            let changes = try PropertyChanges.diff(targetID: clip.id, before: ["sourceStart": clip.sourceStart, "sourceEnd": clip.sourceEnd],
+                                                   after: ["sourceStart": updated.sourceStart, "sourceEnd": updated.sourceEnd])
+            return AppActionMutation(message: "Clip trimmed · ⌘Z to undo", changes: changes, afterCommit: {
+                session.selectTimelineItem(.clip(clip.id))
+                session.placePlayhead(at: min(session.currentTime, session.project.duration))
+            })
         }
     }
 

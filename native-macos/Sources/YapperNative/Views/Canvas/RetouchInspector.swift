@@ -13,22 +13,22 @@ struct RetouchInspector: View {
     var body: some View {
         InspectorSection("Retouch", id: "video.retouch") {
             InspectorRow("Clear blemishes") {
-                InspectorSlider(
+                InspectorCommitSlider(
                     value: retouch.clearBlemishes * 100,
                     range: 0 ... 100,
                     decimals: 0
                 ) { percent in
-                    session.setClearBlemishes(percent / 100)
+                    await session.setClearBlemishes(percent / 100)
                 }
             }
 
             InspectorRow("Whiten teeth") {
-                InspectorSlider(
+                InspectorCommitSlider(
                     value: retouch.whitenTeeth * 100,
                     range: 0 ... 100,
                     decimals: 0
                 ) { percent in
-                    session.setWhitenTeeth(percent / 100)
+                    await session.setWhitenTeeth(percent / 100)
                 }
             }
 

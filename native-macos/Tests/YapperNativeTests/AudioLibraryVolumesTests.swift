@@ -93,10 +93,11 @@ struct AudioLibraryVolumesTests {
         let item = try #require(imported.first)
         await library.setKind(.music, for: item.id)
         volumes.setVolume(0.15, for: item.id.uuidString)
-        await session.addSavedAudio(item, from: library)
+        session.audioLibrary = library
+        await session.addSavedAudio(item)
         #expect(session.project.audioLayers?.last?.volume == 0.15)
         volumes.setVolume(0.45, for: item.id.uuidString)
-        await session.addSavedAudio(item, from: library)
+        await session.addSavedAudio(item)
         #expect(session.project.audioLayers?.map(\.volume) == [0.3, 0.7, 0.15, 0.45])
         // Project persistence stores levels, not references to mutable defaults.
         let copy = try JSONDecoder().decode(EditorProject.self, from: JSONEncoder().encode(session.project))

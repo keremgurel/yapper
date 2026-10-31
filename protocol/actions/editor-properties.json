@@ -1,0 +1,37 @@
+{
+  "description": "Copying one timeline item's look onto others: a caption's or text layer's style, an overlay's look, or a clip's framing and grade.",
+  "runtime": "client",
+  "actions": [
+    {
+      "id": "editor.properties.paste",
+      "symbol": "propertiesPaste",
+      "input": "PropertiesPasteInput",
+      "description": "Give items the look of another item of the same kind, as Copy properties and Paste properties do. With fromItemID, copy that item's look first; without it, paste what the creator last copied. All itemIDs must be the same kind as the copied item: captions, text layers, overlays or clips. Position and timing are not part of an overlay's or clip's look.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    }
+  ],
+  "$defs": {
+    "PropertiesPasteInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["itemIDs"],
+      "properties": {
+        "itemIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "fromItemID": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    }
+  }
+}

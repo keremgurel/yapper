@@ -51,6 +51,7 @@ extension AppActionRegistry {
         register(TrackTransferInput.self, availability: { _ in .available }) { session, input in
             var project = session.project
             let newItem: TimelineSelectionItem
+            let message: String
             switch input.direction {
             case .toOverlay:
                 guard let clip = project.clips.first(where: { $0.id == input.itemID }), !clip.locked else {
@@ -65,6 +66,7 @@ extension AppActionRegistry {
                     throw AppActionError("That overlay lane is occupied.")
                 }
                 newItem = .overlay(overlay.id)
+                message = "Lifted to overlay lane \(overlay.lane + 1) · ⌘Z to undo"
             case .toMainTrack:
                 guard input.at == nil, input.track == nil, let index = input.insertionIndex, index <= project.clips.count,
                       let overlay = project.overlays?.first(where: { $0.id == input.itemID }),
@@ -73,9 +75,10 @@ extension AppActionRegistry {
                     throw AppActionError("Choose an image/video overlay and a valid main-track insertion index.")
                 }
                 newItem = .clip(clip.id)
+                message = "Dropped onto the video track · ⌘Z to undo"
             }
             session.updateProject { $0 = project }
-            return .init(message: "Moved between tracks · ⌘Z to undo", changes: [
+            return .init(message: message, changes: [
                 .init(targetID: input.itemID, property: "track", before: "previous track", after: "replaced by \(newItem.id.uuidString)")
             ], afterCommit: { session.selectTimelineItem(newItem) })
         }
@@ -110,11 +113,10 @@ extension AppActionRegistry {
             switch input.direction {
             case .undo:
                 guard session.canUndo else { throw AppActionError("There is nothing to undo.") }
-                await session.undo()
             case .redo:
                 guard session.canRedo else { throw AppActionError("There is nothing to redo.") }
-                await session.redo()
             }
+            await session.restoreHistory(input.direction)
             return Task.isCancelled
         }
     }

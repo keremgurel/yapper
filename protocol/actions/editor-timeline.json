@@ -73,6 +73,14 @@
       "description": "Clear all main-track clips, or all captions and caption visibility, as the manual clear-track control. Original media stays in the bin. Locked content is protected.",
       "effect": "reversibleEdit",
       "requiresRebuild": true
+    },
+    {
+      "id": "editor.clips.setSourceRange",
+      "symbol": "clipSourceRange",
+      "input": "ClipSourceRangeInput",
+      "description": "Set which part of its recording one main-track clip plays, as dragging the clip's edges on the timeline does, including extending it past its current edges. sourceStart and sourceEnd are recording seconds inside the media; later clips move to follow. A locked clip is refused.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
     }
   ],
   "$defs": {
@@ -276,6 +284,27 @@
       "properties": {
         "track": {
           "$ref": "#/$defs/ClearTrackKind"
+        }
+      }
+    },
+    "ClipSourceRangeInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clipID", "sourceStart", "sourceEnd"],
+      "properties": {
+        "clipID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "sourceStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "sourceEnd": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 86400
         }
       }
     }

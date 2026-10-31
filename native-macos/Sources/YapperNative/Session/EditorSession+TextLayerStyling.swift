@@ -26,12 +26,23 @@ extension EditorSession {
         return Task { await performAppAction(input) }
     }
 
+    /// A keystroke in the text inspector: drawn on the canvas at once, saved
+    /// when the field lets go (`commitTextLayerText`), so a line is one Undo
+    /// step.
     func setTextLayerText(_ text: String, for id: UUID) {
-        guard var layer = project.textLayers?.first(where: { $0.id == id }), layer.text != text else {
-            return
-        }
-        layer.text = text
-        updateTextLayer(layer)
+        guard project.textLayers?.contains(where: { $0.id == id }) == true else { return }
+        typingPreview.typeTextLayer(id, text)
+    }
+
+    /// Saves what was typed into a text layer through the update action
+    /// Chirpy uses. A layer emptied of text keeps what it said before.
+    @discardableResult
+    func commitTextLayerText(for id: UUID) async -> AppActionResult? {
+        guard let typed = typingPreview.textLayerText[id] else { return nil }
+        defer { typingPreview.releaseTextLayer(id, ifStill: typed) }
+        guard let saved = project.textLayers?.first(where: { $0.id == id })?.text,
+              typed != saved, !typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return await performAppAction(TextLayerUpdateInput(textLayerID: id, text: String(typed.prefix(300)), timelineStart: nil, duration: nil))
     }
 
     /// Layer edits always coalesce — the canvas draws them directly and the

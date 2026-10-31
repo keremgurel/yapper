@@ -89,6 +89,18 @@ final class CanvasDragState: ObservableObject {
         return overlay
     }
 
+    /// Ends the gesture but keeps its draft on screen until the committed edit
+    /// replaces it. See `holdText()`.
+    func holdOverlay() -> ProjectOverlay? {
+        overlayOrigin = nil
+        return overlay
+    }
+
+    func releaseOverlay(_ id: UUID) {
+        guard overlayOrigin == nil, overlay?.id == id else { return }
+        overlay = nil
+    }
+
     // MARK: - Video framing
 
     /// Starts a framing gesture, or re-bases the one in flight onto the drag

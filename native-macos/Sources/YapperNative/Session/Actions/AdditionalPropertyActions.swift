@@ -25,7 +25,13 @@ extension AppActionRegistry {
                 guard let index = project.clips.firstIndex(where: { $0.id == clip.id }) else { return }
                 project.clips[index] = updated
             }
-            return .init(message: changes.isEmpty ? "Keyframes already have those settings." : "Video keyframes saved · ⌘Z to undo", changes: changes)
+            let done = switch input.operation {
+            case .set: "Keyframe set"
+            case .remove: "Keyframe removed"
+            case .clear: "Keyframes cleared"
+            case .move: "Keyframe moved"
+            }
+            return .init(message: changes.isEmpty ? "Keyframes already have those settings." : "\(done) · ⌘Z to undo", changes: changes)
         }
         register(AudioReplaceInput.self, availability: { _ in .available }) { session, input in
             guard let effect = SoundEffectDescriptor.library.first(where: { $0.id == input.effectID }) else { throw AppActionError("Choose a sound from the library.") }
@@ -38,19 +44,29 @@ extension AppActionRegistry {
             return try session.mutateActionAudioLayers(updated, message: "Sound replaced · ⌘Z to undo")
         }
         register(AudioTrimInput.self, availability: { _ in .available }) { session, input in
-            guard input.sourceStart != nil || input.duration != nil else { throw AppActionError("Include a source start or duration.") }
+            guard input.sourceStart != nil || input.duration != nil || input.timelineStart != nil else {
+                throw AppActionError("Include a source start, duration or timeline start.")
+            }
             let updated = try session.actionAudioLayers(input.layerIDs).map { layer in
                 var copy = layer
                 if let start = input.sourceStart { copy.sourceStart = start }
                 if let duration = input.duration { copy.duration = duration }
+                if let start = input.timelineStart { copy.timelineStart = start }
                 guard copy.timelineStart + copy.duration <= session.duration + 0.000001,
                       copy.sourceStart + copy.duration * copy.resolvedPlaybackRate <= (layer.sourceDuration ?? layer.sourceEnd) + 0.000001 else {
                     throw AppActionError("Keep the sound inside its source and the video timeline.")
                 }
                 return copy
             }
-            return try session.mutateActionAudioLayers(updated, message: "Audio trim saved · ⌘Z to undo")
+            let moved = input.sourceStart == nil && input.duration == nil
+            return try session.mutateActionAudioLayers(updated, message: moved ? "Sound moved · ⌘Z to undo" : "Audio trim saved · ⌘Z to undo")
         }
+    }
+}
+
+extension AudioTrimInput {
+    init(layerIDs: [UUID], sourceStart: Double?, duration: Double?) {
+        self.init(layerIDs: layerIDs, sourceStart: sourceStart, duration: duration, timelineStart: nil)
     }
 }
 

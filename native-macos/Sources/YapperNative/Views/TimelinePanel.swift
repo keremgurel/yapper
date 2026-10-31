@@ -1171,14 +1171,15 @@ private struct TimelineVideoClipItem: View {
                     }
                     .onEnded { _ in
                         let committedTrim = trimDraft
-                        trimDraft = nil
                         trimOrigin = nil
                         activeTrimEdge = nil
                         snapAnchors = []
                         session.setActiveTimelineSnap(nil)
                         guard let committedTrim else { return }
+                        // Shown until the committed edit replaces it.
                         Task {
                             await session.commitClipTrim(committedTrim)
+                            if trimDraft == committedTrim { trimDraft = nil }
                         }
                     }
             )
@@ -1639,9 +1640,13 @@ private struct TimelineOverlayItem: View {
                            lift?.target.isBlocked != true {
                             moved.track = draggedToTrack
                         }
-                        session.commitOverlayEdit(moved)
+                        // Shown until the committed edit replaces it.
+                        let shown = moveDraft
+                        let commit = session.commitOverlayEdit(moved)
+                        Task { _ = await commit.value; if moveDraft == shown { moveDraft = nil } }
+                    } else {
+                        moveDraft = nil
                     }
-                    moveDraft = nil
                     moveOrigin = nil
                     draggedToTrack = nil
                     isOverVideoTrack = false
@@ -1756,8 +1761,11 @@ private struct TimelineOverlayItem: View {
                         session.setActiveTimelineSnap(adjusted.match)
                     }
                     .onEnded { _ in
-                        if let trimDraft { session.commitOverlayEdit(trimDraft) }
-                        trimDraft = nil
+                        if let draft = trimDraft {
+                            // Shown until the committed edit replaces it.
+                            let commit = session.commitOverlayEdit(draft)
+                            Task { _ = await commit.value; if trimDraft == draft { trimDraft = nil } }
+                        }
                         trimOrigin = nil
                         activeTrimEdge = nil
                         snapAnchors = []
@@ -1995,13 +2003,16 @@ struct TimelineAudioItem: View {
                         return
                     }
                     let committedMove = moveDraft
-                    moveDraft = nil
                     moveOrigin = nil
                     freeMoveStart = nil
                     snapAnchors = []
                     session.setActiveTimelineSnap(nil)
                     guard let committedMove else { return }
-                    Task { await session.commitAudioTrim(committedMove) }
+                    // Shown until the committed edit replaces it.
+                    Task {
+                        await session.commitAudioTrim(committedMove)
+                        if moveDraft == committedMove { moveDraft = nil }
+                    }
                 }
         )
         .overlay(alignment: .leading) {
@@ -2081,14 +2092,15 @@ struct TimelineAudioItem: View {
                     }
                     .onEnded { _ in
                         let committedTrim = trimDraft
-                        trimDraft = nil
                         trimOrigin = nil
                         activeTrimEdge = nil
                         snapAnchors = []
                         session.setActiveTimelineSnap(nil)
                         guard let committedTrim else { return }
+                        // Shown until the committed edit replaces it.
                         Task {
                             await session.commitAudioTrim(committedTrim)
+                            if trimDraft == committedTrim { trimDraft = nil }
                         }
                     }
             )

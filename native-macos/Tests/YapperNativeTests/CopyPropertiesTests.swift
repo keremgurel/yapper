@@ -68,7 +68,7 @@ import Testing
 
         session.copyProperties(of: .caption(cards[0].id))
         session.setSelectedCaptionIDs([cards[1].id, cards[2].id])
-        session.pasteProperties(onto: .caption(cards[1].id))
+        _ = await session.pasteProperties(onto: .caption(cards[1].id)).value
 
         let after = session.captions
         #expect(after[1].overrides.x == 0.2)
@@ -89,7 +89,7 @@ import Testing
         session.copyProperties(of: .caption(cards[0].id))
         session.setSelectedCaptionIDs([cards[1].id])
 
-        session.pasteProperties(onto: .caption(cards[2].id))
+        _ = await session.pasteProperties(onto: .caption(cards[2].id)).value
 
         let after = session.captions
         #expect(after[2].overrides.x == 0.2)
@@ -106,12 +106,14 @@ import Testing
         first.width = 0.44
         first.height = 0.44
         first.crop = OverlayCrop(x: 0.1, y: 0.1, width: 0.8, height: 0.8)
-        session.commitOverlayEdit(first)
+        _ = await session.commitOverlayEdit(first).value
+        // The crop has its own control and action.
+        await session.performAppAction(OverlayCropInput(overlayIDs: [first.id], crop: ActionRect(x: 0.1, y: 0.1, width: 0.8, height: 0.8), time: nil))
 
         session.copyProperties(of: .overlay(first.id))
         let second = session.overlays[1]
         session.setTimelineSelection([.overlay(second.id)])
-        session.pasteProperties(onto: .overlay(second.id))
+        _ = await session.pasteProperties(onto: .overlay(second.id)).value
 
         let after = session.overlays[1]
         #expect(after.x == 0.2)
@@ -128,11 +130,11 @@ import Testing
         let session = await session(url: url)
         let clips = session.project.clips
         session.setTimelineSelection([.clip(clips[0].id)])
-        session.commitFraming(VideoFraming(scale: 1.5, x: 0.05, y: -0.1), clipID: clips[0].id)
+        _ = await session.commitFraming(VideoFraming(scale: 1.5, x: 0.05, y: -0.1), clipID: clips[0].id).value
 
         session.copyProperties(of: .clip(clips[0].id))
         session.setTimelineSelection([.clip(clips[1].id), .clip(clips[2].id)])
-        session.pasteProperties(onto: .clip(clips[1].id))
+        _ = await session.pasteProperties(onto: .clip(clips[1].id)).value
 
         #expect(session.project.clips[1].framing?.scale == 1.5)
         #expect(session.project.clips[2].framing?.x == 0.05)
@@ -149,7 +151,7 @@ import Testing
         let overlay = session.overlays[0]
 
         #expect(session.pastePropertiesTitle(for: .overlay(overlay.id)) == nil)
-        session.pasteProperties(onto: .overlay(overlay.id))
+        _ = await session.pasteProperties(onto: .overlay(overlay.id)).value
 
         #expect(session.overlays[0] == overlay)
     }

@@ -63,12 +63,13 @@ struct OverlayInspectorView: View {
                 }
 
                 InspectorRow("Size") {
-                    InspectorSlider(
+                    InspectorCommitSlider(
                         value: shown.width * 100,
                         range: 6 ... 140,
-                        decimals: 0
+                        decimals: 0,
+                        onPreview: { session.previewOverlayScale(shown, toWidth: $0 / 100) }
                     ) { percent in
-                        session.scaleOverlay(shown, toWidth: percent / 100)
+                        await session.scaleOverlay(shown, toWidth: percent / 100)
                     }
                 }
 
