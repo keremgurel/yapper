@@ -5,6 +5,16 @@
   "x-protocolVersion": 1,
   "x-actions": [
     {
+      "id": "app.audioLibrary.remove",
+      "symbol": "savedAudioRemove",
+      "input": "SavedAudioRemoveInput",
+      "description": "Delete a sound listed in savedAudioLibrary from the library and from disk. Refused while the open project or its undo history uses it.",
+      "effect": "destructive",
+      "confirm": true,
+      "requiresRebuild": false,
+      "runtime": "client"
+    },
+    {
       "id": "app.dictionary.addTerm",
       "symbol": "dictionaryAdd",
       "input": "DictionaryAddInput",
@@ -96,6 +106,15 @@
       "runtime": "client"
     },
     {
+      "id": "editor.audio.paste",
+      "symbol": "audioPaste",
+      "input": "AudioPasteInput",
+      "description": "Paste the sound last copied from this project's timeline (Copy on a selected sound) at a timeline anchor, as ⌘V does at the playhead. The copy keeps the source, trim, volume and speed it had when it was copied.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
       "id": "editor.audio.replace",
       "symbol": "audioReplace",
       "input": "AudioReplaceInput",
@@ -117,7 +136,7 @@
       "id": "editor.audio.trim",
       "symbol": "audioTrim",
       "input": "AudioTrimInput",
-      "description": "Set source in point and/or duration of existing audio layers. Preserve timeline position, volume and speed. SourceStart is recording seconds; duration is timeline seconds.",
+      "description": "Set the source in point, duration and/or timeline start of existing audio layers, as dragging an edge or the body of a sound on the timeline does. Only supplied fields change; volume and speed are kept. sourceStart is recording seconds; duration and timelineStart are timeline seconds.",
       "effect": "reversibleEdit",
       "requiresRebuild": true,
       "runtime": "client"
@@ -189,7 +208,7 @@
       "id": "editor.captions.setVisible",
       "symbol": "captionVisibility",
       "input": "CaptionVisibilityInput",
-      "description": "Show or hide existing captions, preserving their text and styling. If showing captions for the first time, generate them from speech using the caption workflow.",
+      "description": "Show or hide existing captions, preserving their text and styling. If showing captions for the first time, generate them from speech using the caption workflow. regenerate=true (with visible=true) rebuilds every card from the current transcript and cut, transcribing first if needed, and discards hand edits to caption text.",
       "effect": "reversibleEdit",
       "requiresRebuild": false,
       "runtime": "client"
@@ -226,6 +245,15 @@
       "symbol": "clipReorder",
       "input": "ClipReorderInput",
       "description": "Move explicit main-track clips as one block so it starts at insertionIndex among the remaining clips (0 is first). Cannot reorder across a locked clip.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.clips.setSourceRange",
+      "symbol": "clipSourceRange",
+      "input": "ClipSourceRangeInput",
+      "description": "Set which part of its recording one main-track clip plays, as dragging the clip's edges on the timeline does, including extending it past its current edges. sourceStart and sourceEnd are recording seconds inside the media; later clips move to follow. A locked clip is refused.",
       "effect": "reversibleEdit",
       "requiresRebuild": true,
       "runtime": "client"
@@ -379,6 +407,15 @@
       "symbol": "projectSettings",
       "description": "Set project aspect ratio, visual filter/strength, video-track visibility or mute. Only supplied fields change. Applies the same project-wide settings as the manual controls.",
       "input": "ProjectSettingsInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.properties.paste",
+      "symbol": "propertiesPaste",
+      "input": "PropertiesPasteInput",
+      "description": "Give items the look of another item of the same kind, as Copy properties and Paste properties do. With fromItemID, copy that item's look first; without it, paste what the creator last copied. All itemIDs must be the same kind as the copied item: captions, text layers, overlays or clips. Position and timing are not part of an overlay's or clip's look.",
       "effect": "reversibleEdit",
       "requiresRebuild": true,
       "runtime": "client"
@@ -870,6 +907,19 @@
         }
       }
     },
+    "SavedAudioRemoveInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "savedAudioID"
+      ],
+      "properties": {
+        "savedAudioID": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
     "DictionaryAddInput": {
       "type": "object",
       "additionalProperties": false,
@@ -1167,6 +1217,11 @@
           "type": "number",
           "minimum": 0.02,
           "maximum": 86400
+        },
+        "timelineStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
         }
       }
     },
@@ -1187,6 +1242,18 @@
         }
       }
     },
+    "AudioPasteInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "at"
+      ],
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        }
+      }
+    },
     "CaptionVisibilityInput": {
       "type": "object",
       "additionalProperties": false,
@@ -1195,6 +1262,9 @@
       ],
       "properties": {
         "visible": {
+          "type": "boolean"
+        },
+        "regenerate": {
           "type": "boolean"
         }
       }
@@ -2066,6 +2136,29 @@
         }
       }
     },
+    "PropertiesPasteInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "itemIDs"
+      ],
+      "properties": {
+        "itemIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "fromItemID": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
     "ClipSpeedInput": {
       "type": "object",
       "additionalProperties": false,
@@ -2302,6 +2395,31 @@
       "properties": {
         "track": {
           "$ref": "#/$defs/ClearTrackKind"
+        }
+      }
+    },
+    "ClipSourceRangeInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clipID",
+        "sourceStart",
+        "sourceEnd"
+      ],
+      "properties": {
+        "clipID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "sourceStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "sourceEnd": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 86400
         }
       }
     },

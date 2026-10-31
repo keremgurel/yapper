@@ -273,7 +273,11 @@ struct OverlayCanvasItem: View {
     }
 
     private func finish() {
-        if let finished = drag.endOverlay() { session.commitOverlayEdit(finished) }
+        if let finished = drag.holdOverlay() {
+            // Shown until the committed edit replaces it, so it never jumps back.
+            let commit = session.commitOverlayEdit(finished)
+            Task { _ = await commit.value; drag.releaseOverlay(finished.id) }
+        }
         onGuidesChanged([])
     }
 

@@ -16,12 +16,14 @@ extension AppActionRegistry {
             }
         }
         register(SavedAudioAddInput.self, availability: { _ in .available }) { session, input in
-            let store = AudioLibraryStore.shared
+            let store = session.audioLibrary
             guard session.duration > 0, let item = store.items.first(where: { $0.id == input.savedAudioID }), store.ownsAvailable(item) else {
                 throw AppActionError("Choose an available sound from your audio library and add video first.")
             }
             let url = store.url(for: item)
-            let fingerprint = try await MediaSourceFingerprint.compute(url: url)
+            guard let fingerprint = try? await MediaSourceFingerprint.compute(url: url) else {
+                throw AppActionError(NativeEditorError.noAudioTrack(item.name).localizedDescription)
+            }
             try Task.checkCancellation()
             guard store.ownsAvailable(item) else { throw AppActionError("That library sound is no longer available.") }
             let time = try TimelineCue.resolve(input.at, project: session.project, playhead: session.currentTime)
