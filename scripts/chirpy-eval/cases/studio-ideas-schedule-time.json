@@ -1,0 +1,21 @@
+{
+  "id": "studio-ideas-schedule-time",
+  "from": "new: move an existing idea to another day with a time",
+  "planner": "studio",
+  "tags": ["studio", "ideas", "dates"],
+  "base": "studio-ideas",
+  "messages": [
+    { "role": "user", "content": "push the protein myths one to Monday at 6pm" }
+  ],
+  "expect": {
+    "actions": ["studio.ideas.schedule"],
+    "args": [
+      {
+        "pointer": "/ideaIDs",
+        "equals": ["6f1d1f5e-2b7a-4c39-9b8e-0a1c2d3e4f03"]
+      },
+      { "pointer": "/date", "equals": "2026-11-02" },
+      { "pointer": "/time", "equals": "18:00" }
+    ]
+  }
+}

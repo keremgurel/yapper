@@ -6,6 +6,7 @@ type ResourceEntry = {
   updatedAt: number;
   promise?: Promise<unknown>;
   listeners: Set<Listener>;
+  reloaders: Set<Listener>;
 };
 
 const resources = new Map<string, ResourceEntry>();
@@ -13,7 +14,12 @@ const resources = new Map<string, ResourceEntry>();
 function entry(key: string): ResourceEntry {
   let current = resources.get(key);
   if (!current) {
-    current = { generation: 0, updatedAt: 0, listeners: new Set() };
+    current = {
+      generation: 0,
+      updatedAt: 0,
+      listeners: new Set(),
+      reloaders: new Set(),
+    };
     resources.set(key, current);
   }
   return current;
@@ -94,6 +100,26 @@ export function mutateClientResource<T>(
 export function invalidateClientResource(key: string): void {
   const current = resources.get(key);
   if (current) current.updatedAt = 0;
+}
+
+/** Called by a mounted reader when its data changed somewhere else and it
+ * should fetch again now rather than on its next mount. */
+export function subscribeClientResourceReload(
+  key: string,
+  reload: Listener,
+): () => void {
+  const current = entry(key);
+  current.reloaders.add(reload);
+  return () => current.reloaders.delete(reload);
+}
+
+/** Mark the data stale and have every mounted reader fetch it again, for a
+ * change made on the server, such as a Chirpy turn. */
+export function reloadClientResource(key: string): void {
+  const current = resources.get(key);
+  if (!current) return;
+  current.updatedAt = 0;
+  for (const reload of current.reloaders) reload();
 }
 
 /** Drop user-scoped values while retaining active subscriptions. */

@@ -1,0 +1,14 @@
+{
+  "id": "studio-ideas-unknown-pillar",
+  "from": "new: a pillar the creator does not have is named, so nothing changes",
+  "planner": "studio",
+  "tags": ["studio", "ideas", "safety", "clarify"],
+  "base": "studio-ideas",
+  "messages": [
+    { "role": "user", "content": "file the meal prep idea under Travel" }
+  ],
+  "expect": {
+    "clarify": true,
+    "message": [{ "matches": "Fitness|Nutrition|Mindset", "flags": "i" }]
+  }
+}

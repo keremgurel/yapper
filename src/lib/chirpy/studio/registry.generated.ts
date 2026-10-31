@@ -2,9 +2,36 @@
 // Server-runtime actions from protocol/actions; the Chirpy turn loop executes them.
 import type {
   AppActionEffect,
+  IdeaCaptureInput,
+  IdeaDeleteInput,
+  IdeaDeleteVersionInput,
+  IdeaDraftInput,
+  IdeaPillarInput,
+  IdeaRenameInput,
+  IdeaScheduleInput,
+  IdeaStatusInput,
+  IdeaUnscheduleInput,
+  IdeaViewCreateInput,
+  IdeaViewDeleteInput,
+  IdeaViewUpdateInput,
+  IdeaWriteVersionInput,
 } from "../../../../protocol/app-actions.generated";
 
-export type StudioActionInputs = Record<never, never>;
+export interface StudioActionInputs {
+  "studio.ideas.capture": IdeaCaptureInput;
+  "studio.ideas.delete": IdeaDeleteInput;
+  "studio.ideas.deleteVersion": IdeaDeleteVersionInput;
+  "studio.ideas.draft": IdeaDraftInput;
+  "studio.ideas.rename": IdeaRenameInput;
+  "studio.ideas.schedule": IdeaScheduleInput;
+  "studio.ideas.setPillar": IdeaPillarInput;
+  "studio.ideas.setStatus": IdeaStatusInput;
+  "studio.ideas.unschedule": IdeaUnscheduleInput;
+  "studio.ideas.views.create": IdeaViewCreateInput;
+  "studio.ideas.views.delete": IdeaViewDeleteInput;
+  "studio.ideas.views.update": IdeaViewUpdateInput;
+  "studio.ideas.writeVersion": IdeaWriteVersionInput;
+}
 export type StudioActionID = keyof StudioActionInputs;
 
 export interface StudioActionDescriptor {
@@ -15,4 +42,17 @@ export interface StudioActionDescriptor {
 }
 
 export const STUDIO_ACTIONS: readonly StudioActionDescriptor[] = [
+  { id: "studio.ideas.capture", input: "IdeaCaptureInput", effect: "paidGeneration", confirm: false },
+  { id: "studio.ideas.delete", input: "IdeaDeleteInput", effect: "destructive", confirm: true },
+  { id: "studio.ideas.deleteVersion", input: "IdeaDeleteVersionInput", effect: "destructive", confirm: true },
+  { id: "studio.ideas.draft", input: "IdeaDraftInput", effect: "paidGeneration", confirm: false },
+  { id: "studio.ideas.rename", input: "IdeaRenameInput", effect: "serverEdit", confirm: false },
+  { id: "studio.ideas.schedule", input: "IdeaScheduleInput", effect: "serverEdit", confirm: false },
+  { id: "studio.ideas.setPillar", input: "IdeaPillarInput", effect: "serverEdit", confirm: false },
+  { id: "studio.ideas.setStatus", input: "IdeaStatusInput", effect: "serverEdit", confirm: false },
+  { id: "studio.ideas.unschedule", input: "IdeaUnscheduleInput", effect: "serverEdit", confirm: false },
+  { id: "studio.ideas.views.create", input: "IdeaViewCreateInput", effect: "serverEdit", confirm: false },
+  { id: "studio.ideas.views.delete", input: "IdeaViewDeleteInput", effect: "destructive", confirm: true },
+  { id: "studio.ideas.views.update", input: "IdeaViewUpdateInput", effect: "serverEdit", confirm: false },
+  { id: "studio.ideas.writeVersion", input: "IdeaWriteVersionInput", effect: "paidGeneration", confirm: false },
 ];

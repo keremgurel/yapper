@@ -1,5 +1,6 @@
 "use client";
 
+import type { Ref } from "react";
 import { X } from "lucide-react";
 import { StudioGlassSurface } from "@/components/studio-ui/liquid-glass";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,9 @@ export default function ChirpyPanel({
   onPickOpener,
   onSend,
   onSaveSuggestion,
+  onAnswerConfirmation,
   onClose,
+  conversationEnd,
 }: {
   pathname: string;
   working: boolean;
@@ -40,7 +43,14 @@ export default function ChirpyPanel({
   onPickOpener: (prompt: string) => void;
   onSend: (text: string) => void;
   onSaveSuggestion: (suggestion: BlockSuggestion) => void;
+  onAnswerConfirmation: (
+    executionID: string,
+    decision: "confirm" | "cancel",
+  ) => void;
   onClose: () => void;
+  /** Kept in view as messages arrive, so a new reply or confirmation is
+   * never below the fold. */
+  conversationEnd: Ref<HTMLDivElement>;
 }) {
   const home = pathname === "/studio/home";
   return (
@@ -104,11 +114,15 @@ export default function ChirpyPanel({
             </div>
           </div>
         ) : (
-          <ChirpyMessageList
-            messages={messages}
-            working={working}
-            onSaveSuggestion={onSaveSuggestion}
-          />
+          <div>
+            <ChirpyMessageList
+              messages={messages}
+              working={working}
+              onSaveSuggestion={onSaveSuggestion}
+              onAnswerConfirmation={onAnswerConfirmation}
+            />
+            <div ref={conversationEnd} aria-hidden="true" />
+          </div>
         )}
       </div>
 

@@ -25,8 +25,10 @@ export async function loadPlanner() {
   };
   const planner = await load("src/lib/chirpy/planner.ts");
   const protocol = await load("src/lib/chirpy/protocol.ts");
+  const studio = await load("src/lib/chirpy/studio/planner.ts");
   return {
     planChirpy: planner.planChirpy,
+    planStudio: studio.planStudio,
     system: planner.CHIRPY_SYSTEM,
     parsePlanInput: protocol.parsePlanInput,
     validate: protocol.validate,

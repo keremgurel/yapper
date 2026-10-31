@@ -5,6 +5,9 @@ struct StudioChirpyReply: Sendable {
     let text: String
     let notes: [String]
     let isTrouble: Bool
+    /// Studio data the turn changed on the server, for the native stores
+    /// that show it to reload. See `StudioChirpyEffects`.
+    var effects: [String] = []
 }
 
 enum StudioChirpyBridgeError: LocalizedError {
@@ -261,7 +264,8 @@ final class StudioWebCommands: ObservableObject {
         return StudioChirpyReply(
             text: text,
             notes: payload["notes"] as? [String] ?? [],
-            isTrouble: payload["tone"] as? String == "trouble"
+            isTrouble: payload["tone"] as? String == "trouble",
+            effects: payload["effects"] as? [String] ?? []
         )
     }
 }

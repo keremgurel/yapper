@@ -21,7 +21,6 @@ import type {
   BrainBlock,
   NewBrainBlock,
 } from "@/lib/brain/client";
-import { createIdea } from "@/lib/ideas/client";
 import { parseBrandCommand } from "@/lib/brand/command";
 import ChirpyPanel from "@/components/studio-shell/chirpy-panel";
 import ChirpyDock from "@/components/studio-shell/chirpy-dock/chirpy-dock";
@@ -31,12 +30,22 @@ import { SETUP_HANDOFF_KEY } from "@/lib/brain/setup-client";
 import { executeBrandCommand } from "@/lib/brand/command-client";
 import { patchProject, type ProjectPatch } from "@/lib/project/client";
 import {
-  invalidateClientResource,
   mutateClientResource,
   STUDIO_RESOURCE_KEYS,
 } from "@/lib/client-resource-cache";
+import { typedDecision } from "@/lib/chirpy/studio/typed-decision";
+import type { StudioEffect } from "@/lib/chirpy/studio/wire";
+import { useStudioTurn } from "@/components/studio-shell/use-studio-turn";
+import type { ChirpyConfirmation } from "@/components/studio-shell/chirpy-message";
 
-type NativeChirpyReply = Pick<ChirpyMessage, "text" | "notes" | "tone">;
+/** What the Mac's native thread shows. `effects` says which native stores to
+ * reload; builds that predate it ignore it. */
+type NativeChirpyReply = Pick<ChirpyMessage, "text" | "notes" | "tone"> & {
+  effects?: StudioEffect[];
+};
+type SentReply = Omit<ChirpyMessage, "id" | "author"> & {
+  effects?: StudioEffect[];
+};
 
 /**
  * What the Mac app sends with an ask: the Studio tab the creator is on, and
@@ -88,8 +97,10 @@ interface StudioChirpyValue {
 
 const StudioChirpyContext = createContext<StudioChirpyValue | null>(null);
 
-const IDEA_COMMAND =
-  /^(?:please\s+)?(?:(?:can|could)\s+you\s+)?(?:create|make|bank|capture)\b.*\bidea\b/i;
+/** Tabs whose requests Chirpy plans with the Studio actions. Elsewhere, a
+ * short request that mentions ideas goes there too. */
+const STUDIO_ACTION_SURFACES = /^\/studio\/(?:ideas|calendar|library)(?:\/|$)/;
+const MENTIONS_IDEAS = /\bideas?\b/i;
 const ADD_CONTEXT_COMMAND =
   /^(?:please\s+)?(?:add|remember|save|note)(?:\s+that)?\s+(.+)/i;
 const EDIT_ESSENTIAL_COMMAND =
@@ -97,15 +108,33 @@ const EDIT_ESSENTIAL_COMMAND =
 const EDIT_CONTEXT_COMMAND =
   /\b(?:change|update|edit)\b\s+(?:the\s+)?(?:knowledge|context|memory)\s+[“"]?(.+?)[”"]?\s+\bto\b\s+(.+)/i;
 
+const CONFIRM_HINT = "Reply yes to delete, or no to keep it.";
+
+/** The panel's or a Mac tab's thread as model messages. A reply that was
+ * only a question stands in as its question. */
+function conversationFrom(
+  thread: readonly {
+    author: "you" | "chirpy";
+    text: string;
+    confirm?: { question: string };
+  }[],
+): { role: "user" | "assistant"; content: string }[] {
+  return thread
+    .map((message) => ({
+      role:
+        message.author === "you" ? ("user" as const) : ("assistant" as const),
+      content: (message.text.trim() || message.confirm?.question || "").slice(
+        0,
+        6000,
+      ),
+    }))
+    .filter((message) => message.content);
+}
+
 function titleFrom(text: string): string {
   const clean = text.replace(/\s+/g, " ").trim();
   if (clean.length <= 58) return clean;
   return `${clean.slice(0, 55).trimEnd()}…`;
-}
-
-function ideaTextFrom(command: string): string {
-  const afterAbout = command.match(/\babout\b\s+(.+)/i)?.[1]?.trim();
-  return afterAbout || command.trim();
 }
 
 export function useStudioChirpy(): StudioChirpyValue {
@@ -150,6 +179,19 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
       ]),
     [],
   );
+
+  const setConfirmState = useCallback(
+    (executionID: string, state: ChirpyConfirmation["state"]) =>
+      setMessages((current) =>
+        current.map((message) =>
+          message.confirm?.executionID === executionID
+            ? { ...message, confirm: { ...message.confirm, state } }
+            : message,
+        ),
+      ),
+    [],
+  );
+  const studio = useStudioTurn(setConfirmState);
 
   const open = useCallback((prompt?: string) => {
     const native = (window as NativeChirpyWindow).webkit?.messageHandlers
@@ -253,7 +295,10 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
   );
 
   const send = useCallback(
-    async (raw: string, native?: NativeChirpyContext) => {
+    async (
+      raw: string,
+      native?: NativeChirpyContext,
+    ): Promise<SentReply | undefined> => {
       // The tab the creator is on: the Mac app says so; on the web, the URL.
       const route = native?.surface ?? pathname;
       const text = raw.trim();
@@ -278,6 +323,18 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
               tone: "trouble",
             },
           );
+        }
+        // A typed yes or no answers the open confirmation, as its buttons do.
+        const decision = typedDecision(text);
+        const waiting = messages.findLast(
+          (message) => message.confirm?.state === "open",
+        )?.confirm;
+        if (decision && waiting) {
+          const { effects, ...reply } = await studio.answer(
+            waiting.executionID,
+            decision,
+          );
+          return { ...answer(reply), effects };
         }
         // A long or multi-line message is a note or a transcript, never a typed
         // command; it goes straight to conversation.
@@ -327,33 +384,8 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
         }
         if (/^what can you help me (?:do here|with)\??$/i.test(text)) {
           return answer({
-            text: "Tell me your brand colors and I’ll set up your kit. For example, ‘My brand colors are #FF7A21, black, and white’. I can also add Knowledge, create ideas from your Brain, and help shape your content.",
+            text: "Tell me your brand colors and I’ll set up your kit. For example, ‘My brand colors are #FF7A21, black, and white’. I can also add Knowledge, and make, file, schedule, rename or delete your ideas, like ‘make an idea about gym myths and put it on Friday’.",
           });
-        }
-        if (command && IDEA_COMMAND.test(text)) {
-          const ideaRequest = ideaTextFrom(text);
-          const generated = await ask([
-            {
-              role: "user",
-              content: `${ideaRequest}\n\nCreate one concrete short-form content idea from my Brain. Give it a strong title, a specific angle, and an opening hook.`,
-            },
-          ]);
-          await createIdea({
-            originalNote: generated.reply,
-            ideaType: "original",
-          });
-          invalidateClientResource(STUDIO_RESOURCE_KEYS.ideas);
-          const reply = answer({
-            text: generated.reply,
-            notes: [
-              "Created from your Brain",
-              "Saved to the Idea Bank",
-              "Opening the Idea Bank…",
-            ],
-            tone: "done",
-          });
-          startTransition(() => router.push("/studio/ideas"));
-          return reply;
         }
 
         const essential = command ? text.match(EDIT_ESSENTIAL_COMMAND) : null;
@@ -408,6 +440,22 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
           );
         }
 
+        // The Studio actions: planned and run on the server, which answers
+        // with receipts and what to reload. Requests on the idea tabs, and
+        // short requests elsewhere that mention ideas, go there. It runs
+        // before the catch-all add/remember/save command, which would
+        // otherwise file "add an idea about X" as Knowledge.
+        if (
+          STUDIO_ACTION_SURFACES.test(route) ||
+          (command && MENTIONS_IDEAS.test(text))
+        ) {
+          const { effects, ...reply } = await studio.ask(
+            text,
+            route,
+            conversationFrom(native?.history ?? messages),
+          );
+          return { ...answer(reply), effects };
+        }
         const context = command
           ? text.match(ADD_CONTEXT_COMMAND)?.[1]?.trim()
           : undefined;
@@ -429,21 +477,8 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
 
         // The Mac app keeps one thread per tab and sends it; the web panel
         // has its own.
-        const earlier = native?.history ?? messages;
-        const conversation = earlier
-          .filter(
-            (message) =>
-              message.author === "you" || message.author === "chirpy",
-          )
-          .map((message) => ({
-            role:
-              message.author === "you"
-                ? ("user" as const)
-                : ("assistant" as const),
-            content: message.text,
-          }));
         const response = await ask([
-          ...conversation,
+          ...conversationFrom(native?.history ?? messages),
           { role: "user", content: text },
         ]);
         return answer({
@@ -466,7 +501,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
         setWorking(false);
       }
     },
-    [addKnowledge, append, isNativeShell, messages, pathname, router],
+    [addKnowledge, append, isNativeShell, messages, pathname, router, studio],
   );
 
   useEffect(() => {
@@ -477,7 +512,20 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
     ): Promise<NativeChirpyReply> => {
       const reply = await send(instruction, context);
       if (!reply) throw new Error("Chirpy is already working");
-      return reply;
+      // The native thread has no buttons: it shows the question and how to
+      // answer it in words, which the next ask resolves.
+      return {
+        text: [
+          reply.text,
+          reply.confirm?.question,
+          reply.confirm && CONFIRM_HINT,
+        ]
+          .filter(Boolean)
+          .join(" "),
+        notes: reply.notes,
+        tone: reply.tone,
+        effects: reply.effects,
+      };
     };
     nativeWindow.__yapperNativeChirpy = handler;
     return () => {
@@ -485,6 +533,26 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
         delete nativeWindow.__yapperNativeChirpy;
     };
   }, [send]);
+
+  /** A confirmation row's button: the same answer a typed yes or no gives. */
+  const answerConfirmation = useCallback(
+    async (executionID: string, decision: "confirm" | "cancel") => {
+      setWorking(true);
+      try {
+        const reply = await studio.answer(executionID, decision);
+        append({
+          author: "chirpy",
+          text: reply.text,
+          notes: reply.notes,
+          tone: reply.tone,
+        });
+      } finally {
+        window.dispatchEvent(new Event("studio:credits-changed"));
+        setWorking(false);
+      }
+    },
+    [append, studio],
+  );
 
   const run = useCallback(
     (prompt: string) => {
@@ -528,7 +596,11 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
       }}
       onSend={(text) => void send(text)}
       onSaveSuggestion={(suggestion) => void saveSuggestion(suggestion)}
+      onAnswerConfirmation={(executionID, decision) =>
+        void answerConfirmation(executionID, decision)
+      }
       onClose={close}
+      conversationEnd={conversationEnd}
     />
   );
   return (

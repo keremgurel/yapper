@@ -1,0 +1,23 @@
+{
+  "id": "studio-ideas-move-pillar",
+  "from": "new: P6 Ideas acceptance request, move this idea to a pillar",
+  "planner": "studio",
+  "tags": ["studio", "ideas"],
+  "base": "studio-ideas",
+  "messages": [
+    { "role": "user", "content": "move the meal prep idea to Mindset" }
+  ],
+  "expect": {
+    "actions": ["studio.ideas.setPillar"],
+    "args": [
+      {
+        "pointer": "/ideaIDs",
+        "equals": ["6f1d1f5e-2b7a-4c39-9b8e-0a1c2d3e4f02"]
+      },
+      {
+        "pointer": "/pillarID",
+        "equals": "9a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c03"
+      }
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "studio-ideas-create-view",
+  "from": "new: a saved view of the Ideas list",
+  "planner": "studio",
+  "tags": ["studio", "ideas", "views"],
+  "base": "studio-ideas",
+  "messages": [
+    {
+      "role": "user",
+      "content": "make a board view called Shoot list, grouped by pillar, showing only ready ideas"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.ideas.views.create"],
+    "args": [
+      { "pointer": "/name", "equals": "Shoot list" },
+      { "pointer": "/kind", "equals": "board" },
+      { "pointer": "/groupBy", "equals": "pillar" },
+      { "pointer": "/statuses", "equals": ["ready"] }
+    ]
+  }
+}
