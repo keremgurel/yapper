@@ -1,0 +1,27 @@
+{
+  "id": "create-chart",
+  "from": "overlay workflow structured input: an explicit new chart is mode create",
+  "tags": ["overlay-workflow"],
+  "catalog": "current",
+  "base": "imported-media",
+  "messages": [
+    {
+      "role": "user",
+      "content": "create an animated bar chart of our sales going up for when I mention the sales chart"
+    }
+  ],
+  "expect": {
+    "actions": ["editor.designOverlays"],
+    "args": [
+      {
+        "pointer": "/mode",
+        "equals": "create"
+      },
+      {
+        "pointer": "/instruction",
+        "matches": "chart",
+        "flags": "i"
+      }
+    ]
+  }
+}

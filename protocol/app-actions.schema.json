@@ -243,7 +243,7 @@
       "id": "editor.designOverlays",
       "symbol": "overlayWorkflow",
       "input": "OverlayWorkflowInput",
-      "description": "Overlays from the creator's own files or newly created visuals. mode placeImported puts media files the creator imported (media with onMainTrack and usedAsOverlay both false) on the timeline at the moments they fit the speech, with any sounds asked for on them, for example a cha-ching exactly when a number is said. mode create designs new visuals (charts, counters, animated graphics) that do not exist yet. Pass the creator's whole request as the instruction; the workflow reads the transcript and media itself. Never use this to edit existing masks.",
+      "description": "Overlay work that needs judgement over the speech. mode placeImported puts imported media on the timeline at the moments they fit the speech, with any sounds or on-screen words asked for on them, for example a cha-ching exactly when a number is said. mediaIDs are the unused imports to place (media with onMainTrack and usedAsOverlay both false); leave it out to use every unused import. Media already on the timeline is never placed again. mode create designs new visuals (charts, counters, animated graphics) that do not exist yet. mode revise changes generated overlays: mediaIDs are their kind scene media. mode revealNumbers makes the numbers in one image overlay appear as they are spoken: mediaIDs is that image or its spoken reveal. Pass the creator's whole request as the instruction; the workflow reads the transcript itself. Sounds on existing overlays or cuts, sounds or text alone at speech moments, and volume changes use the audio and text actions, not this. Never use this to edit existing masks.",
       "effect": "workflow",
       "requiresRebuild": true,
       "runtime": "client"
@@ -2746,11 +2746,21 @@
         }
       }
     },
+    "OverlayWorkflowModeInput": {
+      "type": "string",
+      "enum": [
+        "placeImported",
+        "create",
+        "revise",
+        "revealNumbers"
+      ]
+    },
     "OverlayWorkflowInput": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "instruction"
+        "instruction",
+        "mode"
       ],
       "properties": {
         "instruction": {
@@ -2759,11 +2769,16 @@
           "maxLength": 4000
         },
         "mode": {
-          "type": "string",
-          "enum": [
-            "placeImported",
-            "create"
-          ]
+          "$ref": "#/$defs/OverlayWorkflowModeInput"
+        },
+        "mediaIDs": {
+          "type": "array",
+          "maxItems": 500,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
         }
       }
     },

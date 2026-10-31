@@ -6,36 +6,10 @@ enum GeneratedOverlayCommand {
         text.range(of: #"^\s*(please\s+)?(remove|delete)\s*(it|this overlay|the overlay)?\s*(from (the )?(video|timeline))?\s*[.!]?\s*$"#,
                    options: [.regularExpression, .caseInsensitive]) != nil
     }
-    static func creates(_ instruction: String, hasImportedMedia: Bool = false) -> Bool {
-        // The verb must act on a visual. Independent substring checks read
-        // "put the overlays where they make sense" as "make overlays" and
-        // started expensive rendering/design instead of placing the bin.
-        let target = #"(?:overlays?|visuals?|animations?|diagrams?|counters?|charts?|illustrations?|graphics?|numbers?)\b"#
-        let qualifiers = #"(?:(?:me|us|a|an|the|some|more|additional|several|new|another|one|two|three|few|couple of|\d+|custom|animated|simple|small|branded|visual|dynamic)\s+)*"#
-        let creation = #"\b(?:create|generate|design|draw|build|animate)\s+"# + qualifiers + target
-        // "Make overlays" creates them; "make the overlays bigger" modifies
-        // an existing visual. Do not let the broader creation route claim it.
-        let making = #"\bmake\s+"# + qualifiers + target +
-            #"(?!\s+(?:bigger|smaller|larger|wider|narrower|taller|shorter|longer|brighter|darker|louder|quieter)\b)"#
-        if [creation, making].contains(where: { instruction.range(of: $0, options: [.regularExpression, .caseInsensitive]) != nil }) {
-            return true
-        }
-        // "Add overlays" means use the imported assets when there are any.
-        // A new design must be explicit before we leave the placement path.
-        let addition = hasImportedMedia
-            ? #"\badd\s+(?:(?:me|us|a|an|some)\s+)*new\s+"# + qualifiers + target
-            : #"\badd\s+"# + qualifiers + target
-        return instruction.range(of: addition, options: [.regularExpression, .caseInsensitive]) != nil
-    }
 }
 
 @MainActor
 extension EditorSession {
-    func generatedMediaMentioned(in instruction: String) -> [ProjectMedia] {
-        let names = OverlayMention.mentioned(in: instruction, names: project.media.filter(\.isScene).map(\.name))
-        return project.media.filter { $0.isScene && names.contains($0.name) }
-    }
-
     /// One user operation: direct, design, save and place; no approval stage.
     func performGeneratedOverlays(instruction: String, revising: [ProjectMedia]) async {
         setOverlayPlacement(.working)

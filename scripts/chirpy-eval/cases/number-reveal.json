@@ -1,0 +1,62 @@
+{
+  "id": "number-reveal",
+  "from": "overlay workflow structured input: revealing an image overlay's numbers as they are said names the image",
+  "tags": ["overlay-workflow"],
+  "catalog": "current",
+  "base": "imported-media",
+  "append": {
+    "media": [
+      {
+        "id": "D41E6B0A-58C3-4F7E-A2B9-6C0D8E1F3A44",
+        "name": "Google Ads results.png",
+        "kind": "image",
+        "onMainTrack": false,
+        "usedAsOverlay": true
+      }
+    ]
+  },
+  "context": {
+    "timelineItems": [
+      {
+        "id": "E52F7C1B-69D4-4A8F-B3CA-7D1E9F2A4B55",
+        "kind": "overlay",
+        "start": 14.5,
+        "end": 21,
+        "media": "Google Ads results.png"
+      }
+    ],
+    "overlays": [
+      {
+        "id": "E52F7C1B-69D4-4A8F-B3CA-7D1E9F2A4B55",
+        "mediaID": "D41E6B0A-58C3-4F7E-A2B9-6C0D8E1F3A44",
+        "timelineStart": 14.5,
+        "duration": 6.5,
+        "sourceStart": 0
+      }
+    ]
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "can the Google Ads results overlay reveal each number as I say it instead of showing them all at once?"
+    }
+  ],
+  "expect": {
+    "actions": ["editor.designOverlays"],
+    "args": [
+      {
+        "pointer": "/mode",
+        "equals": "revealNumbers"
+      },
+      {
+        "pointer": "/mediaIDs",
+        "length": 1
+      },
+      {
+        "pointer": "/mediaIDs/0",
+        "matches": "^D41E6B0A-58C3-4F7E-A2B9-6C0D8E1F3A44$",
+        "flags": "i"
+      }
+    ]
+  }
+}

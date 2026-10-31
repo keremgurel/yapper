@@ -168,8 +168,9 @@ private struct CaptionCanvasCard: View {
                 )
             }
             .onEnded { _ in
-                if let finished = drag.endCaption() {
-                    session.moveCaption(cue.id, x: finished.x, y: finished.y)
+                if let finished = drag.holdCaption() {
+                    let commit = session.moveCaption(cue.id, x: finished.x, y: finished.y)
+                    Task { _ = await commit.value; drag.releaseCaption(cue.id) }
                 }
                 onGuidesChanged([])
             }
@@ -185,8 +186,9 @@ private struct CaptionCanvasCard: View {
                 beginDraftIfNeeded()
                 guard let origin = drag.captionOrigin else { return }
                 drag.updateCaption(turned(origin, from: start, to: current))
-                if ended, let finished = drag.endCaption() {
-                    session.rotateCaption(cue.id, rotation: finished.rotation)
+                if ended, let finished = drag.holdCaption() {
+                    let commit = session.rotateCaption(cue.id, rotation: finished.rotation)
+                    Task { _ = await commit.value; drag.releaseCaption(cue.id) }
                 }
             }
             .offset(y: -TurnHandle.reach)
@@ -282,8 +284,9 @@ private struct CaptionCanvasCard: View {
                         )
                     }
                     .onEnded { _ in
-                        if let finished = drag.endCaption() {
-                            session.resizeCaption(cue.id, width: finished.width)
+                        if let finished = drag.holdCaption() {
+                            let commit = session.resizeCaption(cue.id, width: finished.width)
+                            Task { _ = await commit.value; drag.releaseCaption(cue.id) }
                         }
                     }
             )

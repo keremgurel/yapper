@@ -1,0 +1,162 @@
+{
+  "id": "sound-level-change",
+  "from": "overlay workflow structured input: setting the level of one effect is editor.audio.setVolume on its layers",
+  "tags": ["audio", "overlay-workflow"],
+  "catalog": "current",
+  "base": "imported-media",
+  "append": {
+    "media": [
+      {
+        "id": "89001F73-2A4F-4A18-AD01-53CE94B3D8A4",
+        "name": "coffee-grinding.mov",
+        "kind": "video",
+        "onMainTrack": false,
+        "usedAsOverlay": true
+      },
+      {
+        "id": "CD66CB6B-167C-4507-A32F-95EB0B7E9121",
+        "name": "coffee-brewing.mov",
+        "kind": "video",
+        "onMainTrack": false,
+        "usedAsOverlay": true
+      },
+      {
+        "id": "3B65E744-6778-4B61-A44E-E4CD3CA4AFD9",
+        "name": "sales-chart.png",
+        "kind": "image",
+        "onMainTrack": false,
+        "usedAsOverlay": true
+      }
+    ]
+  },
+  "context": {
+    "timelineItems": [
+      {
+        "id": "5B3AA239-197A-4576-AEC7-73A217BC60C8",
+        "kind": "overlay",
+        "start": 4.2,
+        "end": 7.2,
+        "media": "coffee-grinding.mov"
+      },
+      {
+        "id": "6F1C0E52-3D52-4B1B-9C7B-2E0A5B9F7A11",
+        "kind": "sound",
+        "start": 4.2,
+        "end": 4.6,
+        "name": "Pop"
+      },
+      {
+        "id": "870368D0-094A-46BC-ABAC-EA814CEE6F7D",
+        "kind": "overlay",
+        "start": 11.8,
+        "end": 14.8,
+        "media": "coffee-brewing.mov"
+      },
+      {
+        "id": "A2E4D7C9-8B6F-4E1A-9D3C-5F7B2A1C4E22",
+        "kind": "sound",
+        "start": 11.8,
+        "end": 12.6,
+        "name": "Woosh"
+      },
+      {
+        "id": "0465356D-B145-4078-ABF9-059AF49015E0",
+        "kind": "overlay",
+        "start": 19.5,
+        "end": 22.5,
+        "media": "sales-chart.png"
+      },
+      {
+        "id": "C3B5A8D1-7E9F-4A2B-8C6D-1E3F5A7B9C33",
+        "kind": "sound",
+        "start": 19.5,
+        "end": 19.9,
+        "name": "Pop"
+      }
+    ],
+    "soundLibrary": [
+      {
+        "id": "pop",
+        "name": "Pop"
+      },
+      {
+        "id": "woosh",
+        "name": "Woosh"
+      },
+      {
+        "id": "camera-shutter",
+        "name": "Camera shutter"
+      },
+      {
+        "id": "cha-ching",
+        "name": "Cha-ching"
+      }
+    ],
+    "sounds": [
+      {
+        "id": "6F1C0E52-3D52-4B1B-9C7B-2E0A5B9F7A11",
+        "name": "Pop",
+        "time": 4.2,
+        "volume": 1,
+        "duration": 0.4,
+        "sourceStart": 0,
+        "sourceDuration": 0.4,
+        "playbackRate": 1,
+        "effectID": "pop"
+      },
+      {
+        "id": "A2E4D7C9-8B6F-4E1A-9D3C-5F7B2A1C4E22",
+        "name": "Woosh",
+        "time": 11.8,
+        "volume": 1,
+        "duration": 0.8,
+        "sourceStart": 0,
+        "sourceDuration": 0.8,
+        "playbackRate": 1,
+        "effectID": "woosh"
+      },
+      {
+        "id": "C3B5A8D1-7E9F-4A2B-8C6D-1E3F5A7B9C33",
+        "name": "Pop",
+        "time": 19.5,
+        "volume": 1,
+        "duration": 0.4,
+        "sourceStart": 0,
+        "sourceDuration": 0.4,
+        "playbackRate": 1,
+        "effectID": "pop"
+      }
+    ],
+    "videoTrackVolume": 1
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "make all the pops 80%"
+    }
+  ],
+  "expect": {
+    "actions": ["editor.audio.setVolume"],
+    "args": [
+      {
+        "pointer": "/volume",
+        "equals": 0.8
+      },
+      {
+        "pointer": "/videoTrack",
+        "equals": false
+      },
+      {
+        "pointer": "/layerIDs",
+        "length": 2
+      },
+      {
+        "pointer": "/layerIDs",
+        "every": {
+          "matches": "^(6F1C0E52-3D52-4B1B-9C7B-2E0A5B9F7A11|C3B5A8D1-7E9F-4A2B-8C6D-1E3F5A7B9C33)$",
+          "flags": "i"
+        }
+      }
+    ]
+  }
+}

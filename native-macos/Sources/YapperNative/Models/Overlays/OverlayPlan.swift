@@ -259,21 +259,6 @@ enum OverlayPlan {
         return result
     }
 
-    /// Which of the library's files an instruction actually mentions, in the
-    /// library's own order. Matched longest name first, so `@intro.mp4` inside
-    /// the text of `@intro.mp4.bak` never wins.
-    static func mentionedNames(in text: String, names: [String]) -> [String] {
-        var remaining = text.lowercased()
-        var found: Set<String> = []
-        for name in names.sorted(by: { $0.count > $1.count }) {
-            let needle = "@" + name.lowercased()
-            guard remaining.contains(needle) else { continue }
-            found.insert(name)
-            remaining = remaining.replacingOccurrences(of: needle, with: " ")
-        }
-        return names.filter { found.contains($0) }
-    }
-
     /// One transcript word, stripped to what can be compared. Shared with
     /// `OverlayCue`, which has to tokenise the same way or a cue would miss a
     /// word its own quote had already matched.

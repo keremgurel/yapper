@@ -237,22 +237,4 @@ struct OverlayPlanTests {
         )
         #expect(spans.isEmpty)
     }
-
-    @Test func mentionsMatchTheLibraryEvenWhenNamesContainSpaces() {
-        let names = ["day 06 hook.png", "day 06 hook.png.bak", "cta.png"]
-        let mentioned = OverlayPlan.mentionedNames(
-            in: "put @day 06 hook.png at the top and @cta.png at the end",
-            names: names
-        )
-        #expect(mentioned == ["day 06 hook.png", "cta.png"])
-    }
-
-    @Test func anInstructionThatNamesNothingMentionsNothing() {
-        #expect(
-            OverlayPlan.mentionedNames(
-                in: "place these wherever they fit",
-                names: ["a.png", "b.png"]
-            ).isEmpty
-        )
-    }
 }

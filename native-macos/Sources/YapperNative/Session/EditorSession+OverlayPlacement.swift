@@ -17,9 +17,6 @@ enum OverlayPlacementStatus: Equatable, Sendable {
 /// the media in the bin. It answers with quotes, those quotes are matched back
 /// against the transcript here, and only what the transcript backs is turned
 /// into an overlay. Nothing it invents can reach the timeline.
-/// Which overlay job a request is, when the planner has decided it.
-enum OverlayWorkflowMode: Sendable { case placeImported, create }
-
 @MainActor
 extension EditorSession {
     /// The words that survive the current edit, in the order they are heard.
@@ -42,19 +39,18 @@ extension EditorSession {
         return project.media.filter { !onTimeline.contains($0.id) }
     }
 
+    /// Runs the job Chirpy's planner chose, on the files it chose. Sounds on
+    /// overlays already placed and volume changes never come here: those are
+    /// `editor.audio.addAt` and `editor.audio.setVolume`.
     @discardableResult
-    func placeOverlaysWithAI(instruction: String, mode: OverlayWorkflowMode? = nil) async -> Bool {
+    func placeOverlaysWithAI(_ request: OverlayWorkflowInput) async -> Bool {
         guard !project.clips.isEmpty else { return false }
-        return await runTrackedLongOperation(.overlayAI) { [weak self] operation in
-            await self?.performOverlayPlacement(instruction: instruction, mode: mode, owner: operation)
+        return await runTrackedLongOperation(.overlayAI) { [weak self] _ in
+            await self?.performOverlayWorkflow(request)
         }
     }
 
-    private func performOverlayPlacement(
-        instruction: String,
-        mode: OverlayWorkflowMode? = nil,
-        owner operation: LongOperationLease
-    ) async {
+    private func performOverlayWorkflow(_ request: OverlayWorkflowInput) async {
         guard !Task.isCancelled else {
             markCurrentLongOperationCanceled()
             setOverlayPlacement(.idle)
@@ -63,48 +59,11 @@ extension EditorSession {
         }
         clearError()
 
-        // Answered here when the sentence has nothing in it to decide: which
-        // sounds, and on every one of what. The model is never told what is
-        // already on the timeline, so it reads "on every overlay we have" as a
-        // request to place those overlays, and places them all over again.
-        // Only when there is something to sweep. With no overlays on the
-        // timeline yet, "a sound on every overlay" belongs to the placement
-        // below, which places the overlays and their sounds together.
-        if let sweep = SoundSweep.parse(instruction),
-           sweep.target == .cuts || (project.overlays ?? []).contains(where: \.isVisible) {
-            await applySweep(sweep, instruction: instruction, owner: operation)
-            return
-        }
-        // "Make all the pops 80%": which sounds, and how loud. Nothing to
-        // decide, so nothing to ask.
-        if let level = SoundLevelCommand.parse(instruction) {
-            setOverlayPlacement(.working)
-            let notes = await applyLevelCommand(level, owner: operation)
-            setOverlayPlacement(
-                notes.isEmpty
-                    ? .failed(errorMessage ?? levelCommandEmptyReason(level))
-                    : .placed(notes: notes)
-            )
-            return
-        }
-        // A sentence purely about sound or about words on screen has nothing to
-        // do with the bin, and those are the cases that can still run with
-        // nothing in it. Anything else asking for overlays with no overlays to
-        // place is answered here rather than paid for and answered by the model.
-        let intent = AssistantRouter.route(instruction)
-        // The planner says which it is when it knows: placing what the creator
-        // imported and designing something new are different requests, and a
-        // sentence that names both is decided there, or asked about.
-        let creates = switch mode {
-        case .placeImported: false
-        case .create: true
-        case nil: GeneratedOverlayCommand.creates(instruction, hasImportedMedia: !placeableMedia.isEmpty)
-        }
-        // A file can be a reference for a new design. Its mention must not
-        // override an explicit creation request and place or revise it instead.
-        let revisions = creates ? [] : generatedMediaMentioned(in: instruction)
-        guard !placeableMedia.isEmpty || intent == .addSounds || intent == .placeText || creates else {
-            setOverlayPlacement(.failed("Import the overlays you want placed first."))
+        let target: OverlayWorkflowTarget
+        do {
+            target = try overlayWorkflowTarget(for: request)
+        } catch {
+            setOverlayPlacement(.failed(error.localizedDescription))
             return
         }
 
@@ -136,25 +95,19 @@ extension EditorSession {
             }
         }
 
-        if ImageNumberReveal.requested(instruction) {
-            await performImageNumberReveal(instruction: instruction)
-            return
+        switch target {
+        case let .place(files):
+            await placeImported(files, instruction: request.instruction)
+        case .create:
+            await performGeneratedOverlays(instruction: request.instruction, revising: [])
+        case let .revise(scenes):
+            await performGeneratedOverlays(instruction: request.instruction, revising: scenes)
+        case let .revealNumbers(source):
+            await performImageNumberReveal(instruction: request.instruction, source: source)
         }
+    }
 
-        if creates || !revisions.isEmpty {
-            await performGeneratedOverlays(instruction: instruction, revising: revisions)
-            return
-        }
-
-        let named = OverlayPlan.mentionedNames(
-            in: instruction,
-            names: placeableMedia.map(\.name)
-        )
-        // Mentioning nothing means "use what I have", not "use nothing".
-        let files = named.isEmpty
-            ? placeableMedia
-            : placeableMedia.filter { named.contains($0.name) }
-
+    private func placeImported(_ files: [ProjectMedia], instruction: String) async {
         setOverlayPlacement(.working)
         guard let rollbackState = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
@@ -244,62 +197,11 @@ extension EditorSession {
         }
     }
 
-    /// Places a sweep and reports it the same way the model's own pass does, so
-    /// the reply reads identically whichever answered it.
-    /// Awaited to the end, and only then reported.
-    ///
-    /// This used to commit inside a detached task and return, which left the
-    /// status still saying `working` when the assistant read it a moment later
-    /// — and `working` is reported as "that did not finish". The sounds landed
-    /// every time; the reply said they had not.
-    private func applySweep(
-        _ sweep: SoundSweep,
-        instruction: String,
-        owner: LongOperationLease
-    ) async {
-        setOverlayPlacement(.working)
-        // What actually landed, not what was asked for: a sound already sitting
-        // on that frame is left alone, and claiming it was added again would be
-        // a lie the timeline immediately contradicts.
-        var added = 0
-        var notes: [String] = []
-        var noChangeReason: String?
-        let success = await commitTimelineEdit(
-            successStatus: "Placed \(added) sound\(added == 1 ? "" : "s") · ⌘Z to undo",
-            owner: owner
-        ) { [self] in
-            let sounds = applySoundSweep(sweep, instruction: instruction)
-            guard !sounds.isEmpty else {
-                noChangeReason = sweepEmptyReason(sweep)
-                return false
-            }
-            let before = (project.audioLayers ?? []).count
-            addSounds(sounds)
-            added = (project.audioLayers ?? []).count - before
-            guard added > 0 else {
-                noChangeReason = "Those moments already have a sound on them."
-                return false
-            }
-            notes = soundNotes(Array(sounds.suffix(added)))
-            return true
-        }
-        guard success else {
-            if errorMessage == nil, let noChangeReason {
-                setOverlayPlacement(.failed(noChangeReason))
-            }
-            return
-        }
-        setOverlayPlacement(.placed(notes: notes))
-    }
-
     /// What the pass has to say when it changed nothing at all.
     func nothingLanded(unknownEffects: [String]) -> String {
         guard unknownEffects.isEmpty else {
             let names = unknownEffects.map { "“\($0)”" }.joined(separator: ", ")
             return "There is no \(names) in the sound library."
-        }
-        guard !placeableMedia.isEmpty else {
-            return "Import the overlays you want placed first."
         }
         return "Nothing in the transcript matched. Try naming the moment."
     }

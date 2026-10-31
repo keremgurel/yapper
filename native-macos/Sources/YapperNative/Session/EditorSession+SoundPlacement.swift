@@ -14,54 +14,6 @@ struct ResolvedSound: Equatable, Sendable {
 /// leave the selection where the overlays put it.
 @MainActor
 extension EditorSession {
-    /// Runs a sweep: these sounds, on every one of those, dealt round in turn.
-    ///
-    /// Answered here rather than by the model, because there is nothing in it
-    /// to decide. See `SoundSweep`.
-    /// - Parameter instruction: the sentence it came from, so a subset named in
-    ///   it is honoured. "Each time I show one of the email overlays" is four
-    ///   sounds, not eleven.
-    func applySoundSweep(_ sweep: SoundSweep, instruction: String = "") -> [ResolvedSound] {
-        let moments: [Double]
-        switch sweep.target {
-        case .overlays:
-            moments = sweptOverlays(instruction: instruction)
-                .map(\.timelineStart)
-                .sorted()
-        case .cuts:
-            moments = SoundPlan.cutTimes(clipDurations: project.clips.map(\.duration))
-        }
-        return moments.enumerated().map { index, start in
-            ResolvedSound(effect: sweep.effect(at: index), timelineStart: start)
-        }
-    }
-
-    /// The cutaways a sweep covers: the ones whose file the sentence named, or
-    /// all of them when it named none.
-    private func sweptOverlays(instruction: String) -> [ProjectOverlay] {
-        let visible = (project.overlays ?? []).filter(\.isVisible)
-        let named = MediaNameMatch.mentioned(
-            in: instruction,
-            names: project.media.map(\.name)
-        )
-        guard !named.isEmpty else { return visible }
-        let wanted = Set(
-            project.media.filter { named.contains($0.name) }.map(\.id)
-        )
-        let subset = visible.filter { wanted.contains($0.mediaID) }
-        // A sentence that named files with no cutaways between them is more
-        // likely a turn of phrase than a request for nothing at all.
-        return subset.isEmpty ? visible : subset
-    }
-
-    /// What a sweep found nothing to act on, for the reply that has to say so.
-    func sweepEmptyReason(_ sweep: SoundSweep) -> String {
-        switch sweep.target {
-        case .overlays: "There are no overlays on the timeline to put sounds on."
-        case .cuts: "There are no cuts in this edit to put sounds on."
-        }
-    }
-
     /// The times the model's standalone sound requests actually land on.
     ///
     /// A request names its moment one of three ways: a time the creator typed
