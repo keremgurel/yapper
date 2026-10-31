@@ -33,12 +33,10 @@ extension AppActionRegistry {
             await session.autoTrimSilences(clipIDs: input.clipIDs.map(Set.init))
         }
         registry.registerWorkflow(OverlayWorkflowInput.self) { session, input in
-            let mode: OverlayWorkflowMode? = switch input.mode {
-            case "placeImported": .placeImported
-            case "create": .create
-            default: nil
+            guard Set(input.mediaIDs ?? []).isSubset(of: Set(session.project.media.map(\.id))) else {
+                throw AppActionError("A requested file is no longer in this project.")
             }
-            let canceled = await session.placeOverlaysWithAI(instruction: input.instruction, mode: mode)
+            let canceled = await session.placeOverlaysWithAI(input)
             if case let .failed(message) = session.overlayPlacement { throw AppActionError(message) }
             return canceled
         }

@@ -1,0 +1,58 @@
+{
+  "id": "imports-place-by-id",
+  "from": "overlay workflow structured input: the files to place travel as media IDs, and placed ones stay out",
+  "tags": ["imports", "overlay-workflow"],
+  "catalog": "current",
+  "base": "imported-media",
+  "append": {
+    "media": [
+      {
+        "id": "89001F73-2A4F-4A18-AD01-53CE94B3D8A4",
+        "name": "coffee-grinding.mov",
+        "kind": "video",
+        "onMainTrack": false,
+        "usedAsOverlay": false
+      },
+      {
+        "id": "CD66CB6B-167C-4507-A32F-95EB0B7E9121",
+        "name": "coffee-brewing.mov",
+        "kind": "video",
+        "onMainTrack": false,
+        "usedAsOverlay": false
+      },
+      {
+        "id": "3B65E744-6778-4B61-A44E-E4CD3CA4AFD9",
+        "name": "sales-chart.png",
+        "kind": "image",
+        "onMainTrack": false,
+        "usedAsOverlay": false
+      }
+    ]
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "put the two coffee clips over the parts where I talk about the coffee"
+    }
+  ],
+  "expect": {
+    "actions": ["editor.designOverlays"],
+    "args": [
+      {
+        "pointer": "/mode",
+        "equals": "placeImported"
+      },
+      {
+        "pointer": "/mediaIDs",
+        "length": 2
+      },
+      {
+        "pointer": "/mediaIDs",
+        "every": {
+          "matches": "^(89001F73-2A4F-4A18-AD01-53CE94B3D8A4|CD66CB6B-167C-4507-A32F-95EB0B7E9121)$",
+          "flags": "i"
+        }
+      }
+    ]
+  }
+}

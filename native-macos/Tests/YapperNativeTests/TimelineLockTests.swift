@@ -14,8 +14,6 @@ struct TimelineLockTests {
         #expect(ClipControlCommand.parse("set this clip speed to 0.75×") == .speed(0.75, all: false))
         #expect(ClipControlCommand.parse("lock all captions") == .lock(true, captions: true, all: true))
         #expect(ClipControlCommand.parse("unlock selected clips") == .lock(false, captions: false, all: false))
-        #expect(AssistantRouter.route("lock all captions") == .clipControls)
-        #expect(AssistantRouter.route("set all clips to 1.5x") == .clipControls)
         #expect(ClipControlCommand.parse("create an overlay about speed") == nil)
     }
     private func fixture() -> EditorProject {

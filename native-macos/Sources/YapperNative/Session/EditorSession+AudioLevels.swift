@@ -46,66 +46,6 @@ extension EditorSession {
         Task { await performAppAction(AudioVolumeInput(layerIDs: [], videoTrack: true, volume: volume)) }
     }
 
-    /// Runs "make all the pops 80%": the layers it names, in one edit.
-    ///
-    /// Returns what it changed, one line per sound, so the assistant can report
-    /// it the way the placement pass reports a cutaway. Empty when the sentence
-    /// named sounds this timeline does not have.
-    @discardableResult
-    func applyLevelCommand(
-        _ command: SoundLevelCommand,
-        owner: LongOperationLease? = nil
-    ) async -> [String] {
-        var notes: [String] = []
-        let success = await commitTimelineEdit(successStatus: command.summary, owner: owner) { [self] in
-            if command.target == .videoTrack {
-                guard project.resolvedVideoTrackVolume != command.volume else { return false }
-                updateProject { project in
-                    project.videoTrackVolume = command.volume == 1 ? nil : command.volume
-                    project.updatedAt = Date()
-                }
-                notes = [command.summary]
-                return true
-            }
-
-            let wanted = (project.audioLayers ?? []).filter { matches($0, command.target) }
-            guard wanted.contains(where: { $0.volume != command.volume }) else { return false }
-            let ids = Set(wanted.map(\.id))
-            updateProject { project in
-                for index in project.audioLayers?.indices ?? (0 ..< 0).indices {
-                    guard let id = project.audioLayers?[index].id, ids.contains(id) else { continue }
-                    project.audioLayers?[index].volume = command.volume
-                }
-                project.updatedAt = Date()
-            }
-            notes = [command.summary + " (\(wanted.count) sound\(wanted.count == 1 ? "" : "s"))"]
-            return true
-        }
-        return success ? notes : []
-    }
-
-    /// What a sentence naming an effect could not find, for the reply that has
-    /// to say so rather than claim a silent success.
-    func levelCommandEmptyReason(_ command: SoundLevelCommand) -> String {
-        switch command.target {
-        case .videoTrack, .allSounds:
-            "There are no sounds on the timeline to set the level of."
-        case let .effect(id):
-            {
-                let name = SoundEffectDescriptor.library.first { $0.id == id }?.name ?? id
-                return "There is no \(name) on the timeline."
-            }()
-        }
-    }
-
-    private func matches(_ layer: ProjectAudioLayer, _ target: SoundLevelCommand.Target) -> Bool {
-        switch target {
-        case .allSounds: true
-        case .videoTrack: false
-        case let .effect(id): layer.builtInID == id
-        }
-    }
-
     /// Sets a level in one go, for a button rather than a drag.
     func setVideoTrackVolume(_ volume: Double) {
         previewVideoTrackVolume(volume)

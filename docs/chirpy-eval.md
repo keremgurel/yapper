@@ -118,6 +118,21 @@ The planner now sends the action catalog and schemas as a second system message 
 
 gpt-5.4 fails the same cases as on v1 (`repeated-phrase-clarify` twice, `imports-descriptive-place` once). Haiku's one miss was `mask-from-image` drawing a cover 0.4 tall where the block is 0.6. The p95 list cost for gpt-5.4 is still $0.031: the first turn after the cache goes cold pays full price.
 
+## Overlay workflow on structured input, 2026-10-30
+
+`editor.designOverlays` now takes a required `mode` (`placeImported`, `create`, `revise` or `revealNumbers`) and the `mediaIDs` the planner picked, and the Mac app no longer reads the sentence to decide what to run. Sound sweeps over existing overlays or cuts and volume changes are planned as `editor.audio.addAt` and `editor.audio.setVolume`. Five new cases cover this: `sweep-existing-overlays`, `sound-level-change`, `imports-place-by-id`, `create-chart` and `number-reveal`.
+
+Before and after used 2 runs per case and the baseline variant. Before is main at `7f95d6a5`, which has only the 20 existing cases.
+
+| Model            | Existing before | Existing after | New cases after |
+| ---------------- | --------------: | -------------: | --------------: |
+| claude-haiku-5.5 |           39/40 |          40/40 |           10/10 |
+| gpt-5.4          |           36/40 |          36/40 |           10/10 |
+
+Haiku's one miss before was a truncated answer on `imports-carry-descriptions`. gpt-5.4 missed `imports-descriptive-place` and `repeated-phrase-clarify` both times, the same two cases it missed in the v1 and P1 runs. Four extra runs of those two scored 2/4 and 1/4 with this change and 0/4 and 1/4 on main.
+
+The first draft put the new prompt sentence after "An audio request changes only audio" and scored 33/40 on gpt-5.4, losing `mask-from-image` as well. Four extra runs of its three misses scored 3/12 on main and 3/12 on the draft, so that dip was most likely noise. The sentence now sits next to the other `designOverlays` guidance anyway, and the table is from that version.
+
 ## Probes
 
 The probes in `scripts/chirpy-eval/probes/` answer the plan's early checks. Each writes JSON to `scripts/chirpy-eval/results/` and prints a markdown table.

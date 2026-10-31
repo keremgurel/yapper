@@ -101,13 +101,6 @@ enum ImageNumberReveal {
         let spoken: String
     }
 
-    static func requested(_ instruction: String) -> Bool {
-        let text = instruction.lowercased()
-        return text.range(of: #"\b(reveal|show|appear|uncover)\b"#, options: .regularExpression) != nil &&
-            text.range(of: #"\b(numbers?|figures?|metrics?|stats|values?)\b"#, options: .regularExpression) != nil &&
-            text.range(of: #"\b(say|saying|speak|spoken|mention|read|voice|narration)\b"#, options: .regularExpression) != nil
-    }
-
     static func number(_ text: String) -> Double? {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard text.range(of: #"^(?:[A-Z]{1,3}\s*)?[$€£]?\s*-?\d[\d,]*(?:\.\d+)?%?$"#, options: .regularExpression) != nil else { return nil }
