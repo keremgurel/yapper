@@ -1,0 +1,20 @@
+{
+  "id": "app-project-rename",
+  "from": "PR #326: renaming the open project is an action",
+  "tags": ["app"],
+  "catalog": "current",
+  "base": "imported-media",
+  "messages": [
+    { "role": "user", "content": "Rename this project to Launch video" }
+  ],
+  "expect": {
+    "actions": ["app.projects.rename"],
+    "args": [
+      {
+        "action": "app.projects.rename",
+        "pointer": "/name",
+        "equals": "Launch video"
+      }
+    ]
+  }
+}

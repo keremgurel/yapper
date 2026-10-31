@@ -251,6 +251,13 @@ private struct TextLayerCanvasItem: View {
     /// a gesture runs, and a drag kept here went with them.
     @ObservedObject var drag: CanvasDragState
 
+    /// Commits a finished drag through the text actions, keeping its draft on
+    /// screen until the edit lands so the layer does not jump back.
+    private func commitText(_ finished: ProjectTextLayer) {
+        let commit = session.commitTextLayerDraft(finished)
+        Task { _ = await commit.value; drag.releaseText(finished.id) }
+    }
+
     /// The saved position places the layer; the drag is carried as a transform
     /// on top. See CaptionCanvasOverlay for why.
     private var dragOffset: CGSize {
@@ -303,7 +310,7 @@ private struct TextLayerCanvasItem: View {
                         drag.updateText(result.layer)
                     }
                     .onEnded { _ in
-                        if let finished = drag.endText() { session.updateTextLayer(finished) }
+                        if let finished = drag.holdText() { commitText(finished) }
                         alignmentGuides = TextCanvasAlignmentGuides()
                     }
             )
@@ -368,7 +375,7 @@ private struct TextLayerCanvasItem: View {
                         to: current
                     )
                 )
-                if ended, let finished = drag.endText() { session.updateTextLayer(finished) }
+                if ended, let finished = drag.holdText() { commitText(finished) }
             }
             .offset(y: -TurnHandle.reach)
         }
@@ -414,7 +421,7 @@ private struct TextLayerCanvasItem: View {
                         drag.updateText(updated)
                     }
                     .onEnded { _ in
-                        if let finished = drag.endText() { session.updateTextLayer(finished) }
+                        if let finished = drag.holdText() { commitText(finished) }
                     }
             )
             .accessibilityLabel("Resize text from \(corner.accessibilityName)")
@@ -439,7 +446,7 @@ enum TextCanvasGeometry {
         var updated = layer
         let width = max(1, canvasSize.width)
         let height = max(1, canvasSize.height)
-        var x = min(0.96, max(0.04, origin.x + translation.width / width))
+        var x = TextStyle.clampPosition(origin.x + translation.width / width)
         var y = min(0.94, max(0.06, origin.y + translation.height / height))
         let verticalCenter = abs(x - 0.5) * width <= snapThreshold
         let horizontalCenter = abs(y - 0.5) * height <= snapThreshold
@@ -502,11 +509,11 @@ enum TextCanvasGeometry {
         ) / 2
         let referenceWidth = max(72, Double(canvasSize.width) * layer.width)
         let scale = min(3.2, max(0.35, 1 + projected / referenceWidth))
-        let newWidth = min(0.95, max(0.16, layer.width * scale))
+        let newWidth = min(0.95, max(TextStyle.minimumWidth, layer.width * scale))
         let newFontScale = min(0.16, max(0.018, layer.fontScale * scale))
 
         // Keep the opposite corner visually anchored while the dragged corner moves.
-        updated.x = min(0.96, max(0.04, layer.x + (newWidth - layer.width) * corner.xSign / 2))
+        updated.x = TextStyle.clampPosition(layer.x + (newWidth - layer.width) * corner.xSign / 2)
         updated.y = min(
             0.94,
             max(0.06, layer.y + (newFontScale - layer.fontScale) * corner.ySign * 0.7)

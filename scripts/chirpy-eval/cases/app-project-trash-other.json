@@ -1,0 +1,36 @@
+{
+  "id": "app-project-trash-other",
+  "from": "PR #326: Chirpy proposes moving a named library project to the Trash, which the app then confirms",
+  "tags": ["app"],
+  "catalog": "current",
+  "base": "imported-media",
+  "context": {
+    "projectLibrary": [
+      {
+        "id": "11111111-2222-4333-8444-555555555555",
+        "name": "Old draft",
+        "updatedAt": "2026-09-01T10:00:00Z",
+        "open": false
+      },
+      {
+        "id": "22222222-3333-4444-8555-666666666666",
+        "name": "Coffee review",
+        "updatedAt": "2026-10-20T10:00:00Z",
+        "open": false
+      }
+    ]
+  },
+  "messages": [
+    { "role": "user", "content": "Move my Old draft project to the trash" }
+  ],
+  "expect": {
+    "actions": ["app.projects.trash"],
+    "args": [
+      {
+        "action": "app.projects.trash",
+        "pointer": "/projectID",
+        "equals": "11111111-2222-4333-8444-555555555555"
+      }
+    ]
+  }
+}

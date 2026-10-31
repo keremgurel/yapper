@@ -4,6 +4,28 @@ import Foundation
 /// caption inspector emits, which is what lets both tabs share one set of
 /// property controls.
 extension EditorSession {
+    /// A finished drag on a text layer, on the canvas or along the timeline,
+    /// committed through the actions Chirpy uses: position, size and angle as
+    /// style fields, a move or trim on the timeline as timing.
+    @discardableResult
+    func commitTextLayerDraft(_ draft: ProjectTextLayer) -> Task<AppActionResult?, Never> {
+        guard let stored = project.textLayers?.first(where: { $0.id == draft.id }) else { return Task { nil } }
+        if draft.timelineStart != stored.timelineStart || draft.duration != stored.duration {
+            let input = TextLayerUpdateInput(textLayerID: draft.id, text: nil,
+                                             timelineStart: draft.timelineStart, duration: draft.duration)
+            return Task { await performAppAction(input) }
+        }
+        var patch = TextStylePatch()
+        if draft.x != stored.x { patch.x = draft.x }
+        if draft.y != stored.y { patch.y = draft.y }
+        if draft.width != stored.width { patch.width = draft.width }
+        if draft.rotation != stored.rotation { patch.rotation = draft.rotation }
+        if draft.fontScale != stored.fontScale { patch.fontScale = draft.fontScale }
+        guard patch != TextStylePatch() else { return Task { nil } }
+        let input = TextLayerStyleInput(textLayerIDs: [draft.id], style: TextStyleInput(patch))
+        return Task { await performAppAction(input) }
+    }
+
     func setTextLayerText(_ text: String, for id: UUID) {
         guard var layer = project.textLayers?.first(where: { $0.id == id }), layer.text != text else {
             return

@@ -1,0 +1,24 @@
+{
+  "id": "app-dictionary-add",
+  "from": "PR #326: the dictionary is an action, so Chirpy can add a spelling",
+  "tags": ["app"],
+  "catalog": "current",
+  "base": "imported-media",
+  "context": { "dictionary": [] },
+  "messages": [
+    {
+      "role": "user",
+      "content": "Add Yapper to my dictionary. The transcriber keeps writing it as japper."
+    }
+  ],
+  "expect": {
+    "actions": ["app.dictionary.addTerm"],
+    "args": [
+      {
+        "action": "app.dictionary.addTerm",
+        "pointer": "/term",
+        "equals": "Yapper"
+      }
+    ]
+  }
+}

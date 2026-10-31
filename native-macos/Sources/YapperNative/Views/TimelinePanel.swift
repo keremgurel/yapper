@@ -2377,8 +2377,11 @@ private struct TimelineTextLayerCell: View {
                             Task { await session.commitTimelineSelectionMove() }
                             return
                         }
-                        if let moveDraft { session.updateTextLayer(moveDraft) }
-                        moveDraft = nil
+                        if let draft = moveDraft {
+                            // Shown until the committed edit replaces it.
+                            let commit = session.commitTextLayerDraft(draft)
+                            Task { _ = await commit.value; if moveDraft == draft { moveDraft = nil } }
+                        }
                         moveOrigin = nil
                         snapAnchors = []
                         session.setActiveTimelineSnap(nil)
@@ -2460,8 +2463,10 @@ private struct TimelineTextLayerCell: View {
                         session.setActiveTimelineSnap(adjusted.match)
                     }
                     .onEnded { _ in
-                        if let trimDraft { session.updateTextLayer(trimDraft) }
-                        trimDraft = nil
+                        if let draft = trimDraft {
+                            let commit = session.commitTextLayerDraft(draft)
+                            Task { _ = await commit.value; if trimDraft == draft { trimDraft = nil } }
+                        }
                         trimOrigin = nil
                         activeTrimEdge = nil
                         snapAnchors = []
