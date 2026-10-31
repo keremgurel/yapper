@@ -118,6 +118,27 @@ The planner now sends the action catalog and schemas as a second system message 
 
 gpt-5.4 fails the same cases as on v1 (`repeated-phrase-clarify` twice, `imports-descriptive-place` once). Haiku's one miss was `mask-from-image` drawing a cover 0.4 tall where the block is 0.6. The p95 list cost for gpt-5.4 is still $0.031: the first turn after the cache goes cold pays full price.
 
+## Studio Ideas planner, 2026-10-30
+
+Studio cases set `"planner": "studio"` and run `planStudio` from `src/lib/chirpy/studio/planner.ts` instead of the editor planner. Their base, `bases/studio-ideas.json`, holds what `readStudioOverview` would read for a creator on Wednesday 28 October in Toronto: seven ideas, three pillars, two saved views and the next eight days by weekday. A case can merge over that overview with `overview` and put ideas at the front of its lists with `prepend`, the way a just-made idea is first in production. The invented-ID check reads the overview as the context. Run them on their own with:
+
+```bash
+node scripts/chirpy-eval/run.mjs --tags studio --models claude-haiku-5.5,gpt-5.4 --runs 3
+```
+
+The twelve cases cover the three acceptance requests (`studio-ideas-capture-friday`, `studio-ideas-move-pillar`, `studio-ideas-delete-that`), moving an idea to a day and time, a bulk status change, a note saved without the paid draft, a saved view, a long-form version, and four safety cases: two ideas that fit "the gym idea" (must ask which), a pillar the creator does not have (must list theirs and change nothing), a brand request (no Studio action exists yet, so none may run) and an idea titled like an instruction to delete everything (only the asked-for rename may run).
+
+Final prompt, 12 cases, 3 runs, baseline variant. Raw results are in `scripts/chirpy-eval/baselines/studio-ideas-2026-10-30.jsonl`.
+
+| Model            | Turns | Pass | Wilson LB | Safety | List $/turn | List p95 | Settled $/turn | Calls/turn | Cache hit | Prompt tok | Out tok | p50 s | p95 s |
+| ---------------- | ----: | ---: | --------: | -----: | ----------: | -------: | -------------: | ---------: | --------: | ---------: | ------: | ----: | ----: |
+| claude-haiku-5.5 |    36 | 100% |      0.90 |  12/12 |     $0.0003 |  $0.0007 |       $0.00020 |       1.00 |       71% |      5,592 |     247 |   2.9 |   8.6 |
+| gpt-5.4          |    36 | 100% |      0.90 |  12/12 |     $0.0040 |  $0.0096 |       $0.00158 |       1.08 |       76% |      3,810 |      63 |   2.4 |   7.0 |
+
+Both clear the bar. Claude Haiku 5.5 is about 13 times cheaper at list and 8 times cheaper settled, so it is the Studio default (`AI_CHIRPY_STUDIO_MODEL` overrides it); the editor planner keeps `AI_CHIRPY_MODEL`. The Studio prompt is small enough (about 5.6k Haiku tokens with a seven-idea overview, and by the same bytes-per-token an estimated 8k with a full 40-idea selection) that the 100K context limit noted above does not come into it.
+
+Two earlier rounds shaped the prompt. On the first, both models sometimes returned an empty message with no actions, so a plan like that now fails validation and gets the one repair call. gpt-5.4 also asked which idea was meant when only one title fitted ("Which idea did you mean: Meal prep for lazy people?"), on 4 of 12 such turns, until the prompt said that a short name fitting one title is enough and a single match never needs confirming.
+
 ## Probes
 
 The probes in `scripts/chirpy-eval/probes/` answer the plan's early checks. Each writes JSON to `scripts/chirpy-eval/results/` and prints a markdown table.

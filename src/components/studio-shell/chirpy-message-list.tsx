@@ -6,18 +6,24 @@ import { Chirpy } from "@/components/brand/chirpy";
 import { Button } from "@/components/ui/button";
 import type { BlockSuggestion } from "@/lib/brain/client";
 import type { ChirpyMessage } from "@/components/studio-shell/chirpy-message";
+import ChirpyConfirmation from "@/components/studio-shell/chirpy-confirmation";
 
 /** The conversation itself: the creator's turns on the right, Chirpy's on
- * the left with what it saved, brand colors it set, and Knowledge it
- * suggests keeping. Render-only. */
+ * the left with what it saved, brand colors it set, Knowledge it suggests
+ * keeping, and any change waiting for a yes. Render-only. */
 export default function ChirpyMessageList({
   messages,
   working,
   onSaveSuggestion,
+  onAnswerConfirmation,
 }: {
   messages: ChirpyMessage[];
   working: boolean;
   onSaveSuggestion: (suggestion: BlockSuggestion) => void;
+  onAnswerConfirmation: (
+    executionID: string,
+    decision: "confirm" | "cancel",
+  ) => void;
 }) {
   return (
     <ol className="space-y-3">
@@ -37,15 +43,17 @@ export default function ChirpyMessageList({
                 className="mt-0.5 shrink-0"
               />
               <div className="min-w-0 pt-0.5">
-                <p
-                  className={`text-sm break-words whitespace-pre-wrap ${
-                    message.tone === "trouble"
-                      ? "text-[color:var(--sg-accent-strong)]"
-                      : "text-foreground"
-                  }`}
-                >
-                  {message.text}
-                </p>
+                {message.text ? (
+                  <p
+                    className={`text-sm break-words whitespace-pre-wrap ${
+                      message.tone === "trouble"
+                        ? "text-[color:var(--sg-accent-strong)]"
+                        : "text-foreground"
+                    }`}
+                  >
+                    {message.text}
+                  </p>
+                ) : null}
                 {message.notes?.length ? (
                   <ul className="text-muted-foreground mt-1.5 space-y-1 text-[11px]">
                     {message.notes.map((note) => (
@@ -58,6 +66,17 @@ export default function ChirpyMessageList({
                       </li>
                     ))}
                   </ul>
+                ) : null}
+                {message.confirm ? (
+                  <ChirpyConfirmation
+                    confirm={message.confirm}
+                    onAnswer={(decision) =>
+                      onAnswerConfirmation(
+                        message.confirm!.executionID,
+                        decision,
+                      )
+                    }
+                  />
                 ) : null}
                 {message.brandColors !== undefined ? (
                   <div className="border-border bg-card mt-2 rounded-lg border p-2.5">

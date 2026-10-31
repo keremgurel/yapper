@@ -574,6 +574,100 @@
       "effect": "reversibleEdit",
       "requiresRebuild": true,
       "runtime": "client"
+    },
+    {
+      "id": "studio.ideas.capture",
+      "input": "IdeaCaptureInput",
+      "description": "Bank a new idea the way the Ideas composer does: the creator's words are saved verbatim, then its first draft (title, angle, hook and script) is written from their Brain, which costs the idea-drafting credits. pillarID, date and time file and schedule it in the same step. Set draft false only when the creator asks to just save the note.",
+      "effect": "paidGeneration",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.ideas.delete",
+      "input": "IdeaDeleteInput",
+      "description": "Delete ideas for good, with their drafts and versions. A linked recording stays in the library. The creator is asked to confirm first.",
+      "effect": "destructive",
+      "confirm": true,
+      "runtime": "server"
+    },
+    {
+      "id": "studio.ideas.deleteVersion",
+      "input": "IdeaDeleteVersionInput",
+      "description": "Delete one non-lead version of an idea. The lead version cannot be deleted this way. The creator is asked to confirm first.",
+      "effect": "destructive",
+      "confirm": true,
+      "runtime": "server"
+    },
+    {
+      "id": "studio.ideas.draft",
+      "input": "IdeaDraftInput",
+      "description": "Write the first draft of an idea that has only the creator's words, such as one saved with draft false or one whose first pass failed. Costs the idea-drafting credits. It never rewrites an idea that already has a draft.",
+      "effect": "paidGeneration",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.ideas.rename",
+      "input": "IdeaRenameInput",
+      "description": "Change an idea's title.",
+      "effect": "serverEdit",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.ideas.schedule",
+      "input": "IdeaScheduleInput",
+      "description": "Put ideas on the content calendar on a day in the creator's time zone. Without time, an idea keeps the time it already had, or 09:00. Moving an idea to another day uses this too.",
+      "effect": "serverEdit",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.ideas.setPillar",
+      "input": "IdeaPillarInput",
+      "description": "File ideas under one of the creator's pillars by its id. Leave pillarID out to remove the pillar from them.",
+      "effect": "serverEdit",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.ideas.setStatus",
+      "input": "IdeaStatusInput",
+      "description": "Move ideas to another stage of the loop: captured (raw note), drafting (being developed), ready (shot or shootable) or posted. Scheduling is a date, not a status.",
+      "effect": "serverEdit",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.ideas.unschedule",
+      "input": "IdeaUnscheduleInput",
+      "description": "Take ideas off the content calendar. The ideas stay in the list.",
+      "effect": "serverEdit",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.ideas.views.create",
+      "input": "IdeaViewCreateInput",
+      "description": "Save a new view of the Ideas list: a table or board, optionally grouped by status, pillar or format, and filtered to some statuses or pillars.",
+      "effect": "serverEdit",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.ideas.views.delete",
+      "input": "IdeaViewDeleteInput",
+      "description": "Delete a saved view of the Ideas list. The ideas in it are not touched. The creator is asked to confirm first.",
+      "effect": "destructive",
+      "confirm": true,
+      "runtime": "server"
+    },
+    {
+      "id": "studio.ideas.views.update",
+      "input": "IdeaViewUpdateInput",
+      "description": "Change a saved view of the Ideas list. Only the fields sent change; ungroup true removes its grouping, and an empty statuses or pillarIDs list removes that filter.",
+      "effect": "serverEdit",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.ideas.writeVersion",
+      "input": "IdeaWriteVersionInput",
+      "description": "Write another format of an idea (short, long or article) from its lead version, or from the version named in from, and save it beside the others. Costs the idea-drafting credits.",
+      "effect": "paidGeneration",
+      "runtime": "server"
     }
   ],
   "$defs": {
@@ -2727,6 +2821,355 @@
       "properties": {
         "destination": {
           "$ref": "#/$defs/ExportDestinationInput"
+        }
+      }
+    },
+    "IdeaFormat": {
+      "type": "string",
+      "description": "short is a short-form video, long a long-form video, article a written piece.",
+      "enum": [
+        "short",
+        "long",
+        "article"
+      ]
+    },
+    "IdeaStatus": {
+      "type": "string",
+      "enum": [
+        "captured",
+        "drafting",
+        "ready",
+        "posted"
+      ]
+    },
+    "IdeaViewKind": {
+      "type": "string",
+      "enum": [
+        "table",
+        "board"
+      ]
+    },
+    "IdeaViewGrouping": {
+      "type": "string",
+      "enum": [
+        "status",
+        "pillar",
+        "format"
+      ]
+    },
+    "IdeaCaptureInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "note"
+      ],
+      "properties": {
+        "note": {
+          "type": "string",
+          "description": "The creator's own words for the idea, copied from their message without the request around it. Never invented or expanded.",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "format": {
+          "$ref": "#/$defs/IdeaFormat"
+        },
+        "pillarID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "date": {
+          "type": "string",
+          "description": "YYYY-MM-DD in the creator's time zone.",
+          "minLength": 10,
+          "maxLength": 10
+        },
+        "time": {
+          "type": "string",
+          "description": "HH:MM, 24-hour, in the creator's time zone. Only with date.",
+          "minLength": 5,
+          "maxLength": 5
+        },
+        "draft": {
+          "type": "boolean"
+        }
+      }
+    },
+    "IdeaRenameInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ideaID",
+        "title"
+      ],
+      "properties": {
+        "ideaID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      }
+    },
+    "IdeaStatusInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ideaIDs",
+        "status"
+      ],
+      "properties": {
+        "ideaIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "status": {
+          "$ref": "#/$defs/IdeaStatus"
+        }
+      }
+    },
+    "IdeaPillarInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ideaIDs"
+      ],
+      "properties": {
+        "ideaIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "pillarID": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "IdeaScheduleInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ideaIDs",
+        "date"
+      ],
+      "properties": {
+        "ideaIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "date": {
+          "type": "string",
+          "description": "YYYY-MM-DD in the creator's time zone.",
+          "minLength": 10,
+          "maxLength": 10
+        },
+        "time": {
+          "type": "string",
+          "description": "HH:MM, 24-hour, in the creator's time zone.",
+          "minLength": 5,
+          "maxLength": 5
+        }
+      }
+    },
+    "IdeaUnscheduleInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ideaIDs"
+      ],
+      "properties": {
+        "ideaIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "IdeaDeleteInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ideaIDs"
+      ],
+      "properties": {
+        "ideaIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "IdeaDraftInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ideaID"
+      ],
+      "properties": {
+        "ideaID": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "IdeaWriteVersionInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ideaID",
+        "format"
+      ],
+      "properties": {
+        "ideaID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "format": {
+          "$ref": "#/$defs/IdeaFormat"
+        },
+        "from": {
+          "$ref": "#/$defs/IdeaFormat"
+        }
+      }
+    },
+    "IdeaDeleteVersionInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ideaID",
+        "format"
+      ],
+      "properties": {
+        "ideaID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "format": {
+          "$ref": "#/$defs/IdeaFormat"
+        }
+      }
+    },
+    "IdeaViewCreateInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "kind": {
+          "$ref": "#/$defs/IdeaViewKind"
+        },
+        "groupBy": {
+          "$ref": "#/$defs/IdeaViewGrouping"
+        },
+        "statuses": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/IdeaStatus"
+          }
+        },
+        "pillarIDs": {
+          "type": "array",
+          "maxItems": 40,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "IdeaViewUpdateInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "viewID"
+      ],
+      "properties": {
+        "viewID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "kind": {
+          "$ref": "#/$defs/IdeaViewKind"
+        },
+        "groupBy": {
+          "$ref": "#/$defs/IdeaViewGrouping"
+        },
+        "ungroup": {
+          "type": "boolean"
+        },
+        "statuses": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/IdeaStatus"
+          }
+        },
+        "pillarIDs": {
+          "type": "array",
+          "maxItems": 40,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "IdeaViewDeleteInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "viewID"
+      ],
+      "properties": {
+        "viewID": {
+          "type": "string",
+          "format": "uuid"
         }
       }
     }

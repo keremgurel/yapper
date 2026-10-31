@@ -1,0 +1,23 @@
+{
+  "id": "studio-ideas-status-bulk",
+  "from": "new: two ideas changed the same way go in one action",
+  "planner": "studio",
+  "tags": ["studio", "ideas", "bulk"],
+  "base": "studio-ideas",
+  "messages": [
+    { "role": "user", "content": "mark gym myths and protein myths as ready" }
+  ],
+  "expect": {
+    "actions": ["studio.ideas.setStatus"],
+    "args": [
+      {
+        "pointer": "/ideaIDs",
+        "sameSet": [
+          "6f1d1f5e-2b7a-4c39-9b8e-0a1c2d3e4f01",
+          "6f1d1f5e-2b7a-4c39-9b8e-0a1c2d3e4f03"
+        ]
+      },
+      { "pointer": "/status", "equals": "ready" }
+    ]
+  }
+}
