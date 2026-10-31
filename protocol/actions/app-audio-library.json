@@ -1,0 +1,28 @@
+{
+  "description": "The creator's saved-audio library: sounds kept across projects. It belongs to the account, not the project, so changes are not part of Undo.",
+  "runtime": "client",
+  "actions": [
+    {
+      "id": "app.audioLibrary.remove",
+      "symbol": "savedAudioRemove",
+      "input": "SavedAudioRemoveInput",
+      "description": "Delete a sound listed in savedAudioLibrary from the library and from disk. Refused while the open project or its undo history uses it.",
+      "effect": "destructive",
+      "confirm": true,
+      "requiresRebuild": false
+    }
+  ],
+  "$defs": {
+    "SavedAudioRemoveInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["savedAudioID"],
+      "properties": {
+        "savedAudioID": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    }
+  }
+}
