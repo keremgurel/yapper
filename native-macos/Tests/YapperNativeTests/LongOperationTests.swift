@@ -322,7 +322,7 @@ struct LongOperationTests {
         }
 
         let placement = Task { @MainActor in
-            await session.placeOverlaysWithAI(instruction: "place overlay.png over hello")
+            await session.placeOverlaysWithAI(OverlayWorkflowInput(instruction: "place overlay.png over hello", mode: .placeImported, mediaIDs: [overlayID]))
         }
         for _ in 0 ..< 100 {
             if await planner.counts().attempts > 0 { break }

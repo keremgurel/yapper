@@ -19,13 +19,6 @@ struct ImageNumberRevealTests {
         .init(id: UUID(), text: text, at: at, end: at + 0.3)
     }
 
-    @Test func routesOnlySpokenNumberReveals() {
-        #expect(ImageNumberReveal.requested("can we make the @google ads.png one reveal the numbers as i say them instead of showing the full overlay all at once"))
-        #expect(ImageNumberReveal.requested("show the metrics when I mention them"))
-        #expect(!ImageNumberReveal.requested("place the overlay where it makes sense"))
-        #expect(!ImageNumberReveal.requested("show the numbers all at once"))
-    }
-
     @Test func bindsCurrencyAndCountsWhileKeepingUnspokenFiguresVisible() throws {
         let regions = [region("34", 34), region("291", 291), region("CA$1.10", 1.1, currency: true), region("CA$37.47", 37.47, currency: true)]
         let words = [word("spent", 6.2), word("$37", 6.52), word("That", 7.6), word("got", 7.85), word("me", 8.08), word("34", 8.25), word("clicks", 8.73)]
@@ -119,7 +112,10 @@ struct ImageNumberRevealTests {
         you did this perfectly but also hid impressions and avg cpc. please leave them visible (don't hide them) at all times since i don't mention them
         """
         for version in 2...3 {
-            await session.runLegacyAssistant(instruction: correction)
+            // Named by its reveal, the way the planner sees it on the timeline.
+            let result = await session.performAppAction(OverlayWorkflowInput(instruction: correction, mode: .revealNumbers,
+                                                                             mediaIDs: [legacy.id]))
+            #expect(result.status == .applied)
             #expect(session.errorMessage == nil)
             #expect(session.project.overlays?.count == 1)
             #expect(session.project.overlays?.first?.id == overlay.id)
@@ -128,10 +124,12 @@ struct ImageNumberRevealTests {
             let revised = try #require(session.project.media.first { $0.id == legacy.id })
             #expect(revised.generated?.versions.count == version)
             #expect(revised.generated?.revealSourceMediaID == source.id)
-            let reply = try #require(session.conversation.messages.last)
-            #expect(reply.tone == .done)
-            #expect(reply.notes.contains { $0.contains("Visible throughout: 291, CA$1.10") })
-            #expect(!reply.notes.contains { $0.contains("kept hidden") })
+            guard case let .generated(notes, _) = session.overlayPlacement else {
+                Issue.record("The reveal did not report its changes: \(session.overlayPlacement)")
+                return
+            }
+            #expect(notes.contains { $0.contains("Visible throughout: 291, CA$1.10") })
+            #expect(!notes.contains { $0.contains("kept hidden") })
             let scene = try SceneExportLayer.loadScene(for: revised)
             for time in [0.0, 2.4, 4.4, 5.9] {
                 let rendered = try #require(ScenePosterRenderer.render(scene: scene, size: size,

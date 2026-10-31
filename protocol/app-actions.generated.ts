@@ -489,9 +489,12 @@ export interface SilenceWorkflowInput {
   clipIDs?: Array<string>;
 }
 
+export type OverlayWorkflowModeInput = "placeImported" | "create" | "revise" | "revealNumbers";
+
 export interface OverlayWorkflowInput {
   instruction: string;
-  mode?: string;
+  mode: OverlayWorkflowModeInput;
+  mediaIDs?: Array<string>;
 }
 
 export type HistoryDirectionInput = "undo" | "redo";

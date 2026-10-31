@@ -3,14 +3,8 @@ import Foundation
 
 @MainActor
 extension EditorSession {
-    func performImageNumberReveal(instruction: String) async {
+    func performImageNumberReveal(instruction: String, source: ProjectMedia) async {
         setOverlayPlacement(.working)
-        let named = OverlayMention.mentioned(in: instruction, names: placeableMedia.map(\.name))
-        let images = placeableMedia.filter { named.contains($0.name) && $0.isImage && !$0.isScene }
-        guard images.count == 1, let source = images.first else {
-            setOverlayPlacement(.failed("Name one imported image with @ so I can time its numbers to your words."))
-            return
-        }
         let instances = overlays.filter { overlay in
             overlay.mediaID == source.id || media(for: overlay)?.generated?.revealSourceMediaID == source.id
         }

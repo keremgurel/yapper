@@ -19,9 +19,10 @@ private actor UnexpectedPlacementPlanner: OverlayPlacementPlanning {
 @MainActor
 @Suite(.serialized)
 struct OverlayCreationRoutingTests {
-    @Test(arguments: ["make some overlays", "make some more overlays",
-                      "make a couple of new overlays", "create new overlays like @Existing card"])
-    func chatCreatesNewAssetsWhenOverlaysAlreadyExist(_ instruction: String) async throws {
+    /// Mentioning a generated overlay as a reference does not revise it: the
+    /// planner chose create.
+    @Test(arguments: ["make some more overlays", "create new overlays like @Existing card"])
+    func createMakesNewAssetsWhenOverlaysAlreadyExist(_ instruction: String) async throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "creation-routing-\(UUID())")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -65,7 +66,8 @@ struct OverlayCreationRoutingTests {
                 TranscriptWord(mediaID: base.id, text: text, start: 2 + Double(index) * 0.5, end: 2.4 + Double(index) * 0.5)
             }
         }
-        await session.runLegacyAssistant(instruction: instruction)
+        let result = await session.performAppAction(OverlayWorkflowInput(instruction: instruction, mode: .create, mediaIDs: nil))
+        #expect(result.status == .applied)
         #expect(session.errorMessage == nil)
         #expect(requests == ["direct-overlays", "design-overlays", "review-overlay"])
         #expect(session.project.media.filter(\.isScene).count == 2)
@@ -74,7 +76,9 @@ struct OverlayCreationRoutingTests {
         #expect(session.project.overlays?.filter { $0.mediaID == original.id } == [existing])
         let added = try #require(session.project.overlays?.first { $0.mediaID != original.id })
         #expect(added.timelineStart >= existing.timelineStart + existing.duration)
-        #expect(session.conversation.messages.last?.tone == .done)
+        if case .generated = session.overlayPlacement {} else {
+            Issue.record("Creation did not report generated overlays: \(session.overlayPlacement)")
+        }
         session.player.replaceCurrentItem(with: nil)
     }
 

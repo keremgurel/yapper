@@ -419,51 +419,6 @@ struct PersistenceFailureTests {
         #expect(saved.projects.last?.captionEntries.count == 1)
     }
 
-    @Test("A queued sweep resolves moments after earlier serialized edits")
-    func queuedSweepUsesCurrentMoments() async throws {
-        let directory = try temporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let store = TestProjectStore()
-        let session = EditorSession(store: store)
-        let original = try await videoProject(in: directory, name: "Original")
-        await session.commitTimelineEdit {
-            session.updateProject { $0 = original }
-            return true
-        }
-        await store.blockNextSave()
-        let blocker = Task { @MainActor in
-            await session.commitTimelineEdit(requiresRebuild: false) {
-                session.updateProject { $0.name = "Blocking" }
-                return true
-            }
-        }
-        await store.waitForSaveAttempt(2)
-        session.scheduleCompositionCommit(settleFor: .milliseconds(30)) {
-            let clip = session.project.clips[0]
-            session.updateProject {
-                $0.clips = [
-                    TimelineClip(mediaID: clip.mediaID, sourceStart: 0, sourceEnd: 0.45),
-                    TimelineClip(mediaID: clip.mediaID, sourceStart: 0.45, sourceEnd: 0.9),
-                ]
-            }
-            return true
-        }
-        let sweep = Task { @MainActor in
-            await session.placeOverlaysWithAI(instruction: "add a pop sound to every cut")
-        }
-        await store.releaseBlockedSave()
-        _ = await blocker.value
-        _ = await sweep.value
-
-        #expect(session.project.clips.count == 2)
-        #expect(session.project.audioLayers?.count == 1)
-        if case let .placed(notes) = session.overlayPlacement {
-            #expect(notes.count == 1)
-        } else {
-            Issue.record("Sweep was reported before its durable transaction completed")
-        }
-    }
-
     @Test("Queued edits resolve stable IDs after an earlier removal")
     func queuedEditResolvesIDAfterRemoval() async {
         let store = TestProjectStore()
@@ -580,11 +535,14 @@ struct PersistenceFailureTests {
         )
         let store = TestProjectStore()
         let session = EditorSession(store: store, overlayPlacementService: planner)
-        let original = try await videoProject(
+        var original = try await videoProject(
             in: directory,
             name: "Original",
             transcriptRanges: [(0.2, 0.4)]
         )
+        // Placement needs something unused in the bin to place.
+        original.media.append(ProjectMedia(url: directory.appending(path: "card.png"), name: "card.png",
+                                           duration: 4, width: 320, height: 180, hasAudio: false, kind: .image))
         await session.commitTimelineEdit {
             session.updateProject { $0 = original }
             return true
@@ -595,7 +553,7 @@ struct PersistenceFailureTests {
         let before = session.project
         await store.setSaveFailure(.diskFull)
 
-        await session.placeOverlaysWithAI(instruction: "add text over word0")
+        await session.placeOverlaysWithAI(OverlayWorkflowInput(instruction: "add text over word0", mode: .placeImported, mediaIDs: nil))
 
         #expect(session.project == before)
         #expect(session.selectedClipID == selected)
@@ -603,30 +561,6 @@ struct PersistenceFailureTests {
         #expect(abs(session.currentTime - 0.7) < 0.05)
         #expect(abs(try await playerDuration(session) - before.duration) < 0.05)
         #expect(session.statusMessage == "Needs attention")
-        #expect(session.errorMessage == "The test disk is full.")
-    }
-
-    @Test("A failed level command is never reported as placed")
-    func levelCommandWaitsForDurability() async throws {
-        let directory = try temporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let store = TestProjectStore()
-        let session = EditorSession(store: store)
-        let original = try await videoProject(in: directory, name: "Original")
-        await session.commitTimelineEdit {
-            session.updateProject { $0 = original }
-            return true
-        }
-        await store.setSaveFailure(.diskFull)
-
-        await session.placeOverlaysWithAI(instruction: "set the video volume to 70%")
-
-        #expect(session.project.resolvedVideoTrackVolume == 1)
-        if case let .failed(message) = session.overlayPlacement {
-            #expect(message == "The test disk is full.")
-        } else {
-            Issue.record("A failed save was reported as a placed assistant edit")
-        }
         #expect(session.errorMessage == "The test disk is full.")
     }
 
