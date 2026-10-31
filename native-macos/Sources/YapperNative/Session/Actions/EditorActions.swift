@@ -23,6 +23,8 @@ extension AppActionRegistry {
         registry.registerTimelineActions()
         registry.registerCaptionActions()
         registry.registerTextLayerActions()
+        registry.registerProjectActions()
+        registry.registerDictionaryActions()
         registry.registerWorkflow(TranscribeWorkflowInput.self) { session, _ in
             await session.transcribeProject(); return session.lastTranscriptionWasCanceled
         }

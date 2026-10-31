@@ -33,6 +33,9 @@ jobs:
       - name: Verify generated app action contract
         run: python3 scripts/app-actions/generate.py --check
 
+      - name: Check native controls go through registered actions
+        run: python3 scripts/app-actions/inventory.py --check
+
       - name: Classify changed paths
         id: scopes
         env:

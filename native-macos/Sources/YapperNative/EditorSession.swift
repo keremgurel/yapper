@@ -182,6 +182,11 @@ final class EditorSession: ObservableObject {
     let actionSessionID = UUID()
     var assistantTask: Task<Void, Never>?
     var chirpyPlanner: (([String: ActionJSON]) async throws -> ChirpyPlanReply)?
+    /// Asks the creator before Chirpy runs an action the contract marks
+    /// `confirm`. Tests answer for the creator.
+    var confirmAssistantAction: @MainActor (AppActionConfirmation) async -> Bool = AppActionConfirmation.askWithAlert
+    /// The account's transcription dictionary. Tests swap in one held in memory.
+    var dictionaryStore: any DictionaryStoring = DictionaryStore.shared
     /// The transcript's reading order, rebuilt only when the words or cuts move.
     let transcriptFlowCache = TranscriptFlowCache()
     /// The shape of every sound on the audio track, so an effect can be lined

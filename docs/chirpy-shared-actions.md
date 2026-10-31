@@ -49,7 +49,8 @@ Edit the group files in `protocol/actions/`, never the generated files. `python3
 | `common.json`                                                                                                                                                                                                                              | The bundle header, the `AppActionRuntime` and `AppActionEffect` vocabularies, and definitions used by more than one group (`ActionRect`, `TimelineAnchorInput`, `AnimationEase`, `OverlayKeyOperation`) |
 | `chirpy-wire.json`                                                                                                                                                                                                                         | Invocation request, result and change envelopes, and the Chirpy plan reply                                                                                                                              |
 | `editor-audio.json`, `editor-captions.json` (captions and text layers), `editor-overlays.json` (overlays and masks), `editor-project.json`, `editor-timeline.json`, `editor-transcript.json`, `editor-video.json`, `editor-workflows.json` | Client actions for one editor feature each, with their input definitions                                                                                                                                |
-| `app.json`, `studio-<surface>.json`                                                                                                                                                                                                        | Not created yet. `app.*` actions such as switching tab or opening an idea run on the client; each Studio surface gets its own server group                                                              |
+| `app-projects.json`, `app-dictionary.json`                                                                                                                                                                                                 | Client actions outside the open timeline: the project library and the account's transcription dictionary (see below)                                                                                    |
+| `studio-<surface>.json`                                                                                                                                                                                                                    | Not created yet. Each Studio surface gets its own server group                                                                                                                                          |
 
 Put a new action in the group that owns the feature. For a new feature, add `<namespace>-<feature>.json` with `description`, `runtime`, `actions` and `$defs`. Run the generator and commit the group file together with the regenerated outputs. When two branches that each add a group conflict in the generated files, keep either side and run the generator again.
 
@@ -76,6 +77,16 @@ The generator refuses a contract that breaks these rules:
 | `workflow`       | Long operation that owns its transaction and runs alone                            |
 
 The contract only describes the action. A client action still needs its availability and executor registered in the feature layer (for native, see `native-macos/README.md`). Server executors will live in `src/lib/chirpy/studio/<surface>/` once the turn loop lands.
+
+### App actions (`app.*`)
+
+`app.projects.*` (create, open, rename, duplicate, trash) and `app.dictionary.*` (add, edit, remove a term) are registered with `registerApp` and run by `AppScopeActions`, not inside the project's edit slot. They skip the revision check and are not part of Undo, because they change which project is open or something that is not in the project. A plan may hold one of them and nothing else: the native registry rejects a mixed batch and `parsePlanReply` on the server refuses one.
+
+`confirm: true` in the contract (today only `app.projects.trash`) requires a confirmation question at registration. Only a Chirpy plan asks it, as a native alert through `EditorSession.confirmAssistantAction`; clicking the control is already the creator's decision. Cancel returns a `canceled` receipt and changes nothing.
+
+A project change that Chirpy asks for waits until its turn has finished (`changeProjectsAfterAssistantTurn`), so the turn files its receipt in the project it started in and is not canceled by `openProject`. The checks run first (the project exists, it is not uploading, the creator confirmed), so the receipt says what is about to happen: "Opening …", "Moving … to the Trash". The projects grid, the File menu, the Poster grid and the dictionary panel call the same actions through `performAppAction`, and run at once.
+
+Chirpy's context lists `projectLibrary` (the newest 50 projects: id, name, updatedAt, open) and `dictionary` (term and aliases). Other projects' contents never enter it.
 
 ## Decisions settled before implementation
 
@@ -197,7 +208,11 @@ Move Brain, brand, ideas, scripts, media, and publishing actions out of command 
 
 ### 5. Enforce the contract for future features
 
-Require domain-changing controls to invoke registered actions or registered property descriptors. Keep an explicit audited list of UI-only interactions, such as hover and drag previews; the committed result of a drag still goes through an action. Add a native lint that rejects new calls to `updateProject`, `commitTimelineEdit`, and prepared-commit seams from views, with an audited baseline for unmigrated controls. On web, use ESLint restricted imports to prevent migrated components from importing domain REST mutation clients directly. Keep these checks scoped until the existing UI mutation inventory is migrated; the initial CI check verifies generated contract freshness only.
+Require domain-changing controls to invoke registered actions or registered property descriptors. Keep an explicit audited list of UI-only interactions, such as hover and drag previews; the committed result of a drag still goes through an action.
+
+The native gate is in CI (2026-10-30): `python3 scripts/app-actions/inventory.py --check` fails when a control in `Views/`, `App/` or `Studio/` calls a session method that changes saved state without reaching `performAppAction`, unless the method is listed in `scripts/app-actions/unregistered-baseline.json` with its reason. It also fails when a listed method no longer needs to be there, so the list only shrinks. Views cannot call `updateProject` or the commit seams directly (`project` is `private(set)`), so the gate works at the level of the session methods they call. The baseline started at 56 entries; most name the existing action the control should route through.
+
+On web, ESLint restricted imports should stop migrated components importing domain REST mutation clients directly. No web component is migrated yet, so that rule waits for the web Studio migration (step 4).
 
 ## Completion evidence
 

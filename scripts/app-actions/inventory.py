@@ -6,6 +6,7 @@ docs/chirpy-shared-actions.md step 5. Run it from the repo root:
 
     python3 scripts/app-actions/inventory.py            # human-readable table
     python3 scripts/app-actions/inventory.py --json     # machine-readable
+    python3 scripts/app-actions/inventory.py --check    # CI gate, see below
 
 A method "commits" when its body, or a session method it calls (up to four
 levels deep), reaches one of the seams below. Methods with no path to a seam
@@ -19,7 +20,11 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "native-macos/Sources/YapperNative"
-CALLERS = [SOURCE / "Views", SOURCE / "App"]
+CALLERS = [SOURCE / "Views", SOURCE / "App", SOURCE / "Studio"]
+# Methods the UI calls that change saved state without a registered action,
+# audited when the gate was added. The gate fails on any method not listed
+# here, and on a listed one that has since been registered, so it only shrinks.
+BASELINE = ROOT / "scripts/app-actions/unregistered-baseline.json"
 SESSION_FILES = lambda rel: rel == "EditorSession.swift" or rel.startswith("Session/") or rel.startswith("App/")
 
 # Anything that changes the saved project, the account dictionary, or runs a
@@ -30,7 +35,7 @@ SEAMS = [
     "commitTimelineEdit", "commitPreparedTimelineEdit", "scheduleVisualCommit", "scheduleCompositionCommit",
     "runTrackedLongOperation", "startTrackedLongOperation",
     "updateProject", "persist(", "recordHistory",
-    "DictionaryStore.shared",
+    "DictionaryStore.shared", "dictionaryStore.",
 ]
 REGISTERED = {"performAppAction", "executeBatch"}
 
@@ -115,8 +120,32 @@ def inventory():
     return rows
 
 
+def check(rows):
+    """Fail when a control changes saved state outside the action registry and
+    is not in the audited baseline, or when the baseline lists one that no
+    longer needs to be there."""
+    allowed = set(json.loads(BASELINE.read_text())["methods"])
+    unregistered = {r["method"]: r for r in rows if r["mutates"] and not r["registered"]}
+    added = sorted(set(unregistered) - allowed)
+    stale = sorted(allowed - set(unregistered))
+    for name in added:
+        row = unregistered[name]
+        print(f"New control path outside the action registry: {name} ({row['definedAt']}), "
+              f"called from {', '.join(row['callSites'][:3])}. Register an action for it "
+              "(docs/chirpy-shared-actions.md) or, for a live preview or a file picker, "
+              f"add it to {BASELINE.relative_to(ROOT)} with the reason.")
+    for name in stale:
+        print(f"{name} no longer changes state outside the registry: remove it from {BASELINE.relative_to(ROOT)}.")
+    if added or stale:
+        sys.exit(1)
+    print(f"Action boundary OK: {len(unregistered)} audited unregistered control paths remain.")
+
+
 if __name__ == "__main__":
     rows = inventory()
+    if "--check" in sys.argv:
+        check(rows)
+        sys.exit()
     if "--json" in sys.argv:
         json.dump(rows, sys.stdout, indent=1)
         sys.exit()

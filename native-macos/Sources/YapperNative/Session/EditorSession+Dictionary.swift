@@ -7,45 +7,34 @@ import Foundation
 @MainActor
 extension EditorSession {
     func loadDictionary() async {
-        dictionaryEntries = await DictionaryStore.shared.entries()
+        dictionaryEntries = await dictionaryStore.entries()
     }
 
+    // The panel's controls run the same actions as Chirpy. Values are cleaned
+    // first so the panel keeps accepting what it always has.
+
     func addDictionaryTerm(_ term: String, aliases: [String] = []) async {
-        do {
-            dictionaryEntries = try await DictionaryStore.shared.save(term: term, aliases: aliases)
-            dictionarySuggestion = nil
-            setStatus("Added “\(TranscriptionDictionary.cleanValue(term))” to your dictionary")
-        } catch {
-            show(error)
-        }
+        let aliases = TranscriptionDictionary.cleanAliases(aliases)
+        await performAppAction(DictionaryAddInput(term: TranscriptionDictionary.cleanValue(term),
+                                                  aliases: aliases.isEmpty ? nil : aliases))
     }
 
     func addDictionaryAlias(_ alias: String, to entry: DictionaryEntry) async {
-        dictionaryEntries = await DictionaryStore.shared.update(
-            id: entry.id,
-            term: entry.term,
-            aliases: entry.aliases + [alias]
-        )
+        await performAppAction(DictionaryEditInput(term: entry.term, newTerm: nil,
+            addAliases: [TranscriptionDictionary.cleanValue(alias)], removeAliases: nil))
     }
 
     func updateDictionaryTerm(_ entry: DictionaryEntry, term: String) async {
-        dictionaryEntries = await DictionaryStore.shared.update(
-            id: entry.id,
-            term: term,
-            aliases: entry.aliases
-        )
+        await performAppAction(DictionaryEditInput(term: entry.term, newTerm: TranscriptionDictionary.cleanValue(term),
+            addAliases: nil, removeAliases: nil))
     }
 
     func removeDictionaryAlias(_ alias: String, from entry: DictionaryEntry) async {
-        dictionaryEntries = await DictionaryStore.shared.update(
-            id: entry.id,
-            term: entry.term,
-            aliases: entry.aliases.filter { $0 != alias }
-        )
+        await performAppAction(DictionaryEditInput(term: entry.term, newTerm: nil, addAliases: nil, removeAliases: [alias]))
     }
 
     func removeDictionaryEntry(_ entry: DictionaryEntry) async {
-        dictionaryEntries = await DictionaryStore.shared.remove(id: entry.id)
+        await performAppAction(DictionaryRemoveInput(term: entry.term))
     }
 
     /// Offers to remember a caption fix, when the fix was one word swapped for

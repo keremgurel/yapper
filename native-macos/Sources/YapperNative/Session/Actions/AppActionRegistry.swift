@@ -38,6 +38,7 @@ final class AppActionRegistry {
     }
     private var entries: [String: Entry] = [:]
     private var workflows: [String: (EditorSession, ActionJSON) async throws -> Bool] = [:]
+    private let appScope = AppScopeActions()
     private(set) var recentResults: [AppActionResult] = []
 
     var descriptors: [AppActionDescriptor] { entries.values.map(\.descriptor).sorted { $0.id < $1.id } }
@@ -80,6 +81,25 @@ final class AppActionRegistry {
         }
     }
 
+    /// Library and account actions (`app.*`). They run alone and outside the
+    /// project's Undo; the contract's `confirm` flag requires a question for the
+    /// creator, which only a Chirpy plan asks.
+    func registerApp<Input: AppActionInput>(
+        _ type: Input.Type,
+        availability: @escaping (EditorSession) -> AppActionAvailability = { _ in .available },
+        confirmation: ((EditorSession, Input) async throws -> AppActionConfirmation)? = nil,
+        execute: @escaping (EditorSession, Input) async throws -> AppActionMutation
+    ) {
+        let id = Input.actionID.rawValue
+        let metadata = ActionSchema.document["x-actions"]?.list?.first { $0["id"]?.text == id }
+        precondition((metadata?["confirm"] == .bool(true)) == (confirmation != nil),
+                     "\(id): a confirmation question exactly when the contract sets confirm")
+        register(type, availability: availability) { _, _ in
+            throw AppActionError("Run project and dictionary changes on their own.")
+        }
+        appScope.add(type, availability: availability, confirmation: confirmation, execute: execute)
+    }
+
     func availability(_ id: AppActionID, in session: EditorSession) -> AppActionAvailability {
         guard let entry = entries[id.rawValue] else { return .init(reason: "This action is unavailable in this app version.") }
         if session.activeOperation != nil { return .init(reason: "Wait for the current operation to finish.") }
@@ -117,6 +137,16 @@ final class AppActionRegistry {
                 try ActionSchema.validate(.object(call.arguments), against: entry.descriptor.parameters)
             }
         } catch { return receipts(.rejected, error.localizedDescription) }
+        if calls.contains(where: { appScope.contains($0.action) }) {
+            guard calls.count == 1, let call = calls.first else {
+                return receipts(.rejected, "Run project and dictionary changes as their own request.")
+            }
+            guard session.project.id == projectID else {
+                return receipts(.rejected, "The project changed while I was planning. Ask again using its current state.")
+            }
+            let outcome = await appScope.run(call.action, arguments: .object(call.arguments), in: session, fromAssistant: true)
+            return receipts(outcome.status, outcome.message, mutations: outcome.mutation.map { [$0] } ?? [])
+        }
         if calls.contains(where: { workflows[$0.action] != nil }) {
             guard calls.count == 1, let call = calls.first, let workflow = workflows[call.action] else {
                 return receipts(.rejected, "Run generation or transcription as its own request before making other edits.")
@@ -194,6 +224,13 @@ final class AppActionRegistry {
         guard let entry = entries[request.action] else { return result(.rejected, "This action is unavailable in this app version.") }
         do { try ActionSchema.validate(.object(request.arguments), against: entry.descriptor.parameters) }
         catch { return result(.rejected, error.localizedDescription) }
+        if appScope.contains(request.action) {
+            if session.activeOperation != nil && session.activeOperation?.token != owner?.token {
+                return result(.rejected, "Wait for the current operation to finish.")
+            }
+            let outcome = await appScope.run(request.action, arguments: .object(request.arguments), in: session, fromAssistant: false)
+            return result(outcome.status, outcome.message, mutation: outcome.mutation)
+        }
         func preflight() -> String? {
             if request.projectID != session.project.id { return "The active project changed. Read the current project before editing." }
             if request.revision != session.actionRevision { return "The project changed. Read its current state before editing." }
