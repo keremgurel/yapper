@@ -10,6 +10,7 @@ import {
 } from "./catalog";
 import type { BrandOverview } from "./brand/reads";
 import type { IdeasOverview } from "./ideas/reads";
+import { inspirationForPrompt } from "./inspiration/focus";
 import { STUDIO_SYSTEM } from "./prompt";
 import type { StudioTurnInput } from "./wire";
 
@@ -45,7 +46,14 @@ export function studioRequest(
 ): string {
   return JSON.stringify({
     surface: input.surface,
-    focus: input.focus ?? null,
+    focus: input.focus
+      ? {
+          ...input.focus,
+          ...(input.focus.inspiration
+            ? { inspiration: inspirationForPrompt(input.focus.inspiration) }
+            : {}),
+        }
+      : null,
     today: overview.today,
     upcoming: overview.upcoming,
     pillars: overview.pillars,

@@ -98,7 +98,7 @@ const StudioChirpyContext = createContext<StudioChirpyValue | null>(null);
 /** Tabs whose requests Chirpy plans with the Studio actions. Elsewhere, a
  * short request that mentions ideas or the brand kit goes there too. */
 const STUDIO_ACTION_SURFACES =
-  /^\/studio\/(?:ideas|calendar|library|brand)(?:\/|$)/;
+  /^\/studio\/(?:ideas|calendar|library|brand|inspiration)(?:\/|$)/;
 const MENTIONS_STUDIO_DATA = /\b(?:ideas?|brand|palette|logos?)\b/i;
 const ADD_CONTEXT_COMMAND =
   /^(?:please\s+)?(?:add|remember|save|note)(?:\s+that)?\s+(.+)/i;

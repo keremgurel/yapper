@@ -19,5 +19,8 @@ enum StudioChirpyEffects {
         if effects.contains("brand"), BrandKitStore.shared.kit != nil {
             Task { await BrandKitStore.shared.refresh() }
         }
+        if effects.contains("ideaCanvas") {
+            NotificationCenter.default.post(name: .ideaCanvasChangedRemotely, object: nil)
+        }
     }
 }

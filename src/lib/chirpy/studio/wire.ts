@@ -1,4 +1,8 @@
 import { record, UUID } from "../protocol";
+import {
+  parseInspirationFocus,
+  type InspirationFocus,
+} from "./inspiration/focus";
 import { isTimeZone } from "./zoned-time";
 
 /** What a Studio tab sends: the conversation, which tab it is on, and what is
@@ -9,14 +13,15 @@ export interface StudioTurnInput {
   executionID: string;
   surface: string;
   timeZone: string;
-  focus?: { ideaID?: string };
+  focus?: { ideaID?: string; inspiration?: InspirationFocus };
   messages: Array<{ role: "user" | "assistant"; content: string }>;
 }
 
 /** Studio data a turn changed, so the web caches and the Mac stores that
  * show it reload: `ideas` is the idea list and the calendar, `ideaViews` the
- * saved views of the Ideas list, `brand` the brand kit. */
-export type StudioEffect = "ideas" | "ideaViews" | "brand";
+ * saved views of the Ideas list, `brand` the brand kit, `ideaCanvas` an
+ * idea's canvas document and its conversation. */
+export type StudioEffect = "ideas" | "ideaViews" | "brand" | "ideaCanvas";
 
 export type StudioReceiptStatus =
   | "done"
@@ -74,7 +79,18 @@ export function parseStudioTurnInput(raw: unknown): StudioTurnInput | null {
       (typeof ideaID !== "string" || !UUID.test(ideaID))
     )
       return null;
-    focus = ideaID ? { ideaID } : undefined;
+    const inspiration =
+      raw.focus.inspiration === undefined
+        ? undefined
+        : parseInspirationFocus(raw.focus.inspiration);
+    if (inspiration === null) return null;
+    focus =
+      ideaID || inspiration
+        ? {
+            ...(ideaID ? { ideaID } : {}),
+            ...(inspiration ? { inspiration } : {}),
+          }
+        : undefined;
   }
   if (
     !Array.isArray(raw.messages) ||

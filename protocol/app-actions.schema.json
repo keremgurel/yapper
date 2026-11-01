@@ -598,10 +598,25 @@
       "runtime": "server"
     },
     {
+      "id": "studio.ideas.canvasEdit",
+      "input": "IdeaCanvasEditInput",
+      "description": "One ask on an idea's canvas, as typed in its ask bar: write or rewrite any part (script, hooks, title, a block) or answer about the piece. Reads and saves the document itself. Costs the canvas credit.",
+      "effect": "workflow",
+      "runtime": "server"
+    },
+    {
       "id": "studio.ideas.capture",
       "input": "IdeaCaptureInput",
-      "description": "Bank a new idea the way the Ideas composer does: the creator's words are saved verbatim, then its first draft (title, angle, hook and script) is written from their Brain, which costs the idea-drafting credits. pillarID, date and time file and schedule it in the same step. Set draft false only when the creator asks to just save the note.",
+      "description": "Bank a new idea the way the Ideas composer does: the creator's words are saved verbatim, then its first draft (title, angle, hook and script) is written from their Brain, which costs the idea-drafting credits. pillarID, date and time file and schedule it in the same step. Set draft false only when the creator asks to just save the note. fromInspiration: made from the open inspiration item.",
       "effect": "paidGeneration",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.ideas.clearThread",
+      "input": "IdeaClearThreadInput",
+      "description": "Clear an idea's canvas conversation; the document stays.",
+      "effect": "destructive",
+      "confirm": true,
       "runtime": "server"
     },
     {
@@ -628,6 +643,13 @@
       "runtime": "server"
     },
     {
+      "id": "studio.ideas.import",
+      "input": "IdeaImportInput",
+      "description": "Save links the creator gives as inspiration ideas; ones already saved are skipped.",
+      "effect": "serverEdit",
+      "runtime": "server"
+    },
+    {
       "id": "studio.ideas.rename",
       "input": "IdeaRenameInput",
       "description": "Change an idea's title.",
@@ -645,6 +667,13 @@
       "id": "studio.ideas.setPillar",
       "input": "IdeaPillarInput",
       "description": "File ideas under one of the creator's pillars by its id. Leave pillarID out to remove the pillar from them.",
+      "effect": "serverEdit",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.ideas.setScript",
+      "input": "IdeaSetScriptInput",
+      "description": "Replace a version's script with text the creator gives word for word.",
       "effect": "serverEdit",
       "runtime": "server"
     },
@@ -688,6 +717,13 @@
       "id": "studio.ideas.writeVersion",
       "input": "IdeaWriteVersionInput",
       "description": "Write another format of an idea (short, long or article) from its lead version, or from the version named in from, and save it beside the others. Costs the idea-drafting credits.",
+      "effect": "paidGeneration",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.inspiration.brainstorm",
+      "input": "InspirationBrainstormInput",
+      "description": "Break down the open inspiration item and suggest angles for the creator's own version, from their Brain. Nothing is saved; the writing is the reply. Costs the brainstorm credit.",
       "effect": "paidGeneration",
       "runtime": "server"
     }
@@ -2903,6 +2939,75 @@
         }
       }
     },
+    "IdeaCanvasEditInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ideaID",
+        "instruction"
+      ],
+      "properties": {
+        "ideaID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "instruction": {
+          "type": "string",
+          "description": "The creator's ask in their words.",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "format": {
+          "type": "string",
+          "description": "Only when they name a version.",
+          "enum": [
+            "short",
+            "long",
+            "article"
+          ]
+        }
+      }
+    },
+    "IdeaSetScriptInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ideaID",
+        "script"
+      ],
+      "properties": {
+        "ideaID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "short",
+            "long",
+            "article"
+          ]
+        },
+        "script": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20000
+        }
+      }
+    },
+    "IdeaClearThreadInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ideaID"
+      ],
+      "properties": {
+        "ideaID": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
     "IdeaFormat": {
       "type": "string",
       "description": "short is a short-form video, long a long-form video, article a written piece.",
@@ -2939,13 +3044,11 @@
     "IdeaCaptureInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "note"
-      ],
+      "required": [],
       "properties": {
         "note": {
           "type": "string",
-          "description": "The creator's own words for the idea, copied from their message without the request around it. Never invented or expanded.",
+          "description": "The creator's own words for the idea, copied from their message without the request around it. Never invented or expanded. Optional with fromInspiration.",
           "minLength": 1,
           "maxLength": 4000
         },
@@ -2969,6 +3072,9 @@
           "maxLength": 5
         },
         "draft": {
+          "type": "boolean"
+        },
+        "fromInspiration": {
           "type": "boolean"
         }
       }
@@ -3158,6 +3264,42 @@
         }
       }
     },
+    "IdeaImportInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "links"
+      ],
+      "properties": {
+        "links": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/$defs/IdeaImportLink"
+          }
+        }
+      }
+    },
+    "IdeaImportLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 600
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      }
+    },
     "IdeaViewCreateInput": {
       "type": "object",
       "additionalProperties": false,
@@ -3249,6 +3391,19 @@
         "viewID": {
           "type": "string",
           "format": "uuid"
+        }
+      }
+    },
+    "InspirationBrainstormInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "ask": {
+          "type": "string",
+          "description": "Their specific ask, if any.",
+          "minLength": 1,
+          "maxLength": 600
         }
       }
     }

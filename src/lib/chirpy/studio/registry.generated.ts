@@ -4,38 +4,48 @@ import type {
   AppActionEffect,
   BrandColorsInput,
   BrandLogoInput,
+  IdeaCanvasEditInput,
   IdeaCaptureInput,
+  IdeaClearThreadInput,
   IdeaDeleteInput,
   IdeaDeleteVersionInput,
   IdeaDraftInput,
+  IdeaImportInput,
   IdeaPillarInput,
   IdeaRenameInput,
   IdeaScheduleInput,
+  IdeaSetScriptInput,
   IdeaStatusInput,
   IdeaUnscheduleInput,
   IdeaViewCreateInput,
   IdeaViewDeleteInput,
   IdeaViewUpdateInput,
   IdeaWriteVersionInput,
+  InspirationBrainstormInput,
 } from "../../../../protocol/app-actions.generated";
 
 export interface StudioActionInputs {
   "studio.brand.colors": BrandColorsInput;
   "studio.brand.logos.delete": BrandLogoInput;
   "studio.brand.logos.makePrimary": BrandLogoInput;
+  "studio.ideas.canvasEdit": IdeaCanvasEditInput;
   "studio.ideas.capture": IdeaCaptureInput;
+  "studio.ideas.clearThread": IdeaClearThreadInput;
   "studio.ideas.delete": IdeaDeleteInput;
   "studio.ideas.deleteVersion": IdeaDeleteVersionInput;
   "studio.ideas.draft": IdeaDraftInput;
+  "studio.ideas.import": IdeaImportInput;
   "studio.ideas.rename": IdeaRenameInput;
   "studio.ideas.schedule": IdeaScheduleInput;
   "studio.ideas.setPillar": IdeaPillarInput;
+  "studio.ideas.setScript": IdeaSetScriptInput;
   "studio.ideas.setStatus": IdeaStatusInput;
   "studio.ideas.unschedule": IdeaUnscheduleInput;
   "studio.ideas.views.create": IdeaViewCreateInput;
   "studio.ideas.views.delete": IdeaViewDeleteInput;
   "studio.ideas.views.update": IdeaViewUpdateInput;
   "studio.ideas.writeVersion": IdeaWriteVersionInput;
+  "studio.inspiration.brainstorm": InspirationBrainstormInput;
 }
 export type StudioActionID = keyof StudioActionInputs;
 
@@ -50,17 +60,22 @@ export const STUDIO_ACTIONS: readonly StudioActionDescriptor[] = [
   { id: "studio.brand.colors", input: "BrandColorsInput", effect: "serverEdit", confirm: false },
   { id: "studio.brand.logos.delete", input: "BrandLogoInput", effect: "destructive", confirm: true },
   { id: "studio.brand.logos.makePrimary", input: "BrandLogoInput", effect: "serverEdit", confirm: false },
+  { id: "studio.ideas.canvasEdit", input: "IdeaCanvasEditInput", effect: "workflow", confirm: false },
   { id: "studio.ideas.capture", input: "IdeaCaptureInput", effect: "paidGeneration", confirm: false },
+  { id: "studio.ideas.clearThread", input: "IdeaClearThreadInput", effect: "destructive", confirm: true },
   { id: "studio.ideas.delete", input: "IdeaDeleteInput", effect: "destructive", confirm: true },
   { id: "studio.ideas.deleteVersion", input: "IdeaDeleteVersionInput", effect: "destructive", confirm: true },
   { id: "studio.ideas.draft", input: "IdeaDraftInput", effect: "paidGeneration", confirm: false },
+  { id: "studio.ideas.import", input: "IdeaImportInput", effect: "serverEdit", confirm: false },
   { id: "studio.ideas.rename", input: "IdeaRenameInput", effect: "serverEdit", confirm: false },
   { id: "studio.ideas.schedule", input: "IdeaScheduleInput", effect: "serverEdit", confirm: false },
   { id: "studio.ideas.setPillar", input: "IdeaPillarInput", effect: "serverEdit", confirm: false },
+  { id: "studio.ideas.setScript", input: "IdeaSetScriptInput", effect: "serverEdit", confirm: false },
   { id: "studio.ideas.setStatus", input: "IdeaStatusInput", effect: "serverEdit", confirm: false },
   { id: "studio.ideas.unschedule", input: "IdeaUnscheduleInput", effect: "serverEdit", confirm: false },
   { id: "studio.ideas.views.create", input: "IdeaViewCreateInput", effect: "serverEdit", confirm: false },
   { id: "studio.ideas.views.delete", input: "IdeaViewDeleteInput", effect: "destructive", confirm: true },
   { id: "studio.ideas.views.update", input: "IdeaViewUpdateInput", effect: "serverEdit", confirm: false },
   { id: "studio.ideas.writeVersion", input: "IdeaWriteVersionInput", effect: "paidGeneration", confirm: false },
+  { id: "studio.inspiration.brainstorm", input: "InspirationBrainstormInput", effect: "paidGeneration", confirm: false },
 ];

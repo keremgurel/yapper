@@ -1,0 +1,80 @@
+{
+  "description": "An idea's canvas: one ask that writes on its document, words the creator gives for a version's script, and the canvas conversation. The server runs these inside a Chirpy turn through the same operations the canvas ask bar and autosave use.",
+  "runtime": "server",
+  "actions": [
+    {
+      "id": "studio.ideas.canvasEdit",
+      "input": "IdeaCanvasEditInput",
+      "description": "One ask on an idea's canvas, as typed in its ask bar: write or rewrite any part (script, hooks, title, a block) or answer about the piece. Reads and saves the document itself. Costs the canvas credit.",
+      "effect": "workflow"
+    },
+    {
+      "id": "studio.ideas.setScript",
+      "input": "IdeaSetScriptInput",
+      "description": "Replace a version's script with text the creator gives word for word.",
+      "effect": "serverEdit"
+    },
+    {
+      "id": "studio.ideas.clearThread",
+      "input": "IdeaClearThreadInput",
+      "description": "Clear an idea's canvas conversation; the document stays.",
+      "effect": "destructive",
+      "confirm": true
+    }
+  ],
+  "$defs": {
+    "IdeaCanvasEditInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ideaID", "instruction"],
+      "properties": {
+        "ideaID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "instruction": {
+          "type": "string",
+          "description": "The creator's ask in their words.",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "format": {
+          "type": "string",
+          "description": "Only when they name a version.",
+          "enum": ["short", "long", "article"]
+        }
+      }
+    },
+    "IdeaSetScriptInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ideaID", "script"],
+      "properties": {
+        "ideaID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["short", "long", "article"]
+        },
+        "script": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20000
+        }
+      }
+    },
+    "IdeaClearThreadInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ideaID"],
+      "properties": {
+        "ideaID": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    }
+  }
+}

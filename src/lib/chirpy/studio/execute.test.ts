@@ -156,7 +156,7 @@ describe("replies", () => {
     const reply = turnReply(
       EXECUTION,
       { message: "Made it and put it on Friday.", actions: [] as never[] },
-      { receipts: [], pending: [], effects: [], partial: false },
+      { receipts: [], pending: [], effects: [], partial: false, replies: [] },
     );
     expect(reply).toMatchObject({ tone: "answer", notes: [] });
   });

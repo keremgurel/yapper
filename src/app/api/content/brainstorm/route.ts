@@ -1,21 +1,10 @@
 import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
-import {
-  preflightPaidActionOrResponse,
-  refundCreditReservation,
-  reservePaidActionOrResponse,
-} from "@/lib/billing/actions";
-import {
-  brainstorm,
-  type ChatMessage,
-  type ClipContext,
-} from "@/lib/content/brainstorm";
-import { getBrainContextSafe } from "@/lib/brain/context/server";
-import {
-  guardProviderIngress,
-  guardProviderSpend,
-} from "@/lib/provider-rate-limit";
+import type { ChatMessage, ClipContext } from "@/lib/content/brainstorm";
+import { brainstormClip } from "@/lib/content/operations/brainstorm";
+import { refusalResponse } from "@/lib/http/operation-result";
+import { guardProviderIngress } from "@/lib/provider-rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -33,8 +22,8 @@ const asMessages = (v: unknown): ChatMessage[] =>
         .slice(-12)
     : [];
 
-/** Conversational ideation off a reference clip. Auth-gated, no credits (the
- * free ideation funnel; deep script generation stays gated in the workbench). */
+/** Conversational ideation off a reference clip, one brainstorm credit per
+ * reply (see brainstormClip). */
 async function trackedPOST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
@@ -52,59 +41,15 @@ async function trackedPOST(req: NextRequest): Promise<Response> {
         12,
       )
     : [];
-  const messages = asMessages(body.messages);
-  if (!process.env.SURPLUS_API_KEY) {
-    return Response.json({ error: "no_provider" }, { status: 501 });
-  }
-  const billing = await preflightPaidActionOrResponse(userId, "brainstorm");
-  if (billing) return billing;
 
-  const spendLimited = await guardProviderSpend(
+  const result = await brainstormClip(
     req,
     userId,
-    "content-brainstorm",
+    { messages: asMessages(body.messages), clip, pillars },
+    req.signal,
   );
-  if (spendLimited) return spendLimited;
-  const access = await reservePaidActionOrResponse(userId, "brainstorm");
-  if (access.response) return access.response;
-  const { reservation } = access;
-
-  // Read server-side: a client must not be able to claim a different voice.
-  const context = await getBrainContextSafe(userId, {
-    surface: "ideate",
-    memoryTask: messages.findLast((message) => message.role === "user")
-      ?.content,
-    // The clip being riffed on plus what has just been said about it. The last
-    // turn matters more than the first, which is why only the tail is sent.
-    task: [clip.title, ...messages.slice(-3).map((message) => message.content)]
-      .filter(Boolean)
-      .join("\n")
-      .slice(0, 2000),
-    signal: req.signal,
-  });
-  try {
-    const reply = await brainstorm(
-      {
-        messages,
-        clip,
-        pillars: context.pillarNames.length ? context.pillarNames : pillars,
-        context: context.section,
-      },
-      req.signal,
-    );
-    return Response.json({
-      reply,
-      balance: reservation.balance,
-      used: context.used,
-    });
-  } catch (e) {
-    const detail = e instanceof Error ? e.message : "brainstorm_failed";
-    await refundCreditReservation(userId, reservation, detail);
-    return Response.json(
-      { error: "brainstorm_failed", detail },
-      { status: 502 },
-    );
-  }
+  if (!result.ok) return refusalResponse(result);
+  return Response.json(result.value);
 }
 
 export const POST = withProductAnalytics("clip_brainstormed", trackedPOST);

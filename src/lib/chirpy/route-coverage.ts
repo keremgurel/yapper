@@ -22,6 +22,8 @@ export const ROUTE_ACTIONS: Record<string, readonly string[]> = {
     "studio.ideas.setPillar",
     "studio.ideas.schedule",
     "studio.ideas.unschedule",
+    "studio.ideas.setScript",
+    "studio.ideas.canvasEdit",
   ],
   "DELETE /api/content/[id]": ["studio.ideas.delete"],
   "POST /api/content/bulk": [
@@ -33,6 +35,15 @@ export const ROUTE_ACTIONS: Record<string, readonly string[]> = {
     "studio.ideas.writeVersion",
   ],
   "DELETE /api/content/[id]/versions/[format]": ["studio.ideas.deleteVersion"],
+  "PUT /api/content/[id]/versions/[format]": [
+    "studio.ideas.setScript",
+    "studio.ideas.canvasEdit",
+  ],
+  "DELETE /api/content/[id]/messages": ["studio.ideas.clearThread"],
+  "POST /api/generate/canvas": ["studio.ideas.canvasEdit"],
+  "POST /api/content/capture": ["studio.ideas.capture"],
+  "POST /api/ideas/import": ["studio.ideas.import"],
+  "POST /api/content/brainstorm": ["studio.inspiration.brainstorm"],
   "POST /api/views": ["studio.ideas.views.create"],
   "PATCH /api/views/[id]": ["studio.ideas.views.update"],
   "DELETE /api/views/[id]": ["studio.ideas.views.delete"],
@@ -97,21 +108,15 @@ export const EXCLUDED_ROUTES: Record<string, ExclusionReason> = {
   "POST /api/inspiration/creator": "read",
   "POST /api/publish/preview": "read",
   "POST /api/feedback": "retired",
+  // The canvas ask (generate/canvas) writes hooks, scripts and ideas now.
+  "POST /api/generate/hooks": "retired",
+  "POST /api/generate/script": "retired",
+  "POST /api/generate/idea": "retired",
 };
 
 /** Routes a creator reaches by hand that have no action yet, by the Studio
  * surface whose PR adds them. */
 export const UNCOVERED_ROUTES: Record<string, string> = {
-  // Ideas: the canvas (one ask edits the document), its thread and imports.
-  "PUT /api/content/[id]/versions/[format]": "ideas canvas",
-  "DELETE /api/content/[id]/messages": "ideas canvas",
-  "POST /api/generate/canvas": "ideas canvas",
-  "POST /api/generate/hooks": "ideas canvas",
-  "POST /api/generate/script": "ideas canvas",
-  "POST /api/generate/idea": "ideas canvas",
-  "POST /api/content/brainstorm": "ideas canvas",
-  "POST /api/content/capture": "ideas import",
-  "POST /api/ideas/import": "ideas import",
   // Poster and the calendar's publishing schedule.
   "POST /api/content": "poster",
   "POST /api/publish/projects": "poster",
