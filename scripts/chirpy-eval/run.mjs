@@ -18,7 +18,8 @@ import { pickVariants } from "./variants.mjs";
  *     [--payload captured.json,...] [--concurrency 4] [--out results.jsonl] \
  *     [--report report.md] [--dry]
  *
- * Models run one after another because the planner reads AI_CHIRPY_MODEL;
+ * Models run one after another because the planners read the model from the
+ * environment (AI_CHIRPY_MODEL, and AI_CHIRPY_STUDIO_MODEL for Studio cases);
  * attempts inside a model run concurrently, run-major, so repeats of a case
  * are spread out. Every attempt is appended to the JSONL as it finishes, so
  * a killed run keeps what it measured; report.mjs re-renders any JSONL.
@@ -48,7 +49,7 @@ if (args.dry === "true") {
   for (const testCase of cases) {
     const input = testCase.build();
     console.log(
-      `${testCase.id.padEnd(30)} ${testCase.tags.join(",").padEnd(28)} ${input.catalog.length} actions, context ${JSON.stringify(input.context).length} chars, ${input.messages.length} messages`,
+      `${testCase.id.padEnd(30)} ${testCase.tags.join(",").padEnd(28)} ${input.studio ? "studio" : `${input.catalog.length} actions`}, context ${JSON.stringify(input.context).length} chars, ${input.messages.length} messages`,
     );
   }
   process.exit(0);
@@ -72,6 +73,7 @@ await fs.mkdir(path.dirname(path.resolve(out)), { recursive: true });
 const attempts = [];
 for (const model of models) {
   process.env.AI_CHIRPY_MODEL = model;
+  process.env.AI_CHIRPY_STUDIO_MODEL = model;
   const jobs = [];
   for (let run = 1; run <= runs; run++)
     for (const variant of variants)

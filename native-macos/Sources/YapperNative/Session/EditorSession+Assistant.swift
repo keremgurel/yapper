@@ -38,6 +38,7 @@ extension EditorSession {
                         tone: reply.isTrouble ? .trouble : .done
                     )
                 )
+                StudioChirpyEffects.apply(reply.effects)
             } catch {
                 thread.answer(
                     .chirpy(

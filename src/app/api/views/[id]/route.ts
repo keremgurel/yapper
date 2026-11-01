@@ -1,7 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
-import { deleteView, updateView } from "@/lib/db/library-views";
-import { parseViewInput } from "@/lib/views/input";
+import { deleteView } from "@/lib/db/library-views";
+import { refusalResponse } from "@/lib/http/operation-result";
+import { updateOwnView } from "@/lib/views/operations/update-view";
 
 export const runtime = "nodejs";
 
@@ -15,12 +16,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const { id } = await params;
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const input = parseViewInput(body);
-  if (!input) return Response.json({ error: "bad_view" }, { status: 400 });
-
-  const view = await updateView(userId, id, input);
-  if (!view) return Response.json({ error: "not_found" }, { status: 404 });
-  return Response.json({ view });
+  const updated = await updateOwnView(userId, id, body);
+  if (!updated.ok) return refusalResponse(updated);
+  return Response.json({ view: updated.value });
 }
 
 export async function DELETE(_req: Request, { params }: Params) {

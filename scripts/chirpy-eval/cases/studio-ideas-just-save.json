@@ -1,0 +1,25 @@
+{
+  "id": "studio-ideas-just-save",
+  "from": "new: just saving a note skips the paid first draft",
+  "planner": "studio",
+  "tags": ["studio", "ideas", "cost"],
+  "base": "studio-ideas",
+  "messages": [
+    {
+      "role": "user",
+      "content": "just jot this down as an idea, no draft: sleep trackers make people sleep worse"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.ideas.capture"],
+    "args": [
+      {
+        "pointer": "/note",
+        "matches": "sleep trackers make people sleep worse",
+        "flags": "i"
+      },
+      { "pointer": "/draft", "equals": false },
+      { "pointer": "/date", "absent": true }
+    ]
+  }
+}

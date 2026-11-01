@@ -12,6 +12,7 @@ import {
   mutateClientResource,
   readClientResource,
   subscribeClientResource,
+  subscribeClientResourceReload,
 } from "@/lib/client-resource-cache";
 
 /** Stale-while-revalidate client data with request deduplication.
@@ -55,6 +56,14 @@ export function useClientResource<T>(
         setError(cause instanceof Error ? cause : new Error("load_failed")),
       );
   }, [enabled, refresh]);
+
+  // A change made elsewhere (a Chirpy turn) asks mounted readers to refetch.
+  useEffect(() => {
+    if (!enabled) return;
+    return subscribeClientResourceReload(key, () => {
+      void refresh(true).catch(() => {});
+    });
+  }, [enabled, key, refresh]);
 
   const mutate = useCallback(
     (update: T | ((current: T | null) => T)) =>

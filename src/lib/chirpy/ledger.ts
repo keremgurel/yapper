@@ -4,8 +4,6 @@ import { getDb } from "@/lib/db/client";
 import { deductWithinTx } from "@/lib/db/credits";
 import { chirpyPlans } from "@/lib/db/schema";
 import { PAID_ACTIONS } from "@/lib/billing/actions";
-import type { ChirpyPlanReply } from "../../../protocol/app-actions.generated";
-import type { PlanInput } from "./protocol";
 
 export class PlanConflict extends Error {}
 function canonical(value: unknown): string {
@@ -17,14 +15,23 @@ function canonical(value: unknown): string {
       .join(",")}}`;
   return JSON.stringify(value);
 }
+/** What any Chirpy planning request carries for the ledger: its idempotency
+ * key and the project (editor or Studio) it ran in. */
+export interface PlanLedgerInput {
+  executionID: string;
+  projectID: string;
+}
+
 /** Serialize duplicate executions across server instances. The credit reserve
  * and cached reply commit together; a failed provider call rolls both back.
- * The provider has a 40s wall-clock cap and never retries an invalid plan. */
-export async function withPlanLedger(
+ * The provider has a 40s wall-clock cap and never retries an invalid plan.
+ * Nothing that spends credits may run inside `generate`: the reserve holds the
+ * creator's balance row until the transaction commits. */
+export async function withPlanLedger<Input extends PlanLedgerInput, Reply>(
   userId: string,
-  input: PlanInput,
-  generate: () => Promise<ChirpyPlanReply>,
-): Promise<ChirpyPlanReply> {
+  input: Input,
+  generate: () => Promise<Reply>,
+): Promise<Reply> {
   const fingerprint = createHash("sha256")
     .update(canonical(input))
     .digest("hex");
@@ -45,7 +52,7 @@ export async function withPlanLedger(
     if (existing) {
       if (existing.fingerprint !== fingerprint)
         throw new PlanConflict("execution_conflict");
-      return existing.response as unknown as ChirpyPlanReply;
+      return existing.response as unknown as Reply;
     }
     await deductWithinTx(tx, userId, PAID_ACTIONS.chirpy_plan.credits, {
       metadata: {

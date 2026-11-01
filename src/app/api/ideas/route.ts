@@ -3,12 +3,10 @@ import { after } from "next/server";
 import { repairPostedRecordings } from "@/lib/content/recording-memory";
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
-import { parseContentInput } from "@/lib/content/input";
-import { createContentItem, listContentItems } from "@/lib/db/content";
-import { getActiveProject } from "@/lib/db/projects";
-import { ensureUser } from "@/lib/db/users";
+import { listContentItems } from "@/lib/db/content";
+import { refusalResponse } from "@/lib/http/operation-result";
 import { withServerTiming } from "@/lib/http/server-timing";
-import { parseIdeaFields } from "@/lib/ideas/input";
+import { captureIdea } from "@/lib/ideas/operations/capture";
 
 export const runtime = "nodejs";
 
@@ -32,28 +30,9 @@ async function trackedPOST(req: NextRequest): Promise<Response> {
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const { input: base } = parseContentInput(body);
-  const idea = parseIdeaFields(body);
-
-  const hasMaterial = Boolean(
-    idea.originalNote?.trim() || base.sourceUrl?.trim(),
-  );
-  if (!hasMaterial) {
-    return Response.json({ error: "no_input" }, { status: 400 });
-  }
-
-  await ensureUser(userId);
-  const project = await getActiveProject(userId);
-
-  const item = await createContentItem(userId, {
-    ...base,
-    ...idea,
-    projectId: project.id,
-    // A capture is always a capture; a client cannot claim otherwise.
-    status: "captured",
-  });
-
-  return Response.json({ item });
+  const captured = await captureIdea(userId, body);
+  if (!captured.ok) return refusalResponse(captured);
+  return Response.json({ item: captured.value });
 }
 
 export const POST = withProductAnalytics("idea_created", trackedPOST);

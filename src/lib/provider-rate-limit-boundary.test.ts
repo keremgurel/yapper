@@ -54,22 +54,33 @@ const RESERVATION_ROUTES = ROUTES.filter(([, , firstCost]) =>
   firstCost.startsWith("reservePaidActionOrResponse("),
 );
 
+/** Routes whose guarded work lives in an operation they share with Chirpy:
+ * the operation's source is read after the route's, so the same order holds
+ * across both. */
+const SHARED_SOURCE: Record<string, string> = {
+  "publish/instagram/import/route.ts":
+    "src/lib/publish/server/platform-import.ts",
+  "ideas/expand/route.ts": "src/lib/ideas/operations/expand.ts",
+  "content/[id]/versions/[format]/write/route.ts":
+    "src/lib/ideas/operations/write-version.ts",
+};
+
+function routeSource(relativePath: string): string {
+  const route = readFileSync(
+    join(process.cwd(), "src/app/api", relativePath),
+    "utf8",
+  );
+  const shared = SHARED_SOURCE[relativePath];
+  return shared
+    ? route + readFileSync(join(process.cwd(), shared), "utf8")
+    : route;
+}
+
 describe("provider-spend route boundary", () => {
   it.each(ROUTES)(
     "%s separates ingress from validated provider spend",
     (relativePath, endpoint, firstCost) => {
-      const route = readFileSync(
-        join(process.cwd(), "src/app/api", relativePath),
-        "utf8",
-      );
-      const source =
-        relativePath === "publish/instagram/import/route.ts"
-          ? route +
-            readFileSync(
-              join(process.cwd(), "src/lib/publish/server/platform-import.ts"),
-              "utf8",
-            )
-          : route;
+      const source = routeSource(relativePath);
       const auth = source.indexOf("await auth()");
       const ingress = source.indexOf("guardProviderIngress(req)");
       const spend = source.lastIndexOf("guardProviderSpend(");
@@ -96,10 +107,7 @@ describe("provider-spend route boundary", () => {
   it.each(RESERVATION_ROUTES)(
     "%s preflights before spend and reserves immediately after it",
     (relativePath) => {
-      const source = readFileSync(
-        join(process.cwd(), "src/app/api", relativePath),
-        "utf8",
-      );
+      const source = routeSource(relativePath);
       const preflight = source.lastIndexOf("preflightPaidActionOrResponse(");
       const spend = source.lastIndexOf("guardProviderSpend(");
       const reservation = source.lastIndexOf("reservePaidActionOrResponse(");

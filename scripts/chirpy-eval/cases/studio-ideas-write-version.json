@@ -1,0 +1,23 @@
+{
+  "id": "studio-ideas-write-version",
+  "from": "new: another format of an idea is a paid version",
+  "planner": "studio",
+  "tags": ["studio", "ideas", "versions"],
+  "base": "studio-ideas",
+  "messages": [
+    {
+      "role": "user",
+      "content": "write a long-form version of the protein myths idea"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.ideas.writeVersion"],
+    "args": [
+      {
+        "pointer": "/ideaID",
+        "equals": "6f1d1f5e-2b7a-4c39-9b8e-0a1c2d3e4f03"
+      },
+      { "pointer": "/format", "equals": "long" }
+    ]
+  }
+}

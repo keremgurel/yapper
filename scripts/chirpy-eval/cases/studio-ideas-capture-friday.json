@@ -1,0 +1,31 @@
+{
+  "id": "studio-ideas-capture-friday",
+  "from": "new: P6 Ideas acceptance request, make an idea and put it on Friday",
+  "planner": "studio",
+  "tags": ["studio", "ideas"],
+  "base": "studio-ideas",
+  "messages": [
+    {
+      "role": "user",
+      "content": "make an idea about why most people quit the gym in February and put it on Friday"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.ideas.capture"],
+    "args": [
+      {
+        "pointer": "/note",
+        "matches": "quit the gym in February",
+        "flags": "i"
+      },
+      {
+        "pointer": "/note",
+        "matches": "^(?!.*\\b(make an idea|put it on)\\b)",
+        "flags": "i"
+      },
+      { "pointer": "/date", "equals": "2026-10-30" },
+      { "pointer": "/time", "absent": true },
+      { "pointer": "/draft", "absent": true }
+    ]
+  }
+}

@@ -5,7 +5,8 @@ import { listCostUsd, usageSummary } from "./surplus.mjs";
 /**
  * One case, one model, one variant, one run: call the production planner
  * exactly as the route does, record every provider call it made, and score
- * the plan it returned. The caller sets AI_CHIRPY_MODEL for the model group.
+ * the plan it returned. The caller sets AI_CHIRPY_MODEL (and the Studio
+ * planner's AI_CHIRPY_STUDIO_MODEL) for the model group.
  */
 export async function runAttempt({
   planner,
@@ -17,7 +18,11 @@ export async function runAttempt({
 }) {
   const input = testCase.build();
   const started = performance.now();
-  const turn = await withTurn({ variant }, () => planner.planChirpy(input));
+  const turn = await withTurn({ variant }, () =>
+    input.studio
+      ? planner.planStudio(input.input, input.overview)
+      : planner.planChirpy(input),
+  );
   const elapsedMs = Math.round(performance.now() - started);
   const plan = turn.value ?? null;
   const failures = turn.error

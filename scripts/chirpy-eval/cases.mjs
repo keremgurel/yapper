@@ -17,6 +17,11 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
  *   CHIRPY_QA_CONTEXT file, `$NAME` reads an env var), requiresEnv,
  *   messages, expect (see score.mjs).
  *
+ * `planner: "studio"` cases run the Studio planner instead: base names a
+ * bases/*.json holding surface, timeZone and the overview the server would
+ * read, `overview` merges over it and `prepend` puts entries at the front of
+ * its lists (the newest ideas come first, as in production).
+ *
  * `build()` returns a fresh PlanInput for one attempt. Project and session
  * IDs are new each time, so repeated runs share only what production turns
  * share (the static prompt), not a whole identical request.
@@ -58,6 +63,7 @@ export async function loadCases({ only, tags, payloads = [] } = {}) {
 }
 
 async function prepare(spec, contract) {
+  if (spec.planner === "studio") return prepareStudio(spec);
   const catalog = catalogFor(spec.catalog, contract);
   let template;
   if (spec.payload) {
@@ -104,6 +110,38 @@ async function prepare(spec, contract) {
     safety: (spec.tags ?? []).includes("safety"),
     expect: spec.expect ?? {},
     build: () => freshInput(template),
+  };
+}
+
+async function prepareStudio(spec) {
+  const base = JSON.parse(
+    await fs.readFile(path.join(HERE, "bases", `${spec.base}.json`), "utf8"),
+  );
+  const overview = { ...base.overview, ...spec.overview };
+  for (const [key, items] of Object.entries(spec.prepend ?? {})) {
+    overview[key] = [...items, ...(overview[key] ?? [])];
+    if (key === "ideas") overview.totalIdeas += items.length;
+  }
+  return {
+    id: spec.id,
+    from: spec.from ?? null,
+    tags: spec.tags ?? [],
+    safety: (spec.tags ?? []).includes("safety"),
+    expect: spec.expect ?? {},
+    // `context` and `messages` are what the invented-ID check reads.
+    build: () => ({
+      studio: true,
+      input: {
+        protocolVersion: 1,
+        executionID: randomUUID(),
+        surface: spec.surface ?? base.surface,
+        timeZone: base.timeZone,
+        messages: structuredClone(spec.messages),
+      },
+      overview: structuredClone(overview),
+      context: overview,
+      messages: spec.messages,
+    }),
   };
 }
 

@@ -1,0 +1,35 @@
+{
+  "id": "studio-ideas-delete-that",
+  "from": "new: P6 Ideas acceptance request, delete that idea after creating it",
+  "planner": "studio",
+  "tags": ["studio", "ideas", "multi-turn"],
+  "base": "studio-ideas",
+  "prepend": {
+    "ideas": [
+      {
+        "id": "6f1d1f5e-2b7a-4c39-9b8e-0a1c2d3e4f08",
+        "title": "Cold showers: the honest version",
+        "status": "captured",
+        "formats": ["short"],
+        "drafted": true
+      }
+    ]
+  },
+  "messages": [
+    { "role": "user", "content": "make an idea about cold showers" },
+    {
+      "role": "assistant",
+      "content": "Made an idea about cold showers."
+    },
+    { "role": "user", "content": "actually delete that idea" }
+  ],
+  "expect": {
+    "actions": ["studio.ideas.delete"],
+    "args": [
+      {
+        "pointer": "/ideaIDs",
+        "equals": ["6f1d1f5e-2b7a-4c39-9b8e-0a1c2d3e4f08"]
+      }
+    ]
+  }
+}
