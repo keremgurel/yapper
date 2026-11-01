@@ -324,4 +324,9 @@ extension EditorSession {
 extension TimelineAnchorInput {
     /// The playhead, for buttons that act where the creator is looking.
     static let playhead = TimelineAnchorInput(kind: .playhead, time: nil, phrase: nil, occurrence: nil, eventID: nil, offset: nil)
+
+    /// An exact timeline time, for gestures that already know where they landed.
+    static func time(_ seconds: Double) -> TimelineAnchorInput {
+        TimelineAnchorInput(kind: .time, time: min(86_400, max(0, seconds)), phrase: nil, occurrence: nil, eventID: nil, offset: nil)
+    }
 }

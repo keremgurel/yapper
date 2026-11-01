@@ -16,7 +16,13 @@ vi.mock("./actions", () => ({
     run: (input: unknown) => run(id, input),
     describe: () => "Delete “Gym myths”",
     ...(id === "studio.calendar.cancel"
-      ? { confirm: { label: "Cancel post", note: "It won’t go out." } }
+      ? {
+          confirm: {
+            label: "Cancel it",
+            note: "It won’t go out.",
+            cancel: "Keep it",
+          },
+        }
       : {}),
   }),
 }));
@@ -159,33 +165,59 @@ describe("replies", () => {
     const reply = turnReply(
       EXECUTION,
       { message: "Made it and put it on Friday.", actions: [] as never[] },
-      { receipts: [], pending: [], effects: [], partial: false },
+      { receipts: [], pending: [], effects: [], partial: false, replies: [] },
     );
     expect(reply).toMatchObject({ tone: "answer", notes: [] });
   });
 
   it("asks one question for a turn's deletes, with a typed answer for the Mac", () => {
-    expect(
-      confirmationFor(EXECUTION, [
-        { invocationID: "a", action: "x", label: "Delete “Gym myths”" },
-      ]),
-    ).toEqual({
+    const deleteIdea = {
+      invocationID: "a",
+      action: "studio.ideas.delete",
+      label: "Delete “Gym myths”",
+    };
+    expect(confirmationFor(EXECUTION, [deleteIdea])).toEqual({
       executionID: EXECUTION,
       question: "Delete “Gym myths”? This can’t be undone.",
       confirmLabel: "Delete",
+      cancelLabel: "Keep it",
       typedHint: "Reply yes to delete, or no to keep it.",
     });
     expect(
       confirmationFor(EXECUTION, [
-        { invocationID: "a", action: "x", label: "Delete “Gym myths”" },
-        { invocationID: "b", action: "y", label: "Delete the “Ready” view" },
+        deleteIdea,
+        {
+          invocationID: "b",
+          action: "studio.ideas.views.delete",
+          label: "Delete the “Ready” view",
+        },
       ])?.question,
     ).toBe(
       "Delete “Gym myths” and delete the “Ready” view? This can’t be undone.",
     );
   });
 
-  it("words a schedule change's question with its own button", () => {
+  it("asks a plain yes or no for a rule that keeps running", () => {
+    expect(
+      confirmationFor(EXECUTION, [
+        {
+          invocationID: "a",
+          action: "studio.automations.update",
+          label:
+            "Turn on copying each new Instagram post to YouTube, until you turn it off",
+        },
+      ]),
+    ).toEqual({
+      executionID: EXECUTION,
+      question:
+        "Turn on copying each new Instagram post to YouTube, until you turn it off?",
+      confirmLabel: "Confirm",
+      cancelLabel: "Cancel",
+      typedHint: "Reply yes to go ahead, or no to leave it as it is.",
+    });
+  });
+
+  it("words a schedule change's question with its own buttons", () => {
     expect(
       confirmationFor(EXECUTION, [
         {
@@ -197,8 +229,9 @@ describe("replies", () => {
     ).toEqual({
       executionID: EXECUTION,
       question: "Cancel “Gym myths” on TikTok? It won’t go out.",
-      confirmLabel: "Cancel post",
-      typedHint: "Reply yes to cancel post, or no to keep it.",
+      confirmLabel: "Cancel it",
+      cancelLabel: "Keep it",
+      typedHint: "Reply yes to cancel it, or no to keep it.",
     });
   });
 

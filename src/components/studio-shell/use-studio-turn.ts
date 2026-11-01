@@ -9,6 +9,7 @@ import {
 } from "@/lib/chirpy/studio/client";
 import { applyStudioEffects } from "@/lib/chirpy/studio/effects-client";
 import type { StudioOpen } from "@/lib/chirpy/studio/poster/prefill";
+import { inspirationFocus } from "@/lib/chirpy/studio/inspiration/focus-client";
 import type { StudioEffect, StudioTurnReply } from "@/lib/chirpy/studio/wire";
 import type {
   ChirpyConfirmation,
@@ -39,6 +40,7 @@ function messageFrom(reply: StudioTurnReply): Reply {
             executionID: reply.confirm.executionID,
             question: reply.confirm.question,
             confirmLabel: reply.confirm.confirmLabel,
+            cancelLabel: reply.confirm.cancelLabel,
             typedHint: reply.confirm.typedHint,
             state: "open" as const,
           },
@@ -85,6 +87,9 @@ export function useStudioTurn(
             focusID && UUID.test(focusID)
               ? focusID
               : UUID_IN_PATH.exec(surface)?.[1],
+          focusInspiration: surface.startsWith("/studio/inspiration")
+            ? (inspirationFocus() ?? undefined)
+            : undefined,
           canOpen,
         });
         applyStudioEffects(reply.effects, router.refresh);

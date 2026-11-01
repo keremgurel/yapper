@@ -1,14 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
-import { invalidateBrainContext } from "@/lib/brain/context/server";
+import { createSkill, reorderSkills } from "@/lib/brain/operations/skills";
 import { parseNewSkill, parseSkillOrder } from "@/lib/brain/skill-input";
-import {
-  createProjectSkill,
-  listProjectSkillsWithDefaults,
-  reorderProjectSkills,
-} from "@/lib/db/project-skills";
+import { listProjectSkillsWithDefaults } from "@/lib/db/project-skills";
 import { getActiveProject } from "@/lib/db/projects";
-import { ensureUser } from "@/lib/db/users";
+import { refusalResponse } from "@/lib/http/operation-result";
 import { withServerTiming } from "@/lib/http/server-timing";
 
 export const runtime = "nodejs";
@@ -33,11 +29,9 @@ export async function POST(req: NextRequest): Promise<Response> {
   const input = parseNewSkill(body);
   if (!input) return Response.json({ error: "no_name" }, { status: 400 });
 
-  await ensureUser(userId);
-  const project = await getActiveProject(userId);
-  const skill = await createProjectSkill(project.id, input);
-  invalidateBrainContext(project.id);
-  return Response.json({ skill }, { status: 201 });
+  const result = await createSkill(userId, input);
+  if (!result.ok) return refusalResponse(result);
+  return Response.json({ skill: result.value }, { status: 201 });
 }
 
 /** The creator's own order, as a list of ids. */
@@ -49,9 +43,7 @@ export async function PATCH(req: NextRequest): Promise<Response> {
   const order = parseSkillOrder(body.order);
   if (!order) return Response.json({ error: "no_order" }, { status: 400 });
 
-  await ensureUser(userId);
-  const project = await getActiveProject(userId);
-  const skills = await reorderProjectSkills(project.id, order);
-  invalidateBrainContext(project.id);
-  return Response.json({ skills });
+  const result = await reorderSkills(userId, order);
+  if (!result.ok) return refusalResponse(result);
+  return Response.json({ skills: result.value });
 }

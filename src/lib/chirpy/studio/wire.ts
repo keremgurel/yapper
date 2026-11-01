@@ -1,5 +1,9 @@
 import { record, UUID } from "../protocol";
 import type { StudioOpen } from "./poster/prefill";
+import {
+  parseInspirationFocus,
+  type InspirationFocus,
+} from "./inspiration/focus";
 import { isTimeZone } from "./zoned-time";
 
 /** What a Studio tab sends: the conversation, which tab it is on, and what is
@@ -10,7 +14,7 @@ export interface StudioTurnInput {
   executionID: string;
   surface: string;
   timeZone: string;
-  focus?: { ideaID?: string };
+  focus?: { ideaID?: string; inspiration?: InspirationFocus };
   /** False from a Mac build that cannot open a tab from a reply's `open`. */
   canOpen?: false;
   messages: Array<{ role: "user" | "assistant"; content: string }>;
@@ -21,13 +25,19 @@ export interface StudioTurnInput {
 /** Studio data a turn changed, so the web caches and the Mac stores that
  * show it reload: `ideas` is the idea list and the calendar, `ideaViews` the
  * saved views of the Ideas list, `brand` the brand kit, `storage` the
- * storage numbers and stored videos, `posterVideos` Poster's video list and
- * `schedules` the calendar's scheduled posts. */
+ * storage numbers and stored videos, `automations` the cross-posting rule,
+ * `brain` the Essentials, pillars, Knowledge, skills and voice set,
+ * `ideaCanvas` an idea's canvas document and its conversation,
+ * `posterVideos` Poster's video list and `schedules` the calendar's
+ * scheduled posts. */
 export type StudioEffect =
   | "ideas"
   | "ideaViews"
   | "brand"
   | "storage"
+  | "automations"
+  | "brain"
+  | "ideaCanvas"
   | "posterVideos"
   | "schedules";
 
@@ -51,6 +61,7 @@ export interface StudioConfirmation {
   executionID: string;
   question: string;
   confirmLabel: string;
+  cancelLabel: string;
   /** For the Mac's text-only thread, which has no buttons. */
   typedHint: string;
 }
@@ -90,7 +101,18 @@ export function parseStudioTurnInput(raw: unknown): StudioTurnInput | null {
       (typeof ideaID !== "string" || !UUID.test(ideaID))
     )
       return null;
-    focus = ideaID ? { ideaID } : undefined;
+    const inspiration =
+      raw.focus.inspiration === undefined
+        ? undefined
+        : parseInspirationFocus(raw.focus.inspiration);
+    if (inspiration === null) return null;
+    focus =
+      ideaID || inspiration
+        ? {
+            ...(ideaID ? { ideaID } : {}),
+            ...(inspiration ? { inspiration } : {}),
+          }
+        : undefined;
   }
   if (
     !Array.isArray(raw.messages) ||

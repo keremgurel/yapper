@@ -243,7 +243,7 @@ it("keeps the idea when the creator says no", async () => {
     deleteTurn.executionID,
     "cancel",
   );
-  expect(kept?.message).toBe("Kept it. Nothing changed.");
+  expect(kept?.message).toBe("Kept it. Nothing was deleted.");
   expect(await idea(id)).not.toBeNull();
   // A yes after the no has nothing left to confirm, so it is a new request.
   reply({ message: "There’s nothing waiting to confirm.", actions: [] });

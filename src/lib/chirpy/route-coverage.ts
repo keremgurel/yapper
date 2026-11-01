@@ -22,6 +22,8 @@ export const ROUTE_ACTIONS: Record<string, readonly string[]> = {
     "studio.ideas.setPillar",
     "studio.ideas.schedule",
     "studio.ideas.unschedule",
+    "studio.ideas.setScript",
+    "studio.ideas.canvasEdit",
   ],
   "DELETE /api/content/[id]": ["studio.ideas.delete"],
   "POST /api/content/bulk": [
@@ -39,6 +41,15 @@ export const ROUTE_ACTIONS: Record<string, readonly string[]> = {
     "studio.calendar.reschedule",
     "studio.calendar.cancel",
   ],
+  "PUT /api/content/[id]/versions/[format]": [
+    "studio.ideas.setScript",
+    "studio.ideas.canvasEdit",
+  ],
+  "DELETE /api/content/[id]/messages": ["studio.ideas.clearThread"],
+  "POST /api/generate/canvas": ["studio.ideas.canvasEdit"],
+  "POST /api/content/capture": ["studio.ideas.capture"],
+  "POST /api/ideas/import": ["studio.ideas.import"],
+  "POST /api/content/brainstorm": ["studio.inspiration.brainstorm"],
   "POST /api/views": ["studio.ideas.views.create"],
   "PATCH /api/views/[id]": ["studio.ideas.views.update"],
   "DELETE /api/views/[id]": ["studio.ideas.views.delete"],
@@ -47,6 +58,31 @@ export const ROUTE_ACTIONS: Record<string, readonly string[]> = {
   "DELETE /api/brand/logos/[id]": ["studio.brand.logos.delete"],
   "DELETE /api/storage/videos": ["studio.storage.removeVideos"],
   "DELETE /api/submissions/[id]": ["studio.storage.deleteRecording"],
+  "PUT /api/publish/automations": ["studio.automations.update"],
+  "PATCH /api/project": [
+    "studio.brain.essentials.update",
+    "studio.brain.pillars.save",
+    "studio.brain.delete",
+    "studio.brain.setup",
+  ],
+  "POST /api/brain/blocks": [
+    "studio.brain.knowledge.add",
+    "studio.brain.knowledge.import",
+    "studio.brain.setup",
+  ],
+  "PATCH /api/brain/blocks": ["studio.brain.knowledge.update"],
+  "PATCH /api/brain/blocks/[id]": ["studio.brain.knowledge.update"],
+  "DELETE /api/brain/blocks/[id]": ["studio.brain.delete"],
+  "POST /api/brain/ingest": ["studio.brain.knowledge.import"],
+  "POST /api/brain/setup": ["studio.brain.setup"],
+  "POST /api/brain/skills": ["studio.brain.skills.save"],
+  "PATCH /api/brain/skills": ["studio.brain.skills.save"],
+  "PATCH /api/brain/skills/[id]": ["studio.brain.skills.save"],
+  "DELETE /api/brain/skills/[id]": ["studio.brain.delete"],
+  "POST /api/brain/catalog/[slug]/install": ["studio.brain.catalog.install"],
+  "POST /api/brain/voice/samples": ["studio.brain.voice.listen"],
+  "DELETE /api/brain/voice/samples/[id]": ["studio.brain.delete"],
+  "POST /api/brain/voice/derive": ["studio.brain.voice.derive"],
   "POST /api/transcription-dictionary": ["app.dictionary.addTerm"],
   "PATCH /api/transcription-dictionary/[id]": ["app.dictionary.editTerm"],
   "DELETE /api/transcription-dictionary/[id]": ["app.dictionary.removeTerm"],
@@ -67,9 +103,6 @@ export type ExclusionReason =
   /** Platform sign-in, its callbacks, and choosing which account or Page a
    * connection posts as. */
   | "oauth"
-  /** Posting a video or scheduling a new post. Chirpy fills Poster in
-   * (studio.poster.prepare) and the creator presses Publish or Schedule. */
-  | "publish"
   /** Byte uploads, the signed URLs for them and the request that files an
    * uploaded video in the library; the action that uses the file is what
    * Chirpy runs. */
@@ -85,7 +118,11 @@ export type ExclusionReason =
   /** A POST that only reads or previews and saves nothing of the creator's. */
   | "read"
   /** No client calls it any more. */
-  | "retired";
+  | "retired"
+  /** Posts to a connected platform or schedules a new post. Chirpy never
+   * publishes or schedules a post itself; for a video it fills Poster in
+   * (studio.poster.prepare) and the creator presses Publish or Schedule. */
+  | "publish";
 
 export const EXCLUDED_ROUTES: Record<string, ExclusionReason> = {
   "POST /api/billing/checkout": "billing",
@@ -119,46 +156,24 @@ export const EXCLUDED_ROUTES: Record<string, ExclusionReason> = {
   "POST /api/inspiration/creator": "read",
   "POST /api/publish/preview": "read",
   "POST /api/feedback": "retired",
+  // Retrying a failed cross-post copies the video to YouTube or TikTok.
+  "POST /api/publish/automations/runs/[id]": "publish",
+  // The slot machine that called it has not been mounted since 0c28aac7;
+  // banking an idea from the creator's words is studio.ideas.capture.
+  "POST /api/brain/spin": "retired",
+  // The canvas ask (generate/canvas) writes hooks, scripts and ideas now.
+  "POST /api/generate/hooks": "retired",
+  "POST /api/generate/script": "retired",
+  "POST /api/generate/idea": "retired",
 };
 
 /** Routes a creator reaches by hand that have no action yet, by the Studio
  * surface whose PR adds them. */
 export const UNCOVERED_ROUTES: Record<string, string> = {
-  // Ideas: the canvas (one ask edits the document), its thread and imports.
-  "PUT /api/content/[id]/versions/[format]": "ideas canvas",
-  "DELETE /api/content/[id]/messages": "ideas canvas",
-  "POST /api/generate/canvas": "ideas canvas",
-  "POST /api/generate/hooks": "ideas canvas",
-  "POST /api/generate/script": "ideas canvas",
-  "POST /api/generate/idea": "ideas canvas",
-  "POST /api/content/brainstorm": "ideas canvas",
-  "POST /api/content/capture": "ideas import",
-  "POST /api/ideas/import": "ideas import",
   // Poster: an AI thumbnail is made from a frame the browser or the Mac
   // captures, and reposting a channel's own post needs that channel's list
   // in the turn. Chirpy fills the thumbnail prompt in instead.
   "POST /api/publish/thumbnail": "poster thumbnail",
   "POST /api/publish/tiktok/import": "poster channel posts",
   "POST /api/publish/instagram/import": "poster channel posts",
-  // Brain.
-  "POST /api/brain/ask": "brain",
-  "PATCH /api/brain/blocks": "brain",
-  "POST /api/brain/blocks": "brain",
-  "PATCH /api/brain/blocks/[id]": "brain",
-  "DELETE /api/brain/blocks/[id]": "brain",
-  "POST /api/brain/catalog/[slug]/install": "brain",
-  "POST /api/brain/ingest": "brain",
-  "POST /api/brain/setup": "brain",
-  "PATCH /api/brain/skills": "brain",
-  "POST /api/brain/skills": "brain",
-  "PATCH /api/brain/skills/[id]": "brain",
-  "DELETE /api/brain/skills/[id]": "brain",
-  "POST /api/brain/spin": "brain",
-  "POST /api/brain/voice/derive": "brain",
-  "POST /api/brain/voice/samples": "brain",
-  "DELETE /api/brain/voice/samples/[id]": "brain",
-  "PATCH /api/project": "brain",
-  // Automations.
-  "PUT /api/publish/automations": "automations",
-  "POST /api/publish/automations/runs/[id]": "automations",
 };

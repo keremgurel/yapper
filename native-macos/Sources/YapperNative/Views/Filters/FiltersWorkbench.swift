@@ -32,7 +32,7 @@ struct FiltersWorkbench: View {
                             strength: filter.strength,
                             selected: filter.id == id
                         ) {
-                            session.setVisualFilter(VisualFilter(id: id, strength: filter.strength))
+                            Task { await session.setVisualFilter(VisualFilter(id: id, strength: filter.strength)) }
                         }
                     }
                 }
@@ -49,12 +49,12 @@ struct FiltersWorkbench: View {
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()
                         }
-                        InspectorSlider(
+                        InspectorCommitSlider(
                             value: filter.strength * 100,
                             range: 0 ... 100,
                             decimals: 0
                         ) { percent in
-                            session.setVisualFilter(
+                            await session.setVisualFilter(
                                 VisualFilter(id: filter.id, strength: percent / 100)
                             )
                         }

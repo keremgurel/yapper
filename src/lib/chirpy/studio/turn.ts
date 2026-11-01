@@ -56,6 +56,8 @@ export async function runStudioTurn(
     signal: request.signal,
     timeZone: input.timeZone,
     canOpen: input.canOpen !== false,
+    messages: input.messages,
+    focus: input.focus,
   };
   const decision = typedDecision(input.messages.at(-1)!.content);
   if (decision) {

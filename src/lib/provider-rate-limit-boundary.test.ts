@@ -14,7 +14,6 @@ const ROUTES = [
   ["generate/hooks/route.ts", "generate-hooks", "generateHooks("],
   ["generate/idea/route.ts", "generate-idea", "generateIdea("],
   ["generate/script/route.ts", "generate-script", "generateScript("],
-  ["brain/ask/route.ts", "brain-ask", "reservePaidActionOrResponse("],
   ["brain/spin/route.ts", "brain-spin", "reservePaidActionOrResponse("],
   [
     "content/capture/route.ts",
@@ -64,6 +63,7 @@ const SHARED_SOURCE: Record<string, string> = {
   "publish/caption/route.ts": "src/lib/publish/operations/captions.ts",
   "content/[id]/versions/[format]/write/route.ts":
     "src/lib/ideas/operations/write-version.ts",
+  "content/brainstorm/route.ts": "src/lib/content/operations/brainstorm.ts",
 };
 
 function routeSource(relativePath: string): string {

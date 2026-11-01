@@ -5,6 +5,9 @@ extension Notification.Name {
     /// an idea, so a list showing it can refresh.
     static let ideaCanvasDidSave = Notification.Name("IdeaCanvasDidSave")
     static let ideaCanvasDidDelete = Notification.Name("IdeaCanvasDidDelete")
+    /// Posted when Chirpy changed a canvas on the server from another tab,
+    /// so an open canvas reloads its document and conversation.
+    static let ideaCanvasChangedRemotely = Notification.Name("IdeaCanvasChangedRemotely")
 }
 
 /// One idea on the canvas: the loaded row, its blocks with client ids, and

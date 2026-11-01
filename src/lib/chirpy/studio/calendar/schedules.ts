@@ -115,7 +115,7 @@ export const rescheduleAction: StudioActionDefinition<ScheduleMoveInput> = {
   describe({ scheduleIDs, date, time }, names) {
     return `Move ${described(scheduleIDs, names)} to ${localLabel(date, time)}`;
   },
-  confirm: { label: "Move" },
+  confirm: { label: "Move it", cancel: "Keep it" },
 };
 
 /** Runs only after the creator confirms, through the same change as the
@@ -137,5 +137,5 @@ export const cancelAction: StudioActionDefinition<ScheduleCancelInput> = {
   describe({ scheduleIDs }, names) {
     return `Cancel ${described(scheduleIDs, names)}`;
   },
-  confirm: { label: "Cancel post", note: "It won’t go out." },
+  confirm: { label: "Cancel it", note: "It won’t go out.", cancel: "Keep it" },
 };

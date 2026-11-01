@@ -218,7 +218,9 @@ it("cancels a scheduled post only after a yes", async () => {
   );
   expect(asked.confirm).toMatchObject({
     question: "Cancel “Desk tour” on TikTok? It won’t go out.",
-    confirmLabel: "Cancel post",
+    confirmLabel: "Cancel it",
+    cancelLabel: "Keep it",
+    typedHint: "Reply yes to cancel it, or no to keep it.",
   });
   expect((await scheduleRow(id)).status).toBe("scheduled");
 
@@ -253,7 +255,10 @@ it("moves a scheduled post after a yes, keeping its time", async () => {
     turn("move the desk tour to later in the week", "/studio/calendar"),
     gate,
   );
-  expect(asked.confirm?.confirmLabel).toBe("Move");
+  expect(asked.confirm).toMatchObject({
+    confirmLabel: "Move it",
+    cancelLabel: "Keep it",
+  });
   expect((await scheduleRow(id)).scheduled_for).toEqual(was);
 
   const moved = await resolveConfirmation(

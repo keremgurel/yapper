@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 const CALLERS = [
   "app/api/clean-transcript/route.ts",
   "app/api/place-overlays/route.ts",
-  "lib/brain/ask.ts",
   "lib/brain/context/select-model.ts",
   "lib/brain/context/published-memory-plan.ts",
   "lib/brain/ingest.ts",

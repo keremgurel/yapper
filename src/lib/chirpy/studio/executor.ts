@@ -1,6 +1,6 @@
 import type { OperationRefusal } from "@/lib/http/operation-result";
 import type { StudioOpen } from "./poster/prefill";
-import type { StudioEffect } from "./wire";
+import type { StudioEffect, StudioTurnInput } from "./wire";
 
 /** What an executor gets besides its validated input. */
 export interface StudioActionContext {
@@ -11,6 +11,11 @@ export interface StudioActionContext {
   timeZone: string;
   /** False when the client cannot open a tab filled in (an older Mac build). */
   canOpen?: boolean;
+  /** The turn's conversation, so an action can read a paste from it instead
+   * of the model copying it into arguments. Absent on a confirmation. */
+  messages?: StudioTurnInput["messages"];
+  /** What was open when the turn was sent; absent when a confirmation runs. */
+  focus?: StudioTurnInput["focus"];
 }
 
 export interface ActionOutcome {
@@ -21,6 +26,9 @@ export interface ActionOutcome {
   partial?: boolean;
   /** A tab the client opens with state filled in, such as Poster. */
   open?: StudioOpen;
+  /** Writing the creator should read as Chirpy's reply (a canvas answer, a
+   * brainstorm), in place of the sentence the planner wrote beforehand. */
+  reply?: string;
 }
 
 /** Names the planner saw, so a confirmation can say "Delete “Gym myths”"
@@ -36,15 +44,18 @@ export interface StudioNames {
   sizes?: Record<string, string>;
   /** “Gym myths” on TikTok, for a scheduled post. */
   schedules?: Record<string, string>;
+  /** Knowledge sections, skills and voice samples, by id. */
+  brain?: Record<string, string>;
 }
 
 export interface StudioActionDefinition<Input> {
   run: (input: Input, context: StudioActionContext) => Promise<ActionOutcome>;
   /** The confirmation question's subject, for actions that ask first. */
   describe?: (input: Input, names: StudioNames) => string;
-  /** The confirm button and the line after the question; deletions use
-   * Delete and “This can’t be undone.” */
-  confirm?: { label: string; note?: string };
+  /** Its own confirm button, the line after the question and the cancel
+   * button, over the defaults (Delete, “This can’t be undone.” and Keep it
+   * for deletions; Confirm and Cancel otherwise). */
+  confirm?: { label: string; note?: string; cancel?: string };
 }
 
 /** A refusal the creator should read, never a stack trace. */
@@ -91,6 +102,8 @@ export function failureFrom(
     too_many_views: "You already have 20 views. Delete one first.",
     bad_view: "That view needs a name.",
     rate_limited: "That’s a lot of AI work in a short time. Try again soon.",
+    generate_failed: `Writing on ${subject} failed. Nothing was charged.`,
+    brainstorm_failed: `Writing ${subject} failed, so the credit was refunded.`,
   };
   return new StudioActionFailure(
     refusal.error,

@@ -139,6 +139,8 @@ export const STUDIO_RESOURCE_KEYS = {
   posterContent: "studio:content:poster",
   connections: "studio:connections",
   project: "studio:project",
+  /** Reload-only: the Brain page's Knowledge, skills and voice set. */
+  brain: "studio:brain",
   brand: "studio:brand",
   billing: "studio:billing",
   views: (stage: string) => `studio:views:${stage}`,

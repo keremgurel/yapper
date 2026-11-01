@@ -248,8 +248,8 @@ final class StudioWebCommands: ObservableObject {
             "surface": surface ?? NSNull(),
             "history": history.map { ["author": $0.author.rawValue, "text": $0.text] },
             "focus": focus ?? NSNull(),
-            // Reply fields this build acts on; without "open" the page adds
-            // where to look to the text instead.
+            // Reply fields this build acts on; without "open" the server
+            // refuses what only an opened Poster can show.
             "capabilities": ["open"],
         ]
         let result = try await webView.callAsyncJavaScript(

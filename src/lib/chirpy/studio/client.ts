@@ -1,5 +1,6 @@
+import type { InspirationFocus } from "./inspiration/focus";
 import type { StudioDecision } from "./typed-decision";
-import type { StudioTurnReply } from "./wire";
+import type { StudioTurnInput, StudioTurnReply } from "./wire";
 
 /** Why a Studio turn did not run, in words for the Chirpy panel. */
 export class StudioTurnError extends Error {}
@@ -47,13 +48,18 @@ export function sendStudioTurn(turn: {
   messages: { role: "user" | "assistant"; content: string }[];
   focusIdeaID?: string;
   canOpen?: boolean;
+  focusInspiration?: InspirationFocus;
 }): Promise<StudioTurnReply> {
+  const focus: StudioTurnInput["focus"] = {
+    ...(turn.focusIdeaID ? { ideaID: turn.focusIdeaID } : {}),
+    ...(turn.focusInspiration ? { inspiration: turn.focusInspiration } : {}),
+  };
   return post("/api/chirpy/studio", {
     protocolVersion: 1,
     executionID: crypto.randomUUID(),
     surface: turn.surface,
     timeZone: timeZone(),
-    ...(turn.focusIdeaID ? { focus: { ideaID: turn.focusIdeaID } } : {}),
+    ...(Object.keys(focus).length ? { focus } : {}),
     ...(turn.canOpen === false ? { canOpen: false } : {}),
     messages: turn.messages,
   });
