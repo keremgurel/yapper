@@ -39,6 +39,8 @@ export const ROUTE_ACTIONS: Record<string, readonly string[]> = {
   "PATCH /api/brand": ["studio.brand.colors"],
   "PATCH /api/brand/logos/[id]": ["studio.brand.logos.makePrimary"],
   "DELETE /api/brand/logos/[id]": ["studio.brand.logos.delete"],
+  "DELETE /api/storage/videos": ["studio.storage.removeVideos"],
+  "DELETE /api/submissions/[id]": ["studio.storage.deleteRecording"],
   "POST /api/transcription-dictionary": ["app.dictionary.addTerm"],
   "PATCH /api/transcription-dictionary/[id]": ["app.dictionary.editTerm"],
   "DELETE /api/transcription-dictionary/[id]": ["app.dictionary.removeTerm"],
@@ -149,7 +151,4 @@ export const UNCOVERED_ROUTES: Record<string, string> = {
   // Automations.
   "PUT /api/publish/automations": "automations",
   "POST /api/publish/automations/runs/[id]": "automations",
-  // Storage.
-  "DELETE /api/storage/videos": "storage",
-  "DELETE /api/submissions/[id]": "storage",
 };

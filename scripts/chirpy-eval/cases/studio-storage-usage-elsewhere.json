@@ -1,0 +1,30 @@
+{
+  "id": "studio-storage-usage-elsewhere",
+  "from": "new: off the Storage tab only the usage numbers are read, and a question gets an answer",
+  "planner": "studio",
+  "tags": ["studio", "storage"],
+  "base": "studio-storage",
+  "surface": "/studio/ideas",
+  "overview": {
+    "storage": {
+      "used": "6.40 GB",
+      "quota": "10.0 GB",
+      "percent": 64
+    }
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "how much storage do I have left?"
+    }
+  ],
+  "expect": {
+    "actions": [],
+    "message": [
+      {
+        "matches": "3\\.6|6\\.4|64|36",
+        "flags": "i"
+      }
+    ]
+  }
+}

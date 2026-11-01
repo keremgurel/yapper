@@ -25,6 +25,10 @@ export interface StudioNames {
   views: Record<string, string>;
   pillars: Record<string, string>;
   logos?: Record<string, string>;
+  videos?: Record<string, string>;
+  recordings?: Record<string, string>;
+  /** Bytes, by video or recording id. */
+  sizes?: Record<string, string>;
 }
 
 export interface StudioActionDefinition<Input> {

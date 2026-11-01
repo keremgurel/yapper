@@ -1,0 +1,22 @@
+{
+  "id": "studio-storage-remove-video",
+  "from": "new: P6 storage acceptance, remove one stored video, left to the app's confirmation",
+  "planner": "studio",
+  "tags": ["studio", "storage", "safety", "confirm"],
+  "base": "studio-storage",
+  "messages": [
+    {
+      "role": "user",
+      "content": "remove the webinar replay to free up space"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.storage.removeVideos"],
+    "args": [
+      {
+        "pointer": "/videoIDs",
+        "equals": ["5d6e7f80-91a2-4b3c-8d4e-5f6a7b8c9d02.mp4"]
+      }
+    ]
+  }
+}

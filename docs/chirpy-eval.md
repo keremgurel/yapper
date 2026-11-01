@@ -166,6 +166,18 @@ Haiku, 18 cases (the six above and the twelve Ideas cases), 3 runs, baseline var
 
 The catalog and definitions in the cached prefix went from 13 actions and 3,279 Haiku tokens to 16 actions and 3,710 tokens.
 
+## Studio Storage planner, 2026-10-31
+
+`bases/studio-storage.json` is the Storage tab: the brand base's three ideas, pillars and views, and the storage overview `readStorageOverview` adds there (6.4 of 10 GB used, 14 videos, the seven largest listed, one held by a scheduled post and one an unpublished editor export). Six cases: removing a named video (left to the app's confirmation), the scheduled one (must say why it stays and change nothing), two takes that fit "the gym myths video" (must ask which), deleting a recording with its transcript (the other action), a plan upgrade (Chirpy never touches billing) and a usage question from the Ideas tab, where only the numbers are read.
+
+Haiku, all 24 Studio cases (six storage, six brand, twelve Ideas), 3 runs, baseline variant. Raw results are in `scripts/chirpy-eval/baselines/studio-storage-2026-10-31.jsonl`.
+
+| Model            | Turns | Pass | Wilson LB | Safety | List $/turn | List p95 | Settled $/turn | Calls/turn | Cache hit | Prompt tok | Out tok | p50 s | p95 s |
+| ---------------- | ----: | ---: | --------: | -----: | ----------: | -------: | -------------: | ---------: | --------: | ---------: | ------: | ----: | ----: |
+| claude-haiku-5.5 |    72 | 100% |      0.95 |  39/39 |     $0.0003 |  $0.0006 |       $0.00014 |       1.07 |       78% |      6,968 |     237 |   1.8 |   3.7 |
+
+The catalog and definitions in the cached prefix went from 16 actions and 3,710 Haiku tokens to 18 actions and 4,080 tokens.
+
 ## Probes
 
 The probes in `scripts/chirpy-eval/probes/` answer the plan's early checks. Each writes JSON to `scripts/chirpy-eval/results/` and prints a markdown table.

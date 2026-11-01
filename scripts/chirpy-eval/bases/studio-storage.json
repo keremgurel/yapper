@@ -1,0 +1,162 @@
+{
+  "description": "A creator's Storage tab as the Studio planner sees it: the ideas overview every turn reads, plus the usage and largest stored videos readStudioOverview adds on the Storage tab, on Wednesday 28 October 2026 in Toronto.",
+  "surface": "/studio/storage",
+  "timeZone": "America/Toronto",
+  "overview": {
+    "totalIdeas": 9,
+    "ideas": [
+      {
+        "id": "6f1d1f5e-2b7a-4c39-9b8e-0a1c2d3e4f01",
+        "title": "Gym myths that waste your time",
+        "status": "drafting",
+        "pillar": "Fitness",
+        "formats": ["short"],
+        "drafted": true
+      },
+      {
+        "id": "6f1d1f5e-2b7a-4c39-9b8e-0a1c2d3e4f02",
+        "title": "Meal prep for lazy people",
+        "status": "captured",
+        "pillar": "Nutrition",
+        "formats": ["short"],
+        "drafted": true
+      },
+      {
+        "id": "6f1d1f5e-2b7a-4c39-9b8e-0a1c2d3e4f03",
+        "title": "Protein myths your coach still believes",
+        "status": "drafting",
+        "pillar": "Nutrition",
+        "date": "2026-10-29",
+        "time": "09:00",
+        "formats": ["short", "article"],
+        "drafted": true
+      }
+    ],
+    "pillars": [
+      {
+        "id": "9a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c01",
+        "name": "Fitness"
+      },
+      {
+        "id": "9a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c02",
+        "name": "Nutrition"
+      },
+      {
+        "id": "9a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c03",
+        "name": "Mindset"
+      }
+    ],
+    "views": [
+      {
+        "id": "4c5d6e7f-8091-4a2b-9c3d-4e5f60718201",
+        "name": "All ideas",
+        "kind": "table",
+        "groupBy": null,
+        "filters": {}
+      },
+      {
+        "id": "4c5d6e7f-8091-4a2b-9c3d-4e5f60718202",
+        "name": "By pillar",
+        "kind": "board",
+        "groupBy": "pillar",
+        "filters": {}
+      }
+    ],
+    "today": {
+      "date": "2026-10-28",
+      "weekday": "Wednesday",
+      "time": "10:15",
+      "timeZone": "America/Toronto"
+    },
+    "upcoming": [
+      {
+        "date": "2026-10-28",
+        "weekday": "Wednesday"
+      },
+      {
+        "date": "2026-10-29",
+        "weekday": "Thursday"
+      },
+      {
+        "date": "2026-10-30",
+        "weekday": "Friday"
+      },
+      {
+        "date": "2026-10-31",
+        "weekday": "Saturday"
+      },
+      {
+        "date": "2026-11-01",
+        "weekday": "Sunday"
+      },
+      {
+        "date": "2026-11-02",
+        "weekday": "Monday"
+      },
+      {
+        "date": "2026-11-03",
+        "weekday": "Tuesday"
+      },
+      {
+        "date": "2026-11-04",
+        "weekday": "Wednesday"
+      }
+    ],
+    "storage": {
+      "used": "6.40 GB",
+      "quota": "10.0 GB",
+      "percent": 64,
+      "totalVideos": 14,
+      "largest": [
+        {
+          "id": "5d6e7f80-91a2-4b3c-8d4e-5f6a7b8c9d01.mp4",
+          "title": "Launch teaser final",
+          "size": "1.80 GB",
+          "kind": "editor_export",
+          "keep": "scheduled"
+        },
+        {
+          "id": "5d6e7f80-91a2-4b3c-8d4e-5f6a7b8c9d02.mp4",
+          "title": "Webinar replay: pricing",
+          "size": "1.20 GB",
+          "kind": "recording",
+          "recordingID": "7e8f9a0b-1c2d-4e3f-8a4b-5c6d7e8f9a02"
+        },
+        {
+          "id": "5d6e7f80-91a2-4b3c-8d4e-5f6a7b8c9d03.mp4",
+          "title": "Gym myths take 3",
+          "size": "820 MB",
+          "kind": "recording",
+          "recordingID": "7e8f9a0b-1c2d-4e3f-8a4b-5c6d7e8f9a03"
+        },
+        {
+          "id": "5d6e7f80-91a2-4b3c-8d4e-5f6a7b8c9d04.mp4",
+          "title": "Gym myths take 1",
+          "size": "760 MB",
+          "kind": "recording",
+          "recordingID": "7e8f9a0b-1c2d-4e3f-8a4b-5c6d7e8f9a04"
+        },
+        {
+          "id": "5d6e7f80-91a2-4b3c-8d4e-5f6a7b8c9d05.mp4",
+          "title": "Q&A live",
+          "size": "610 MB",
+          "kind": "recording",
+          "recordingID": "7e8f9a0b-1c2d-4e3f-8a4b-5c6d7e8f9a05"
+        },
+        {
+          "id": "5d6e7f80-91a2-4b3c-8d4e-5f6a7b8c9d06.mp4",
+          "title": "Podcast clip",
+          "size": "300 MB",
+          "kind": "import"
+        },
+        {
+          "id": "5d6e7f80-91a2-4b3c-8d4e-5f6a7b8c9d07.mp4",
+          "title": "Draft cut v2",
+          "size": "280 MB",
+          "kind": "editor_export",
+          "keep": "editor_current"
+        }
+      ]
+    }
+  }
+}

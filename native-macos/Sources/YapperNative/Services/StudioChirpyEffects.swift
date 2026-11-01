@@ -19,5 +19,8 @@ enum StudioChirpyEffects {
         if effects.contains("brand"), BrandKitStore.shared.kit != nil {
             Task { await BrandKitStore.shared.refresh() }
         }
+        if effects.contains("storage"), StorageStore.shared.usage != nil {
+            Task { await StorageStore.shared.refresh() }
+        }
     }
 }
