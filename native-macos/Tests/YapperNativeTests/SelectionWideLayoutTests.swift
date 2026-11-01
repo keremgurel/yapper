@@ -60,7 +60,7 @@ import Testing
         let clips = session.project.clips
         session.setTimelineSelection([.clip(clips[0].id), .clip(clips[2].id)])
 
-        session.commitFraming(VideoFraming(scale: 1.4, x: 0.1, y: -0.2), clipID: clips[0].id)
+        _ = await session.commitFraming(VideoFraming(scale: 1.4, x: 0.1, y: -0.2), clipID: clips[0].id).value
 
         #expect(session.project.clips[0].framing?.scale == 1.4)
         #expect(session.project.clips[2].framing?.scale == 1.4)
@@ -77,10 +77,10 @@ import Testing
         let clips = session.project.clips
         let framing = VideoFraming(scale: 1.2, x: 0, y: 0.05)
         session.setTimelineSelection([.clip(clips[0].id)])
-        session.commitFraming(framing, clipID: clips[0].id)
+        _ = await session.commitFraming(framing, clipID: clips[0].id).value
         session.setTimelineSelection([.clip(clips[0].id), .clip(clips[1].id)])
 
-        session.commitFraming(framing, clipID: clips[0].id)
+        _ = await session.commitFraming(framing, clipID: clips[0].id).value
 
         #expect(session.project.clips[1].framing?.scale == 1.2)
     }
@@ -92,7 +92,7 @@ import Testing
         let clips = session.project.clips
         session.setTimelineSelection([.clip(clips[1].id)])
 
-        session.commitFraming(VideoFraming(scale: 1.3, x: 0, y: 0), clipID: clips[1].id)
+        _ = await session.commitFraming(VideoFraming(scale: 1.3, x: 0, y: 0), clipID: clips[1].id).value
 
         #expect(session.project.clips[1].framing?.scale == 1.3)
         #expect(session.project.clips[0].framing == nil)
@@ -111,7 +111,7 @@ import Testing
         moved.y = 0.62
         moved.width = 0.5
         moved.height = 0.5
-        session.commitOverlayEdit(moved)
+        _ = await session.commitOverlayEdit(moved).value
 
         let after = session.overlays
         #expect(after[0].x == 0.11)
@@ -133,7 +133,7 @@ import Testing
 
         var trimmed = overlays[0]
         trimmed.duration = 0.5
-        session.commitOverlayEdit(trimmed)
+        _ = await session.commitOverlayEdit(trimmed).value
 
         let after = session.overlays
         #expect(after[0].duration == 0.5)
@@ -158,7 +158,7 @@ extension SelectionWideLayoutTests {
 
         var moved = overlays[2]
         moved.x = 0.05
-        session.commitOverlayEdit(moved)
+        _ = await session.commitOverlayEdit(moved).value
 
         let after = session.overlays
         #expect(after[2].x == 0.05)
