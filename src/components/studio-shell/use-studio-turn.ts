@@ -8,6 +8,7 @@ import {
   StudioTurnError,
 } from "@/lib/chirpy/studio/client";
 import { applyStudioEffects } from "@/lib/chirpy/studio/effects-client";
+import { inspirationFocus } from "@/lib/chirpy/studio/inspiration/focus-client";
 import type { StudioEffect, StudioTurnReply } from "@/lib/chirpy/studio/wire";
 import type {
   ChirpyConfirmation,
@@ -77,6 +78,9 @@ export function useStudioTurn(
           surface: surface.split("?")[0].replace(/\/$/, "") || "/studio",
           messages: [...history.slice(-19), { role: "user", content: text }],
           focusIdeaID: UUID_IN_PATH.exec(surface)?.[1],
+          focusInspiration: surface.startsWith("/studio/inspiration")
+            ? (inspirationFocus() ?? undefined)
+            : undefined,
         });
         applyStudioEffects(reply.effects, router.refresh);
         return messageFrom(reply);

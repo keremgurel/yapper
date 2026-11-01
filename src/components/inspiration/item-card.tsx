@@ -10,6 +10,10 @@ import ItemNote from "@/components/inspiration/item-note";
 import { useInspiration } from "@/components/inspiration/inspiration-context";
 import { blankIdea, seedBlocks } from "@/lib/inspiration/ideas";
 import { createContent } from "@/lib/content/client";
+import {
+  forgetInspirationFocus,
+  noteInspirationFocus,
+} from "@/lib/chirpy/studio/inspiration/focus-client";
 import type { InspirationItem } from "@/lib/inspiration/types";
 
 export default function ItemCard({ item }: { item: InspirationItem }) {
@@ -56,7 +60,11 @@ export default function ItemCard({ item }: { item: InspirationItem }) {
   };
 
   return (
-    <article className="border-border bg-card flex flex-col overflow-hidden rounded-2xl border shadow-sm transition-shadow hover:shadow-md">
+    <article
+      onPointerDownCapture={() => noteInspirationFocus(item)}
+      onFocusCapture={() => noteInspirationFocus(item)}
+      className="border-border bg-card flex flex-col overflow-hidden rounded-2xl border shadow-sm transition-shadow hover:shadow-md"
+    >
       <a
         href={item.url}
         target="_blank"
@@ -148,7 +156,13 @@ export default function ItemCard({ item }: { item: InspirationItem }) {
           >
             <ExternalLink className="h-4 w-4" />
           </a>
-          <DeleteButton size="sm" onConfirm={() => deleteItem(item.id)} />
+          <DeleteButton
+            size="sm"
+            onConfirm={() => {
+              forgetInspirationFocus(item.url);
+              deleteItem(item.id);
+            }}
+          />
         </div>
       </div>
     </article>

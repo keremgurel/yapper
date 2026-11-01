@@ -1,0 +1,27 @@
+{
+  "id": "studio-canvas-import-links",
+  "from": "new: links pasted into Chirpy are saved like the saves import",
+  "planner": "studio",
+  "tags": ["studio", "ideas", "import"],
+  "base": "studio-ideas",
+  "messages": [
+    {
+      "role": "user",
+      "content": "save these to my ideas: https://www.instagram.com/reel/C9xYz12AbCd/ and https://www.tiktok.com/@coachmara/video/7421039485721039485"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.ideas.import"],
+    "args": [
+      {
+        "pointer": "/links/0/url",
+        "equals": "https://www.instagram.com/reel/C9xYz12AbCd/"
+      },
+      {
+        "pointer": "/links/1/url",
+        "equals": "https://www.tiktok.com/@coachmara/video/7421039485721039485"
+      },
+      { "pointer": "/links/2", "absent": true }
+    ]
+  }
+}

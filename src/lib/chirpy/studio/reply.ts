@@ -88,7 +88,7 @@ export function turnReply(
     ...base,
     message: execution.partial
       ? "Part of that didn’t go through; the notes say what changed."
-      : plan.message.trim() || "Done.",
+      : execution.replies.join("\n\n") || plan.message.trim() || "Done.",
     tone: execution.partial ? "trouble" : "done",
   };
 }
