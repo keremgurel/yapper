@@ -576,6 +576,14 @@
       "runtime": "client"
     },
     {
+      "id": "studio.automations.update",
+      "input": "AutomationUpdateInput",
+      "description": "Change the cross-posting rule: turn it on or off, where new Instagram posts are copied, and its caption options. Only the fields sent change. The creator is asked to confirm first.",
+      "effect": "standingRule",
+      "confirm": true,
+      "runtime": "server"
+    },
+    {
       "id": "studio.brand.colors",
       "input": "BrandColorsInput",
       "description": "Change the kit's colors (at most 8, first is primary): set replaces them all, add appends, remove drops, primary moves one color to the front.",
@@ -2874,6 +2882,37 @@
       "properties": {
         "destination": {
           "$ref": "#/$defs/ExportDestinationInput"
+        }
+      }
+    },
+    "AutomationUpdateInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "destinations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "youtube",
+              "tiktok"
+            ]
+          }
+        },
+        "stripHashtags": {
+          "type": "boolean",
+          "description": "Remove hashtags from the copied caption."
+        },
+        "reformatForYouTube": {
+          "type": "boolean",
+          "description": "Use the caption's first line as the YouTube title."
         }
       }
     },

@@ -162,24 +162,50 @@ describe("replies", () => {
   });
 
   it("asks one question for a turn's deletes, with a typed answer for the Mac", () => {
-    expect(
-      confirmationFor(EXECUTION, [
-        { invocationID: "a", action: "x", label: "Delete “Gym myths”" },
-      ]),
-    ).toEqual({
+    const deleteIdea = {
+      invocationID: "a",
+      action: "studio.ideas.delete",
+      label: "Delete “Gym myths”",
+    };
+    expect(confirmationFor(EXECUTION, [deleteIdea])).toEqual({
       executionID: EXECUTION,
       question: "Delete “Gym myths”? This can’t be undone.",
       confirmLabel: "Delete",
+      cancelLabel: "Keep it",
       typedHint: "Reply yes to delete, or no to keep it.",
     });
     expect(
       confirmationFor(EXECUTION, [
-        { invocationID: "a", action: "x", label: "Delete “Gym myths”" },
-        { invocationID: "b", action: "y", label: "Delete the “Ready” view" },
+        deleteIdea,
+        {
+          invocationID: "b",
+          action: "studio.ideas.views.delete",
+          label: "Delete the “Ready” view",
+        },
       ])?.question,
     ).toBe(
       "Delete “Gym myths” and delete the “Ready” view? This can’t be undone.",
     );
+  });
+
+  it("asks a plain yes or no for a rule that keeps running", () => {
+    expect(
+      confirmationFor(EXECUTION, [
+        {
+          invocationID: "a",
+          action: "studio.automations.update",
+          label:
+            "Turn on copying each new Instagram post to YouTube, until you turn it off",
+        },
+      ]),
+    ).toEqual({
+      executionID: EXECUTION,
+      question:
+        "Turn on copying each new Instagram post to YouTube, until you turn it off?",
+      confirmLabel: "Confirm",
+      cancelLabel: "Cancel",
+      typedHint: "Reply yes to go ahead, or no to leave it as it is.",
+    });
   });
 
   it("reads a bare yes or no and nothing longer", () => {

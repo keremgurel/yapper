@@ -7,6 +7,7 @@ import {
   turnInvocations,
   type StudioInvocation,
 } from "./receipts";
+import { onlyDeletions } from "./reply";
 import type { StudioDecision } from "./typed-decision";
 import type {
   StudioActionReceipt,
@@ -40,7 +41,9 @@ function replyFrom(
   if (decision === "cancel")
     return {
       executionID,
-      message: "Kept it. Nothing was deleted.",
+      message: onlyDeletions(records.map((record) => record.action))
+        ? "Kept it. Nothing was deleted."
+        : "Left it as it was. Nothing changed.",
       tone: "answer",
       notes: [],
       results,

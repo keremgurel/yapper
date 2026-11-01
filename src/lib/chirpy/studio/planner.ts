@@ -8,6 +8,7 @@ import {
   studioPlanIssue,
   type StudioPlan,
 } from "./catalog";
+import type { AutomationsOverview } from "./automations/reads";
 import type { BrandOverview } from "./brand/reads";
 import type { IdeasOverview } from "./ideas/reads";
 import type { StorageNames, StorageOverview } from "./storage/reads";
@@ -25,6 +26,8 @@ export interface StudioOverview extends IdeasOverview {
   storage?: StorageOverview;
   /** For the confirmation question only; studioRequest leaves it out. */
   storageNames?: StorageNames;
+  /** Only on the Automations tab or when the request is about the rule. */
+  automations?: AutomationsOverview;
 }
 
 const REFERENCE = JSON.stringify({
@@ -60,6 +63,7 @@ export function studioRequest(
     ideas: overview.ideas,
     brand: overview.brand,
     storage: overview.storage,
+    automations: overview.automations,
     messages: input.messages,
   });
 }

@@ -1,3 +1,4 @@
+import { readAutomationsOverview, wantsAutomations } from "./automations/reads";
 import { readBrandOverview, wantsBrand } from "./brand/reads";
 import type { StudioNames } from "./executor";
 import { readIdeasOverview } from "./ideas/reads";
@@ -23,10 +24,13 @@ export async function readStudioOverview(
     .map((message) => message.content)
     .join("\n");
   const storageScope = wantsStorage(input.surface, request);
-  const [ideas, brand, storage] = await Promise.all([
+  const [ideas, brand, storage, automations] = await Promise.all([
     readIdeasOverview(userId, request, timeZone, input.focus?.ideaID),
     wantsBrand(input.surface, request) ? readBrandOverview(userId) : undefined,
     storageScope ? readStorageOverview(userId, storageScope) : undefined,
+    wantsAutomations(input.surface, request)
+      ? readAutomationsOverview(userId)
+      : undefined,
   ]);
   return {
     ...ideas,
@@ -34,6 +38,7 @@ export async function readStudioOverview(
     ...(storage
       ? { storage: storage.storage, storageNames: storage.names }
       : {}),
+    ...(automations ? { automations } : {}),
     today: {
       date: localDay(now, timeZone),
       weekday: weekdayOf(now, timeZone),

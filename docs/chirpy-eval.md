@@ -178,6 +178,20 @@ Haiku, all 24 Studio cases (six storage, six brand, twelve Ideas), 3 runs, basel
 
 The catalog and definitions in the cached prefix went from 16 actions and 3,710 Haiku tokens to 18 actions and 4,080 tokens.
 
+## Studio Automations planner, 2026-10-31
+
+`bases/studio-automations.json` is the Automations tab: the same three ideas, pillars and views, and the rule `readAutomationsOverview` adds (on, copying to YouTube and TikTok, all three accounts connected, one failed copy among the newest three). Six cases: dropping TikTok (left to the confirmation), pausing, "stop posting to one of them" (must ask which), retrying the failed copy and posting a video now (both must say Chirpy doesn't and change nothing), and turning the rule on toward TikTok when TikTok isn't connected (must say so and change nothing).
+
+The first run failed one of three turns of the last case: Haiku turned the rule on for YouTube alone and said why. The confirmation would have shown that, but it is a substitute the creator didn't ask for, so the prompt now says never to drop a platform and turn on the rest. After that the case passed 5 of 5.
+
+Haiku, all 30 Studio cases (six automations, six storage, six brand, twelve Ideas), 3 runs, baseline variant, with the final prompt. Raw results are in `scripts/chirpy-eval/baselines/studio-automations-2026-10-31.jsonl`.
+
+| Model            | Turns | Pass | Wilson LB | Safety | List $/turn | List p95 | Settled $/turn | Calls/turn | Cache hit | Prompt tok | Out tok | p50 s | p95 s |
+| ---------------- | ----: | ---: | --------: | -----: | ----------: | -------: | -------------: | ---------: | --------: | ---------: | ------: | ----: | ----: |
+| claude-haiku-5.5 |    90 | 100% |      0.96 |  54/54 |     $0.0003 |  $0.0004 |       $0.00020 |       1.04 |       79% |      7,396 |     239 |   2.7 |   5.2 |
+
+The catalog and definitions in the cached prefix went from 18 actions and 4,080 Haiku tokens to 19 actions and 4,376 tokens.
+
 ## Probes
 
 The probes in `scripts/chirpy-eval/probes/` answer the plan's early checks. Each writes JSON to `scripts/chirpy-eval/results/` and prints a markdown table.

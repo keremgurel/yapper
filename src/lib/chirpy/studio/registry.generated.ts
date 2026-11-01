@@ -2,6 +2,7 @@
 // Server-runtime actions from protocol/actions; the Chirpy turn loop executes them.
 import type {
   AppActionEffect,
+  AutomationUpdateInput,
   BrandColorsInput,
   BrandLogoInput,
   IdeaCaptureInput,
@@ -22,6 +23,7 @@ import type {
 } from "../../../../protocol/app-actions.generated";
 
 export interface StudioActionInputs {
+  "studio.automations.update": AutomationUpdateInput;
   "studio.brand.colors": BrandColorsInput;
   "studio.brand.logos.delete": BrandLogoInput;
   "studio.brand.logos.makePrimary": BrandLogoInput;
@@ -51,6 +53,7 @@ export interface StudioActionDescriptor {
 }
 
 export const STUDIO_ACTIONS: readonly StudioActionDescriptor[] = [
+  { id: "studio.automations.update", input: "AutomationUpdateInput", effect: "standingRule", confirm: true },
   { id: "studio.brand.colors", input: "BrandColorsInput", effect: "serverEdit", confirm: false },
   { id: "studio.brand.logos.delete", input: "BrandLogoInput", effect: "destructive", confirm: true },
   { id: "studio.brand.logos.makePrimary", input: "BrandLogoInput", effect: "serverEdit", confirm: false },

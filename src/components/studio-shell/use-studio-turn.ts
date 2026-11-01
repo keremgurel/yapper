@@ -35,6 +35,8 @@ function messageFrom(reply: StudioTurnReply): Reply {
             executionID: reply.confirm.executionID,
             question: reply.confirm.question,
             confirmLabel: reply.confirm.confirmLabel,
+            cancelLabel: reply.confirm.cancelLabel,
+            typedHint: reply.confirm.typedHint,
             state: "open" as const,
           },
         }

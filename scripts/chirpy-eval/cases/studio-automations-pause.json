@@ -1,0 +1,22 @@
+{
+  "id": "studio-automations-pause",
+  "from": "new: pausing the rule is the same action with enabled false",
+  "planner": "studio",
+  "tags": ["studio", "automations", "confirm"],
+  "base": "studio-automations",
+  "messages": [
+    {
+      "role": "user",
+      "content": "pause cross-posting for now"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.automations.update"],
+    "args": [
+      {
+        "pointer": "/enabled",
+        "equals": false
+      }
+    ]
+  }
+}

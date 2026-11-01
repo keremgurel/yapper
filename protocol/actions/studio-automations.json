@@ -1,0 +1,43 @@
+{
+  "description": "The Automations tab: the rule that copies each new Instagram post to YouTube and TikTok. The server runs these inside a Chirpy turn through the same operation as the tab's save button. Retrying a failed copy posts it, so it has no action.",
+  "runtime": "server",
+  "actions": [
+    {
+      "id": "studio.automations.update",
+      "input": "AutomationUpdateInput",
+      "description": "Change the cross-posting rule: turn it on or off, where new Instagram posts are copied, and its caption options. Only the fields sent change. The creator is asked to confirm first.",
+      "effect": "standingRule",
+      "confirm": true
+    }
+  ],
+  "$defs": {
+    "AutomationUpdateInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "destinations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["youtube", "tiktok"]
+          }
+        },
+        "stripHashtags": {
+          "type": "boolean",
+          "description": "Remove hashtags from the copied caption."
+        },
+        "reformatForYouTube": {
+          "type": "boolean",
+          "description": "Use the caption's first line as the YouTube title."
+        }
+      }
+    }
+  }
+}
