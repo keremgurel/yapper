@@ -1,0 +1,23 @@
+{
+  "id": "studio-brain-remember-note",
+  "from": "new: a short fact to keep becomes a Knowledge section in the creator's words",
+  "planner": "studio",
+  "tags": ["studio", "brain"],
+  "base": "studio-brain",
+  "messages": [
+    {
+      "role": "user",
+      "content": "remember that my sister Ana edits my videos, so I always credit her in captions"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.brain.knowledge.add"],
+    "args": [
+      {
+        "pointer": "/body",
+        "matches": "Ana",
+        "flags": "i"
+      }
+    ]
+  }
+}

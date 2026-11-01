@@ -1,5 +1,7 @@
 import { readAutomationsOverview, wantsAutomations } from "./automations/reads";
 import { readBrandOverview, wantsBrand } from "./brand/reads";
+import { brainNames } from "./brain/labels";
+import { needsBrain, readBrainOverview } from "./brain/reads";
 import type { StudioNames } from "./executor";
 import { readIdeasOverview } from "./ideas/reads";
 import { readStorageOverview, wantsStorage } from "./storage/reads";
@@ -24,12 +26,15 @@ export async function readStudioOverview(
     .map((message) => message.content)
     .join("\n");
   const storageScope = wantsStorage(input.surface, request);
-  const [ideas, brand, storage, automations] = await Promise.all([
+  const [ideas, brand, storage, automations, brain] = await Promise.all([
     readIdeasOverview(userId, request, timeZone, input.focus?.ideaID),
     wantsBrand(input.surface, request) ? readBrandOverview(userId) : undefined,
     storageScope ? readStorageOverview(userId, storageScope) : undefined,
     wantsAutomations(input.surface, request)
       ? readAutomationsOverview(userId)
+      : undefined,
+    needsBrain(input.surface, request)
+      ? readBrainOverview(userId, request)
       : undefined,
   ]);
   return {
@@ -39,6 +44,7 @@ export async function readStudioOverview(
       ? { storage: storage.storage, storageNames: storage.names }
       : {}),
     ...(automations ? { automations } : {}),
+    ...(brain ? { brain } : {}),
     today: {
       date: localDay(now, timeZone),
       weekday: weekdayOf(now, timeZone),
@@ -69,5 +75,6 @@ export function namesFrom(overview: StudioOverview): StudioNames {
       (overview.brand?.logos ?? []).map((logo) => [logo.id, logo.name]),
     ),
     ...overview.storageNames,
+    brain: brainNames(overview.brain),
   };
 }

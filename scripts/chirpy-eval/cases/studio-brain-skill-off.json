@@ -1,0 +1,30 @@
+{
+  "id": "studio-brain-skill-off",
+  "from": "new: a skill's switch, matched by name",
+  "planner": "studio",
+  "tags": ["studio", "brain"],
+  "base": "studio-brain",
+  "messages": [
+    {
+      "role": "user",
+      "content": "turn off hook shapes"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.brain.skills.save"],
+    "args": [
+      {
+        "pointer": "",
+        "keys": ["skillID", "enabled"]
+      },
+      {
+        "pointer": "/skillID",
+        "equals": "5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a02"
+      },
+      {
+        "pointer": "/enabled",
+        "equals": false
+      }
+    ]
+  }
+}

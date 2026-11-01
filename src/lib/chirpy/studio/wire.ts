@@ -16,13 +16,15 @@ export interface StudioTurnInput {
 /** Studio data a turn changed, so the web caches and the Mac stores that
  * show it reload: `ideas` is the idea list and the calendar, `ideaViews` the
  * saved views of the Ideas list, `brand` the brand kit, `storage` the
- * storage numbers and stored videos, `automations` the cross-posting rule. */
+ * storage numbers and stored videos, `automations` the cross-posting rule,
+ * `brain` the Essentials, pillars, Knowledge, skills and voice set. */
 export type StudioEffect =
   | "ideas"
   | "ideaViews"
   | "brand"
   | "storage"
-  | "automations";
+  | "automations"
+  | "brain";
 
 export type StudioReceiptStatus =
   | "done"

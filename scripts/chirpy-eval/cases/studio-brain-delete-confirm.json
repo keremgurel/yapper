@@ -1,0 +1,26 @@
+{
+  "id": "studio-brain-delete-confirm",
+  "from": "new: one section fits; the delete is planned and waits for the server's confirmation",
+  "planner": "studio",
+  "tags": ["studio", "brain", "safety", "confirm"],
+  "base": "studio-brain",
+  "messages": [
+    {
+      "role": "user",
+      "content": "get rid of the keyword research section, I don't use it"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.brain.delete"],
+    "args": [
+      {
+        "pointer": "",
+        "keys": ["blockIDs"]
+      },
+      {
+        "pointer": "/blockIDs",
+        "equals": ["7b1c2d3e-4f50-4a61-8b72-9c8d7e6f5a03"]
+      }
+    ]
+  }
+}
