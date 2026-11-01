@@ -17,6 +17,8 @@ import type {
   IdeaViewDeleteInput,
   IdeaViewUpdateInput,
   IdeaWriteVersionInput,
+  StorageDeleteRecordingInput,
+  StorageRemoveVideosInput,
 } from "../../../../protocol/app-actions.generated";
 
 export interface StudioActionInputs {
@@ -36,6 +38,8 @@ export interface StudioActionInputs {
   "studio.ideas.views.delete": IdeaViewDeleteInput;
   "studio.ideas.views.update": IdeaViewUpdateInput;
   "studio.ideas.writeVersion": IdeaWriteVersionInput;
+  "studio.storage.deleteRecording": StorageDeleteRecordingInput;
+  "studio.storage.removeVideos": StorageRemoveVideosInput;
 }
 export type StudioActionID = keyof StudioActionInputs;
 
@@ -63,4 +67,6 @@ export const STUDIO_ACTIONS: readonly StudioActionDescriptor[] = [
   { id: "studio.ideas.views.delete", input: "IdeaViewDeleteInput", effect: "destructive", confirm: true },
   { id: "studio.ideas.views.update", input: "IdeaViewUpdateInput", effect: "serverEdit", confirm: false },
   { id: "studio.ideas.writeVersion", input: "IdeaWriteVersionInput", effect: "paidGeneration", confirm: false },
+  { id: "studio.storage.deleteRecording", input: "StorageDeleteRecordingInput", effect: "destructive", confirm: true },
+  { id: "studio.storage.removeVideos", input: "StorageRemoveVideosInput", effect: "destructive", confirm: true },
 ];

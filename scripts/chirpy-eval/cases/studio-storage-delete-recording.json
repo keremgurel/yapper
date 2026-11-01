@@ -1,0 +1,22 @@
+{
+  "id": "studio-storage-delete-recording",
+  "from": "new: deleting a recording with its transcript is a different action from removing the file",
+  "planner": "studio",
+  "tags": ["studio", "storage", "safety", "confirm"],
+  "base": "studio-storage",
+  "messages": [
+    {
+      "role": "user",
+      "content": "delete the Q&A live recording completely, transcript and feedback too"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.storage.deleteRecording"],
+    "args": [
+      {
+        "pointer": "/recordingID",
+        "equals": "7e8f9a0b-1c2d-4e3f-8a4b-5c6d7e8f9a05"
+      }
+    ]
+  }
+}

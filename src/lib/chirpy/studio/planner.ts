@@ -10,6 +10,7 @@ import {
 } from "./catalog";
 import type { BrandOverview } from "./brand/reads";
 import type { IdeasOverview } from "./ideas/reads";
+import type { StorageNames, StorageOverview } from "./storage/reads";
 import { STUDIO_SYSTEM } from "./prompt";
 import type { StudioTurnInput } from "./wire";
 
@@ -19,6 +20,11 @@ export interface StudioOverview extends IdeasOverview {
   upcoming: { date: string; weekday: string }[];
   /** Only on the Brand tab or when the request is about the kit. */
   brand?: BrandOverview;
+  /** Usage when the request is about storage; the largest videos too on the
+   * Storage tab. */
+  storage?: StorageOverview;
+  /** For the confirmation question only; studioRequest leaves it out. */
+  storageNames?: StorageNames;
 }
 
 const REFERENCE = JSON.stringify({
@@ -53,6 +59,7 @@ export function studioRequest(
     totalIdeas: overview.totalIdeas,
     ideas: overview.ideas,
     brand: overview.brand,
+    storage: overview.storage,
     messages: input.messages,
   });
 }

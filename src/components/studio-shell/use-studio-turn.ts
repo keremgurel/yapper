@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   answerStudioConfirmation,
   sendStudioTurn,
@@ -62,6 +63,7 @@ export function useStudioTurn(
     state: ChirpyConfirmation["state"],
   ) => void,
 ) {
+  const router = useRouter();
   const ask = useCallback(
     async (
       text: string,
@@ -74,13 +76,13 @@ export function useStudioTurn(
           messages: [...history.slice(-19), { role: "user", content: text }],
           focusIdeaID: UUID_IN_PATH.exec(surface)?.[1],
         });
-        applyStudioEffects(reply.effects);
+        applyStudioEffects(reply.effects, router.refresh);
         return messageFrom(reply);
       } catch (cause) {
         return trouble(cause);
       }
     },
-    [],
+    [router],
   );
 
   const answer = useCallback(
@@ -91,7 +93,7 @@ export function useStudioTurn(
       setConfirmState(executionID, "working");
       try {
         const reply = await answerStudioConfirmation(executionID, decision);
-        applyStudioEffects(reply.effects);
+        applyStudioEffects(reply.effects, router.refresh);
         setConfirmState(
           executionID,
           decision === "confirm" ? "confirmed" : "canceled",
@@ -102,7 +104,7 @@ export function useStudioTurn(
         return trouble(cause);
       }
     },
-    [setConfirmState],
+    [router, setConfirmState],
   );
 
   return { ask, answer };

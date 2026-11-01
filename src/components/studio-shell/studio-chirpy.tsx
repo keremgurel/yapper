@@ -96,10 +96,11 @@ interface StudioChirpyValue {
 const StudioChirpyContext = createContext<StudioChirpyValue | null>(null);
 
 /** Tabs whose requests Chirpy plans with the Studio actions. Elsewhere, a
- * short request that mentions ideas or the brand kit goes there too. */
+ * short request that mentions ideas, the brand kit or storage goes there
+ * too. */
 const STUDIO_ACTION_SURFACES =
-  /^\/studio\/(?:ideas|calendar|library|brand)(?:\/|$)/;
-const MENTIONS_STUDIO_DATA = /\b(?:ideas?|brand|palette|logos?)\b/i;
+  /^\/studio\/(?:ideas|calendar|library|brand|storage)(?:\/|$)/;
+const MENTIONS_STUDIO_DATA = /\b(?:ideas?|brand|palette|logos?|storage)\b/i;
 const ADD_CONTEXT_COMMAND =
   /^(?:please\s+)?(?:add|remember|save|note)(?:\s+that)?\s+(.+)/i;
 const EDIT_ESSENTIAL_COMMAND =
@@ -427,9 +428,9 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
         }
 
         // The Studio actions: planned and run on the server, which answers
-        // with receipts and what to reload. Requests on the idea and brand
-        // tabs, and short requests elsewhere that mention ideas or the brand
-        // kit, go there. It runs before the catch-all add/remember/save
+        // with receipts and what to reload. Requests on the idea, brand and
+        // storage tabs, and short requests elsewhere that mention ideas, the
+        // brand kit or storage, go there. It runs before the catch-all add/remember/save
         // command, which would otherwise file "add an idea about X" as
         // Knowledge.
         if (
