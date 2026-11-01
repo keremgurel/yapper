@@ -10,6 +10,7 @@ import {
 } from "./catalog";
 import type { AutomationsOverview } from "./automations/reads";
 import type { BrandOverview } from "./brand/reads";
+import type { BrainOverview } from "./brain/overview";
 import type { IdeasOverview } from "./ideas/reads";
 import type { StorageNames, StorageOverview } from "./storage/reads";
 import { STUDIO_SYSTEM } from "./prompt";
@@ -28,6 +29,8 @@ export interface StudioOverview extends IdeasOverview {
   storageNames?: StorageNames;
   /** Only on the Automations tab or when the request is about the rule. */
   automations?: AutomationsOverview;
+  /** Only on the Brain tab or when the request is about the Brain. */
+  brain?: BrainOverview;
 }
 
 const REFERENCE = JSON.stringify({
@@ -64,6 +67,7 @@ export function studioRequest(
     brand: overview.brand,
     storage: overview.storage,
     automations: overview.automations,
+    ...(overview.brain ? { brain: overview.brain } : {}),
     messages: input.messages,
   });
 }

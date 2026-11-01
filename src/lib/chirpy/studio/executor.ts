@@ -1,5 +1,5 @@
 import type { OperationRefusal } from "@/lib/http/operation-result";
-import type { StudioEffect } from "./wire";
+import type { StudioEffect, StudioTurnInput } from "./wire";
 
 /** What an executor gets besides its validated input. */
 export interface StudioActionContext {
@@ -8,6 +8,9 @@ export interface StudioActionContext {
   request: Request;
   signal?: AbortSignal;
   timeZone: string;
+  /** The turn's conversation, so an action can read a paste from it instead
+   * of the model copying it into arguments. Absent on a confirmation. */
+  messages?: StudioTurnInput["messages"];
 }
 
 export interface ActionOutcome {
@@ -29,6 +32,8 @@ export interface StudioNames {
   recordings?: Record<string, string>;
   /** Bytes, by video or recording id. */
   sizes?: Record<string, string>;
+  /** Knowledge sections, skills and voice samples, by id. */
+  brain?: Record<string, string>;
 }
 
 export interface StudioActionDefinition<Input> {

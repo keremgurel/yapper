@@ -3,6 +3,17 @@
 import type {
   AppActionEffect,
   AutomationUpdateInput,
+  BrainDeleteInput,
+  BrainDeriveInput,
+  BrainEssentialsInput,
+  BrainImportInput,
+  BrainInstallInput,
+  BrainKnowledgeAddInput,
+  BrainKnowledgeUpdateInput,
+  BrainListenInput,
+  BrainPillarInput,
+  BrainSetupInput,
+  BrainSkillInput,
   BrandColorsInput,
   BrandLogoInput,
   IdeaCaptureInput,
@@ -24,6 +35,17 @@ import type {
 
 export interface StudioActionInputs {
   "studio.automations.update": AutomationUpdateInput;
+  "studio.brain.catalog.install": BrainInstallInput;
+  "studio.brain.delete": BrainDeleteInput;
+  "studio.brain.essentials.update": BrainEssentialsInput;
+  "studio.brain.knowledge.add": BrainKnowledgeAddInput;
+  "studio.brain.knowledge.import": BrainImportInput;
+  "studio.brain.knowledge.update": BrainKnowledgeUpdateInput;
+  "studio.brain.pillars.save": BrainPillarInput;
+  "studio.brain.setup": BrainSetupInput;
+  "studio.brain.skills.save": BrainSkillInput;
+  "studio.brain.voice.derive": BrainDeriveInput;
+  "studio.brain.voice.listen": BrainListenInput;
   "studio.brand.colors": BrandColorsInput;
   "studio.brand.logos.delete": BrandLogoInput;
   "studio.brand.logos.makePrimary": BrandLogoInput;
@@ -54,6 +76,17 @@ export interface StudioActionDescriptor {
 
 export const STUDIO_ACTIONS: readonly StudioActionDescriptor[] = [
   { id: "studio.automations.update", input: "AutomationUpdateInput", effect: "standingRule", confirm: true },
+  { id: "studio.brain.catalog.install", input: "BrainInstallInput", effect: "serverEdit", confirm: false },
+  { id: "studio.brain.delete", input: "BrainDeleteInput", effect: "destructive", confirm: true },
+  { id: "studio.brain.essentials.update", input: "BrainEssentialsInput", effect: "serverEdit", confirm: false },
+  { id: "studio.brain.knowledge.add", input: "BrainKnowledgeAddInput", effect: "serverEdit", confirm: false },
+  { id: "studio.brain.knowledge.import", input: "BrainImportInput", effect: "paidGeneration", confirm: false },
+  { id: "studio.brain.knowledge.update", input: "BrainKnowledgeUpdateInput", effect: "serverEdit", confirm: false },
+  { id: "studio.brain.pillars.save", input: "BrainPillarInput", effect: "serverEdit", confirm: false },
+  { id: "studio.brain.setup", input: "BrainSetupInput", effect: "paidGeneration", confirm: false },
+  { id: "studio.brain.skills.save", input: "BrainSkillInput", effect: "serverEdit", confirm: false },
+  { id: "studio.brain.voice.derive", input: "BrainDeriveInput", effect: "paidGeneration", confirm: false },
+  { id: "studio.brain.voice.listen", input: "BrainListenInput", effect: "paidGeneration", confirm: false },
   { id: "studio.brand.colors", input: "BrandColorsInput", effect: "serverEdit", confirm: false },
   { id: "studio.brand.logos.delete", input: "BrandLogoInput", effect: "destructive", confirm: true },
   { id: "studio.brand.logos.makePrimary", input: "BrandLogoInput", effect: "serverEdit", confirm: false },

@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AddContextSheet from "@/components/brain/add/add-context-sheet";
 import SetupSheet from "@/components/brain/setup/setup-sheet";
 import { useBrainSetup } from "@/hooks/use-brain-setup";
-import { SETUP_HANDOFF_KEY } from "@/lib/brain/setup-client";
 import EssentialsView from "@/components/brain/essentials/essentials-view";
 import FillInMenu from "@/components/brain/fill-in-menu";
 import BrainTabs, { type BrainView } from "@/components/brain/brain-tabs";
@@ -15,15 +14,16 @@ import { PageHeader } from "@/components/studio-ui";
 import { useVoiceSamples } from "@/hooks/use-voice-samples";
 import CatalogSheet from "@/components/brain/skills/catalog-sheet";
 import SkillEditorSheet from "@/components/brain/skills/skill-editor-sheet";
-import {
-  useStudioChirpy,
-  type ChirpyBrainTools,
-} from "@/components/studio-shell/studio-chirpy";
+import { useStudioChirpy } from "@/components/studio-shell/studio-chirpy";
 import { Button } from "@/components/ui/button";
 import { useBrainBlocks } from "@/hooks/use-brain-blocks";
 import { useBrainSkills } from "@/hooks/use-brain-skills";
 import { useProject } from "@/hooks/use-project";
-import { findKnowledge } from "@/lib/brain/find-knowledge";
+import type { NewBrainBlock } from "@/lib/brain/client";
+import {
+  STUDIO_RESOURCE_KEYS,
+  subscribeClientResourceReload,
+} from "@/lib/client-resource-cache";
 import type { ProjectPatch } from "@/lib/project/client";
 
 /** Essentials say who the creator is, Knowledge says what they know, and
@@ -47,7 +47,6 @@ export default function BrainPage() {
     error: blockError,
     refresh: refreshBlocks,
     retry: retryBlocks,
-    editAndSave: saveBlock,
     edit: editBlock,
     add: addBlock,
     remove: removeBlock,
@@ -86,23 +85,13 @@ export default function BrainPage() {
     },
     [changed, updateProject],
   );
-  const addKnowledge = useCallback<ChirpyBrainTools["addKnowledge"]>(
-    async (block) => {
+  const addKnowledge = useCallback(
+    async (block: NewBrainBlock) => {
       const saved = await addBlock(block);
       changed();
       return saved;
     },
     [addBlock, changed],
-  );
-  const editKnowledge = useCallback<ChirpyBrainTools["editKnowledge"]>(
-    async (query, patch) => {
-      const block = findKnowledge(blocks, query);
-      if (!block) return null;
-      await saveBlock(block.id, patch);
-      changed();
-      return block;
-    },
-    [blocks, changed, saveBlock],
   );
   const saveEssentials = useCallback(
     async (patch: ProjectPatch) => {
@@ -116,45 +105,19 @@ export default function BrainPage() {
     saveEssentials,
     addBlock: addKnowledge,
   });
-  const { setDocument: setSetupDocument } = setup;
-  const setUpFromDocument = useCallback(
-    (document: string) => {
-      setSetupDocument(document);
-      setSettingUp(true);
-    },
-    [setSetupDocument],
+  const { samples, refresh: refreshSamples } = useVoiceSamples(true);
+  // A Chirpy turn that changed the Brain on the server; the Essentials
+  // reload through their own cache key.
+  useEffect(
+    () =>
+      subscribeClientResourceReload(STUDIO_RESOURCE_KEYS.brain, () => {
+        void refreshBlocks();
+        void refreshSkills();
+        void refreshSamples();
+        changed();
+      }),
+    [changed, refreshBlocks, refreshSkills, refreshSamples],
   );
-  // A document handed to Chirpy from another page waits in session storage
-  // until this page is on screen.
-  useEffect(() => {
-    let handed: string | null = null;
-    try {
-      handed = window.sessionStorage.getItem(SETUP_HANDOFF_KEY);
-      if (handed) window.sessionStorage.removeItem(SETUP_HANDOFF_KEY);
-    } catch {
-      handed = null;
-    }
-    if (!handed) return;
-    const document = handed;
-    const timer = window.setTimeout(() => setUpFromDocument(document), 0);
-    return () => window.clearTimeout(timer);
-  }, [setUpFromDocument]);
-  const brainTools = useMemo<ChirpyBrainTools>(
-    () => ({
-      addKnowledge,
-      editKnowledge,
-      updateEssentials: saveEssentials,
-      setUpFromDocument,
-    }),
-    [addKnowledge, editKnowledge, saveEssentials, setUpFromDocument],
-  );
-
-  useEffect(() => {
-    chirpy.registerBrainTools(brainTools);
-    return () => chirpy.registerBrainTools(null);
-  }, [brainTools, chirpy]);
-
-  const { samples } = useVoiceSamples(true);
   const editingSkill =
     skills.find((skill) => skill.id === editingSkillID) ?? null;
 

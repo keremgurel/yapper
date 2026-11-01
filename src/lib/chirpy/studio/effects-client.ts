@@ -20,6 +20,7 @@ const RESOURCES: Record<StudioEffect, string[]> = {
   brand: [STUDIO_RESOURCE_KEYS.brand, STUDIO_RESOURCE_KEYS.project],
   storage: [],
   automations: [],
+  brain: [STUDIO_RESOURCE_KEYS.project, STUDIO_RESOURCE_KEYS.brain],
 };
 
 /** Effects whose page the server renders, so the route itself reloads. */

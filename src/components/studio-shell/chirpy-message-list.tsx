@@ -2,23 +2,19 @@
 
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { Chirpy } from "@/components/brand/chirpy";
-import { Button } from "@/components/ui/button";
-import type { BlockSuggestion } from "@/lib/brain/client";
 import type { ChirpyMessage } from "@/components/studio-shell/chirpy-message";
 import ChirpyConfirmation from "@/components/studio-shell/chirpy-confirmation";
 
 /** The conversation itself: the creator's turns on the right, Chirpy's on
- * the left with what it saved, brand colors it set, Knowledge it suggests
- * keeping, and any change waiting for a yes. Render-only. */
+ * the left with what it saved and any change waiting for a yes.
+ * Render-only. */
 export default function ChirpyMessageList({
   messages,
   working,
-  onSaveSuggestion,
   onAnswerConfirmation,
 }: {
   messages: ChirpyMessage[];
   working: boolean;
-  onSaveSuggestion: (suggestion: BlockSuggestion) => void;
   onAnswerConfirmation: (
     executionID: string,
     decision: "confirm" | "cancel",
@@ -76,29 +72,6 @@ export default function ChirpyMessageList({
                       )
                     }
                   />
-                ) : null}
-                {message.suggestions?.length ? (
-                  <div className="mt-2 space-y-1.5">
-                    {message.suggestions.map((suggestion) => (
-                      <div
-                        key={suggestion.title}
-                        className="bg-muted/70 rounded-lg p-2"
-                      >
-                        <p className="text-[11px] font-semibold">
-                          {suggestion.title}
-                        </p>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="contrast"
-                          className="mt-1.5 text-xs"
-                          onClick={() => onSaveSuggestion(suggestion)}
-                        >
-                          Add to knowledge
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
                 ) : null}
               </div>
             </div>

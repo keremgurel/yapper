@@ -6,9 +6,6 @@ import type {
 } from "@/lib/brain/setup-types";
 import type { PillarDraft, ProjectPatch } from "@/lib/project/client";
 
-/** Where a document handed to Chirpy waits until the Brain page opens. */
-export const SETUP_HANDOFF_KEY = "yapper.brain.setup-document";
-
 export async function proposeSetup(
   document: string,
   signal?: AbortSignal,

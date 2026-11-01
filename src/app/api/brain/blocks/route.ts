@@ -1,14 +1,13 @@
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
-import { parseBlockOrder, parseNewBrainBlock } from "@/lib/brain/input";
-import { invalidateBrainContext } from "@/lib/brain/context/server";
 import {
-  createBrainBlock,
-  listBrainBlocks,
-  reorderBrainBlocks,
-} from "@/lib/db/project-brain";
+  createKnowledge,
+  reorderKnowledge,
+} from "@/lib/brain/operations/knowledge";
+import { parseBlockOrder, parseNewBrainBlock } from "@/lib/brain/input";
+import { listBrainBlocks } from "@/lib/db/project-brain";
 import { getActiveProject } from "@/lib/db/projects";
-import { ensureUser } from "@/lib/db/users";
+import { refusalResponse } from "@/lib/http/operation-result";
 import { withServerTiming } from "@/lib/http/server-timing";
 
 export const runtime = "nodejs";
@@ -31,11 +30,9 @@ export async function POST(req: NextRequest): Promise<Response> {
   const input = parseNewBrainBlock(body);
   if (!input) return Response.json({ error: "no_title" }, { status: 400 });
 
-  await ensureUser(userId);
-  const project = await getActiveProject(userId);
-  const block = await createBrainBlock(project.id, input);
-  invalidateBrainContext(project.id);
-  return Response.json({ block }, { status: 201 });
+  const result = await createKnowledge(userId, input);
+  if (!result.ok) return refusalResponse(result);
+  return Response.json({ block: result.value }, { status: 201 });
 }
 
 /** The creator's own order, as a list of ids. */
@@ -47,9 +44,7 @@ export async function PATCH(req: NextRequest): Promise<Response> {
   const order = parseBlockOrder(body.order);
   if (!order) return Response.json({ error: "no_order" }, { status: 400 });
 
-  await ensureUser(userId);
-  const project = await getActiveProject(userId);
-  const blocks = await reorderBrainBlocks(project.id, order);
-  invalidateBrainContext(project.id);
-  return Response.json({ blocks });
+  const result = await reorderKnowledge(userId, order);
+  if (!result.ok) return refusalResponse(result);
+  return Response.json({ blocks: result.value });
 }

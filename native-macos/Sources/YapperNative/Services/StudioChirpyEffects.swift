@@ -31,5 +31,15 @@ enum StudioChirpyEffects {
                 }
             }
         }
+        if effects.contains("brain") {
+            BrainPreviewStore.shared.invalidate()
+            Task {
+                if BrainProjectStore.shared.project != nil { await BrainProjectStore.shared.refresh(force: true) }
+                if BrainBlocksStore.shared.blocks != nil { await BrainBlocksStore.shared.refresh() }
+                if BrainSkillsStore.shared.skills != nil { await BrainSkillsStore.shared.refresh() }
+                if BrainVoiceStore.shared.samples != nil { await BrainVoiceStore.shared.refresh() }
+                if !IdeaPillarsStore.shared.pillars.isEmpty { await IdeaPillarsStore.shared.refresh() }
+            }
+        }
     }
 }
