@@ -25,6 +25,7 @@ export interface StudioInvocation {
   summary?: string;
   effects?: StudioEffect[];
   partial?: boolean;
+  reply?: string;
 }
 
 /** A pending action can be confirmed this long after it was proposed. */

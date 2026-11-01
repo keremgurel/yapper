@@ -1,10 +1,9 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
-import { invalidateBrainContext } from "@/lib/brain/context/server";
-import { listPillars, replacePillars } from "@/lib/db/project-pillars";
+import { saveProjectBrain } from "@/lib/brain/operations/project";
 import { listPillarsSeeded } from "@/lib/db/project-seed";
-import { getActiveProject, updateProject } from "@/lib/db/projects";
-import { ensureUser } from "@/lib/db/users";
+import { getActiveProject } from "@/lib/db/projects";
+import { refusalResponse } from "@/lib/http/operation-result";
 import { withServerTiming } from "@/lib/http/server-timing";
 import { parsePillarInput, parseProjectInput } from "@/lib/project/input";
 
@@ -53,32 +52,11 @@ export async function PATCH(req: NextRequest): Promise<Response> {
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  await ensureUser(userId);
-  const existing = await getActiveProject(userId);
-
-  const input = parseProjectInput(body);
-  let project = existing;
-  if (Object.keys(input).length) {
-    const saved = await updateProject(userId, input);
-    if (!saved) return Response.json({ error: "not_found" }, { status: 404 });
-    project = saved;
-  }
-
-  const pillarInput = parsePillarInput(body.pillars);
-  let pillars;
-  if (pillarInput) {
-    pillars = await replacePillars(project.id, pillarInput);
-    // replacePillars bumps contextVersion too, so the row read above is now one
-    // behind. Re-read rather than hand the client a version that never existed.
-    project = await getActiveProject(userId);
-  } else {
-    pillars = await listPillars(project.id);
-  }
-
-  // Both writes bump contextVersion, which already invalidates on read. This
-  // drops the entry outright so the very next prompt on this warm instance
-  // cannot serve the block the creator just edited away.
-  invalidateBrainContext(project.id);
-
-  return Response.json({ project, pillars });
+  const result = await saveProjectBrain(
+    userId,
+    parseProjectInput(body),
+    parsePillarInput(body.pillars),
+  );
+  if (!result.ok) return refusalResponse(result);
+  return Response.json(result.value);
 }

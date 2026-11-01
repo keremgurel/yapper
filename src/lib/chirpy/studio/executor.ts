@@ -1,5 +1,5 @@
 import type { OperationRefusal } from "@/lib/http/operation-result";
-import type { StudioEffect } from "./wire";
+import type { StudioEffect, StudioTurnInput } from "./wire";
 
 /** What an executor gets besides its validated input. */
 export interface StudioActionContext {
@@ -8,6 +8,11 @@ export interface StudioActionContext {
   request: Request;
   signal?: AbortSignal;
   timeZone: string;
+  /** The turn's conversation, so an action can read a paste from it instead
+   * of the model copying it into arguments. Absent on a confirmation. */
+  messages?: StudioTurnInput["messages"];
+  /** What was open when the turn was sent; absent when a confirmation runs. */
+  focus?: StudioTurnInput["focus"];
 }
 
 export interface ActionOutcome {
@@ -16,6 +21,9 @@ export interface ActionOutcome {
   effects: StudioEffect[];
   /** Part of the action could not be done, and the summary says which. */
   partial?: boolean;
+  /** Writing the creator should read as Chirpy's reply (a canvas answer, a
+   * brainstorm), in place of the sentence the planner wrote beforehand. */
+  reply?: string;
 }
 
 /** Names the planner saw, so a confirmation can say "Delete “Gym myths”"
@@ -29,6 +37,8 @@ export interface StudioNames {
   recordings?: Record<string, string>;
   /** Bytes, by video or recording id. */
   sizes?: Record<string, string>;
+  /** Knowledge sections, skills and voice samples, by id. */
+  brain?: Record<string, string>;
 }
 
 export interface StudioActionDefinition<Input> {
@@ -68,6 +78,8 @@ export function failureFrom(
     too_many_views: "You already have 20 views. Delete one first.",
     bad_view: "That view needs a name.",
     rate_limited: "That’s a lot of AI work in a short time. Try again soon.",
+    generate_failed: `Writing on ${subject} failed. Nothing was charged.`,
+    brainstorm_failed: `Writing ${subject} failed, so the credit was refunded.`,
   };
   return new StudioActionFailure(
     refusal.error,

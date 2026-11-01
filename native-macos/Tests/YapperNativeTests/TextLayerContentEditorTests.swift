@@ -48,7 +48,7 @@ struct TextLayerContentEditorTests {
     private struct Host: View {
         @ObservedObject var model: Model
         var body: some View {
-            TextLayerContentEditor(text: model.text) { model.text = $0 }
+            TextLayerContentEditor(text: model.text, onEdit: { model.text = $0 }, onCommit: {})
                 .frame(width: 400, height: 100)
         }
     }

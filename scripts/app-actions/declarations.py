@@ -40,6 +40,11 @@ def typescript_declarations(definitions):
         if "enum" in definition:
             lines += [f"export type {name} = " + " | ".join(json.dumps(value) for value in definition["enum"]) + ";", ""]
             continue
+        if not definition["properties"]:
+            # An action that takes no arguments; an empty interface would
+            # accept any value.
+            lines += [f"export type {name} = Record<string, never>;", ""]
+            continue
         lines += [f"export interface {name} {{"]
         for field, prop in definition["properties"].items():
             optional = field not in definition["required"]

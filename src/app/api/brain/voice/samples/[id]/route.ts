@@ -1,7 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
-import { invalidateBrainContext } from "@/lib/brain/context/server";
-import { bumpProjectContext, getActiveProject } from "@/lib/db/projects";
-import { deleteVoiceSample } from "@/lib/db/voice-samples";
+import { removeVoiceSample } from "@/lib/brain/operations/voice";
+import { refusalResponse } from "@/lib/http/operation-result";
 
 export const runtime = "nodejs";
 
@@ -16,10 +15,7 @@ export async function DELETE(
   if (!/^[0-9a-f-]{36}$/i.test(id)) {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
-  const removed = await deleteVoiceSample(userId, id);
-  if (!removed) return Response.json({ error: "not_found" }, { status: 404 });
-  const project = await getActiveProject(userId);
-  await bumpProjectContext(project.id);
-  invalidateBrainContext(project.id);
+  const result = await removeVoiceSample(userId, id);
+  if (!result.ok) return refusalResponse(result);
   return Response.json({ ok: true });
 }

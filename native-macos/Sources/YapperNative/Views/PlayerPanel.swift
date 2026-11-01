@@ -224,7 +224,8 @@ private struct TextLayerCanvasOverlay: View {
                         canvasSize: proxy.size,
                         selected: session.selectedTextLayerID == layer.id,
                         alignmentGuides: $alignmentGuides,
-                        drag: session.canvasDrag
+                        drag: session.canvasDrag,
+                        typing: session.typingPreview
                     )
                 }
 
@@ -250,6 +251,8 @@ private struct TextLayerCanvasItem: View {
     /// Held on the session: see CanvasDragState. These views are rebuilt while
     /// a gesture runs, and a drag kept here went with them.
     @ObservedObject var drag: CanvasDragState
+    /// What is being typed into the inspector, shown before it is saved.
+    @ObservedObject var typing: TypingPreviewState
 
     /// Commits a finished drag through the text actions, keeping its draft on
     /// screen until the edit lands so the layer does not jump back.
@@ -270,7 +273,11 @@ private struct TextLayerCanvasItem: View {
 
     /// What the gesture is doing right now wins over what is saved, so a drag
     /// stays smooth while the project catches up behind it.
-    private var displayed: ProjectTextLayer { drag.textDraft(for: layer.id) ?? layer }
+    private var displayed: ProjectTextLayer {
+        var shown = drag.textDraft(for: layer.id) ?? layer
+        if let typed = typing.textLayerText[layer.id] { shown.text = typed }
+        return shown
+    }
 
     var body: some View {
         AppearanceText(

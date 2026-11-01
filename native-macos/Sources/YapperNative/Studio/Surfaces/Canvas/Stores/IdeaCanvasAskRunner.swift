@@ -1,9 +1,10 @@
 import Foundation
 
 /// Runs one ask at a time against the canvas and applies what comes back,
-/// as the web canvas's `askFromChirpy` does: the reply's actions land on the
-/// document through the item's one writer, the exchange goes into the thread,
-/// and the newest change can be taken back.
+/// as the web canvas's `askFromChirpy` does. The server edits and saves the
+/// version it has, so pending edits are flushed first; the reply's actions
+/// then land on what is shown through the item's one writer, the exchange
+/// goes into the thread, and the newest change can be taken back.
 @MainActor
 final class IdeaCanvasAskRunner: ObservableObject {
     /// The canvas as it was before the newest reply that changed it.
@@ -43,6 +44,12 @@ final class IdeaCanvasAskRunner: ObservableObject {
         defer { busy = false }
 
         let edited = self.body
+        do {
+            try await edited.autosave.flush()
+        } catch {
+            self.error = .failed
+            return
+        }
         let blocks = edited.blocks
         let before = IdeaCanvasState(title: item.title, blocks: blocks, hooks: edited.hooks)
         let target = targetID.flatMap { id in blocks.firstIndex { $0.id == id } }
@@ -65,6 +72,7 @@ final class IdeaCanvasAskRunner: ObservableObject {
             }
             guard edited.blocks == before.blocks, edited.hooks == before.hooks else {
                 thread.settle(pendingID, saved: reply.messages)
+                keepShown(over: reply, before: before, in: edited)
                 lastReply = "Your writing changed while I was working. The reply is in the conversation; your latest edits were kept."
                 return
             }
@@ -96,6 +104,17 @@ final class IdeaCanvasAskRunner: ObservableObject {
     }
 
     func dismissError() { error = nil }
+
+    /// The server saved the reply's edit; saving what is on screen over it
+    /// keeps the creator's newer edits as the document.
+    private func keepShown(over reply: IdeaCanvasAskReply, before: IdeaCanvasState, in body: IdeaCanvasBody) {
+        let next = IdeaCanvasActions.apply(before, reply.actions)
+        if next.blocks != before.blocks { body.setBlocks(body.blocks) }
+        if next.hooks != before.hooks { body.setHooks(body.hooks) }
+        if next.title != before.title, let title = store.item?.title {
+            store.update(IdeaCanvasPatch(title: title))
+        }
+    }
 
     private func apply(_ reply: IdeaCanvasAskReply, before: IdeaCanvasState, to body: IdeaCanvasBody) {
         let next = IdeaCanvasActions.apply(before, reply.actions)

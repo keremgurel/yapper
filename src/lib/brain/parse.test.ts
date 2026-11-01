@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { parseAskReply } from "@/lib/brain/ask";
 import { parseSpunIdea } from "@/lib/brain/spin";
 import {
   parseBlockOrder,
@@ -35,41 +34,6 @@ describe("parseSpunIdea", () => {
   it("refuses an idea with no title", () => {
     expect(() => parseSpunIdea('{"angle":"nice"}', combination, [])).toThrow();
     expect(() => parseSpunIdea("not json at all", combination, [])).toThrow();
-  });
-});
-
-describe("parseAskReply", () => {
-  it("keeps a well-formed suggestion", () => {
-    const answer = parseAskReply(
-      '{"reply":"Post the visa one.","suggestions":[{"title":"Hooks that work","kind":"list","body":"","items":["Nobody tells you this","I failed twice"]}]}',
-    );
-    expect(answer.reply).toBe("Post the visa one.");
-    expect(answer.suggestions).toHaveLength(1);
-    expect(answer.suggestions[0].items).toHaveLength(2);
-  });
-
-  it("drops a suggestion with nothing in it", () => {
-    const answer = parseAskReply(
-      '{"reply":"Sure.","suggestions":[{"title":"Empty"},{"title":"","body":"orphan"}]}',
-    );
-    expect(answer.suggestions).toEqual([]);
-  });
-
-  it("offers at most two, so the page never becomes a to-do list", () => {
-    const many = Array.from({ length: 5 }, (_, i) => ({
-      title: `Block ${i}`,
-      kind: "note",
-      body: "something",
-      items: [],
-    }));
-    const answer = parseAskReply(
-      JSON.stringify({ reply: "Here.", suggestions: many }),
-    );
-    expect(answer.suggestions).toHaveLength(2);
-  });
-
-  it("refuses an empty reply", () => {
-    expect(() => parseAskReply('{"suggestions":[]}')).toThrow();
   });
 });
 

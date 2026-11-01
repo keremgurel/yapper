@@ -5,6 +5,16 @@
   "x-protocolVersion": 1,
   "x-actions": [
     {
+      "id": "app.audioLibrary.remove",
+      "symbol": "savedAudioRemove",
+      "input": "SavedAudioRemoveInput",
+      "description": "Delete a sound listed in savedAudioLibrary from the library and from disk. Refused while the open project or its undo history uses it.",
+      "effect": "destructive",
+      "confirm": true,
+      "requiresRebuild": false,
+      "runtime": "client"
+    },
+    {
       "id": "app.dictionary.addTerm",
       "symbol": "dictionaryAdd",
       "input": "DictionaryAddInput",
@@ -96,6 +106,15 @@
       "runtime": "client"
     },
     {
+      "id": "editor.audio.paste",
+      "symbol": "audioPaste",
+      "input": "AudioPasteInput",
+      "description": "Paste the sound last copied from this project's timeline (Copy on a selected sound) at a timeline anchor, as ⌘V does at the playhead. The copy keeps the source, trim, volume and speed it had when it was copied.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
       "id": "editor.audio.replace",
       "symbol": "audioReplace",
       "input": "AudioReplaceInput",
@@ -117,7 +136,7 @@
       "id": "editor.audio.trim",
       "symbol": "audioTrim",
       "input": "AudioTrimInput",
-      "description": "Set source in point and/or duration of existing audio layers. Preserve timeline position, volume and speed. SourceStart is recording seconds; duration is timeline seconds.",
+      "description": "Set the source in point, duration and/or timeline start of existing audio layers, as dragging an edge or the body of a sound on the timeline does. Only supplied fields change; volume and speed are kept. sourceStart is recording seconds; duration and timelineStart are timeline seconds.",
       "effect": "reversibleEdit",
       "requiresRebuild": true,
       "runtime": "client"
@@ -189,7 +208,7 @@
       "id": "editor.captions.setVisible",
       "symbol": "captionVisibility",
       "input": "CaptionVisibilityInput",
-      "description": "Show or hide existing captions, preserving their text and styling. If showing captions for the first time, generate them from speech using the caption workflow.",
+      "description": "Show or hide existing captions, preserving their text and styling. If showing captions for the first time, generate them from speech using the caption workflow. regenerate=true (with visible=true) rebuilds every card from the current transcript and cut, transcribing first if needed, and discards hand edits to caption text.",
       "effect": "reversibleEdit",
       "requiresRebuild": false,
       "runtime": "client"
@@ -226,6 +245,15 @@
       "symbol": "clipReorder",
       "input": "ClipReorderInput",
       "description": "Move explicit main-track clips as one block so it starts at insertionIndex among the remaining clips (0 is first). Cannot reorder across a locked clip.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.clips.setSourceRange",
+      "symbol": "clipSourceRange",
+      "input": "ClipSourceRangeInput",
+      "description": "Set which part of its recording one main-track clip plays, as dragging the clip's edges on the timeline does, including extending it past its current edges. sourceStart and sourceEnd are recording seconds inside the media; later clips move to follow. A locked clip is refused.",
       "effect": "reversibleEdit",
       "requiresRebuild": true,
       "runtime": "client"
@@ -379,6 +407,15 @@
       "symbol": "projectSettings",
       "description": "Set project aspect ratio, visual filter/strength, video-track visibility or mute. Only supplied fields change. Applies the same project-wide settings as the manual controls.",
       "input": "ProjectSettingsInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.properties.paste",
+      "symbol": "propertiesPaste",
+      "input": "PropertiesPasteInput",
+      "description": "Give items the look of another item of the same kind, as Copy properties and Paste properties do. With fromItemID, copy that item's look first; without it, paste what the creator last copied. All itemIDs must be the same kind as the copied item: captions, text layers, overlays or clips. Position and timing are not part of an overlay's or clip's look.",
       "effect": "reversibleEdit",
       "requiresRebuild": true,
       "runtime": "client"
@@ -584,6 +621,84 @@
       "runtime": "server"
     },
     {
+      "id": "studio.brain.catalog.install",
+      "input": "BrainInstallInput",
+      "description": "Install a catalog entry by slug: a skill (again resets it to the catalog version) or a worksheet section.",
+      "effect": "serverEdit",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.brain.delete",
+      "input": "BrainDeleteInput",
+      "description": "Delete pillars (their ideas stay, unfiled), Knowledge sections, skills, or videos from the voice set.",
+      "effect": "destructive",
+      "confirm": true,
+      "runtime": "server"
+    },
+    {
+      "id": "studio.brain.essentials.update",
+      "input": "BrainEssentialsInput",
+      "description": "Change Essentials. Each text replaces its field; append true adds it on a new line instead.",
+      "effect": "serverEdit",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.brain.knowledge.add",
+      "input": "BrainKnowledgeAddInput",
+      "description": "Add a Knowledge section in the creator's words. items makes it a list.",
+      "effect": "serverEdit",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.brain.knowledge.import",
+      "input": "BrainImportInput",
+      "description": "File the table, list or document pasted in the creator's latest long message as one Knowledge section, parsed and named like Add > Paste. Costs the import credit.",
+      "effect": "paidGeneration",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.brain.knowledge.update",
+      "input": "BrainKnowledgeUpdateInput",
+      "description": "Change a Knowledge section. body and items replace, or with append true add at the end; find and replaceWith swap one passage; position moves it (1 is first).",
+      "effect": "serverEdit",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.brain.pillars.save",
+      "input": "BrainPillarInput",
+      "description": "Add a pillar, or change the one pillarID names. description and examples replace what it had.",
+      "effect": "serverEdit",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.brain.setup",
+      "input": "BrainSetupInput",
+      "description": "Set up the Brain from the document in the creator's latest long message: fills the Essentials it covers and adds its pillars and sections. Existing pillars stay. Costs the setup credits.",
+      "effect": "paidGeneration",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.brain.skills.save",
+      "input": "BrainSkillInput",
+      "description": "Write a skill (name and instructions Yapper follows when writing), or change the one skillID names: enabled turns it on or off, position moves it (1 is first).",
+      "effect": "serverEdit",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.brain.voice.derive",
+      "input": "BrainDeriveInput",
+      "description": "Rewrite How I sound and How my scripts are built from the voice set; blank What I make and Who it's for are drafted too.",
+      "effect": "paidGeneration",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.brain.voice.listen",
+      "input": "BrainListenInput",
+      "description": "Add a connected channel's newest videos to the voice set. 1 credit per 3 minutes heard; YouTube is free.",
+      "effect": "paidGeneration",
+      "runtime": "server"
+    },
+    {
       "id": "studio.brand.colors",
       "input": "BrandColorsInput",
       "description": "Change the kit's colors (at most 8, first is primary): set replaces them all, add appends, remove drops, primary moves one color to the front.",
@@ -606,10 +721,25 @@
       "runtime": "server"
     },
     {
+      "id": "studio.ideas.canvasEdit",
+      "input": "IdeaCanvasEditInput",
+      "description": "One ask on an idea's canvas, as typed in its ask bar: write or rewrite any part (script, hooks, title, a block) or answer about the piece. Reads and saves the document itself. Costs the canvas credit.",
+      "effect": "workflow",
+      "runtime": "server"
+    },
+    {
       "id": "studio.ideas.capture",
       "input": "IdeaCaptureInput",
-      "description": "Bank a new idea the way the Ideas composer does: the creator's words are saved verbatim, then its first draft (title, angle, hook and script) is written from their Brain, which costs the idea-drafting credits. pillarID, date and time file and schedule it in the same step. Set draft false only when the creator asks to just save the note.",
+      "description": "Bank a new idea the way the Ideas composer does: the creator's words are saved verbatim, then its first draft (title, angle, hook and script) is written from their Brain, which costs the idea-drafting credits. pillarID, date and time file and schedule it in the same step. Set draft false only when the creator asks to just save the note. fromInspiration: made from the open inspiration item.",
       "effect": "paidGeneration",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.ideas.clearThread",
+      "input": "IdeaClearThreadInput",
+      "description": "Clear an idea's canvas conversation; the document stays.",
+      "effect": "destructive",
+      "confirm": true,
       "runtime": "server"
     },
     {
@@ -636,6 +766,13 @@
       "runtime": "server"
     },
     {
+      "id": "studio.ideas.import",
+      "input": "IdeaImportInput",
+      "description": "Save links the creator gives as inspiration ideas; ones already saved are skipped.",
+      "effect": "serverEdit",
+      "runtime": "server"
+    },
+    {
       "id": "studio.ideas.rename",
       "input": "IdeaRenameInput",
       "description": "Change an idea's title.",
@@ -653,6 +790,13 @@
       "id": "studio.ideas.setPillar",
       "input": "IdeaPillarInput",
       "description": "File ideas under one of the creator's pillars by its id. Leave pillarID out to remove the pillar from them.",
+      "effect": "serverEdit",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.ideas.setScript",
+      "input": "IdeaSetScriptInput",
+      "description": "Replace a version's script with text the creator gives word for word.",
       "effect": "serverEdit",
       "runtime": "server"
     },
@@ -696,6 +840,13 @@
       "id": "studio.ideas.writeVersion",
       "input": "IdeaWriteVersionInput",
       "description": "Write another format of an idea (short, long or article) from its lead version, or from the version named in from, and save it beside the others. Costs the idea-drafting credits.",
+      "effect": "paidGeneration",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.inspiration.brainstorm",
+      "input": "InspirationBrainstormInput",
+      "description": "Break down the open inspiration item and suggest angles for the creator's own version, from their Brain. Nothing is saved; the writing is the reply. Costs the brainstorm credit.",
       "effect": "paidGeneration",
       "runtime": "server"
     },
@@ -1010,6 +1161,19 @@
         }
       }
     },
+    "SavedAudioRemoveInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "savedAudioID"
+      ],
+      "properties": {
+        "savedAudioID": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
     "DictionaryAddInput": {
       "type": "object",
       "additionalProperties": false,
@@ -1307,6 +1471,11 @@
           "type": "number",
           "minimum": 0.02,
           "maximum": 86400
+        },
+        "timelineStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
         }
       }
     },
@@ -1327,6 +1496,18 @@
         }
       }
     },
+    "AudioPasteInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "at"
+      ],
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        }
+      }
+    },
     "CaptionVisibilityInput": {
       "type": "object",
       "additionalProperties": false,
@@ -1335,6 +1516,9 @@
       ],
       "properties": {
         "visible": {
+          "type": "boolean"
+        },
+        "regenerate": {
           "type": "boolean"
         }
       }
@@ -2206,6 +2390,29 @@
         }
       }
     },
+    "PropertiesPasteInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "itemIDs"
+      ],
+      "properties": {
+        "itemIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "fromItemID": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
     "ClipSpeedInput": {
       "type": "object",
       "additionalProperties": false,
@@ -2442,6 +2649,31 @@
       "properties": {
         "track": {
           "$ref": "#/$defs/ClearTrackKind"
+        }
+      }
+    },
+    "ClipSourceRangeInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clipID",
+        "sourceStart",
+        "sourceEnd"
+      ],
+      "properties": {
+        "clipID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "sourceStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "sourceEnd": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 86400
         }
       }
     },
@@ -2916,6 +3148,322 @@
         }
       }
     },
+    "BrainUsage": {
+      "type": "string",
+      "description": "core: always read. auto: when relevant. manual: when attached. private: never.",
+      "enum": [
+        "core",
+        "auto",
+        "manual",
+        "private"
+      ]
+    },
+    "BrainFormat": {
+      "type": "string",
+      "enum": [
+        "short",
+        "long",
+        "article"
+      ]
+    },
+    "BrainEssentialsInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "whatIMake": {
+          "type": "string"
+        },
+        "audience": {
+          "type": "string"
+        },
+        "voice": {
+          "type": "string"
+        },
+        "scriptingPatterns": {
+          "type": "string"
+        },
+        "offers": {
+          "type": "string"
+        },
+        "doNots": {
+          "type": "string"
+        },
+        "defaultFormat": {
+          "$ref": "#/$defs/BrainFormat"
+        },
+        "append": {
+          "type": "boolean"
+        }
+      }
+    },
+    "BrainPillarInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "pillarID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string"
+        },
+        "examples": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "BrainKnowledgeAddInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "body": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string"
+          }
+        },
+        "digest": {
+          "type": "string",
+          "description": "One line: what it is and when it matters.",
+          "maxLength": 200
+        },
+        "usage": {
+          "$ref": "#/$defs/BrainUsage"
+        }
+      }
+    },
+    "BrainKnowledgeUpdateInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "blockID"
+      ],
+      "properties": {
+        "blockID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "body": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string"
+          }
+        },
+        "append": {
+          "type": "boolean"
+        },
+        "find": {
+          "type": "string",
+          "minLength": 1
+        },
+        "replaceWith": {
+          "type": "string"
+        },
+        "digest": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "usage": {
+          "$ref": "#/$defs/BrainUsage"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "BrainImportInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Only a name the creator gave.",
+          "maxLength": 80
+        }
+      }
+    },
+    "BrainSkillInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "skillID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "instructions": {
+          "type": "string",
+          "minLength": 1
+        },
+        "whenToUse": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "surfaces": {
+          "type": "array",
+          "description": "Absent or empty: all.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "ideate",
+              "hooks",
+              "script",
+              "caption",
+              "expand",
+              "chat",
+              "capture"
+            ]
+          }
+        },
+        "formats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BrainFormat"
+          }
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "BrainInstallInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "slug"
+      ],
+      "properties": {
+        "slug": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        }
+      }
+    },
+    "BrainSetupInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {}
+    },
+    "BrainListenInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "platform"
+      ],
+      "properties": {
+        "platform": {
+          "type": "string",
+          "enum": [
+            "youtube",
+            "tiktok",
+            "instagram"
+          ]
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        }
+      }
+    },
+    "BrainDeriveInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {}
+    },
+    "BrainDeleteInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "pillarIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 24,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "blockIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "skillIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "sampleIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
     "BrandColorsInput": {
       "type": "object",
       "additionalProperties": false,
@@ -2958,6 +3506,75 @@
         }
       }
     },
+    "IdeaCanvasEditInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ideaID",
+        "instruction"
+      ],
+      "properties": {
+        "ideaID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "instruction": {
+          "type": "string",
+          "description": "The creator's ask in their words.",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "format": {
+          "type": "string",
+          "description": "Only when they name a version.",
+          "enum": [
+            "short",
+            "long",
+            "article"
+          ]
+        }
+      }
+    },
+    "IdeaSetScriptInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ideaID",
+        "script"
+      ],
+      "properties": {
+        "ideaID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "short",
+            "long",
+            "article"
+          ]
+        },
+        "script": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20000
+        }
+      }
+    },
+    "IdeaClearThreadInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ideaID"
+      ],
+      "properties": {
+        "ideaID": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
     "IdeaFormat": {
       "type": "string",
       "description": "short is a short-form video, long a long-form video, article a written piece.",
@@ -2994,13 +3611,11 @@
     "IdeaCaptureInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "note"
-      ],
+      "required": [],
       "properties": {
         "note": {
           "type": "string",
-          "description": "The creator's own words for the idea, copied from their message without the request around it. Never invented or expanded.",
+          "description": "The creator's own words for the idea, copied from their message without the request around it. Never invented or expanded. Optional with fromInspiration.",
           "minLength": 1,
           "maxLength": 4000
         },
@@ -3024,6 +3639,9 @@
           "maxLength": 5
         },
         "draft": {
+          "type": "boolean"
+        },
+        "fromInspiration": {
           "type": "boolean"
         }
       }
@@ -3213,6 +3831,42 @@
         }
       }
     },
+    "IdeaImportInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "links"
+      ],
+      "properties": {
+        "links": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/$defs/IdeaImportLink"
+          }
+        }
+      }
+    },
+    "IdeaImportLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 600
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      }
+    },
     "IdeaViewCreateInput": {
       "type": "object",
       "additionalProperties": false,
@@ -3304,6 +3958,19 @@
         "viewID": {
           "type": "string",
           "format": "uuid"
+        }
+      }
+    },
+    "InspirationBrainstormInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "ask": {
+          "type": "string",
+          "description": "Their specific ask, if any.",
+          "minLength": 1,
+          "maxLength": 600
         }
       }
     },

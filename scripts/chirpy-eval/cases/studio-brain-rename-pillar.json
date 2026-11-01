@@ -1,0 +1,30 @@
+{
+  "id": "studio-brain-rename-pillar",
+  "from": "new: renaming a pillar keeps its id, so its ideas stay filed",
+  "planner": "studio",
+  "tags": ["studio", "brain"],
+  "base": "studio-brain",
+  "messages": [
+    {
+      "role": "user",
+      "content": "rename the Mindset pillar to Headspace"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.brain.pillars.save"],
+    "args": [
+      {
+        "pointer": "",
+        "keys": ["pillarID", "name"]
+      },
+      {
+        "pointer": "/pillarID",
+        "equals": "9a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c03"
+      },
+      {
+        "pointer": "/name",
+        "equals": "Headspace"
+      }
+    ]
+  }
+}

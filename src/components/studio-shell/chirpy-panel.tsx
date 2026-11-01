@@ -4,7 +4,6 @@ import type { Ref } from "react";
 import { X } from "lucide-react";
 import { StudioGlassSurface } from "@/components/studio-ui/liquid-glass";
 import { Button } from "@/components/ui/button";
-import type { BlockSuggestion } from "@/lib/brain/client";
 import ChirpyComposer from "@/components/studio-shell/chirpy-composer";
 import ChirpyMessageList from "@/components/studio-shell/chirpy-message-list";
 import type { ChirpyMessage } from "@/components/studio-shell/chirpy-message";
@@ -29,7 +28,6 @@ export default function ChirpyPanel({
   focusRequest,
   onPickOpener,
   onSend,
-  onSaveSuggestion,
   onAnswerConfirmation,
   onClose,
   conversationEnd,
@@ -42,7 +40,6 @@ export default function ChirpyPanel({
   focusRequest: number;
   onPickOpener: (prompt: string) => void;
   onSend: (text: string) => void;
-  onSaveSuggestion: (suggestion: BlockSuggestion) => void;
   onAnswerConfirmation: (
     executionID: string,
     decision: "confirm" | "cancel",
@@ -118,7 +115,6 @@ export default function ChirpyPanel({
             <ChirpyMessageList
               messages={messages}
               working={working}
-              onSaveSuggestion={onSaveSuggestion}
               onAnswerConfirmation={onAnswerConfirmation}
             />
             <div ref={conversationEnd} aria-hidden="true" />
