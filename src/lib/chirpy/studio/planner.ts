@@ -8,6 +8,7 @@ import {
   studioPlanIssue,
   type StudioPlan,
 } from "./catalog";
+import type { BrandOverview } from "./brand/reads";
 import type { IdeasOverview } from "./ideas/reads";
 import { STUDIO_SYSTEM } from "./prompt";
 import type { StudioTurnInput } from "./wire";
@@ -16,6 +17,8 @@ import type { StudioTurnInput } from "./wire";
 export interface StudioOverview extends IdeasOverview {
   today: { date: string; weekday: string; time: string; timeZone: string };
   upcoming: { date: string; weekday: string }[];
+  /** Only on the Brand tab or when the request is about the kit. */
+  brand?: BrandOverview;
 }
 
 const REFERENCE = JSON.stringify({
@@ -49,6 +52,7 @@ export function studioRequest(
     views: overview.views,
     totalIdeas: overview.totalIdeas,
     ideas: overview.ideas,
+    brand: overview.brand,
     messages: input.messages,
   });
 }

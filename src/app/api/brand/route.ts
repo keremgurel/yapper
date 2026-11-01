@@ -1,12 +1,13 @@
 import { auth } from "@clerk/nextjs/server";
 import { listBrandAssets } from "@/lib/db/brand";
-import { getActiveProject, updateProject } from "@/lib/db/projects";
-import { ensureUser } from "@/lib/db/users";
+import { getActiveProject } from "@/lib/db/projects";
 import {
   readBoundedJson,
   requestBodyErrorResponse,
 } from "@/lib/http/bounded-body";
 import { parseBrandColors } from "@/lib/brand/colors";
+import { saveBrandColors } from "@/lib/brand/operations/save-colors";
+import { refusalResponse } from "@/lib/http/operation-result";
 import { withServerTiming } from "@/lib/http/server-timing";
 import { presignView } from "@/lib/r2";
 
@@ -48,20 +49,19 @@ export async function PATCH(req: Request): Promise<Response> {
     if (response) return response;
     throw error;
   }
-  const brandColors = parseBrandColors(
+  const value =
     body && typeof body === "object"
       ? (body as Record<string, unknown>).brandColors
-      : undefined,
-  );
-  if (!brandColors) {
+      : undefined;
+  // The save checks the palette too; checking first refuses a bad one before
+  // any logo is signed.
+  if (!parseBrandColors(value)) {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
-  await ensureUser(userId);
   // Resolve logo URLs before the write: a signing failure must not turn a
   // completed color save into an apparent failure that the user retries.
   const kit = await payload(userId);
-  const project = await updateProject(userId, { brandColors });
-  if (!project)
-    return Response.json({ error: "project_unavailable" }, { status: 503 });
-  return Response.json({ ...kit, colors: brandColors });
+  const saved = await saveBrandColors(userId, value);
+  if (!saved.ok) return refusalResponse(saved);
+  return Response.json({ ...kit, colors: saved.value });
 }

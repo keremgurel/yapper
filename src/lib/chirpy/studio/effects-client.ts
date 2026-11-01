@@ -13,6 +13,8 @@ const RESOURCES: Record<StudioEffect, string[]> = {
     STUDIO_RESOURCE_KEYS.posterContent,
   ],
   ideaViews: [STUDIO_RESOURCE_KEYS.views("library")],
+  // The project carries the palette too, for generated graphics.
+  brand: [STUDIO_RESOURCE_KEYS.brand, STUDIO_RESOURCE_KEYS.project],
 };
 
 /** Reload whatever a Chirpy turn changed on the server, so an open page shows

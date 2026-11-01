@@ -576,6 +576,28 @@
       "runtime": "client"
     },
     {
+      "id": "studio.brand.colors",
+      "input": "BrandColorsInput",
+      "description": "Change the kit's colors (at most 8, first is primary): set replaces them all, add appends, remove drops, primary moves one color to the front.",
+      "effect": "serverEdit",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.brand.logos.delete",
+      "input": "BrandLogoInput",
+      "description": "Delete a saved logo and its file. The creator is asked to confirm first.",
+      "effect": "destructive",
+      "confirm": true,
+      "runtime": "server"
+    },
+    {
+      "id": "studio.brand.logos.makePrimary",
+      "input": "BrandLogoInput",
+      "description": "Make a saved logo the kit's primary logo.",
+      "effect": "serverEdit",
+      "runtime": "server"
+    },
+    {
       "id": "studio.ideas.capture",
       "input": "IdeaCaptureInput",
       "description": "Bank a new idea the way the Ideas composer does: the creator's words are saved verbatim, then its first draft (title, angle, hook and script) is written from their Brain, which costs the idea-drafting credits. pillarID, date and time file and schedule it in the same step. Set draft false only when the creator asks to just save the note.",
@@ -2836,6 +2858,48 @@
       "properties": {
         "destination": {
           "$ref": "#/$defs/ExportDestinationInput"
+        }
+      }
+    },
+    "BrandColorsInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "colors"
+      ],
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "set",
+            "add",
+            "remove",
+            "primary"
+          ]
+        },
+        "colors": {
+          "type": "array",
+          "description": "Hex codes (#FF7A21) or exact CSS color names. primary takes one color.",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 32
+          }
+        }
+      }
+    },
+    "BrandLogoInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logoID"
+      ],
+      "properties": {
+        "logoID": {
+          "type": "string",
+          "format": "uuid"
         }
       }
     },

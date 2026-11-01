@@ -24,6 +24,7 @@ export interface StudioNames {
   ideas: Record<string, string>;
   views: Record<string, string>;
   pillars: Record<string, string>;
+  logos?: Record<string, string>;
 }
 
 export interface StudioActionDefinition<Input> {

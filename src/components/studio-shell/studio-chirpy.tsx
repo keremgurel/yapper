@@ -21,13 +21,11 @@ import type {
   BrainBlock,
   NewBrainBlock,
 } from "@/lib/brain/client";
-import { parseBrandCommand } from "@/lib/brand/command";
 import ChirpyPanel from "@/components/studio-shell/chirpy-panel";
 import ChirpyDock from "@/components/studio-shell/chirpy-dock/chirpy-dock";
 import type { ChirpyMessage } from "@/components/studio-shell/chirpy-message";
 import { looksLikeCommand } from "@/components/studio-shell/chirpy-command-gate";
 import { SETUP_HANDOFF_KEY } from "@/lib/brain/setup-client";
-import { executeBrandCommand } from "@/lib/brand/command-client";
 import { patchProject, type ProjectPatch } from "@/lib/project/client";
 import {
   mutateClientResource,
@@ -98,9 +96,10 @@ interface StudioChirpyValue {
 const StudioChirpyContext = createContext<StudioChirpyValue | null>(null);
 
 /** Tabs whose requests Chirpy plans with the Studio actions. Elsewhere, a
- * short request that mentions ideas goes there too. */
-const STUDIO_ACTION_SURFACES = /^\/studio\/(?:ideas|calendar|library)(?:\/|$)/;
-const MENTIONS_IDEAS = /\bideas?\b/i;
+ * short request that mentions ideas or the brand kit goes there too. */
+const STUDIO_ACTION_SURFACES =
+  /^\/studio\/(?:ideas|calendar|library|brand)(?:\/|$)/;
+const MENTIONS_STUDIO_DATA = /\b(?:ideas?|brand|palette|logos?)\b/i;
 const ADD_CONTEXT_COMMAND =
   /^(?:please\s+)?(?:add|remember|save|note)(?:\s+that)?\s+(.+)/i;
 const EDIT_ESSENTIAL_COMMAND =
@@ -369,19 +368,6 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
             tone: "done",
           });
         }
-        const brandCommand = command
-          ? parseBrandCommand(
-              text,
-              route.startsWith("/studio/brand") ||
-                messages.at(-1)?.brandColors !== undefined,
-            )
-          : null;
-        if (brandCommand) {
-          const reply = answer(await executeBrandCommand(brandCommand));
-          if (reply.brandColors !== undefined)
-            startTransition(() => router.push("/studio/brand"));
-          return reply;
-        }
         if (/^what can you help me (?:do here|with)\??$/i.test(text)) {
           return answer({
             text: "Tell me your brand colors and I’ll set up your kit. For example, ‘My brand colors are #FF7A21, black, and white’. I can also add Knowledge, and make, file, schedule, rename or delete your ideas, like ‘make an idea about gym myths and put it on Friday’.",
@@ -441,13 +427,14 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
         }
 
         // The Studio actions: planned and run on the server, which answers
-        // with receipts and what to reload. Requests on the idea tabs, and
-        // short requests elsewhere that mention ideas, go there. It runs
-        // before the catch-all add/remember/save command, which would
-        // otherwise file "add an idea about X" as Knowledge.
+        // with receipts and what to reload. Requests on the idea and brand
+        // tabs, and short requests elsewhere that mention ideas or the brand
+        // kit, go there. It runs before the catch-all add/remember/save
+        // command, which would otherwise file "add an idea about X" as
+        // Knowledge.
         if (
           STUDIO_ACTION_SURFACES.test(route) ||
-          (command && MENTIONS_IDEAS.test(text))
+          (command && MENTIONS_STUDIO_DATA.test(text))
         ) {
           const { effects, ...reply } = await studio.ask(
             text,
@@ -490,9 +477,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
           text:
             cause instanceof Error && cause.message === "knowledge_ambiguous"
               ? "More than one memory matches that name. Use its full, unique title so I update the right one."
-              : cause instanceof Error && cause.message === "brand_color_limit"
-                ? "Your kit can hold up to 8 colors. Remove a color first, then try adding this one."
-                : "I couldn’t confirm that change. Check your saved work, then try again.",
+              : "I couldn’t confirm that change. Check your saved work, then try again.",
           tone: "trouble",
         });
       } finally {
