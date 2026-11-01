@@ -1,5 +1,6 @@
 import type { StudioActionDefinition } from "./executor";
 import type { StudioActionID, StudioActionInputs } from "./registry.generated";
+import { AUTOMATIONS_ACTIONS } from "./automations/actions";
 import { BRAND_ACTIONS } from "./brand/actions";
 import { IDEAS_ACTIONS } from "./ideas/actions";
 import { STORAGE_ACTIONS } from "./storage/actions";
@@ -15,6 +16,7 @@ export const STUDIO_EXECUTORS: {
   ...IDEAS_ACTIONS,
   ...BRAND_ACTIONS,
   ...STORAGE_ACTIONS,
+  ...AUTOMATIONS_ACTIONS,
 };
 
 export function studioExecutor(

@@ -4,7 +4,8 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ChirpyConfirmation as Confirmation } from "@/components/studio-shell/chirpy-message";
 
-/** Chirpy's question before a change it cannot undo, with the two answers.
+/** Chirpy's question before a change it cannot undo or one that keeps
+ * running, with the two answers.
  * Once answered it keeps the question and says which way it went.
  * Render-only. */
 export default function ChirpyConfirmation({
@@ -20,7 +21,7 @@ export default function ChirpyConfirmation({
       <p className="text-foreground text-sm">{confirm.question}</p>
       {confirm.state === "confirmed" || confirm.state === "canceled" ? (
         <p className="text-muted-foreground mt-1.5 text-[11px]">
-          {confirm.state === "confirmed" ? "Confirmed" : "Kept"}
+          {confirm.state === "confirmed" ? "Confirmed" : "Canceled"}
         </p>
       ) : (
         <div className="mt-2 flex gap-2">
@@ -42,7 +43,7 @@ export default function ChirpyConfirmation({
             disabled={!open}
             onClick={() => onAnswer("cancel")}
           >
-            Keep it
+            {confirm.cancelLabel}
           </Button>
         </div>
       )}

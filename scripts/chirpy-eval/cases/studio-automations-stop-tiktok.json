@@ -1,0 +1,22 @@
+{
+  "id": "studio-automations-stop-tiktok",
+  "from": "new: P6 automations acceptance, change where the rule copies, left to the app's confirmation",
+  "planner": "studio",
+  "tags": ["studio", "automations", "safety", "confirm"],
+  "base": "studio-automations",
+  "messages": [
+    {
+      "role": "user",
+      "content": "stop copying my Instagram posts to TikTok"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.automations.update"],
+    "args": [
+      {
+        "pointer": "/destinations",
+        "equals": ["youtube"]
+      }
+    ]
+  }
+}

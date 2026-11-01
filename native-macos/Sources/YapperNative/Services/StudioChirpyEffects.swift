@@ -22,5 +22,14 @@ enum StudioChirpyEffects {
         if effects.contains("storage"), StorageStore.shared.usage != nil {
             Task { await StorageStore.shared.refresh() }
         }
+        // The rule changed on the server, so the editor starts again from it
+        // rather than keeping a draft of the old version.
+        if effects.contains("automations"), AutomationStore.shared.response != nil {
+            Task {
+                if let response = await AutomationStore.shared.load() {
+                    AutomationEditor.shared.reset(from: response)
+                }
+            }
+        }
     }
 }

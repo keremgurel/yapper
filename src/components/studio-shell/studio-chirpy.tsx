@@ -96,19 +96,18 @@ interface StudioChirpyValue {
 const StudioChirpyContext = createContext<StudioChirpyValue | null>(null);
 
 /** Tabs whose requests Chirpy plans with the Studio actions. Elsewhere, a
- * short request that mentions ideas, the brand kit or storage goes there
- * too. */
+ * short request that mentions ideas, the brand kit, storage or cross-posting
+ * goes there too. */
 const STUDIO_ACTION_SURFACES =
-  /^\/studio\/(?:ideas|calendar|library|brand|storage)(?:\/|$)/;
-const MENTIONS_STUDIO_DATA = /\b(?:ideas?|brand|palette|logos?|storage)\b/i;
+  /^\/studio\/(?:ideas|calendar|library|brand|storage|automations)(?:\/|$)/;
+const MENTIONS_STUDIO_DATA =
+  /\b(?:ideas?|brand|palette|logos?|storage|automations?|cross-?post\w*)\b/i;
 const ADD_CONTEXT_COMMAND =
   /^(?:please\s+)?(?:add|remember|save|note)(?:\s+that)?\s+(.+)/i;
 const EDIT_ESSENTIAL_COMMAND =
   /^(?:please\s+)?(?:change|update|edit|set)\b.*\b(voice|audience)\b.*?\bto\b\s+(.+)/i;
 const EDIT_CONTEXT_COMMAND =
   /\b(?:change|update|edit)\b\s+(?:the\s+)?(?:knowledge|context|memory)\s+[“"]?(.+?)[”"]?\s+\bto\b\s+(.+)/i;
-
-const CONFIRM_HINT = "Reply yes to delete, or no to keep it.";
 
 /** The panel's or a Mac tab's thread as model messages. A reply that was
  * only a question stands in as its question. */
@@ -428,11 +427,11 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
         }
 
         // The Studio actions: planned and run on the server, which answers
-        // with receipts and what to reload. Requests on the idea, brand and
-        // storage tabs, and short requests elsewhere that mention ideas, the
-        // brand kit or storage, go there. It runs before the catch-all add/remember/save
-        // command, which would otherwise file "add an idea about X" as
-        // Knowledge.
+        // with receipts and what to reload. Requests on the idea, brand,
+        // storage and automations tabs, and short requests elsewhere that
+        // mention ideas, the brand kit, storage or cross-posting, go there.
+        // It runs before the catch-all add/remember/save command, which would
+        // otherwise file "add an idea about X" as Knowledge.
         if (
           STUDIO_ACTION_SURFACES.test(route) ||
           (command && MENTIONS_STUDIO_DATA.test(text))
@@ -501,11 +500,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
       // The native thread has no buttons: it shows the question and how to
       // answer it in words, which the next ask resolves.
       return {
-        text: [
-          reply.text,
-          reply.confirm?.question,
-          reply.confirm && CONFIRM_HINT,
-        ]
+        text: [reply.text, reply.confirm?.question, reply.confirm?.typedHint]
           .filter(Boolean)
           .join(" "),
         notes: reply.notes,
