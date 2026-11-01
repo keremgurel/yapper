@@ -1,5 +1,6 @@
 import type { StudioActionDefinition } from "./executor";
 import type { StudioActionID, StudioActionInputs } from "./registry.generated";
+import { BRAND_ACTIONS } from "./brand/actions";
 import { IDEAS_ACTIONS } from "./ideas/actions";
 
 /**
@@ -11,6 +12,7 @@ export const STUDIO_EXECUTORS: {
   [ID in StudioActionID]: StudioActionDefinition<StudioActionInputs[ID]>;
 } = {
   ...IDEAS_ACTIONS,
+  ...BRAND_ACTIONS,
 };
 
 export function studioExecutor(

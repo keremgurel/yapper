@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
-import { makePrimaryBrandAsset, removeBrandAsset } from "@/lib/db/brand";
-import { drainR2AfterResponse } from "@/lib/db/r2-drain";
+import { deleteBrandLogo } from "@/lib/brand/operations/delete-logo";
+import { makePrimaryBrandAsset } from "@/lib/db/brand";
+import { refusalResponse } from "@/lib/http/operation-result";
 
 export const runtime = "nodejs";
 
@@ -24,9 +25,7 @@ export async function DELETE(
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const { id } = await params;
-  if (!(await removeBrandAsset(userId, id))) {
-    return Response.json({ error: "not_found" }, { status: 404 });
-  }
-  drainR2AfterResponse();
+  const removed = await deleteBrandLogo(userId, id);
+  if (!removed.ok) return refusalResponse(removed);
   return Response.json({ ok: true });
 }

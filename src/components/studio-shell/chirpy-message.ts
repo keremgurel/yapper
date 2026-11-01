@@ -18,7 +18,6 @@ export interface ChirpyMessage {
   text: string;
   notes?: string[];
   suggestions?: BlockSuggestion[];
-  brandColors?: string[];
   tone?: "done" | "trouble";
   confirm?: ChirpyConfirmation;
 }

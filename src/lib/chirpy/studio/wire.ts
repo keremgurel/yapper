@@ -15,8 +15,8 @@ export interface StudioTurnInput {
 
 /** Studio data a turn changed, so the web caches and the Mac stores that
  * show it reload: `ideas` is the idea list and the calendar, `ideaViews` the
- * saved views of the Ideas list. */
-export type StudioEffect = "ideas" | "ideaViews";
+ * saved views of the Ideas list, `brand` the brand kit. */
+export type StudioEffect = "ideas" | "ideaViews" | "brand";
 
 export type StudioReceiptStatus =
   | "done"

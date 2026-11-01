@@ -1,3 +1,4 @@
+import { readBrandOverview, wantsBrand } from "./brand/reads";
 import type { StudioNames } from "./executor";
 import { readIdeasOverview } from "./ideas/reads";
 import type { StudioOverview } from "./planner";
@@ -20,14 +21,13 @@ export async function readStudioOverview(
     .slice(-2)
     .map((message) => message.content)
     .join("\n");
-  const ideas = await readIdeasOverview(
-    userId,
-    request,
-    timeZone,
-    input.focus?.ideaID,
-  );
+  const [ideas, brand] = await Promise.all([
+    readIdeasOverview(userId, request, timeZone, input.focus?.ideaID),
+    wantsBrand(input.surface, request) ? readBrandOverview(userId) : undefined,
+  ]);
   return {
     ...ideas,
+    ...(brand ? { brand } : {}),
     today: {
       date: localDay(now, timeZone),
       weekday: weekdayOf(now, timeZone),
@@ -53,6 +53,9 @@ export function namesFrom(overview: StudioOverview): StudioNames {
     ),
     pillars: Object.fromEntries(
       overview.pillars.map((pillar) => [pillar.id, pillar.name]),
+    ),
+    logos: Object.fromEntries(
+      (overview.brand?.logos ?? []).map((logo) => [logo.id, logo.name]),
     ),
   };
 }
