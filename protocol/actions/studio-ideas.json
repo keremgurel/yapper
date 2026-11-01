@@ -1,11 +1,11 @@
 {
-  "description": "The Ideas tab: banking an idea, filing, renaming, scheduling and deleting ideas, writing their drafts and versions, and the saved views of the list. The server runs these inside a Chirpy turn through the same operations the Ideas controls call.",
+  "description": "The Ideas tab: banking and importing ideas, filing, renaming, scheduling and deleting ideas, writing their drafts and versions, and the saved views of the list. The server runs these inside a Chirpy turn through the same operations the Ideas controls call.",
   "runtime": "server",
   "actions": [
     {
       "id": "studio.ideas.capture",
       "input": "IdeaCaptureInput",
-      "description": "Bank a new idea the way the Ideas composer does: the creator's words are saved verbatim, then its first draft (title, angle, hook and script) is written from their Brain, which costs the idea-drafting credits. pillarID, date and time file and schedule it in the same step. Set draft false only when the creator asks to just save the note.",
+      "description": "Bank a new idea the way the Ideas composer does: the creator's words are saved verbatim, then its first draft (title, angle, hook and script) is written from their Brain, which costs the idea-drafting credits. pillarID, date and time file and schedule it in the same step. Set draft false only when the creator asks to just save the note. fromInspiration: made from the open inspiration item.",
       "effect": "paidGeneration"
     },
     {
@@ -65,6 +65,12 @@
       "confirm": true
     },
     {
+      "id": "studio.ideas.import",
+      "input": "IdeaImportInput",
+      "description": "Save links the creator gives as inspiration ideas; ones already saved are skipped.",
+      "effect": "serverEdit"
+    },
+    {
       "id": "studio.ideas.views.create",
       "input": "IdeaViewCreateInput",
       "description": "Save a new view of the Ideas list: a table or board, optionally grouped by status, pillar or format, and filtered to some statuses or pillars.",
@@ -105,11 +111,11 @@
     "IdeaCaptureInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["note"],
+      "required": [],
       "properties": {
         "note": {
           "type": "string",
-          "description": "The creator's own words for the idea, copied from their message without the request around it. Never invented or expanded.",
+          "description": "The creator's own words for the idea, copied from their message without the request around it. Never invented or expanded. Optional with fromInspiration.",
           "minLength": 1,
           "maxLength": 4000
         },
@@ -133,6 +139,9 @@
           "maxLength": 5
         },
         "draft": {
+          "type": "boolean"
+        },
+        "fromInspiration": {
           "type": "boolean"
         }
       }
@@ -296,6 +305,38 @@
         },
         "format": {
           "$ref": "#/$defs/IdeaFormat"
+        }
+      }
+    },
+    "IdeaImportInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["links"],
+      "properties": {
+        "links": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/$defs/IdeaImportLink"
+          }
+        }
+      }
+    },
+    "IdeaImportLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 600
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
         }
       }
     },

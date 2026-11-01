@@ -20,6 +20,8 @@ export interface StudioExecution {
   pending: { invocationID: string; action: string; label: string }[];
   effects: StudioEffect[];
   partial: boolean;
+  /** What actions wrote for the creator to read, in plan order. */
+  replies: string[];
 }
 
 function receiptOf(record: StudioInvocation): StudioActionReceipt {
@@ -83,6 +85,7 @@ export async function executeStudioPlan(
     pending: [],
     effects: [],
     partial: false,
+    replies: [],
   };
   let stopped = false;
   for (const [index, call] of plan.actions.entries()) {
@@ -133,6 +136,7 @@ export async function executeStudioPlan(
     for (const effect of record.effects ?? [])
       if (!execution.effects.includes(effect)) execution.effects.push(effect);
     if (record.partial) execution.partial = true;
+    if (record.reply) execution.replies.push(record.reply);
     if (record.status === "failed") stopped = true;
   }
   return execution;

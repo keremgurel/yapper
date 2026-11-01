@@ -23,6 +23,13 @@ final class IdeaCanvasVersionStore: ObservableObject, IdeaCanvasBody {
 
     var hooks: [String] { version.hooks }
 
+    /// Shows what the server saved, unless edits here are still unsaved.
+    func reload(_ saved: IdeaCanvasVersion) {
+        guard !autosave.hasUnsaved, saved != version else { return }
+        version = saved
+        blocks = IdeaCanvasDoc.blocks(from: saved.blocks, script: saved.script)
+    }
+
     func setBlocks(_ next: [IdeaCanvasBlock]) {
         blocks = next
         update(IdeaCanvasDoc.patch(from: next))

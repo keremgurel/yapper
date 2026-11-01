@@ -1,0 +1,21 @@
+{
+  "id": "studio-canvas-edit-open",
+  "from": "new: a canvas ask while the idea is open on its canvas",
+  "planner": "studio",
+  "tags": ["studio", "canvas"],
+  "base": "studio-ideas",
+  "surface": "/studio/library/6f1d1f5e-2b7a-4c39-9b8e-0a1c2d3e4f01",
+  "focus": { "ideaID": "6f1d1f5e-2b7a-4c39-9b8e-0a1c2d3e4f01" },
+  "messages": [{ "role": "user", "content": "tighten the hook" }],
+  "expect": {
+    "actions": ["studio.ideas.canvasEdit"],
+    "args": [
+      {
+        "pointer": "/ideaID",
+        "equals": "6f1d1f5e-2b7a-4c39-9b8e-0a1c2d3e4f01"
+      },
+      { "pointer": "/instruction", "matches": "hook", "flags": "i" },
+      { "pointer": "/format", "absent": true }
+    ]
+  }
+}

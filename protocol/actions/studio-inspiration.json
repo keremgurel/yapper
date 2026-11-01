@@ -1,0 +1,27 @@
+{
+  "description": "The Inspiration tab: talking through a saved clip the way its Make your own chat does. Making an idea from one is studio.ideas.capture with fromInspiration.",
+  "runtime": "server",
+  "actions": [
+    {
+      "id": "studio.inspiration.brainstorm",
+      "input": "InspirationBrainstormInput",
+      "description": "Break down the open inspiration item and suggest angles for the creator's own version, from their Brain. Nothing is saved; the writing is the reply. Costs the brainstorm credit.",
+      "effect": "paidGeneration"
+    }
+  ],
+  "$defs": {
+    "InspirationBrainstormInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "ask": {
+          "type": "string",
+          "description": "Their specific ask, if any.",
+          "minLength": 1,
+          "maxLength": 600
+        }
+      }
+    }
+  }
+}

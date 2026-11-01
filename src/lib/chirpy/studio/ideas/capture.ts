@@ -4,6 +4,7 @@ import { captureIdea } from "@/lib/ideas/operations/capture";
 import { draftSavedIdea } from "@/lib/ideas/operations/draft";
 import {
   failureFrom,
+  StudioActionFailure,
   type ActionOutcome,
   type StudioActionContext,
   type StudioActionDefinition,
@@ -15,20 +16,43 @@ import { dayLabel, scheduledInstant } from "./when";
  * Bank an idea the way the composer does: words first, then the paid first
  * draft on the same row. Filing and scheduling go through the same update
  * the Ideas controls use. A failed draft keeps the words, as in the composer.
+ * From the open inspiration item, its link, title and transcript become the
+ * idea's source, which the first draft writes from.
  */
 async function run(
   input: IdeaCaptureInput,
   context: StudioActionContext,
 ): Promise<ActionOutcome> {
   const { userId, timeZone } = context;
+  const note = input.note?.trim() ?? "";
+  const source = input.fromInspiration ? context.focus?.inspiration : null;
+  if (input.fromInspiration && !source)
+    throw new StudioActionFailure(
+      "no_inspiration",
+      "Click the inspiration card you mean, then ask me again.",
+    );
+  if (!note && !source)
+    throw new StudioActionFailure(
+      "no_input",
+      "Tell me what the idea is about and I’ll save it.",
+    );
   // Checked before anything is saved, so a bad date leaves no half-made idea.
   const at = input.date
     ? scheduledInstant(input.date, input.time, null, timeZone)
     : null;
   const captured = await captureIdea(userId, {
-    originalNote: input.note,
-    ideaType: "original",
+    originalNote: note,
+    ideaType: source ? (note ? "semi-original" : "inspiration") : "original",
     leadFormat: input.format ?? "short",
+    ...(source
+      ? {
+          title: source.title,
+          sourceUrl: source.url,
+          sourceTitle: source.title,
+          sourcePlatform: source.platform,
+          sourceTranscript: source.transcript,
+        }
+      : {}),
   });
   if (!captured.ok) throw failureFrom(captured, "that idea");
   let row = captured.value;

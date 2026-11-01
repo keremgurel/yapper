@@ -44,10 +44,10 @@ function readUsed(data: Record<string, unknown>): BrainUsed | null {
 }
 
 /**
- * One ask at a time against the canvas route. The reply's actions are parsed
- * against the block count the request was made with, so a slow reply cannot
- * land on a document that changed shape while it was in flight; the caller
- * decides whether to apply them.
+ * One ask at a time against the canvas route, which edits and saves the
+ * idea's stored document itself. The reply's actions are parsed against the
+ * block count the request was made with, so the caller can apply the same
+ * edit to what it shows.
  */
 export function useCanvasAsk() {
   const [busy, setBusy] = useState(false);

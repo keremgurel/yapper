@@ -144,8 +144,9 @@ export default function CanvasWorkbench({ id }: { id: string }) {
       router.push("/studio/ideas");
     }, "The delete couldn’t be confirmed. Your item is kept; try again.");
 
-  /** One ask about this piece, from the Chirpy panel. Applies what came back
-   * and tells Chirpy what changed, so the panel can say it. */
+  /** One ask about this piece, from the Chirpy panel. The server edits and
+   * saves the document it has, so pending edits are saved first; the same
+   * actions are then applied here and Chirpy says what changed. */
   const askFromChirpy = useCallback(
     async (instruction: string) => {
       if (!item) return null;
@@ -157,6 +158,14 @@ export default function CanvasWorkbench({ id }: { id: string }) {
       const targetIndex = target
         ? blocks.findIndex((block) => block.id === target)
         : -1;
+      try {
+        await flush();
+      } catch {
+        return {
+          text: "Your latest edits couldn’t be saved, so I didn’t change anything. Try again.",
+          tone: "trouble" as const,
+        };
+      }
       const pendingId = thread.pendingAsk(instruction);
       const reply = await chirpy.ask(
         instruction,
@@ -216,6 +225,7 @@ export default function CanvasWorkbench({ id }: { id: string }) {
       activeVersion,
       blocks,
       chirpy,
+      flush,
       hooks,
       item,
       setBlocks,

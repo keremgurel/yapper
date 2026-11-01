@@ -47,8 +47,10 @@ function descriptor(id: string) {
 }
 
 /** Checks the schema vocabulary cannot express: real calendar days and
- * clock times. */
+ * clock times, and a capture with something to capture. */
 function argumentIssue(id: string, args: Record<string, unknown>) {
+  if (id === "studio.ideas.capture" && !args.note && !args.fromInspiration)
+    return `${id}: note is required unless fromInspiration is true.`;
   if (args.date !== undefined && !isLocalDay(args.date))
     return `${id}: date must be a real day written YYYY-MM-DD.`;
   if (args.time !== undefined && !isLocalTime(args.time))
@@ -74,6 +76,8 @@ export function studioPlanIssue(raw: unknown): string | null {
       return `Arguments for ${action.id} do not match ${action.input}. Check required fields, enum values, UUIDs, lengths and extra fields.`;
     const issue = argumentIssue(action.id, call.arguments);
     if (issue) return issue;
+    if (action.effect === "workflow" && reply.actions.length > 1)
+      return `${action.id} must run alone. Do not mix it with other actions.`;
   }
   return null;
 }
