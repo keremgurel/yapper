@@ -2,6 +2,9 @@
 // Server-runtime actions from protocol/actions; the Chirpy turn loop executes them.
 import type {
   AppActionEffect,
+  AutomationUpdateInput,
+  BrandColorsInput,
+  BrandLogoInput,
   IdeaCaptureInput,
   IdeaDeleteInput,
   IdeaDeleteVersionInput,
@@ -15,9 +18,15 @@ import type {
   IdeaViewDeleteInput,
   IdeaViewUpdateInput,
   IdeaWriteVersionInput,
+  StorageDeleteRecordingInput,
+  StorageRemoveVideosInput,
 } from "../../../../protocol/app-actions.generated";
 
 export interface StudioActionInputs {
+  "studio.automations.update": AutomationUpdateInput;
+  "studio.brand.colors": BrandColorsInput;
+  "studio.brand.logos.delete": BrandLogoInput;
+  "studio.brand.logos.makePrimary": BrandLogoInput;
   "studio.ideas.capture": IdeaCaptureInput;
   "studio.ideas.delete": IdeaDeleteInput;
   "studio.ideas.deleteVersion": IdeaDeleteVersionInput;
@@ -31,6 +40,8 @@ export interface StudioActionInputs {
   "studio.ideas.views.delete": IdeaViewDeleteInput;
   "studio.ideas.views.update": IdeaViewUpdateInput;
   "studio.ideas.writeVersion": IdeaWriteVersionInput;
+  "studio.storage.deleteRecording": StorageDeleteRecordingInput;
+  "studio.storage.removeVideos": StorageRemoveVideosInput;
 }
 export type StudioActionID = keyof StudioActionInputs;
 
@@ -42,6 +53,10 @@ export interface StudioActionDescriptor {
 }
 
 export const STUDIO_ACTIONS: readonly StudioActionDescriptor[] = [
+  { id: "studio.automations.update", input: "AutomationUpdateInput", effect: "standingRule", confirm: true },
+  { id: "studio.brand.colors", input: "BrandColorsInput", effect: "serverEdit", confirm: false },
+  { id: "studio.brand.logos.delete", input: "BrandLogoInput", effect: "destructive", confirm: true },
+  { id: "studio.brand.logos.makePrimary", input: "BrandLogoInput", effect: "serverEdit", confirm: false },
   { id: "studio.ideas.capture", input: "IdeaCaptureInput", effect: "paidGeneration", confirm: false },
   { id: "studio.ideas.delete", input: "IdeaDeleteInput", effect: "destructive", confirm: true },
   { id: "studio.ideas.deleteVersion", input: "IdeaDeleteVersionInput", effect: "destructive", confirm: true },
@@ -55,4 +70,6 @@ export const STUDIO_ACTIONS: readonly StudioActionDescriptor[] = [
   { id: "studio.ideas.views.delete", input: "IdeaViewDeleteInput", effect: "destructive", confirm: true },
   { id: "studio.ideas.views.update", input: "IdeaViewUpdateInput", effect: "serverEdit", confirm: false },
   { id: "studio.ideas.writeVersion", input: "IdeaWriteVersionInput", effect: "paidGeneration", confirm: false },
+  { id: "studio.storage.deleteRecording", input: "StorageDeleteRecordingInput", effect: "destructive", confirm: true },
+  { id: "studio.storage.removeVideos", input: "StorageRemoveVideosInput", effect: "destructive", confirm: true },
 ];

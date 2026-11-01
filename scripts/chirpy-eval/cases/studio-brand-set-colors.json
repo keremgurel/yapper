@@ -1,0 +1,41 @@
+{
+  "id": "studio-brand-set-colors",
+  "from": "new: P6 brand acceptance, replace the palette with named and hex colors",
+  "planner": "studio",
+  "tags": ["studio", "brand"],
+  "base": "studio-brand",
+  "messages": [
+    {
+      "role": "user",
+      "content": "my brand colors are teal, black and #FFD93D"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.brand.colors"],
+    "args": [
+      {
+        "pointer": "/operation",
+        "equals": "set"
+      },
+      {
+        "pointer": "/colors",
+        "length": 3
+      },
+      {
+        "pointer": "/colors/0",
+        "matches": "^(?:teal|#008080)$",
+        "flags": "i"
+      },
+      {
+        "pointer": "/colors/1",
+        "matches": "^(?:black|#000000|#000)$",
+        "flags": "i"
+      },
+      {
+        "pointer": "/colors/2",
+        "matches": "^#FFD93D$",
+        "flags": "i"
+      }
+    ]
+  }
+}

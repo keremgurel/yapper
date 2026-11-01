@@ -1,0 +1,32 @@
+{
+  "id": "studio-brand-primary-elsewhere",
+  "from": "new: a brand request from the Ideas tab still reaches the kit, which the server reads because the request names it",
+  "planner": "studio",
+  "tags": ["studio", "brand"],
+  "base": "studio-brand",
+  "surface": "/studio/ideas",
+  "messages": [
+    {
+      "role": "user",
+      "content": "make black the primary brand color"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.brand.colors"],
+    "args": [
+      {
+        "pointer": "/operation",
+        "equals": "primary"
+      },
+      {
+        "pointer": "/colors",
+        "length": 1
+      },
+      {
+        "pointer": "/colors/0",
+        "matches": "^(?:black|#151515|#000000|#000)$",
+        "flags": "i"
+      }
+    ]
+  }
+}

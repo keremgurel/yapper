@@ -1,0 +1,59 @@
+{
+  "description": "The Brand tab: the kit's colors and logos that generated video graphics use. The server runs these inside a Chirpy turn through the same operations the Brand controls call.",
+  "runtime": "server",
+  "actions": [
+    {
+      "id": "studio.brand.colors",
+      "input": "BrandColorsInput",
+      "description": "Change the kit's colors (at most 8, first is primary): set replaces them all, add appends, remove drops, primary moves one color to the front.",
+      "effect": "serverEdit"
+    },
+    {
+      "id": "studio.brand.logos.makePrimary",
+      "input": "BrandLogoInput",
+      "description": "Make a saved logo the kit's primary logo.",
+      "effect": "serverEdit"
+    },
+    {
+      "id": "studio.brand.logos.delete",
+      "input": "BrandLogoInput",
+      "description": "Delete a saved logo and its file. The creator is asked to confirm first.",
+      "effect": "destructive",
+      "confirm": true
+    }
+  ],
+  "$defs": {
+    "BrandColorsInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation", "colors"],
+      "properties": {
+        "operation": {
+          "type": "string",
+          "enum": ["set", "add", "remove", "primary"]
+        },
+        "colors": {
+          "type": "array",
+          "description": "Hex codes (#FF7A21) or exact CSS color names. primary takes one color.",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 32
+          }
+        }
+      }
+    },
+    "BrandLogoInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logoID"],
+      "properties": {
+        "logoID": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    }
+  }
+}

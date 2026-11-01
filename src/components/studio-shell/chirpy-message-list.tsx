@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { Chirpy } from "@/components/brand/chirpy";
 import { Button } from "@/components/ui/button";
@@ -77,35 +76,6 @@ export default function ChirpyMessageList({
                       )
                     }
                   />
-                ) : null}
-                {message.brandColors !== undefined ? (
-                  <div className="border-border bg-card mt-2 rounded-lg border p-2.5">
-                    <div
-                      className="flex flex-wrap gap-1.5"
-                      aria-label="Saved brand colors"
-                    >
-                      {message.brandColors.map((color, index) => (
-                        <span
-                          key={color}
-                          className="border-border inline-flex items-center gap-1.5 rounded-md border px-1.5 py-1 text-[11px]"
-                        >
-                          <span
-                            className="size-3.5 rounded-sm border border-black/15"
-                            style={{ backgroundColor: color }}
-                            aria-hidden="true"
-                          />
-                          {color}
-                          {index === 0 ? " · Primary" : ""}
-                        </span>
-                      ))}
-                    </div>
-                    <Link
-                      href="/studio/brand"
-                      className="mt-2 inline-block text-xs font-semibold underline underline-offset-2"
-                    >
-                      Open brand kit
-                    </Link>
-                  </div>
                 ) : null}
                 {message.suggestions?.length ? (
                   <div className="mt-2 space-y-1.5">

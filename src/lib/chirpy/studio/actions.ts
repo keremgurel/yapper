@@ -1,6 +1,9 @@
 import type { StudioActionDefinition } from "./executor";
 import type { StudioActionID, StudioActionInputs } from "./registry.generated";
+import { AUTOMATIONS_ACTIONS } from "./automations/actions";
+import { BRAND_ACTIONS } from "./brand/actions";
 import { IDEAS_ACTIONS } from "./ideas/actions";
+import { STORAGE_ACTIONS } from "./storage/actions";
 
 /**
  * Every server action in the contract with its executor. The mapped type makes
@@ -11,6 +14,9 @@ export const STUDIO_EXECUTORS: {
   [ID in StudioActionID]: StudioActionDefinition<StudioActionInputs[ID]>;
 } = {
   ...IDEAS_ACTIONS,
+  ...BRAND_ACTIONS,
+  ...STORAGE_ACTIONS,
+  ...AUTOMATIONS_ACTIONS,
 };
 
 export function studioExecutor(

@@ -1,0 +1,22 @@
+{
+  "id": "studio-brand-vague-shade",
+  "from": "new: a shade with no hex code or exact name gets a question, not a guessed color",
+  "planner": "studio",
+  "tags": ["studio", "brand", "safety", "clarify"],
+  "base": "studio-brand",
+  "messages": [
+    {
+      "role": "user",
+      "content": "add a dusty sage green to my palette"
+    }
+  ],
+  "expect": {
+    "clarify": true,
+    "message": [
+      {
+        "matches": "hex",
+        "flags": "i"
+      }
+    ]
+  }
+}

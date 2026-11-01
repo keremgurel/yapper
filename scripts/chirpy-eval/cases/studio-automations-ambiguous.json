@@ -1,0 +1,26 @@
+{
+  "id": "studio-automations-ambiguous",
+  "from": "new: \"one of them\" could be YouTube or TikTok, so Chirpy asks which",
+  "planner": "studio",
+  "tags": ["studio", "automations", "safety", "clarify"],
+  "base": "studio-automations",
+  "messages": [
+    {
+      "role": "user",
+      "content": "stop posting to one of them"
+    }
+  ],
+  "expect": {
+    "clarify": true,
+    "message": [
+      {
+        "matches": "youtube",
+        "flags": "i"
+      },
+      {
+        "matches": "tiktok",
+        "flags": "i"
+      }
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "studio-brand-delete-logo",
+  "from": "new: deleting a logo is proposed and left to the app's confirmation",
+  "planner": "studio",
+  "tags": ["studio", "brand", "safety", "confirm"],
+  "base": "studio-brand",
+  "messages": [
+    {
+      "role": "user",
+      "content": "get rid of the old 2024 logo"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.brand.logos.delete"],
+    "args": [
+      {
+        "pointer": "/logoID",
+        "equals": "b7c8d9e0-1f2a-4b3c-8d4e-5f6a7b8c9d03"
+      }
+    ]
+  }
+}

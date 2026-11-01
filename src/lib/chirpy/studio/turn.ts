@@ -29,13 +29,11 @@ function namesFor(plan: StudioPlan, names: StudioNames): StudioNames {
         .filter((value): value is string => typeof value === "string"),
     ),
   );
-  const pick = (table: Record<string, string>) =>
+  const pick = (table: Record<string, string> = {}) =>
     Object.fromEntries(Object.entries(table).filter(([id]) => ids.has(id)));
-  return {
-    ideas: pick(names.ideas),
-    views: pick(names.views),
-    pillars: pick(names.pillars),
-  };
+  return Object.fromEntries(
+    Object.entries(names).map(([kind, table]) => [kind, pick(table)]),
+  ) as unknown as StudioNames;
 }
 
 /**

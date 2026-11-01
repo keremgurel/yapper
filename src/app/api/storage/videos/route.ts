@@ -1,10 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
-import { and, eq, inArray } from "drizzle-orm";
 import { listStoredVideos } from "@/lib/db/storage-videos";
-import { getDb } from "@/lib/db/client";
-import { r2Objects } from "@/lib/db/schema";
-import { releasePostedMedia } from "@/lib/db/posted-media-retention";
-import { drainR2AfterResponse } from "@/lib/db/r2-drain";
+import { refusalResponse } from "@/lib/http/operation-result";
+import {
+  removeStoredVideo,
+  VIDEO_IN_USE,
+} from "@/lib/storage/operations/remove-video";
 import {
   readBoundedJson,
   requestBodyErrorResponse,
@@ -31,35 +31,16 @@ export async function DELETE(req: Request): Promise<Response> {
     if (response) return response;
     throw error;
   }
-  const mediaKey = (body as { mediaKey?: unknown } | null)?.mediaKey;
-  if (typeof mediaKey !== "string" || !mediaKey || mediaKey.length > 1024)
-    return Response.json({ error: "bad_request" }, { status: 400 });
-  const [owned] = await getDb()
-    .select({ key: r2Objects.mediaKey })
-    .from(r2Objects)
-    .where(
-      and(
-        eq(r2Objects.userId, userId),
-        eq(r2Objects.mediaKey, mediaKey),
-        eq(r2Objects.state, "active"),
-        inArray(r2Objects.purpose, ["recording", "import"]),
-      ),
-    )
-    .limit(1);
-  if (!owned) return Response.json({ error: "not_found" }, { status: 404 });
-  const result = await releasePostedMedia(
-    { userId, mediaKey },
-    "user_requested",
+  const removed = await removeStoredVideo(
+    userId,
+    (body as { mediaKey?: unknown } | null)?.mediaKey,
   );
-  if (result !== "released")
-    return Response.json(
-      {
-        error: "video_in_use",
-        message:
-          "This video is still needed for a scheduled post, publishing retry or recent upload. Cancel its schedule or try again after processing finishes.",
-      },
-      { status: 409 },
-    );
-  drainR2AfterResponse();
+  if (!removed.ok)
+    return removed.error === "video_in_use"
+      ? Response.json(
+          { error: "video_in_use", message: VIDEO_IN_USE },
+          { status: 409 },
+        )
+      : refusalResponse(removed);
   return Response.json({ ok: true });
 }

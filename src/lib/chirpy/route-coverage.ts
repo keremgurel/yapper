@@ -36,6 +36,12 @@ export const ROUTE_ACTIONS: Record<string, readonly string[]> = {
   "POST /api/views": ["studio.ideas.views.create"],
   "PATCH /api/views/[id]": ["studio.ideas.views.update"],
   "DELETE /api/views/[id]": ["studio.ideas.views.delete"],
+  "PATCH /api/brand": ["studio.brand.colors"],
+  "PATCH /api/brand/logos/[id]": ["studio.brand.logos.makePrimary"],
+  "DELETE /api/brand/logos/[id]": ["studio.brand.logos.delete"],
+  "DELETE /api/storage/videos": ["studio.storage.removeVideos"],
+  "DELETE /api/submissions/[id]": ["studio.storage.deleteRecording"],
+  "PUT /api/publish/automations": ["studio.automations.update"],
   "POST /api/transcription-dictionary": ["app.dictionary.addTerm"],
   "PATCH /api/transcription-dictionary/[id]": ["app.dictionary.editTerm"],
   "DELETE /api/transcription-dictionary/[id]": ["app.dictionary.removeTerm"],
@@ -69,7 +75,10 @@ export type ExclusionReason =
   /** A POST that only reads or previews and saves nothing of the creator's. */
   | "read"
   /** No client calls it any more. */
-  | "retired";
+  | "retired"
+  /** Posts to a connected platform. Chirpy never publishes or schedules a
+   * post itself. */
+  | "publish";
 
 export const EXCLUDED_ROUTES: Record<string, ExclusionReason> = {
   "POST /api/billing/checkout": "billing",
@@ -80,6 +89,7 @@ export const EXCLUDED_ROUTES: Record<string, ExclusionReason> = {
   "POST /api/media/upload-url": "upload",
   "POST /api/transcribe/upload-url": "upload",
   "POST /api/submissions": "upload",
+  "POST /api/brand/logos": "upload",
   "POST /api/chirpy/plan": "chirpy",
   "POST /api/chirpy/studio": "chirpy",
   "POST /api/chirpy/confirm": "chirpy",
@@ -93,6 +103,8 @@ export const EXCLUDED_ROUTES: Record<string, ExclusionReason> = {
   "POST /api/inspiration/creator": "read",
   "POST /api/publish/preview": "read",
   "POST /api/feedback": "retired",
+  // Retrying a failed cross-post copies the video to YouTube or TikTok.
+  "POST /api/publish/automations/runs/[id]": "publish",
 };
 
 /** Routes a creator reaches by hand that have no action yet, by the Studio
@@ -142,15 +154,4 @@ export const UNCOVERED_ROUTES: Record<string, string> = {
   "POST /api/brain/voice/samples": "brain",
   "DELETE /api/brain/voice/samples/[id]": "brain",
   "PATCH /api/project": "brain",
-  // Brand.
-  "PATCH /api/brand": "brand",
-  "POST /api/brand/logos": "brand",
-  "PATCH /api/brand/logos/[id]": "brand",
-  "DELETE /api/brand/logos/[id]": "brand",
-  // Automations.
-  "PUT /api/publish/automations": "automations",
-  "POST /api/publish/automations/runs/[id]": "automations",
-  // Storage.
-  "DELETE /api/storage/videos": "storage",
-  "DELETE /api/submissions/[id]": "storage",
 };

@@ -1,5 +1,8 @@
+import { readAutomationsOverview, wantsAutomations } from "./automations/reads";
+import { readBrandOverview, wantsBrand } from "./brand/reads";
 import type { StudioNames } from "./executor";
 import { readIdeasOverview } from "./ideas/reads";
+import { readStorageOverview, wantsStorage } from "./storage/reads";
 import type { StudioOverview } from "./planner";
 import type { StudioTurnInput } from "./wire";
 import { localDay, localTime, upcomingDays, weekdayOf } from "./zoned-time";
@@ -20,14 +23,22 @@ export async function readStudioOverview(
     .slice(-2)
     .map((message) => message.content)
     .join("\n");
-  const ideas = await readIdeasOverview(
-    userId,
-    request,
-    timeZone,
-    input.focus?.ideaID,
-  );
+  const storageScope = wantsStorage(input.surface, request);
+  const [ideas, brand, storage, automations] = await Promise.all([
+    readIdeasOverview(userId, request, timeZone, input.focus?.ideaID),
+    wantsBrand(input.surface, request) ? readBrandOverview(userId) : undefined,
+    storageScope ? readStorageOverview(userId, storageScope) : undefined,
+    wantsAutomations(input.surface, request)
+      ? readAutomationsOverview(userId)
+      : undefined,
+  ]);
   return {
     ...ideas,
+    ...(brand ? { brand } : {}),
+    ...(storage
+      ? { storage: storage.storage, storageNames: storage.names }
+      : {}),
+    ...(automations ? { automations } : {}),
     today: {
       date: localDay(now, timeZone),
       weekday: weekdayOf(now, timeZone),
@@ -54,5 +65,9 @@ export function namesFrom(overview: StudioOverview): StudioNames {
     pillars: Object.fromEntries(
       overview.pillars.map((pillar) => [pillar.id, pillar.name]),
     ),
+    logos: Object.fromEntries(
+      (overview.brand?.logos ?? []).map((logo) => [logo.id, logo.name]),
+    ),
+    ...overview.storageNames,
   };
 }

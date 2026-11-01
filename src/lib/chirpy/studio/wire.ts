@@ -15,8 +15,14 @@ export interface StudioTurnInput {
 
 /** Studio data a turn changed, so the web caches and the Mac stores that
  * show it reload: `ideas` is the idea list and the calendar, `ideaViews` the
- * saved views of the Ideas list. */
-export type StudioEffect = "ideas" | "ideaViews";
+ * saved views of the Ideas list, `brand` the brand kit, `storage` the
+ * storage numbers and stored videos, `automations` the cross-posting rule. */
+export type StudioEffect =
+  | "ideas"
+  | "ideaViews"
+  | "brand"
+  | "storage"
+  | "automations";
 
 export type StudioReceiptStatus =
   | "done"
@@ -38,6 +44,7 @@ export interface StudioConfirmation {
   executionID: string;
   question: string;
   confirmLabel: string;
+  cancelLabel: string;
   /** For the Mac's text-only thread, which has no buttons. */
   typedHint: string;
 }

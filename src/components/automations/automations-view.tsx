@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Camera, Check, Hash, Loader2, Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConnections } from "@/hooks/use-connections";
+import { AUTOMATIONS_CHANGED } from "@/lib/chirpy/studio/effects-client";
 import {
   automationErrorMessage,
   fetchAutomation,
@@ -86,6 +87,12 @@ function AutomationEditor() {
         if (current === revision.current) setLoadingError(true);
       },
     );
+  }, []);
+  // Chirpy saved the rule: start again from it, as after a save here.
+  useEffect(() => {
+    const reload = () => setVersion((value) => value + 1);
+    window.addEventListener(AUTOMATIONS_CHANGED, reload);
+    return () => window.removeEventListener(AUTOMATIONS_CHANGED, reload);
   }, []);
   useEffect(() => {
     if (!data?.available || !data.rule?.enabled) return;
