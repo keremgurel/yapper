@@ -1,4 +1,6 @@
+import { studioExecutor } from "./actions";
 import type { StudioPlan } from "./catalog";
+import type { StudioActionID } from "./registry.generated";
 import type { StudioExecution } from "./execute";
 import type { StudioConfirmation, StudioTurnReply } from "./wire";
 
@@ -9,15 +11,27 @@ export function confirmationFor(
 ): StudioConfirmation | undefined {
   if (!pending.length) return undefined;
   const subjects = pending.map((item) => item.label);
-  const question =
+  // Deletions say Delete and that it can't be undone; other actions that ask
+  // first carry their own button and note.
+  const styles = pending.map(
+    (item) =>
+      studioExecutor(item.action as StudioActionID)?.confirm ?? {
+        label: "Delete",
+        note: "This can’t be undone.",
+      },
+  );
+  const same = styles.every((style) => style.label === styles[0].label);
+  const label = same ? styles[0].label : "Confirm";
+  const notes = [...new Set(styles.map((style) => style.note).filter(Boolean))];
+  const ask =
     subjects.length === 1
-      ? `${subjects[0]}? This can’t be undone.`
-      : `${subjects.slice(0, -1).join(", ")} and ${subjects.at(-1)!.replace(/^Delete/, "delete")}? This can’t be undone.`;
+      ? subjects[0]
+      : `${subjects.slice(0, -1).join(", ")} and ${subjects.at(-1)!.replace(/^\p{Lu}/u, (letter) => letter.toLowerCase())}`;
   return {
     executionID,
-    question,
-    confirmLabel: "Delete",
-    typedHint: "Reply yes to delete, or no to keep it.",
+    question: [`${ask}?`, ...notes].join(" "),
+    confirmLabel: label,
+    typedHint: `Reply yes to ${label.toLowerCase()}, or no to keep it.`,
   };
 }
 
@@ -47,6 +61,7 @@ export function turnReply(
     results: execution.receipts,
     effects: execution.effects,
     ...(confirm ? { confirm } : {}),
+    ...(execution.open ? { open: execution.open } : {}),
   };
   if (!plan.actions.length)
     return { ...base, message: plan.message, tone: "answer" };

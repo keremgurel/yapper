@@ -46,6 +46,7 @@ export function sendStudioTurn(turn: {
   surface: string;
   messages: { role: "user" | "assistant"; content: string }[];
   focusIdeaID?: string;
+  canOpen?: boolean;
 }): Promise<StudioTurnReply> {
   return post("/api/chirpy/studio", {
     protocolVersion: 1,
@@ -53,6 +54,7 @@ export function sendStudioTurn(turn: {
     surface: turn.surface,
     timeZone: timeZone(),
     ...(turn.focusIdeaID ? { focus: { ideaID: turn.focusIdeaID } } : {}),
+    ...(turn.canOpen === false ? { canOpen: false } : {}),
     messages: turn.messages,
   });
 }

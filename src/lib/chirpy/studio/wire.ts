@@ -1,4 +1,5 @@
 import { record, UUID } from "../protocol";
+import type { StudioOpen } from "./poster/prefill";
 import { isTimeZone } from "./zoned-time";
 
 /** What a Studio tab sends: the conversation, which tab it is on, and what is
@@ -10,14 +11,25 @@ export interface StudioTurnInput {
   surface: string;
   timeZone: string;
   focus?: { ideaID?: string };
+  /** False from a Mac build that cannot open a tab from a reply's `open`. */
+  canOpen?: false;
   messages: Array<{ role: "user" | "assistant"; content: string }>;
 }
 
 /** Studio data a turn changed, so the web caches and the Mac stores that
  * show it reload: `ideas` is the idea list and the calendar, `ideaViews` the
+/** Studio data a turn changed, so the web caches and the Mac stores that
+ * show it reload: `ideas` is the idea list and the calendar, `ideaViews` the
  * saved views of the Ideas list, `brand` the brand kit, `storage` the
- * storage numbers and stored videos. */
-export type StudioEffect = "ideas" | "ideaViews" | "brand" | "storage";
+ * storage numbers and stored videos, `posterVideos` Poster's video list and
+ * `schedules` the calendar's scheduled posts. */
+export type StudioEffect =
+  | "ideas"
+  | "ideaViews"
+  | "brand"
+  | "storage"
+  | "posterVideos"
+  | "schedules";
 
 export type StudioReceiptStatus =
   | "done"
@@ -51,6 +63,9 @@ export interface StudioTurnReply {
   results: StudioActionReceipt[];
   confirm?: StudioConfirmation;
   effects: StudioEffect[];
+  /** A tab to open with state filled in. Clients that predate it ignore it,
+   * and the message still says where to look. */
+  open?: StudioOpen;
 }
 
 const SURFACE = /^\/studio(?:\/[a-z0-9-]+){0,3}$/;
@@ -98,6 +113,7 @@ export function parseStudioTurnInput(raw: unknown): StudioTurnInput | null {
     surface: raw.surface,
     timeZone: raw.timeZone,
     ...(focus ? { focus } : {}),
+    ...(raw.canOpen === false ? { canOpen: false as const } : {}),
     messages: raw.messages.map((item) => ({
       role: item.role as "user" | "assistant",
       content: item.content as string,

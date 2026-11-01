@@ -1,22 +1,10 @@
 import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
-import {
-  preflightPaidActionOrResponse,
-  refundCreditReservation,
-  reservePaidActionOrResponse,
-} from "@/lib/billing/actions";
-import { getBrainContextSafe } from "@/lib/brain/context/server";
-import { getContentItem } from "@/lib/db/content";
-import { hookTexts, normalizeBody } from "@/lib/content/normalize";
 import type { PublishPlatform } from "@/lib/db/schema";
+import { refusalResponse } from "@/lib/http/operation-result";
 import { enabledPublishPlatforms } from "@/lib/publish/availability";
-import { generateCaptions } from "@/lib/publish/caption";
-import { collectStyleSamples } from "@/lib/publish/caption-style";
-import { loadRecordedTranscript } from "@/lib/content/recorded-transcript";
-import {
-  guardProviderIngress,
-  guardProviderSpend,
-} from "@/lib/provider-rate-limit";
+import { chargedCaptions } from "@/lib/publish/operations/captions";
+import { guardProviderIngress } from "@/lib/provider-rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -32,19 +20,7 @@ function platformsOf(value: unknown): PublishPlatform[] {
   return wanted.length ? [...new Set(wanted)] : ["youtube"];
 }
 
-/**
- * Draft one caption per platform being posted to.
- *
- * The old version wrote a single YouTube title and description from the video
- * title alone, which Instagram then pasted together and TikTok ignored. Two
- * things were missing and both are the difference between a caption about this
- * video and a caption about its title: the creator's standing context (voice,
- * audience, offers, never-say), which every other AI call in the app already
- * receives, and the video's own script.
- *
- * Charge-on-success: generate first, refund on failure, so nothing is billed
- * for an empty result.
- */
+/** Draft one caption per platform being posted to (see chargedCaptions). */
 async function trackedPOST(req: Request): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
@@ -56,103 +32,33 @@ async function trackedPOST(req: Request): Promise<Response> {
   if (!title) {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
-  const platforms =
-    body.titleOnly === true
-      ? ["youtube" as const]
-      : platformsOf(body.platforms);
+  const titleOnly = body.titleOnly === true;
+  const platforms = titleOnly
+    ? ["youtube" as const]
+    : platformsOf(body.platforms);
   if (body.requireTranscript === true && !str(body.transcript, 24000)) {
     return Response.json({ error: "transcript_required" }, { status: 422 });
   }
-  if (!process.env.SURPLUS_API_KEY) {
-    return Response.json({ error: "no_provider" }, { status: 501 });
-  }
-  const billing = await preflightPaidActionOrResponse(
+  const result = await chargedCaptions(
+    req,
     userId,
-    "publish_caption",
+    {
+      title,
+      platforms,
+      titleOnly,
+      contentItemId: str(body.contentItemId, 100),
+      transcript: str(body.transcript, 24000),
+      videoDescription: str(body.videoDescription, 2000),
+      captionReference: str(body.captionReference, 6000),
+      context: str(body.context, 2000),
+      instructions: str(body.instructions, 2000),
+      sourceCaption: str(body.sourceCaption, 5000),
+      matchStyle: Boolean(body.matchStyle),
+    },
+    req.signal,
   );
-  if (billing) return billing;
-
-  const spendLimited = await guardProviderSpend(req, userId, "publish-caption");
-  if (spendLimited) return spendLimited;
-  const access = await reservePaidActionOrResponse(userId, "publish_caption");
-  if (access.response) return access.response;
-  const { reservation } = access;
-
-  try {
-    // The library item carries what the video actually says. Read server-side and
-    // scoped to the caller, so a client cannot caption someone else's script.
-    let script: string | undefined;
-    let hook: string | undefined;
-    let originalNote: string | undefined;
-    let spoken = str(body.transcript, 24000);
-    let pillar: string | undefined;
-    const itemId = str(body.contentItemId, 100);
-    if (itemId) {
-      const item = await getContentItem(userId, itemId);
-      if (item) {
-        script = item.script ?? undefined;
-        // What was actually said beats what was planned. The inspiration's own
-        // transcript is someone else's video and is never captioned from.
-        spoken = (await loadRecordedTranscript(userId, item)) ?? undefined;
-        hook = hookTexts(normalizeBody(item).hooks)[0];
-        originalNote = item.originalNote || undefined;
-        pillar = item.pillar ?? undefined;
-      }
-    }
-
-    const styleSamples = body.matchStyle
-      ? await collectStyleSamples(userId, platforms)
-      : undefined;
-
-    const brain = await getBrainContextSafe(userId, {
-      surface: "caption",
-      task: [
-        title,
-        str(body.videoDescription, 2000),
-        str(body.captionReference, 1200),
-        hook,
-        (spoken ?? script)?.slice(0, 1200),
-        pillar,
-      ]
-        .filter(Boolean)
-        .join("\n"),
-      signal: req.signal,
-    });
-
-    const captions = await generateCaptions(
-      {
-        title,
-        videoDescription: str(body.videoDescription, 2000),
-        captionReference: str(body.captionReference, 6000),
-        context: brain.section,
-        hook,
-        script: spoken ?? script,
-        // The item's own words win; the client's free-text context is the
-        // fallback for a video with no library row behind it.
-        originalNote: originalNote ?? str(body.context, 2000),
-        pillar,
-        platforms,
-        styleSamples,
-        instructions: str(body.instructions, 2000),
-        sourceCaption: str(body.sourceCaption, 5000),
-        titleOnly: body.titleOnly === true,
-      },
-      req.signal,
-    );
-    return Response.json({
-      captions,
-      balance: reservation.balance,
-      used: brain.used,
-    });
-  } catch (e) {
-    const detail = e instanceof Error ? e.message : "generate_failed";
-    await refundCreditReservation(userId, reservation, detail);
-    if (detail === "no_provider") {
-      return Response.json({ error: "no_provider" }, { status: 501 });
-    }
-    console.error("[publish] caption generation failed", e);
-    return Response.json({ error: "generate_failed" }, { status: 502 });
-  }
+  if (!result.ok) return refusalResponse(result);
+  return Response.json(result.value);
 }
 
 export const POST = withProductAnalytics("caption_generated", trackedPOST);

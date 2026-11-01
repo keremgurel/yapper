@@ -20,7 +20,8 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
  * `planner: "studio"` cases run the Studio planner instead: base names a
  * bases/*.json holding surface, timeZone and the overview the server would
  * read, `overview` merges over it and `prepend` puts entries at the front of
- * its lists (the newest ideas come first, as in production).
+ * its lists (the newest ideas come first, as in production). `focus` is what
+ * the tab has open, such as the video in Poster.
  *
  * `build()` returns a fresh PlanInput for one attempt. Project and session
  * IDs are new each time, so repeated runs share only what production turns
@@ -136,6 +137,7 @@ async function prepareStudio(spec) {
         executionID: randomUUID(),
         surface: spec.surface ?? base.surface,
         timeZone: base.timeZone,
+        ...(spec.focus ? { focus: spec.focus } : {}),
         messages: structuredClone(spec.messages),
       },
       overview: structuredClone(overview),

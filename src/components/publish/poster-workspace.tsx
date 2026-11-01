@@ -42,6 +42,7 @@ import SourceOptions from "@/components/publish/poster/sources/source-options";
 import { PLATFORMS } from "@/lib/publish/platforms";
 import { useOpenVideo } from "@/components/publish/poster/sources/use-open-video";
 import { useRequestedVideo } from "@/components/publish/poster/sources/use-requested-video";
+import { usePosterPrefill } from "@/components/publish/poster/use-poster-prefill";
 import {
   useSourceVideos,
   type PosterSource,
@@ -240,9 +241,15 @@ export default function PosterWorkspace() {
     [prependRow, bench, applyGenerated, connectedPlatforms],
   );
 
-  // The editor hands a finished cut over by linking to /studio/poster?item=<id>.
+  // The editor and Chirpy hand a finished cut over by linking to
+  // /studio/poster?item=<id>; Chirpy adds a fresh `prep` each time.
   const requested = params.get("item");
-  useRequestedVideo(requested, library, bench.setActive);
+  useRequestedVideo(requested, library, bench.setActive, params.get("prep"));
+  const prefilled = usePosterPrefill(
+    active?.id,
+    applyGenerated,
+    setDestinationsByVideo,
+  );
 
   const cover = active ? (covers[active.id] ?? sourceCover(active)) : null;
   // Default destinations: every connected channel except the one the video is
@@ -525,8 +532,9 @@ export default function PosterWorkspace() {
                 </div>
               ) : (
                 <CoverStudio
-                  key={active.id}
+                  key={`${active.id}:${prefilled.thumbnailPrompts[active.id] ?? ""}`}
                   draft={cover}
+                  initialPrompt={prefilled.thumbnailPrompts[active.id]}
                   media={mediaOf(active)}
                   originalImage={originalThumbnail(active)}
                   onChange={(next) =>
@@ -611,7 +619,7 @@ export default function PosterWorkspace() {
                 </fieldset>
                 {active && cover && (
                   <CrossPostSheet
-                    key={active.id}
+                    key={`${active.id}:${prefilled.scheduleAt[active.id] ?? ""}`}
                     embedded
                     onBusy={setPublishLocked}
                     disabled={
@@ -655,6 +663,7 @@ export default function PosterWorkspace() {
                           : undefined,
                     }}
                     initialPlatforms={[...destinations]}
+                    initialScheduleAt={prefilled.scheduleAt[active.id]}
                     onCompleted={(target) => {
                       const item = items?.find(
                         (row) => row.id === target.contentItemId,

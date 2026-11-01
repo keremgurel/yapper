@@ -22,5 +22,11 @@ enum StudioChirpyEffects {
         if effects.contains("storage"), StorageStore.shared.usage != nil {
             Task { await StorageStore.shared.refresh() }
         }
+        if effects.contains("posterVideos"), PosterLibraryStore.shared.items != nil {
+            Task { await PosterLibraryStore.shared.refresh() }
+        }
+        if effects.contains("schedules"), SchedulesStore.shared.response != nil {
+            Task { await SchedulesStore.shared.refresh() }
+        }
     }
 }

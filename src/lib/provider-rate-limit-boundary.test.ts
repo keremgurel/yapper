@@ -61,6 +61,7 @@ const SHARED_SOURCE: Record<string, string> = {
   "publish/instagram/import/route.ts":
     "src/lib/publish/server/platform-import.ts",
   "ideas/expand/route.ts": "src/lib/ideas/operations/expand.ts",
+  "publish/caption/route.ts": "src/lib/publish/operations/captions.ts",
   "content/[id]/versions/[format]/write/route.ts":
     "src/lib/ideas/operations/write-version.ts",
 };

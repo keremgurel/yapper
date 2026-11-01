@@ -15,6 +15,7 @@ struct PosterDestinationColumn: View {
     @StateObject private var session = PosterPublishSession()
     @StateObject private var schedule = PosterScheduleModel()
     @StateObject private var tiktok = PosterTikTokReviewModel()
+    @ObservedObject private var handoff = PosterHandoff.shared
 
     var body: some View {
         let connected = connections.connected
@@ -94,6 +95,13 @@ struct PosterDestinationColumn: View {
                     onNext: next
                 )
             }
+        }
+        .task(id: "\(video.id):\(handoff.revision)") {
+            // Chirpy suggested a time: open on Schedule with it, as a
+            // Calendar day does. The creator still presses Schedule.
+            guard let at = handoff.takeScheduleTime(for: video.id) else { return }
+            schedule.later = true
+            schedule.when = at
         }
     }
 

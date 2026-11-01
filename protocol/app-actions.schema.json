@@ -598,6 +598,22 @@
       "runtime": "server"
     },
     {
+      "id": "studio.calendar.cancel",
+      "input": "ScheduleCancelInput",
+      "description": "Cancel scheduled posts so they never go out. The video and idea stay. Asks first.",
+      "effect": "external",
+      "confirm": true,
+      "runtime": "server"
+    },
+    {
+      "id": "studio.calendar.reschedule",
+      "input": "ScheduleMoveInput",
+      "description": "Move scheduled posts to another day or time; without time each keeps its own. Asks first.",
+      "effect": "external",
+      "confirm": true,
+      "runtime": "server"
+    },
+    {
       "id": "studio.ideas.capture",
       "input": "IdeaCaptureInput",
       "description": "Bank a new idea the way the Ideas composer does: the creator's words are saved verbatim, then its first draft (title, angle, hook and script) is written from their Brain, which costs the idea-drafting credits. pillarID, date and time file and schedule it in the same step. Set draft false only when the creator asks to just save the note.",
@@ -688,6 +704,28 @@
       "id": "studio.ideas.writeVersion",
       "input": "IdeaWriteVersionInput",
       "description": "Write another format of an idea (short, long or article) from its lead version, or from the version named in from, and save it beside the others. Costs the idea-drafting credits.",
+      "effect": "paidGeneration",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.poster.prepare",
+      "input": "PosterPrepareInput",
+      "description": "Open Poster on a video, filled in. Posts nothing: the creator presses Publish or Schedule there.",
+      "effect": "navigation",
+      "runtime": "server"
+    },
+    {
+      "id": "studio.poster.removeUpload",
+      "input": "PosterRemoveUploadInput",
+      "description": "Remove videos uploaded straight to Poster (source upload) and their file. Asks first.",
+      "effect": "destructive",
+      "confirm": true,
+      "runtime": "server"
+    },
+    {
+      "id": "studio.poster.writeCaptions",
+      "input": "PosterCaptionsInput",
+      "description": "Write a caption per platform from the video and the creator's Brain, and open Poster with them. Costs caption credits.",
       "effect": "paidGeneration",
       "runtime": "server"
     },
@@ -2919,6 +2957,57 @@
         }
       }
     },
+    "ScheduleMoveInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scheduleIDs",
+        "date"
+      ],
+      "properties": {
+        "scheduleIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "date": {
+          "type": "string",
+          "description": "YYYY-MM-DD local.",
+          "minLength": 10,
+          "maxLength": 10
+        },
+        "time": {
+          "type": "string",
+          "description": "HH:MM, 24-hour, local.",
+          "minLength": 5,
+          "maxLength": 5
+        }
+      }
+    },
+    "ScheduleCancelInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scheduleIDs"
+      ],
+      "properties": {
+        "scheduleIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
     "IdeaFormat": {
       "type": "string",
       "description": "short is a short-form video, long a long-form video, article a written piece.",
@@ -3265,6 +3354,113 @@
         "viewID": {
           "type": "string",
           "format": "uuid"
+        }
+      }
+    },
+    "PosterPlatform": {
+      "type": "string",
+      "enum": [
+        "youtube",
+        "tiktok",
+        "instagram",
+        "facebook"
+      ]
+    },
+    "PosterPrepareInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "videoID"
+      ],
+      "properties": {
+        "videoID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "platforms": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/PosterPlatform"
+          }
+        },
+        "title": {
+          "type": "string",
+          "description": "The creator's YouTube title.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "caption": {
+          "type": "string",
+          "description": "The creator's caption words, verbatim.",
+          "minLength": 1,
+          "maxLength": 2200
+        },
+        "thumbnailPrompt": {
+          "type": "string",
+          "description": "What the thumbnail should show.",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "date": {
+          "type": "string",
+          "description": "Suggested schedule day, YYYY-MM-DD local.",
+          "minLength": 10,
+          "maxLength": 10
+        },
+        "time": {
+          "type": "string",
+          "description": "HH:MM, 24-hour, local. Only with date.",
+          "minLength": 5,
+          "maxLength": 5
+        }
+      }
+    },
+    "PosterCaptionsInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "videoID"
+      ],
+      "properties": {
+        "videoID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "platforms": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/PosterPlatform"
+          }
+        },
+        "instructions": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      }
+    },
+    "PosterRemoveUploadInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "videoIDs"
+      ],
+      "properties": {
+        "videoIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
         }
       }
     },

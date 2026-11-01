@@ -8,6 +8,8 @@ export interface ChirpyConfirmation {
   executionID: string;
   question: string;
   confirmLabel: string;
+  /** How to answer in words, for the Mac's thread with no buttons. */
+  typedHint?: string;
   state: "open" | "working" | "confirmed" | "canceled";
 }
 

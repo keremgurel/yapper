@@ -39,6 +39,7 @@ extension EditorSession {
                     )
                 )
                 StudioChirpyEffects.apply(reply.effects)
+                reply.open?.apply()
             } catch {
                 thread.answer(
                     .chirpy(

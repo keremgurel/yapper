@@ -25,6 +25,11 @@ final class PosterDraftStore: ObservableObject {
         destinations[video.id] ?? Set(connected.filter { $0 != video.platform })
     }
 
+    /// Sets where a video goes, as Chirpy's hand-over chose.
+    func choose(_ platforms: Set<PublishPlatform>, for video: PosterVideo) {
+        destinations[video.id] = platforms
+    }
+
     func toggle(_ platform: PublishPlatform, for video: PosterVideo, connected: [PublishPlatform]) {
         var next = destinations(video, connected: connected)
         if next.contains(platform) { next.remove(platform) } else { next.insert(platform) }

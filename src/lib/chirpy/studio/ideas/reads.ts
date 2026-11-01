@@ -45,7 +45,7 @@ const STOP_WORDS = new Set(
   ),
 );
 
-function words(text: string): string[] {
+export function words(text: string): string[] {
   return (text.toLowerCase().match(/[\p{L}\p{N}']{3,}/gu) ?? []).filter(
     (word) => !STOP_WORDS.has(word),
   );

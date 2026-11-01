@@ -1,0 +1,31 @@
+{
+  "id": "studio-poster-reschedule",
+  "from": "new: moving a scheduled post to another day keeps its time",
+  "planner": "studio",
+  "tags": ["studio", "calendar", "dates"],
+  "base": "studio-poster",
+  "surface": "/studio/calendar",
+  "messages": [
+    {
+      "role": "user",
+      "content": "move the meal prep post to Monday"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.calendar.reschedule"],
+    "args": [
+      {
+        "pointer": "/scheduleIDs",
+        "equals": ["c3d4e5f6-0718-4a29-8b3c-4d5e6f708103"]
+      },
+      {
+        "pointer": "/date",
+        "equals": "2026-11-02"
+      },
+      {
+        "pointer": "/time",
+        "absent": true
+      }
+    ]
+  }
+}

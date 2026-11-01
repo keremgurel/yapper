@@ -11,11 +11,14 @@ import {
 import type { BrandOverview } from "./brand/reads";
 import type { IdeasOverview } from "./ideas/reads";
 import type { StorageNames, StorageOverview } from "./storage/reads";
+import type { PosterOverview } from "./poster/reads";
 import { STUDIO_SYSTEM } from "./prompt";
 import type { StudioTurnInput } from "./wire";
 
 /** What the server read for this turn, plus the creator's calendar days. */
 export interface StudioOverview extends IdeasOverview {
+  /** Only on Poster and the calendar, or when the request is about posting. */
+  poster?: PosterOverview;
   today: { date: string; weekday: string; time: string; timeZone: string };
   upcoming: { date: string; weekday: string }[];
   /** Only on the Brand tab or when the request is about the kit. */
@@ -60,6 +63,7 @@ export function studioRequest(
     ideas: overview.ideas,
     brand: overview.brand,
     storage: overview.storage,
+    ...(overview.poster ? { poster: overview.poster } : {}),
     messages: input.messages,
   });
 }

@@ -8,6 +8,7 @@ import {
   StudioTurnError,
 } from "@/lib/chirpy/studio/client";
 import { applyStudioEffects } from "@/lib/chirpy/studio/effects-client";
+import type { StudioOpen } from "@/lib/chirpy/studio/poster/prefill";
 import type { StudioEffect, StudioTurnReply } from "@/lib/chirpy/studio/wire";
 import type {
   ChirpyConfirmation,
@@ -15,11 +16,13 @@ import type {
 } from "@/components/studio-shell/chirpy-message";
 
 /** A reply for the panel, plus what the server changed for the Mac to
- * reload in its own stores. */
+ * reload in its own stores, and a tab to open with state filled in. */
 type Reply = Omit<ChirpyMessage, "id" | "author"> & {
   effects?: StudioEffect[];
+  open?: StudioOpen;
 };
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const UUID_IN_PATH =
   /\/studio\/(?:ideas|library)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
 
@@ -29,12 +32,14 @@ function messageFrom(reply: StudioTurnReply): Reply {
     notes: reply.notes,
     tone: reply.tone === "answer" ? undefined : reply.tone,
     effects: reply.effects,
+    ...(reply.open ? { open: reply.open } : {}),
     ...(reply.confirm
       ? {
           confirm: {
             executionID: reply.confirm.executionID,
             question: reply.confirm.question,
             confirmLabel: reply.confirm.confirmLabel,
+            typedHint: reply.confirm.typedHint,
             state: "open" as const,
           },
         }
@@ -69,12 +74,18 @@ export function useStudioTurn(
       text: string,
       surface: string,
       history: { role: "user" | "assistant"; content: string }[],
+      focusID?: string,
+      canOpen = true,
     ): Promise<Reply> => {
       try {
         const reply = await sendStudioTurn({
           surface: surface.split("?")[0].replace(/\/$/, "") || "/studio",
           messages: [...history.slice(-19), { role: "user", content: text }],
-          focusIdeaID: UUID_IN_PATH.exec(surface)?.[1],
+          focusIdeaID:
+            focusID && UUID.test(focusID)
+              ? focusID
+              : UUID_IN_PATH.exec(surface)?.[1],
+          canOpen,
         });
         applyStudioEffects(reply.effects, router.refresh);
         return messageFrom(reply);

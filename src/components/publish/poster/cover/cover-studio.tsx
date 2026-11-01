@@ -29,6 +29,7 @@ import { useThumbnailGeneration } from "./use-thumbnail-generation";
 export default function CoverStudio({
   draft,
   originalImage,
+  initialPrompt,
   media,
   onChange,
   onDownload,
@@ -36,6 +37,8 @@ export default function CoverStudio({
 }: {
   draft: CoverDraft;
   originalImage?: string;
+  /** A prompt Chirpy filled in; the remix step opens with it. */
+  initialPrompt?: string;
   media: CoverMediaRef;
   onChange: (draft: CoverDraft) => void;
   onDownload: () => void;
@@ -46,7 +49,9 @@ export default function CoverStudio({
   const filmstrip = useFilmstrip(source.url, picker.duration);
   const reference = useReferenceImage();
   const generation = useThumbnailGeneration();
-  const [prompt, setPrompt] = useState(DEFAULT_THUMBNAIL_PROMPT);
+  const [prompt, setPrompt] = useState(
+    initialPrompt ?? DEFAULT_THUMBNAIL_PROMPT,
+  );
   const [useFrame, setUseFrame] = useState(true);
 
   useEffect(() => {
@@ -151,6 +156,7 @@ export default function CoverStudio({
       <Disclosure
         title="Remix with AI"
         meta={draft.source === "generated" ? "in use" : "12 credits"}
+        defaultOpen={Boolean(initialPrompt)}
       >
         <RemixPanel
           prompt={prompt}

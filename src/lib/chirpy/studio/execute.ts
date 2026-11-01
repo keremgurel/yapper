@@ -1,5 +1,6 @@
 import { studioExecutor } from "./actions";
 import type { StudioPlan } from "./catalog";
+import { mergeOpen, type StudioOpen } from "./poster/prefill";
 import {
   StudioActionFailure,
   type StudioActionContext,
@@ -20,6 +21,7 @@ export interface StudioExecution {
   pending: { invocationID: string; action: string; label: string }[];
   effects: StudioEffect[];
   partial: boolean;
+  open?: StudioOpen;
 }
 
 function receiptOf(record: StudioInvocation): StudioActionReceipt {
@@ -133,6 +135,8 @@ export async function executeStudioPlan(
     for (const effect of record.effects ?? [])
       if (!execution.effects.includes(effect)) execution.effects.push(effect);
     if (record.partial) execution.partial = true;
+    if (record.status === "done")
+      execution.open = mergeOpen(execution.open, record.open);
     if (record.status === "failed") stopped = true;
   }
   return execution;

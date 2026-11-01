@@ -15,6 +15,9 @@ vi.mock("./actions", () => ({
   studioExecutor: (id: string) => ({
     run: (input: unknown) => run(id, input),
     describe: () => "Delete “Gym myths”",
+    ...(id === "studio.calendar.cancel"
+      ? { confirm: { label: "Cancel post", note: "It won’t go out." } }
+      : {}),
   }),
 }));
 vi.mock("./receipts", async (original) => ({
@@ -180,6 +183,62 @@ describe("replies", () => {
     ).toBe(
       "Delete “Gym myths” and delete the “Ready” view? This can’t be undone.",
     );
+  });
+
+  it("words a schedule change's question with its own button", () => {
+    expect(
+      confirmationFor(EXECUTION, [
+        {
+          invocationID: "a",
+          action: "studio.calendar.cancel",
+          label: "Cancel “Gym myths” on TikTok",
+        },
+      ]),
+    ).toEqual({
+      executionID: EXECUTION,
+      question: "Cancel “Gym myths” on TikTok? It won’t go out.",
+      confirmLabel: "Cancel post",
+      typedHint: "Reply yes to cancel post, or no to keep it.",
+    });
+  });
+
+  it("carries the tab a finished action opens into the reply", async () => {
+    vi.mocked(claimInvocation).mockReset().mockResolvedValue(null);
+    vi.mocked(finishInvocation).mockReset().mockResolvedValue();
+    const open = {
+      tab: "poster" as const,
+      params: {
+        videoID: IDEA,
+        title: "Gym myths",
+        platforms: ["tiktok" as const],
+      },
+    };
+    run.mockReset().mockResolvedValue({
+      summary: "Set up “Gym myths” in Poster for TikTok.",
+      effects: [],
+      open,
+    });
+    const plan = {
+      message: "It's ready in Poster.",
+      actions: [
+        {
+          action: "studio.poster.prepare" as const,
+          arguments: { videoID: IDEA, platforms: ["tiktok"] },
+        },
+      ],
+    };
+    const execution = await executeStudioPlan(
+      context,
+      "project",
+      EXECUTION,
+      plan,
+      names,
+    );
+    expect(execution.open).toEqual(open);
+    expect(turnReply(EXECUTION, plan, execution)).toMatchObject({
+      tone: "done",
+      open,
+    });
   });
 
   it("reads a bare yes or no and nothing longer", () => {

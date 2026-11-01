@@ -1,0 +1,31 @@
+{
+  "id": "studio-poster-own-caption",
+  "from": "new: the creator's own caption words go in verbatim, nothing paid",
+  "planner": "studio",
+  "tags": ["studio", "poster"],
+  "base": "studio-poster",
+  "messages": [
+    {
+      "role": "user",
+      "content": "get the desk tour ready for YouTube and TikTok with the caption: my whole setup, nothing sponsored"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.poster.prepare"],
+    "args": [
+      {
+        "pointer": "/videoID",
+        "equals": "7b2e9c41-5d3a-4f6b-9e8c-1a2b3c4d5e01"
+      },
+      {
+        "pointer": "/platforms",
+        "sameSet": ["youtube", "tiktok"]
+      },
+      {
+        "pointer": "/caption",
+        "matches": "^my whole setup, nothing sponsored$",
+        "flags": "i"
+      }
+    ]
+  }
+}

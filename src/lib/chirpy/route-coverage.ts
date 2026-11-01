@@ -33,6 +33,12 @@ export const ROUTE_ACTIONS: Record<string, readonly string[]> = {
     "studio.ideas.writeVersion",
   ],
   "DELETE /api/content/[id]/versions/[format]": ["studio.ideas.deleteVersion"],
+  "POST /api/publish/caption": ["studio.poster.writeCaptions"],
+  "DELETE /api/publish/uploads/[id]": ["studio.poster.removeUpload"],
+  "PATCH /api/publish/schedules/[id]": [
+    "studio.calendar.reschedule",
+    "studio.calendar.cancel",
+  ],
   "POST /api/views": ["studio.ideas.views.create"],
   "PATCH /api/views/[id]": ["studio.ideas.views.update"],
   "DELETE /api/views/[id]": ["studio.ideas.views.delete"],
@@ -58,10 +64,15 @@ export type ExclusionReason =
   | "billing"
   /** Called by another service, not by a creator. */
   | "webhook"
-  /** Platform sign-in and its callbacks. */
+  /** Platform sign-in, its callbacks, and choosing which account or Page a
+   * connection posts as. */
   | "oauth"
-  /** Byte uploads and the signed URLs for them; the action that uses the
-   * file is what Chirpy runs. */
+  /** Posting a video or scheduling a new post. Chirpy fills Poster in
+   * (studio.poster.prepare) and the creator presses Publish or Schedule. */
+  | "publish"
+  /** Byte uploads, the signed URLs for them and the request that files an
+   * uploaded video in the library; the action that uses the file is what
+   * Chirpy runs. */
   | "upload"
   /** Chirpy's own endpoints. */
   | "chirpy"
@@ -82,10 +93,19 @@ export const EXCLUDED_ROUTES: Record<string, ExclusionReason> = {
   "POST /api/stripe/webhook": "webhook",
   "POST /api/webhooks/clerk": "webhook",
   "DELETE /api/publish/connections/[platform]": "oauth",
+  "POST /api/publish/facebook/pages": "oauth",
+  "POST /api/publish/youtube": "publish",
+  "POST /api/publish/tiktok": "publish",
+  "POST /api/publish/tiktok/direct": "publish",
+  "POST /api/publish/instagram": "publish",
+  "POST /api/publish/facebook": "publish",
+  "POST /api/publish/schedules": "publish",
   "POST /api/media/upload-url": "upload",
   "POST /api/transcribe/upload-url": "upload",
   "POST /api/submissions": "upload",
   "POST /api/brand/logos": "upload",
+  "POST /api/content": "upload",
+  "POST /api/publish/projects": "upload",
   "POST /api/chirpy/plan": "chirpy",
   "POST /api/chirpy/studio": "chirpy",
   "POST /api/chirpy/confirm": "chirpy",
@@ -114,22 +134,12 @@ export const UNCOVERED_ROUTES: Record<string, string> = {
   "POST /api/content/brainstorm": "ideas canvas",
   "POST /api/content/capture": "ideas import",
   "POST /api/ideas/import": "ideas import",
-  // Poster and the calendar's publishing schedule.
-  "POST /api/content": "poster",
-  "POST /api/publish/projects": "poster",
-  "POST /api/publish/caption": "poster",
-  "POST /api/publish/thumbnail": "poster",
-  "DELETE /api/publish/uploads/[id]": "poster",
-  "POST /api/publish/youtube": "poster",
-  "POST /api/publish/tiktok": "poster",
-  "POST /api/publish/tiktok/direct": "poster",
-  "POST /api/publish/tiktok/import": "poster",
-  "POST /api/publish/instagram": "poster",
-  "POST /api/publish/instagram/import": "poster",
-  "POST /api/publish/facebook": "poster",
-  "POST /api/publish/facebook/pages": "poster",
-  "POST /api/publish/schedules": "calendar",
-  "PATCH /api/publish/schedules/[id]": "calendar",
+  // Poster: an AI thumbnail is made from a frame the browser or the Mac
+  // captures, and reposting a channel's own post needs that channel's list
+  // in the turn. Chirpy fills the thumbnail prompt in instead.
+  "POST /api/publish/thumbnail": "poster thumbnail",
+  "POST /api/publish/tiktok/import": "poster channel posts",
+  "POST /api/publish/instagram/import": "poster channel posts",
   // Brain.
   "POST /api/brain/ask": "brain",
   "PATCH /api/brain/blocks": "brain",

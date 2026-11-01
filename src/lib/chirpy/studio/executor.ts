@@ -1,4 +1,5 @@
 import type { OperationRefusal } from "@/lib/http/operation-result";
+import type { StudioOpen } from "./poster/prefill";
 import type { StudioEffect } from "./wire";
 
 /** What an executor gets besides its validated input. */
@@ -8,6 +9,8 @@ export interface StudioActionContext {
   request: Request;
   signal?: AbortSignal;
   timeZone: string;
+  /** False when the client cannot open a tab filled in (an older Mac build). */
+  canOpen?: boolean;
 }
 
 export interface ActionOutcome {
@@ -16,6 +19,8 @@ export interface ActionOutcome {
   effects: StudioEffect[];
   /** Part of the action could not be done, and the summary says which. */
   partial?: boolean;
+  /** A tab the client opens with state filled in, such as Poster. */
+  open?: StudioOpen;
 }
 
 /** Names the planner saw, so a confirmation can say "Delete “Gym myths”"
@@ -29,12 +34,17 @@ export interface StudioNames {
   recordings?: Record<string, string>;
   /** Bytes, by video or recording id. */
   sizes?: Record<string, string>;
+  /** “Gym myths” on TikTok, for a scheduled post. */
+  schedules?: Record<string, string>;
 }
 
 export interface StudioActionDefinition<Input> {
   run: (input: Input, context: StudioActionContext) => Promise<ActionOutcome>;
   /** The confirmation question's subject, for actions that ask first. */
   describe?: (input: Input, names: StudioNames) => string;
+  /** The confirm button and the line after the question; deletions use
+   * Delete and “This can’t be undone.” */
+  confirm?: { label: string; note?: string };
 }
 
 /** A refusal the creator should read, never a stack trace. */
@@ -45,6 +55,19 @@ export class StudioActionFailure extends Error {
   ) {
     super(code);
   }
+}
+
+/** An action whose result only exists once a tab opens with it refuses, before
+ * any charge, on a client that cannot open one. */
+export function requireOpen(
+  context: StudioActionContext,
+  instead: string,
+): void {
+  if (context.canOpen === false)
+    throw new StudioActionFailure(
+      "needs_update",
+      `This version of the Mac app can’t open Poster for me, so nothing changed. ${instead} Updating Yapper lets me fill it in.`,
+    );
 }
 
 /** Turn an operation's refusal into a sentence the creator can act on. */

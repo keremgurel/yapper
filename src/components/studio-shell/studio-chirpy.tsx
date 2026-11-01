@@ -35,14 +35,23 @@ import { typedDecision } from "@/lib/chirpy/studio/typed-decision";
 import type { StudioEffect } from "@/lib/chirpy/studio/wire";
 import { useStudioTurn } from "@/components/studio-shell/use-studio-turn";
 import type { ChirpyConfirmation } from "@/components/studio-shell/chirpy-message";
+import type { StudioOpen } from "@/lib/chirpy/studio/poster/prefill";
+import {
+  handPosterPrefill,
+  posterFocus,
+  posterHref,
+} from "@/components/publish/poster/chirpy-prefill";
 
 /** What the Mac's native thread shows. `effects` says which native stores to
- * reload; builds that predate it ignore it. */
+ * reload and `open` which tab to open filled in; builds that predate them
+ * ignore them. */
 type NativeChirpyReply = Pick<ChirpyMessage, "text" | "notes" | "tone"> & {
   effects?: StudioEffect[];
+  open?: StudioOpen;
 };
 type SentReply = Omit<ChirpyMessage, "id" | "author"> & {
   effects?: StudioEffect[];
+  open?: StudioOpen;
 };
 
 /**
@@ -54,6 +63,10 @@ type SentReply = Omit<ChirpyMessage, "id" | "author"> & {
 interface NativeChirpyContext {
   surface?: string;
   history?: { author: "you" | "chirpy"; text: string }[];
+  /** The library item open on that tab, such as the video in Poster. */
+  focus?: string;
+  /** Reply fields this build acts on; "open" opens a tab filled in. */
+  capabilities?: string[];
 }
 
 interface NativeChirpyWindow extends Window {
@@ -96,11 +109,13 @@ interface StudioChirpyValue {
 const StudioChirpyContext = createContext<StudioChirpyValue | null>(null);
 
 /** Tabs whose requests Chirpy plans with the Studio actions. Elsewhere, a
- * short request that mentions ideas, the brand kit or storage goes there
- * too. */
+ * short request that mentions ideas, the brand kit, storage or posting goes
+ * there too. */
 const STUDIO_ACTION_SURFACES =
-  /^\/studio\/(?:ideas|calendar|library|brand|storage)(?:\/|$)/;
+  /^\/studio\/(?:ideas|calendar|library|brand|storage|poster)(?:\/|$)/;
 const MENTIONS_STUDIO_DATA = /\b(?:ideas?|brand|palette|logos?|storage)\b/i;
+const MENTIONS_POSTING =
+  /\b(?:post|publish|(?:re)?schedule[ds]?|captions?|tiktok|youtube|instagram|reels?)\b/i;
 const ADD_CONTEXT_COMMAND =
   /^(?:please\s+)?(?:add|remember|save|note)(?:\s+that)?\s+(.+)/i;
 const EDIT_ESSENTIAL_COMMAND =
@@ -108,7 +123,7 @@ const EDIT_ESSENTIAL_COMMAND =
 const EDIT_CONTEXT_COMMAND =
   /\b(?:change|update|edit)\b\s+(?:the\s+)?(?:knowledge|context|memory)\s+[“"]?(.+?)[”"]?\s+\bto\b\s+(.+)/i;
 
-const CONFIRM_HINT = "Reply yes to delete, or no to keep it.";
+const CONFIRM_HINT = "Reply yes to go ahead, or no to keep it.";
 
 /** The panel's or a Mac tab's thread as model messages. A reply that was
  * only a question stands in as its question. */
@@ -371,7 +386,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
         }
         if (/^what can you help me (?:do here|with)\??$/i.test(text)) {
           return answer({
-            text: "Tell me your brand colors and I’ll set up your kit. For example, ‘My brand colors are #FF7A21, black, and white’. I can also add Knowledge, and make, file, schedule, rename or delete your ideas, like ‘make an idea about gym myths and put it on Friday’.",
+            text: "Tell me your brand colors and I’ll set up your kit. For example, ‘My brand colors are #FF7A21, black, and white’. I can also add Knowledge, make, file, schedule, rename or delete your ideas, like ‘make an idea about gym myths and put it on Friday’, and get a video ready in Poster for you to publish.",
           });
         }
 
@@ -435,14 +450,31 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
         // Knowledge.
         if (
           STUDIO_ACTION_SURFACES.test(route) ||
-          (command && MENTIONS_STUDIO_DATA.test(text))
+          (command &&
+            (MENTIONS_STUDIO_DATA.test(text) || MENTIONS_POSTING.test(text)))
         ) {
-          const { effects, ...reply } = await studio.ask(
+          const { effects, open, ...reply } = await studio.ask(
             text,
             route,
             conversationFrom(native?.history ?? messages),
+            native
+              ? native.focus
+              : route.startsWith("/studio/poster")
+                ? posterFocus()
+                : undefined,
+            // A Mac build that predates `open` says so, and the server
+            // refuses what only an opened Poster can show.
+            !native || (native.capabilities?.includes("open") ?? false),
           );
-          return { ...answer(reply), effects };
+          // On the web, Poster opens here with everything filled in; the Mac
+          // opens its own Poster from the reply.
+          if (open && !native) {
+            handPosterPrefill(open.params);
+            startTransition(() =>
+              router.push(posterHref(open.params, crypto.randomUUID())),
+            );
+          }
+          return { ...answer(reply), effects, open };
         }
         const context = command
           ? text.match(ADD_CONTEXT_COMMAND)?.[1]?.trim()
@@ -504,13 +536,14 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
         text: [
           reply.text,
           reply.confirm?.question,
-          reply.confirm && CONFIRM_HINT,
+          reply.confirm && (reply.confirm.typedHint ?? CONFIRM_HINT),
         ]
           .filter(Boolean)
           .join(" "),
         notes: reply.notes,
         tone: reply.tone,
         effects: reply.effects,
+        ...(reply.open ? { open: reply.open } : {}),
       };
     };
     nativeWindow.__yapperNativeChirpy = handler;

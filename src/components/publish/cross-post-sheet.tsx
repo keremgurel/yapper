@@ -133,6 +133,7 @@ export default function CrossPostSheet({
   item,
   items,
   initialPlatforms,
+  initialScheduleAt,
   onClose,
   onNext,
   onCompleted,
@@ -150,6 +151,8 @@ export default function CrossPostSheet({
   /** Destinations chosen upstream, pre-ticked here so the creator does not
    * pick them twice. Still visible and still removable. */
   initialPlatforms?: PublishPlatform[];
+  /** An ISO time Chirpy suggested; opens on Schedule with it. */
+  initialScheduleAt?: string;
   onClose: () => void;
   onNext?: () => void;
   onCompleted?: (source: CrossPostTarget) => void;
@@ -189,7 +192,7 @@ export default function CrossPostSheet({
       setTikTokReviews((current) => ({ ...current, [id]: review })),
     [],
   );
-  const when = useWhen();
+  const when = useWhen(initialScheduleAt);
   const schedulingAvailable = useSchedulingAvailable();
   const scheduler = useScheduleSubmit((busy) => {
     operation.current = busy;

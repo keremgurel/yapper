@@ -40,7 +40,7 @@ function replyFrom(
   if (decision === "cancel")
     return {
       executionID,
-      message: "Kept it. Nothing was deleted.",
+      message: "Kept it. Nothing changed.",
       tone: "answer",
       notes: [],
       results,

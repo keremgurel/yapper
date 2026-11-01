@@ -3,6 +3,8 @@ import type { StudioNames } from "./executor";
 import { readIdeasOverview } from "./ideas/reads";
 import { readStorageOverview, wantsStorage } from "./storage/reads";
 import type { StudioOverview } from "./planner";
+import { scheduleLabel } from "./calendar/schedules";
+import { readPosterOverview, wantsPoster } from "./poster/reads";
 import type { StudioTurnInput } from "./wire";
 import { localDay, localTime, upcomingDays, weekdayOf } from "./zoned-time";
 
@@ -23,10 +25,13 @@ export async function readStudioOverview(
     .map((message) => message.content)
     .join("\n");
   const storageScope = wantsStorage(input.surface, request);
-  const [ideas, brand, storage] = await Promise.all([
+  const [ideas, brand, storage, poster] = await Promise.all([
     readIdeasOverview(userId, request, timeZone, input.focus?.ideaID),
     wantsBrand(input.surface, request) ? readBrandOverview(userId) : undefined,
     storageScope ? readStorageOverview(userId, storageScope) : undefined,
+    wantsPoster(input.surface, request)
+      ? readPosterOverview(userId, request, timeZone, now)
+      : undefined,
   ]);
   return {
     ...ideas,
@@ -34,6 +39,7 @@ export async function readStudioOverview(
     ...(storage
       ? { storage: storage.storage, storageNames: storage.names }
       : {}),
+    ...(poster ? { poster } : {}),
     today: {
       date: localDay(now, timeZone),
       weekday: weekdayOf(now, timeZone),
@@ -64,5 +70,16 @@ export function namesFrom(overview: StudioOverview): StudioNames {
       (overview.brand?.logos ?? []).map((logo) => [logo.id, logo.name]),
     ),
     ...overview.storageNames,
+    // Stored videos are named by media key, Poster's by library item id.
+    videos: {
+      ...overview.storageNames?.videos,
+      ...Object.fromEntries(
+        overview.poster?.videos.map((video) => [video.id, video.title]) ?? [],
+      ),
+    },
+    schedules: Object.fromEntries(
+      overview.poster?.schedules.map((row) => [row.id, scheduleLabel(row)]) ??
+        [],
+    ),
   };
 }
