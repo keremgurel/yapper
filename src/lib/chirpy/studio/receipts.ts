@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { and, desc, eq, gt, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { chirpyPlans } from "@/lib/db/schema";
+import type { StudioOpen } from "./poster/prefill";
 import type { StudioEffect, StudioReceiptStatus } from "./wire";
 
 /**
@@ -25,6 +26,8 @@ export interface StudioInvocation {
   summary?: string;
   effects?: StudioEffect[];
   partial?: boolean;
+  open?: StudioOpen;
+  reply?: string;
 }
 
 /** A pending action can be confirmed this long after it was proposed. */

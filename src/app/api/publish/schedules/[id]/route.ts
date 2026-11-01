@@ -1,19 +1,17 @@
-import { after } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import {
-  changePublishingSchedule,
-  ScheduleConflict,
-} from "@/lib/db/publishing-schedules";
 import {
   readBoundedJson,
   requestBodyErrorResponse,
   RequestBodyError,
 } from "@/lib/http/bounded-body";
+import { refusalResponse } from "@/lib/http/operation-result";
+import {
+  changeSchedule,
+  type ScheduleChange,
+} from "@/lib/publish/operations/change-schedule";
 import { scheduleDate, UUID_PATTERN } from "@/lib/publish/schedule-input";
 import { scheduleSummary } from "@/lib/publish/schedule-summary";
 import { schedulingEnabled } from "@/lib/publish/schedule-types";
-import { wakePublishClock } from "@/lib/publish/schedule-wake";
-import { syncPlanDates } from "@/lib/publish/schedule-plan-date";
 
 export const runtime = "nodejs";
 
@@ -36,7 +34,7 @@ export async function PATCH(
       !["cancel", "reschedule", "retry"].includes(String(body.action))
     )
       throw new RequestBodyError("invalid_body");
-    const action = body.action as "cancel" | "reschedule" | "retry";
+    const action = body.action as ScheduleChange;
     if (action !== "cancel" && !schedulingEnabled())
       return Response.json(
         { error: "scheduling_unavailable" },
@@ -44,18 +42,12 @@ export async function PATCH(
       );
     const date =
       action === "cancel" ? undefined : scheduleDate(body.scheduledFor);
-    const row = await changePublishingSchedule(userId, id, action, date);
-    if (!row) return Response.json({ error: "not_found" }, { status: 404 });
-    if (date) {
-      await syncPlanDates(userId, [row.contentItemId], date);
-      after(() => wakePublishClock(date));
-    }
-    return Response.json({ schedule: scheduleSummary(row) });
+    const result = await changeSchedule(userId, id, action, date);
+    if (!result.ok) return refusalResponse(result);
+    return Response.json({ schedule: scheduleSummary(result.value) });
   } catch (error) {
     const badInput = requestBodyErrorResponse(error);
     if (badInput) return badInput;
-    if (error instanceof ScheduleConflict)
-      return Response.json({ error: error.message }, { status: 409 });
     throw error;
   }
 }

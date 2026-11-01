@@ -15,6 +15,15 @@ vi.mock("./actions", () => ({
   studioExecutor: (id: string) => ({
     run: (input: unknown) => run(id, input),
     describe: () => "Delete “Gym myths”",
+    ...(id === "studio.calendar.cancel"
+      ? {
+          confirm: {
+            label: "Cancel it",
+            note: "It won’t go out.",
+            cancel: "Keep it",
+          },
+        }
+      : {}),
   }),
 }));
 vi.mock("./receipts", async (original) => ({
@@ -156,7 +165,7 @@ describe("replies", () => {
     const reply = turnReply(
       EXECUTION,
       { message: "Made it and put it on Friday.", actions: [] as never[] },
-      { receipts: [], pending: [], effects: [], partial: false },
+      { receipts: [], pending: [], effects: [], partial: false, replies: [] },
     );
     expect(reply).toMatchObject({ tone: "answer", notes: [] });
   });
@@ -205,6 +214,63 @@ describe("replies", () => {
       confirmLabel: "Confirm",
       cancelLabel: "Cancel",
       typedHint: "Reply yes to go ahead, or no to leave it as it is.",
+    });
+  });
+
+  it("words a schedule change's question with its own buttons", () => {
+    expect(
+      confirmationFor(EXECUTION, [
+        {
+          invocationID: "a",
+          action: "studio.calendar.cancel",
+          label: "Cancel “Gym myths” on TikTok",
+        },
+      ]),
+    ).toEqual({
+      executionID: EXECUTION,
+      question: "Cancel “Gym myths” on TikTok? It won’t go out.",
+      confirmLabel: "Cancel it",
+      cancelLabel: "Keep it",
+      typedHint: "Reply yes to cancel it, or no to keep it.",
+    });
+  });
+
+  it("carries the tab a finished action opens into the reply", async () => {
+    vi.mocked(claimInvocation).mockReset().mockResolvedValue(null);
+    vi.mocked(finishInvocation).mockReset().mockResolvedValue();
+    const open = {
+      tab: "poster" as const,
+      params: {
+        videoID: IDEA,
+        title: "Gym myths",
+        platforms: ["tiktok" as const],
+      },
+    };
+    run.mockReset().mockResolvedValue({
+      summary: "Set up “Gym myths” in Poster for TikTok.",
+      effects: [],
+      open,
+    });
+    const plan = {
+      message: "It's ready in Poster.",
+      actions: [
+        {
+          action: "studio.poster.prepare" as const,
+          arguments: { videoID: IDEA, platforms: ["tiktok"] },
+        },
+      ],
+    };
+    const execution = await executeStudioPlan(
+      context,
+      "project",
+      EXECUTION,
+      plan,
+      names,
+    );
+    expect(execution.open).toEqual(open);
+    expect(turnReply(EXECUTION, plan, execution)).toMatchObject({
+      tone: "done",
+      open,
     });
   });
 

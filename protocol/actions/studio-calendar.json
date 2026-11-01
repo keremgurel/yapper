@@ -1,0 +1,68 @@
+{
+  "description": "The calendar's publishing schedule: posts the creator already scheduled from Poster. Chirpy can move or cancel them after the creator confirms; it never schedules a new post.",
+  "runtime": "server",
+  "actions": [
+    {
+      "id": "studio.calendar.reschedule",
+      "input": "ScheduleMoveInput",
+      "description": "Move scheduled posts to another day or time; without time each keeps its own. Asks first.",
+      "effect": "external",
+      "confirm": true
+    },
+    {
+      "id": "studio.calendar.cancel",
+      "input": "ScheduleCancelInput",
+      "description": "Cancel scheduled posts so they never go out. The video and idea stay. Asks first.",
+      "effect": "external",
+      "confirm": true
+    }
+  ],
+  "$defs": {
+    "ScheduleMoveInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scheduleIDs", "date"],
+      "properties": {
+        "scheduleIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "date": {
+          "type": "string",
+          "description": "YYYY-MM-DD local.",
+          "minLength": 10,
+          "maxLength": 10
+        },
+        "time": {
+          "type": "string",
+          "description": "HH:MM, 24-hour, local.",
+          "minLength": 5,
+          "maxLength": 5
+        }
+      }
+    },
+    "ScheduleCancelInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scheduleIDs"],
+      "properties": {
+        "scheduleIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    }
+  }
+}

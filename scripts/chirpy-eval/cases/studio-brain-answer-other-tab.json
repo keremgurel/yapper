@@ -1,0 +1,27 @@
+{
+  "id": "studio-brain-answer-other-tab",
+  "from": "new: a Brain question asked on the Ideas tab, once the overview is read for it",
+  "planner": "studio",
+  "tags": ["studio", "brain", "answer"],
+  "base": "studio-brain",
+  "surface": "/studio/ideas",
+  "messages": [
+    {
+      "role": "user",
+      "content": "what am I not supposed to say in my videos?"
+    }
+  ],
+  "expect": {
+    "actions": [],
+    "message": [
+      {
+        "matches": "body.?sham",
+        "flags": "i"
+      },
+      {
+        "matches": "supplement",
+        "flags": "i"
+      }
+    ]
+  }
+}

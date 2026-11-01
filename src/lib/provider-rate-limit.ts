@@ -20,7 +20,6 @@ export type ProviderSpendEndpoint =
   | "generate-idea"
   | "generate-script"
   | "generate-canvas"
-  | "brain-ask"
   | "chirpy-plan"
   | "brain-spin"
   | "brain-ingest"
@@ -68,7 +67,6 @@ const ENDPOINT_POLICIES: Record<
   // while shaping a piece, so it gets more room than a full script.
   "generate-canvas": { capacity: 6, refillPerSecond: 40 / HOUR },
   "chirpy-plan": { capacity: 6, refillPerSecond: 60 / HOUR },
-  "brain-ask": { capacity: 3, refillPerSecond: 12 / HOUR },
   "brain-spin": { capacity: 3, refillPerSecond: 12 / HOUR },
   "brain-ingest": { capacity: 4, refillPerSecond: 20 / HOUR },
   // Routing is infrastructure, not a feature: it rides along with a generation

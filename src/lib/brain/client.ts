@@ -1,4 +1,3 @@
-import type { AskMessage, AskReply, BlockSuggestion } from "@/lib/brain/ask";
 import type { SpunIdea } from "@/lib/brain/spin";
 import type { BrainUsed } from "@/lib/brain/context/types";
 import type {
@@ -117,14 +116,4 @@ export async function spin(
   return { idea: data.idea, used: data.used ?? null };
 }
 
-export async function ask(messages: AskMessage[]): Promise<AskReply> {
-  return json<AskReply>(
-    await fetch("/api/brain/ask", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages }),
-    }),
-  );
-}
-
-export type { AskMessage, AskReply, BlockSuggestion, BrainUsed, SpunIdea };
+export type { BrainUsed, SpunIdea };

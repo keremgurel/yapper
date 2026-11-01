@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SCHEDULES_CHANGED } from "@/lib/chirpy/studio/effects-client";
 import { fetchSchedules } from "@/lib/publish/schedule-client";
 import type { ScheduleSummary } from "@/lib/publish/schedule-types";
 
@@ -38,8 +39,12 @@ export function usePublishingSchedules(enabled: boolean) {
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
     }, 30_000);
+    // Chirpy moved or canceled a post.
+    const changed = () => void refresh();
+    window.addEventListener(SCHEDULES_CHANGED, changed);
     return () => {
       window.clearInterval(timer);
+      window.removeEventListener(SCHEDULES_CHANGED, changed);
       counter.current++;
     };
   }, [enabled, refresh]);

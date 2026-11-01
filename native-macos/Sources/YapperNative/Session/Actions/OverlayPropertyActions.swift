@@ -38,6 +38,13 @@ extension AppActionRegistry {
                 if let duration = input.duration { copy.duration = duration }
                 if let start = input.sourceStart { copy.sourceStart = start }
                 if let track = input.track { copy.track = track == 0 ? nil : track }
+                // The leading edge moved and the end stayed put: a trim, so the
+                // keyframes stay where they were on the timeline, as they do
+                // when the edge is dragged.
+                if copy.timelineStart != overlay.timelineStart,
+                   abs(copy.timelineStart + copy.duration - (overlay.timelineStart + overlay.duration)) < 0.000_001 {
+                    copy = OverlayKeyTrack.rebased(copy, by: copy.timelineStart - overlay.timelineStart)
+                }
                 if input.timelineStart != nil || input.duration != nil || input.sourceStart != nil {
                     guard copy.timelineStart + copy.duration <= session.duration + 0.000001,
                           media.isImage || copy.sourceStart + copy.sourceDuration <= media.duration + 0.000001 else {
@@ -116,6 +123,22 @@ extension EditorSession {
 }
 
 extension OverlayFrameInput {
+    /// The box and angle of `overlay`, onto `ids`: a drag on the canvas, the
+    /// inspector, or Apply to all. With `time`, a key on one keyed overlay.
+    init(ids: [UUID], frameOf overlay: ProjectOverlay, time: Double?) {
+        self.init(overlayIDs: ids, all: nil, fit: nil,
+                  x: min(2, max(-2, overlay.x)), y: min(2, max(-2, overlay.y)),
+                  width: min(4, max(0.01, overlay.width)), height: min(4, max(0.01, overlay.height)),
+                  rotation: time == nil ? min(180, max(-180, overlay.resolvedRotation)) : nil,
+                  time: time.map { min(86_400, max(0, $0)) })
+    }
+
+    /// Only the angle, which leaves a keyed overlay's move alone.
+    init(ids: [UUID], rotation: Double) {
+        self.init(overlayIDs: ids, all: nil, fit: nil, x: nil, y: nil, width: nil, height: nil,
+                  rotation: min(180, max(-180, rotation)), time: nil)
+    }
+
     /// Whole-span framing changes placement only. Crop keys and their easing
     /// remain byte-for-byte intact, including keys beyond trimmed edges.
     func applying(to overlay: ProjectOverlay, mediaAspect: Double, frameAspect: Double) -> ProjectOverlay {
@@ -140,6 +163,24 @@ extension OverlayFrameInput {
         }
         if let rotation { updated.rotation = rotation == 0 ? nil : rotation }
         return updated
+    }
+}
+
+extension OverlayPropertiesInput {
+    /// What a timeline drag or the lane menu changed on an overlay, or nil
+    /// when it changed none of these.
+    init?(timingOf updated: ProjectOverlay, from existing: ProjectOverlay) {
+        func changed(_ value: Double, _ old: Double, _ range: ClosedRange<Double>) -> Double? {
+            value == old ? nil : min(range.upperBound, max(range.lowerBound, value))
+        }
+        let hidden = updated.isVisible == existing.isVisible ? nil : !updated.isVisible
+        let track = updated.lane == existing.lane ? nil : min(5_000, max(0, updated.lane))
+        let sourceStart = changed(updated.sourceStart, existing.sourceStart, 0 ... 86_400)
+        let timelineStart = changed(updated.timelineStart, existing.timelineStart, 0 ... 86_400)
+        let duration = changed(updated.duration, existing.duration, 0.1 ... 86_400)
+        guard hidden != nil || track != nil || sourceStart != nil || timelineStart != nil || duration != nil else { return nil }
+        self.init(overlayIDs: [existing.id], all: nil, hidden: hidden, behindSpeaker: nil, sourceStart: sourceStart,
+                  timelineStart: timelineStart, duration: duration, track: track)
     }
 }
 

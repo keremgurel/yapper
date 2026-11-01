@@ -1,10 +1,11 @@
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import { parseBrainBlockInput } from "@/lib/brain/input";
-import { invalidateBrainContext } from "@/lib/brain/context/server";
-import { deleteBrainBlock, updateBrainBlock } from "@/lib/db/project-brain";
-import { getActiveProject } from "@/lib/db/projects";
-import { ensureUser } from "@/lib/db/users";
+import {
+  deleteKnowledge,
+  updateKnowledge,
+} from "@/lib/brain/operations/knowledge";
+import { refusalResponse } from "@/lib/http/operation-result";
 
 export const runtime = "nodejs";
 
@@ -23,12 +24,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return Response.json({ error: "no_fields" }, { status: 400 });
   }
 
-  await ensureUser(userId);
-  const project = await getActiveProject(userId);
-  const block = await updateBrainBlock(project.id, id, input);
-  if (!block) return Response.json({ error: "not_found" }, { status: 404 });
-  invalidateBrainContext(project.id);
-  return Response.json({ block });
+  const result = await updateKnowledge(userId, id, input);
+  if (!result.ok) return refusalResponse(result);
+  return Response.json({ block: result.value });
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
@@ -36,10 +34,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const { id } = await params;
 
-  await ensureUser(userId);
-  const project = await getActiveProject(userId);
-  const removed = await deleteBrainBlock(project.id, id);
-  if (!removed) return Response.json({ error: "not_found" }, { status: 404 });
-  invalidateBrainContext(project.id);
+  const result = await deleteKnowledge(userId, id);
+  if (!result.ok) return refusalResponse(result);
   return Response.json({ ok: true });
 }

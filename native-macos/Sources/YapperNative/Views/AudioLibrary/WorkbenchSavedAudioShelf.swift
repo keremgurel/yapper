@@ -55,7 +55,7 @@ struct WorkbenchSavedAudioShelf: View {
                             },
                             add: {
                                 preview.stop()
-                                Task { await session.addSavedAudio(item, from: store) }
+                                Task { await session.addSavedAudio(item) }
                             }
                         )
                     }

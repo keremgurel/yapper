@@ -1,0 +1,22 @@
+{
+  "id": "studio-brain-import-paste",
+  "from": "new: a pasted table is filed by reference, never copied into arguments",
+  "planner": "studio",
+  "tags": ["studio", "brain", "cost"],
+  "base": "studio-brain",
+  "messages": [
+    {
+      "role": "user",
+      "content": "file this in my brain:\nkeyword,volume,difficulty\nbeginner gym routine,12000,low\nhow to use a squat rack,8100,low\ngym anxiety tips,5400,medium\nprogressive overload explained,4400,medium\nhow many sets per muscle,3600,high"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.brain.knowledge.import"],
+    "args": [
+      {
+        "pointer": "/title",
+        "absent": true
+      }
+    ]
+  }
+}

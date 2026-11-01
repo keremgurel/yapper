@@ -6,7 +6,7 @@
   "base": "studio-ideas",
   "messages": [{ "role": "user", "content": "connect my TikTok account" }],
   "expect": {
-    "refusal": "unavailable|not (?:yet )?(?:available|supported|something)|can.t|cannot|don.t (?:yet )?have|isn.t|no (?:way|action)|connections? (?:tab|page)",
+    "refusal": "unavailable|not (?:yet )?(?:available|supported|something)|can.t|cannot|don.t (?:yet )?have|isn.t|aren.t|no (?:way|action)|connections? (?:tab|page)",
     "forbid": ["studio.ideas.capture"]
   }
 }

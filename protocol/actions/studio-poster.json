@@ -1,0 +1,123 @@
+{
+  "description": "Poster: getting a finished video ready to post. Chirpy fills Poster in and opens it; the creator's own Publish or Schedule button is always the step that posts. The server runs these inside a Chirpy turn through the same operations Poster's controls call.",
+  "runtime": "server",
+  "actions": [
+    {
+      "id": "studio.poster.prepare",
+      "input": "PosterPrepareInput",
+      "description": "Open Poster on a video, filled in. Posts nothing: the creator presses Publish or Schedule there.",
+      "effect": "navigation"
+    },
+    {
+      "id": "studio.poster.writeCaptions",
+      "input": "PosterCaptionsInput",
+      "description": "Write a caption per platform from the video and the creator's Brain, and open Poster with them. Costs caption credits.",
+      "effect": "paidGeneration"
+    },
+    {
+      "id": "studio.poster.removeUpload",
+      "input": "PosterRemoveUploadInput",
+      "description": "Remove videos uploaded straight to Poster (source upload) and their file. Asks first.",
+      "effect": "destructive",
+      "confirm": true
+    }
+  ],
+  "$defs": {
+    "PosterPlatform": {
+      "type": "string",
+      "enum": ["youtube", "tiktok", "instagram", "facebook"]
+    },
+    "PosterPrepareInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["videoID"],
+      "properties": {
+        "videoID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "platforms": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/PosterPlatform"
+          }
+        },
+        "title": {
+          "type": "string",
+          "description": "The creator's YouTube title.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "caption": {
+          "type": "string",
+          "description": "The creator's caption words, verbatim.",
+          "minLength": 1,
+          "maxLength": 2200
+        },
+        "thumbnailPrompt": {
+          "type": "string",
+          "description": "What the thumbnail should show.",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "date": {
+          "type": "string",
+          "description": "Suggested schedule day, YYYY-MM-DD local.",
+          "minLength": 10,
+          "maxLength": 10
+        },
+        "time": {
+          "type": "string",
+          "description": "HH:MM, 24-hour, local. Only with date.",
+          "minLength": 5,
+          "maxLength": 5
+        }
+      }
+    },
+    "PosterCaptionsInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["videoID"],
+      "properties": {
+        "videoID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "platforms": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/PosterPlatform"
+          }
+        },
+        "instructions": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      }
+    },
+    "PosterRemoveUploadInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["videoIDs"],
+      "properties": {
+        "videoIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    }
+  }
+}

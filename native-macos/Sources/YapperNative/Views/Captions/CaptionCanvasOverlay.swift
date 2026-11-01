@@ -29,7 +29,8 @@ struct CaptionCanvasOverlay: View {
                         canvasSize: proxy.size,
                         isSelected: session.isCaptionSelected(cue.id),
                         onGuidesChanged: { guides.show($0) },
-                        drag: session.canvasDrag
+                        drag: session.canvasDrag,
+                        typing: session.typingPreview
                     )
                     // One card's drag state must never carry over to the next
                     // card that scrolls under the playhead.
@@ -56,6 +57,8 @@ private struct CaptionCanvasCard: View {
     let onGuidesChanged: ([CanvasGuide]) -> Void
     /// Held on the session: see CanvasDragState.
     @ObservedObject var drag: CanvasDragState
+    /// What is being typed into this card's row, shown before it is saved.
+    @ObservedObject var typing: TypingPreviewState
     @State private var resizeOrigin: Double?
 
     private var style: TextStyle { cue.style }
@@ -88,7 +91,7 @@ private struct CaptionCanvasCard: View {
 
     var body: some View {
         AppearanceText(
-            text: cue.text,
+            text: typing.captionText[cue.id] ?? cue.text,
             appearance: style.appearance,
             fontSize: fontSize
         )

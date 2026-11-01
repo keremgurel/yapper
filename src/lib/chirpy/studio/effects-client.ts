@@ -7,8 +7,13 @@ import type { StudioEffect } from "./wire";
 /** The Automations tab reloads its rule on this event. */
 export const AUTOMATIONS_CHANGED = "studio:automations-changed";
 
+/** Tells a mounted calendar to read its scheduled posts again. */
+export const SCHEDULES_CHANGED = "studio:schedules-changed";
+
 /** The web caches each Studio effect covers. The idea list feeds Ideas, the
- * calendar and Poster's picker, so all three reload. */
+ * calendar and Poster's picker, so all three reload. A canvas edit reloads
+ * them too (its title and date show there); the canvas page itself reads
+ * the document fresh when it opens. */
 const RESOURCES: Record<StudioEffect, string[]> = {
   ideas: [
     STUDIO_RESOURCE_KEYS.ideas,
@@ -19,7 +24,16 @@ const RESOURCES: Record<StudioEffect, string[]> = {
   // The project carries the palette too, for generated graphics.
   brand: [STUDIO_RESOURCE_KEYS.brand, STUDIO_RESOURCE_KEYS.project],
   storage: [],
+  posterVideos: [STUDIO_RESOURCE_KEYS.posterContent],
+  // The calendar polls its schedules instead of caching them.
+  schedules: [],
   automations: [],
+  brain: [STUDIO_RESOURCE_KEYS.project, STUDIO_RESOURCE_KEYS.brain],
+  ideaCanvas: [
+    STUDIO_RESOURCE_KEYS.ideas,
+    STUDIO_RESOURCE_KEYS.content,
+    STUDIO_RESOURCE_KEYS.posterContent,
+  ],
 };
 
 /** Effects whose page the server renders, so the route itself reloads. */
@@ -28,6 +42,7 @@ const SERVER_RENDERED: readonly StudioEffect[] = ["storage"];
 /** Effects whose page keeps its own state and listens for this event. */
 const EVENTS: Partial<Record<StudioEffect, string>> = {
   automations: AUTOMATIONS_CHANGED,
+  schedules: SCHEDULES_CHANGED,
 };
 
 /** Reload whatever a Chirpy turn changed on the server, so an open page shows

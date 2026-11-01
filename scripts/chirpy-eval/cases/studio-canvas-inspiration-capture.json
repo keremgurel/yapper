@@ -1,0 +1,26 @@
+{
+  "id": "studio-canvas-inspiration-capture",
+  "from": "new: make an idea from the inspiration card open on the Inspiration tab",
+  "planner": "studio",
+  "tags": ["studio", "inspiration"],
+  "base": "studio-ideas",
+  "surface": "/studio/inspiration",
+  "focus": {
+    "inspiration": {
+      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "title": "Why your squat stalls after 3 months",
+      "platform": "youtube",
+      "author": "Strength Lab",
+      "transcript": "Most lifters stall because they never change the rep range..."
+    }
+  },
+  "messages": [{ "role": "user", "content": "make an idea from this" }],
+  "expect": {
+    "actions": ["studio.ideas.capture"],
+    "args": [
+      { "pointer": "/fromInspiration", "equals": true },
+      { "pointer": "/note", "absent": true },
+      { "pointer": "/draft", "absent": true }
+    ]
+  }
+}

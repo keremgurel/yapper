@@ -1,17 +1,9 @@
 import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
-import {
-  preflightPaidActionOrResponse,
-  refundCreditReservation,
-  reservePaidActionOrResponse,
-} from "@/lib/billing/actions";
-import { proposeIngest } from "@/lib/brain/ingest";
-import { ensureUser } from "@/lib/db/users";
-import {
-  guardProviderIngress,
-  guardProviderSpend,
-} from "@/lib/provider-rate-limit";
+import { chargedIngestProposal } from "@/lib/brain/operations/ingest";
+import { refusalResponse } from "@/lib/http/operation-result";
+import { guardProviderIngress } from "@/lib/provider-rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -46,27 +38,14 @@ async function trackedPOST(req: NextRequest): Promise<Response> {
     return Response.json({ error: "no_input" }, { status: 400 });
   }
 
-  await ensureUser(userId);
-  if (!process.env.SURPLUS_API_KEY) {
-    return Response.json({ error: "no_provider" }, { status: 501 });
-  }
-  const billing = await preflightPaidActionOrResponse(userId, "ingest_context");
-  if (billing) return billing;
-
-  const spendLimited = await guardProviderSpend(req, userId, "brain-ingest");
-  if (spendLimited) return spendLimited;
-  const access = await reservePaidActionOrResponse(userId, "ingest_context");
-  if (access.response) return access.response;
-  const { reservation } = access;
-
-  try {
-    const proposal = await proposeIngest({ shape, sample }, req.signal);
-    return Response.json({ proposal, balance: reservation.balance });
-  } catch (error) {
-    await refundCreditReservation(userId, reservation, "ingest_failed");
-    console.error("[brain/ingest] failed", error);
-    return Response.json({ error: "ingest_failed" }, { status: 502 });
-  }
+  const result = await chargedIngestProposal(
+    req,
+    userId,
+    { shape, sample },
+    req.signal,
+  );
+  if (!result.ok) return refusalResponse(result);
+  return Response.json(result.value);
 }
 
 export const POST = withProductAnalytics("brain_ingested", trackedPOST);

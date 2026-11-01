@@ -54,34 +54,23 @@ extension EditorSession {
 
     /// Gives the overlays in reach the size and position of this one. Keyed
     /// overlays keep their move, for the same reason keyed clips do.
+    @discardableResult
     func applyOverlayFrame(
         of overlay: ProjectOverlay,
         scope: ApplyToAll.OverlayScope
-    ) {
+    ) -> Task<Void, Never> {
         let updated = ApplyToAll.frame(of: overlay, to: overlays, scope: scope)
         let changed = ApplyToAll.changeCount(from: overlays, to: updated)
         let keyed = overlays
             .filter { $0.id != overlay.id && scope.covers($0, from: overlay) }
             .count { OverlayKeyTrack.isKeyed($0) }
-        guard changed > 0 else { return }
-
-        scheduleCompositionCommitResolvingStatus { [self] in
-            updateProject { project in
-                project.overlays = ApplyToAll.frame(
-                    of: overlay,
-                    to: project.overlays ?? [],
-                    scope: scope
-                )
-                project.updatedAt = Date()
-            }
-            return Self.status(
-                "Size and position",
-                changed: changed,
-                noun: "overlay",
-                where: scope == .lane ? " on lane \(overlay.lane + 1)" : "",
-                skipped: keyed,
-                because: "keyframed"
-            )
+        guard changed > 0 else { return Task {} }
+        let targets = overlays.filter { $0.id != overlay.id && scope.covers($0, from: overlay) && !OverlayKeyTrack.isKeyed($0) }
+        let summary = Self.status("Size and position", changed: changed, noun: "overlay",
+                                  where: scope == .lane ? " on lane \(overlay.lane + 1)" : "", skipped: keyed, because: "keyframed")
+        return Task {
+            let result = await performAppAction(OverlayFrameInput(ids: targets.map(\.id), frameOf: overlay, time: nil))
+            if result.status == .applied { setStatus(summary) }
         }
     }
 

@@ -6,7 +6,7 @@
       "id": "editor.captions.setVisible",
       "symbol": "captionVisibility",
       "input": "CaptionVisibilityInput",
-      "description": "Show or hide existing captions, preserving their text and styling. If showing captions for the first time, generate them from speech using the caption workflow.",
+      "description": "Show or hide existing captions, preserving their text and styling. If showing captions for the first time, generate them from speech using the caption workflow. regenerate=true (with visible=true) rebuilds every card from the current transcript and cut, transcribing first if needed, and discards hand edits to caption text.",
       "effect": "reversibleEdit",
       "requiresRebuild": false
     },
@@ -98,6 +98,9 @@
       "required": ["visible"],
       "properties": {
         "visible": {
+          "type": "boolean"
+        },
+        "regenerate": {
           "type": "boolean"
         }
       }

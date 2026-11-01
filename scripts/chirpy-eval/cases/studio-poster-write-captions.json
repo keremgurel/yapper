@@ -1,0 +1,24 @@
+{
+  "id": "studio-poster-write-captions",
+  "from": "new: asking Chirpy to write captions uses the paid caption action and opens Poster",
+  "planner": "studio",
+  "tags": ["studio", "poster"],
+  "base": "studio-poster",
+  "messages": [
+    {
+      "role": "user",
+      "content": "write captions for the protein myths video"
+    }
+  ],
+  "expect": {
+    "includes": ["studio.poster.writeCaptions"],
+    "forbid": ["studio.calendar.reschedule", "studio.calendar.cancel"],
+    "args": [
+      {
+        "action": "studio.poster.writeCaptions",
+        "pointer": "/videoID",
+        "equals": "6f1d1f5e-2b7a-4c39-9b8e-0a1c2d3e4f03"
+      }
+    ]
+  }
+}

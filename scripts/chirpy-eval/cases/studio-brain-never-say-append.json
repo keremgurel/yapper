@@ -1,0 +1,31 @@
+{
+  "id": "studio-brain-never-say-append",
+  "from": "new: adding to an Essentials field appends instead of replacing it",
+  "planner": "studio",
+  "tags": ["studio", "brain", "safety"],
+  "base": "studio-brain",
+  "messages": [
+    {
+      "role": "user",
+      "content": "add no swearing to my never say list"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.brain.essentials.update"],
+    "args": [
+      {
+        "pointer": "",
+        "keys": ["doNots", "append"]
+      },
+      {
+        "pointer": "/doNots",
+        "matches": "swear",
+        "flags": "i"
+      },
+      {
+        "pointer": "/append",
+        "equals": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "id": "studio-poster-schedule-later",
+  "from": "new: scheduling a video that has no post yet prepares Poster with the time; the creator presses Schedule",
+  "planner": "studio",
+  "tags": ["studio", "poster", "dates"],
+  "base": "studio-poster",
+  "surface": "/studio/calendar",
+  "messages": [
+    {
+      "role": "user",
+      "content": "schedule the desk tour on Instagram for Friday at 6pm"
+    }
+  ],
+  "expect": {
+    "actions": ["studio.poster.prepare"],
+    "args": [
+      {
+        "pointer": "/videoID",
+        "equals": "7b2e9c41-5d3a-4f6b-9e8c-1a2b3c4d5e01"
+      },
+      {
+        "pointer": "/platforms",
+        "equals": ["instagram"]
+      },
+      {
+        "pointer": "/date",
+        "equals": "2026-10-30"
+      },
+      {
+        "pointer": "/time",
+        "equals": "18:00"
+      }
+    ],
+    "message": [
+      {
+        "matches": "^(?![\\s\\S]*\\b(?:posted|published|is live|went out|scheduled it)\\b)",
+        "flags": "i",
+        "note": "never claims it posted"
+      }
+    ]
+  }
+}

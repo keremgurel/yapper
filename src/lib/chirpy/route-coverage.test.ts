@@ -79,8 +79,12 @@ describe("Chirpy route coverage", () => {
 
   it("maps every Studio action to the route a control uses", () => {
     const mapped = new Set(Object.values(ROUTE_ACTIONS).flat());
+    // A navigation action only opens a tab, which no route does.
     const studio = contract["x-actions"]
-      .filter((action) => action.runtime === "server")
+      .filter(
+        (action) =>
+          action.runtime === "server" && action.effect !== "navigation",
+      )
       .map((action) => action.id)
       .filter((id) => !mapped.has(id));
     expect(studio).toEqual([]);

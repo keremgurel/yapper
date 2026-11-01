@@ -1,5 +1,3 @@
-import type { BlockSuggestion } from "@/lib/brain/client";
-
 export type ChirpyAuthor = "you" | "chirpy";
 
 /** A question Chirpy asks before a change it cannot undo or one that keeps
@@ -20,7 +18,6 @@ export interface ChirpyMessage {
   author: ChirpyAuthor;
   text: string;
   notes?: string[];
-  suggestions?: BlockSuggestion[];
   tone?: "done" | "trouble";
   confirm?: ChirpyConfirmation;
 }

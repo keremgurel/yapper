@@ -17,8 +17,9 @@ import { parseStudioTurnInput } from "@/lib/chirpy/studio/wire";
 import { sceneModelFailureReason } from "@/lib/studio/scene/scene-model-call";
 
 export const runtime = "nodejs";
-// Planning has a 40 s deadline; a new idea's first draft runs after it.
-export const maxDuration = 180;
+// Planning has a 40 s deadline; a new idea's first draft, a Brain setup or
+// listening to a few videos runs after it.
+export const maxDuration = 300;
 
 /** A Chirpy turn on a Studio tab: plan with the Studio catalog, run the
  * server actions, and answer with receipts and what to reload. */

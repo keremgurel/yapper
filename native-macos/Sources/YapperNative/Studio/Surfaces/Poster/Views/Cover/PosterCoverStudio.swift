@@ -11,6 +11,7 @@ struct PosterCoverStudio: View {
     @Binding var framePending: Bool
     @StateObject private var picker = PosterFramePicker()
     @StateObject private var remix = PosterRemixModel()
+    @ObservedObject private var handoff = PosterHandoff.shared
     @State private var original: CGImage?
 
     private var draft: PosterCoverDraft { drafts.cover(video) }
@@ -53,6 +54,9 @@ struct PosterCoverStudio: View {
             PosterDisclosure(title: "Text on the thumbnail", meta: draft.hasHeadline ? "On" : "Off") {
                 PosterTextOverlayPanel(draft: draft) { update($0) }
             }
+        }
+        .task(id: "\(video.id):\(handoff.revision)") {
+            if let prompt = handoff.takeThumbnailPrompt(for: video.id) { remix.customPrompt = prompt }
         }
         .task(id: video.media) {
             let untouched = !drafts.hasCover(video)

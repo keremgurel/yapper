@@ -8,6 +8,8 @@ struct StudioChirpyReply: Sendable {
     /// Studio data the turn changed on the server, for the native stores
     /// that show it to reload. See `StudioChirpyEffects`.
     var effects: [String] = []
+    /// A tab to open with state filled in, such as Poster.
+    var open: StudioChirpyOpen?
 }
 
 enum StudioChirpyBridgeError: LocalizedError {
@@ -240,9 +242,15 @@ final class StudioWebCommands: ObservableObject {
     ) async throws -> StudioChirpyReply {
         guard let webView else { throw StudioChirpyBridgeError.webViewUnavailable }
         defer { NotificationCenter.default.post(name: .studioAccountBalanceChanged, object: nil) }
+        // The video open in Poster is what "post this" means there.
+        let focus = surface?.hasPrefix("/studio/poster") == true ? PosterBench.shared.active?.contentItemID : nil
         let context: [String: Any] = [
             "surface": surface ?? NSNull(),
             "history": history.map { ["author": $0.author.rawValue, "text": $0.text] },
+            "focus": focus ?? NSNull(),
+            // Reply fields this build acts on; without "open" the server
+            // refuses what only an opened Poster can show.
+            "capabilities": ["open"],
         ]
         let result = try await webView.callAsyncJavaScript(
             """
@@ -265,7 +273,8 @@ final class StudioWebCommands: ObservableObject {
             text: text,
             notes: payload["notes"] as? [String] ?? [],
             isTrouble: payload["tone"] as? String == "trouble",
-            effects: payload["effects"] as? [String] ?? []
+            effects: payload["effects"] as? [String] ?? [],
+            open: StudioChirpyOpen(payload: payload["open"])
         )
     }
 }

@@ -4,7 +4,7 @@ import { listBrainBlocks, listBrainChunks } from "@/lib/db/project-brain";
 import { listPillars } from "@/lib/db/project-pillars";
 import { listProjectSkillsWithDefaults } from "@/lib/db/project-skills";
 import { latestVoiceExcerpt } from "@/lib/db/voice-samples";
-import { getActiveProject } from "@/lib/db/projects";
+import { getActiveProject, type ProjectRow } from "@/lib/db/projects";
 import { guardRouterSpend } from "@/lib/provider-rate-limit";
 import { compileBrain, type CompiledBrain } from "./compile";
 import { clearSelectionCache } from "./select";
@@ -127,6 +127,21 @@ async function loadSnapshot(
 
   writeCache(projectId, { version, snapshot });
   return snapshot;
+}
+
+/**
+ * The creator's project and their brain's rows, from the same cache the
+ * prompts read, for a caller that renders the brain itself (Chirpy's Studio
+ * overview) rather than compiling it into a prompt section.
+ */
+export async function readBrainSnapshot(
+  userId: string,
+): Promise<{ project: ProjectRow; snapshot: BrainSnapshot }> {
+  const project = await getActiveProject(userId);
+  return {
+    project,
+    snapshot: await loadSnapshot(project.id, project.contextVersion),
+  };
 }
 
 export interface BrainContextOptions {

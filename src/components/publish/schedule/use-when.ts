@@ -5,13 +5,15 @@ import { localScheduleInput } from "@/lib/publish/schedule-client";
 import { quickTimes } from "./quick-times";
 import type { WhenMode } from "./when-picker";
 
-/** A `?scheduleAt=` link (from a Calendar day) opens straight on Schedule
- * with that time; otherwise Post now, with tomorrow morning ready. */
-function initial(): { mode: WhenMode; value: string } {
+/** A `?scheduleAt=` link (from a Calendar day) or a time Chirpy suggested
+ * opens straight on Schedule with that time; otherwise Post now, with
+ * tomorrow morning ready. */
+function initial(suggested?: string): { mode: WhenMode; value: string } {
   const requested =
-    typeof window === "undefined"
+    suggested ??
+    (typeof window === "undefined"
       ? null
-      : new URLSearchParams(window.location.search).get("scheduleAt");
+      : new URLSearchParams(window.location.search).get("scheduleAt"));
   const date = requested ? new Date(requested) : null;
   if (date && Number.isFinite(date.getTime()) && date.getTime() > Date.now())
     return { mode: "later", value: localScheduleInput(date) };
@@ -22,8 +24,8 @@ function initial(): { mode: WhenMode; value: string } {
 }
 
 /** Now or later, and the local wall-clock time chosen for later. */
-export function useWhen() {
-  const [state, setState] = useState(initial);
+export function useWhen(suggested?: string) {
+  const [state, setState] = useState(() => initial(suggested));
   return {
     mode: state.mode,
     value: state.value,

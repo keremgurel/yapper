@@ -1,0 +1,26 @@
+{
+  "id": "studio-brain-answer-audience",
+  "from": "new: a Brain question is answered from the overview with no actions",
+  "planner": "studio",
+  "tags": ["studio", "brain", "answer"],
+  "base": "studio-brain",
+  "messages": [
+    {
+      "role": "user",
+      "content": "who am I making videos for, and how am I supposed to sound?"
+    }
+  ],
+  "expect": {
+    "actions": [],
+    "message": [
+      {
+        "matches": "gym|beginner|25",
+        "flags": "i"
+      },
+      {
+        "matches": "calm|direct|dry",
+        "flags": "i"
+      }
+    ]
+  }
+}

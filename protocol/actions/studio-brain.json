@@ -1,0 +1,370 @@
+{
+  "description": "The Brain tab: Essentials, pillars, Knowledge, Skills and the voice the Brain learns from the creator's videos. The server runs these inside a Chirpy turn through the same operations the Brain controls call.",
+  "runtime": "server",
+  "actions": [
+    {
+      "id": "studio.brain.essentials.update",
+      "input": "BrainEssentialsInput",
+      "description": "Change Essentials. Each text replaces its field; append true adds it on a new line instead.",
+      "effect": "serverEdit"
+    },
+    {
+      "id": "studio.brain.pillars.save",
+      "input": "BrainPillarInput",
+      "description": "Add a pillar, or change the one pillarID names. description and examples replace what it had.",
+      "effect": "serverEdit"
+    },
+    {
+      "id": "studio.brain.knowledge.add",
+      "input": "BrainKnowledgeAddInput",
+      "description": "Add a Knowledge section in the creator's words. items makes it a list.",
+      "effect": "serverEdit"
+    },
+    {
+      "id": "studio.brain.knowledge.update",
+      "input": "BrainKnowledgeUpdateInput",
+      "description": "Change a Knowledge section. body and items replace, or with append true add at the end; find and replaceWith swap one passage; position moves it (1 is first).",
+      "effect": "serverEdit"
+    },
+    {
+      "id": "studio.brain.knowledge.import",
+      "input": "BrainImportInput",
+      "description": "File the table, list or document pasted in the creator's latest long message as one Knowledge section, parsed and named like Add > Paste. Costs the import credit.",
+      "effect": "paidGeneration"
+    },
+    {
+      "id": "studio.brain.skills.save",
+      "input": "BrainSkillInput",
+      "description": "Write a skill (name and instructions Yapper follows when writing), or change the one skillID names: enabled turns it on or off, position moves it (1 is first).",
+      "effect": "serverEdit"
+    },
+    {
+      "id": "studio.brain.delete",
+      "input": "BrainDeleteInput",
+      "description": "Delete pillars (their ideas stay, unfiled), Knowledge sections, skills, or videos from the voice set.",
+      "effect": "destructive",
+      "confirm": true
+    },
+    {
+      "id": "studio.brain.catalog.install",
+      "input": "BrainInstallInput",
+      "description": "Install a catalog entry by slug: a skill (again resets it to the catalog version) or a worksheet section.",
+      "effect": "serverEdit"
+    },
+    {
+      "id": "studio.brain.setup",
+      "input": "BrainSetupInput",
+      "description": "Set up the Brain from the document in the creator's latest long message: fills the Essentials it covers and adds its pillars and sections. Existing pillars stay. Costs the setup credits.",
+      "effect": "paidGeneration"
+    },
+    {
+      "id": "studio.brain.voice.listen",
+      "input": "BrainListenInput",
+      "description": "Add a connected channel's newest videos to the voice set. 1 credit per 3 minutes heard; YouTube is free.",
+      "effect": "paidGeneration"
+    },
+    {
+      "id": "studio.brain.voice.derive",
+      "input": "BrainDeriveInput",
+      "description": "Rewrite How I sound and How my scripts are built from the voice set; blank What I make and Who it's for are drafted too.",
+      "effect": "paidGeneration"
+    }
+  ],
+  "$defs": {
+    "BrainUsage": {
+      "type": "string",
+      "description": "core: always read. auto: when relevant. manual: when attached. private: never.",
+      "enum": ["core", "auto", "manual", "private"]
+    },
+    "BrainFormat": {
+      "type": "string",
+      "enum": ["short", "long", "article"]
+    },
+    "BrainEssentialsInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "whatIMake": {
+          "type": "string"
+        },
+        "audience": {
+          "type": "string"
+        },
+        "voice": {
+          "type": "string"
+        },
+        "scriptingPatterns": {
+          "type": "string"
+        },
+        "offers": {
+          "type": "string"
+        },
+        "doNots": {
+          "type": "string"
+        },
+        "defaultFormat": {
+          "$ref": "#/$defs/BrainFormat"
+        },
+        "append": {
+          "type": "boolean"
+        }
+      }
+    },
+    "BrainPillarInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "pillarID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string"
+        },
+        "examples": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "BrainKnowledgeAddInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "body": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string"
+          }
+        },
+        "digest": {
+          "type": "string",
+          "description": "One line: what it is and when it matters.",
+          "maxLength": 200
+        },
+        "usage": {
+          "$ref": "#/$defs/BrainUsage"
+        }
+      }
+    },
+    "BrainKnowledgeUpdateInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blockID"],
+      "properties": {
+        "blockID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "body": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string"
+          }
+        },
+        "append": {
+          "type": "boolean"
+        },
+        "find": {
+          "type": "string",
+          "minLength": 1
+        },
+        "replaceWith": {
+          "type": "string"
+        },
+        "digest": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "usage": {
+          "$ref": "#/$defs/BrainUsage"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "BrainImportInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Only a name the creator gave.",
+          "maxLength": 80
+        }
+      }
+    },
+    "BrainSkillInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "skillID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "instructions": {
+          "type": "string",
+          "minLength": 1
+        },
+        "whenToUse": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "surfaces": {
+          "type": "array",
+          "description": "Absent or empty: all.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "ideate",
+              "hooks",
+              "script",
+              "caption",
+              "expand",
+              "chat",
+              "capture"
+            ]
+          }
+        },
+        "formats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BrainFormat"
+          }
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "BrainInstallInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug"],
+      "properties": {
+        "slug": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        }
+      }
+    },
+    "BrainSetupInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {}
+    },
+    "BrainListenInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform"],
+      "properties": {
+        "platform": {
+          "type": "string",
+          "enum": ["youtube", "tiktok", "instagram"]
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        }
+      }
+    },
+    "BrainDeriveInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {}
+    },
+    "BrainDeleteInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "pillarIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 24,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "blockIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "skillIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "sampleIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    }
+  }
+}

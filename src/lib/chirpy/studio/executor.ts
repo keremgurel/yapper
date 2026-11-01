@@ -1,5 +1,6 @@
 import type { OperationRefusal } from "@/lib/http/operation-result";
-import type { StudioEffect } from "./wire";
+import type { StudioOpen } from "./poster/prefill";
+import type { StudioEffect, StudioTurnInput } from "./wire";
 
 /** What an executor gets besides its validated input. */
 export interface StudioActionContext {
@@ -8,6 +9,13 @@ export interface StudioActionContext {
   request: Request;
   signal?: AbortSignal;
   timeZone: string;
+  /** False when the client cannot open a tab filled in (an older Mac build). */
+  canOpen?: boolean;
+  /** The turn's conversation, so an action can read a paste from it instead
+   * of the model copying it into arguments. Absent on a confirmation. */
+  messages?: StudioTurnInput["messages"];
+  /** What was open when the turn was sent; absent when a confirmation runs. */
+  focus?: StudioTurnInput["focus"];
 }
 
 export interface ActionOutcome {
@@ -16,6 +24,11 @@ export interface ActionOutcome {
   effects: StudioEffect[];
   /** Part of the action could not be done, and the summary says which. */
   partial?: boolean;
+  /** A tab the client opens with state filled in, such as Poster. */
+  open?: StudioOpen;
+  /** Writing the creator should read as Chirpy's reply (a canvas answer, a
+   * brainstorm), in place of the sentence the planner wrote beforehand. */
+  reply?: string;
 }
 
 /** Names the planner saw, so a confirmation can say "Delete “Gym myths”"
@@ -29,12 +42,20 @@ export interface StudioNames {
   recordings?: Record<string, string>;
   /** Bytes, by video or recording id. */
   sizes?: Record<string, string>;
+  /** “Gym myths” on TikTok, for a scheduled post. */
+  schedules?: Record<string, string>;
+  /** Knowledge sections, skills and voice samples, by id. */
+  brain?: Record<string, string>;
 }
 
 export interface StudioActionDefinition<Input> {
   run: (input: Input, context: StudioActionContext) => Promise<ActionOutcome>;
   /** The confirmation question's subject, for actions that ask first. */
   describe?: (input: Input, names: StudioNames) => string;
+  /** Its own confirm button, the line after the question and the cancel
+   * button, over the defaults (Delete, “This can’t be undone.” and Keep it
+   * for deletions; Confirm and Cancel otherwise). */
+  confirm?: { label: string; note?: string; cancel?: string };
 }
 
 /** A refusal the creator should read, never a stack trace. */
@@ -45,6 +66,19 @@ export class StudioActionFailure extends Error {
   ) {
     super(code);
   }
+}
+
+/** An action whose result only exists once a tab opens with it refuses, before
+ * any charge, on a client that cannot open one. */
+export function requireOpen(
+  context: StudioActionContext,
+  instead: string,
+): void {
+  if (context.canOpen === false)
+    throw new StudioActionFailure(
+      "needs_update",
+      `This version of the Mac app can’t open Poster for me, so nothing changed. ${instead} Updating Yapper lets me fill it in.`,
+    );
 }
 
 /** Turn an operation's refusal into a sentence the creator can act on. */
@@ -68,6 +102,8 @@ export function failureFrom(
     too_many_views: "You already have 20 views. Delete one first.",
     bad_view: "That view needs a name.",
     rate_limited: "That’s a lot of AI work in a short time. Try again soon.",
+    generate_failed: `Writing on ${subject} failed. Nothing was charged.`,
+    brainstorm_failed: `Writing ${subject} failed, so the credit was refunded.`,
   };
   return new StudioActionFailure(
     refusal.error,
