@@ -66,17 +66,28 @@ metadata, and technical data.
 
 ## Authentication
 
-`/sign-in` and `/sign-up` use a shared branded shell with the marketing container,
-system typography, theme switch and semantic surfaces. A 1100px inner layout
-pairs a quiet workflow introduction with a 400px form on desktop. Below 900px,
-show the form alone; retain the shared outer gutters and allow natural scrolling.
-Five soft, solid workflow tiles echo the homepage's Brainstorm, Script, Record,
-Edit and Crosspost sequence. No decorative card surrounds the form.
+`/sign-in` and `/sign-up` use one compact 960px split panel with a shared
+outer width and responsive gutters for the wordmark, main and footer. The left
+half is a five-step carousel; the right half is the Clerk form with 40px padding.
+Below 900px, show the form alone in a 480px container. Use system typography,
+semantic form surfaces, a 28px form heading, 48px controls and 16px input text.
+Preserve the titanium primary action and visible keyboard focus.
+
+The carousel changes every six seconds with a short crossfade. Pause on hover,
+keyboard interaction, hidden tabs and offscreen; provide manual selectors and a
+play/pause button. Reduced motion disables automatic rotation. Each slide has a
+static Grainient background: blue for ideas, plum for scripts, teal for recording,
+peach for editing and violet for publishing. White copy sits over a contrast scrim.
+
+Reuse these five palettes behind the homepage tab demos, feature previews and
+content-library illustration. The backgrounds are pre-rendered WebP assets in
+`public/images/grainient`, with no runtime WebGL or background animation. Keep
+product interfaces on readable semantic surfaces and section copy on the page
+canvas. This user-requested grain and color treatment is an exception to the
+usual quiet-surface rule; do not extend it to application controls.
 
 Use Clerk's maintained components with the shadcn base theme and scoped appearance
-classes. Inputs and authentication buttons have 52px targets, 16px input text and
-visible keyboard focus. The primary action reuses the shared titanium variant.
-Clerk handles configured identity providers, verification, recovery and account
+classes. Clerk handles configured identity providers, verification, recovery and account
 switching. Auth pages are public with noindex metadata; Studio and its API keep
 their existing authentication gates. Preserve Clerk's return URL, with Studio
 home as the fallback. Native handoff pages retain their separate flow.

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FileText, Lightbulb, Clapperboard } from "lucide-react";
+import backdrops from "../grainient-background.module.css";
 import styles from "./project-stack.module.css";
 
 /** A compact project illustration; the main feature sections remain open. */
@@ -30,35 +31,40 @@ export default function ProjectStack() {
             </Link>
           </div>
         </div>
-        <div className={styles.stack} aria-hidden="true">
-          <div className={`${styles.card} ${styles.idea}`}>
-            <div className={styles.label}>
-              <Lightbulb size={17} /> The idea
+        <div
+          className={`${styles.stage} ${backdrops.background} ${backdrops.wide}`}
+          data-palette="script"
+        >
+          <div className={styles.stack} aria-hidden="true">
+            <div className={`${styles.card} ${styles.idea}`}>
+              <div className={styles.label}>
+                <Lightbulb size={17} /> The idea
+              </div>
+              <p>What changed when I stopped scripting every word?</p>
             </div>
-            <p>What changed when I stopped scripting every word?</p>
-          </div>
-          <div className={`${styles.card} ${styles.script}`}>
-            <div className={styles.label}>
-              <FileText size={17} /> The script
+            <div className={`${styles.card} ${styles.script}`}>
+              <div className={styles.label}>
+                <FileText size={17} /> The script
+              </div>
+              <p>Three talking points. Room to be yourself.</p>
             </div>
-            <p>Three talking points. Room to be yourself.</p>
-          </div>
-          <div className={`${styles.card} ${styles.video}`}>
-            <div className={styles.label}>
-              <Clapperboard size={17} /> The video
-            </div>
-            <div className={styles.frame}>
-              <span className={styles.play}>▶</span>
-              <p>
-                Less memorizing.
-                <br />
-                More me.
-              </p>
-              <span className={styles.duration}>00:45</span>
-            </div>
-            <div className={styles.footer}>
-              <span>Ready to share</span>
-              <span>Example project</span>
+            <div className={`${styles.card} ${styles.video}`}>
+              <div className={styles.label}>
+                <Clapperboard size={17} /> The video
+              </div>
+              <div className={styles.frame}>
+                <span className={styles.play}>▶</span>
+                <p>
+                  Less memorizing.
+                  <br />
+                  More me.
+                </p>
+                <span className={styles.duration}>00:45</span>
+              </div>
+              <div className={styles.footer}>
+                <span>Ready to share</span>
+                <span>Example project</span>
+              </div>
             </div>
           </div>
         </div>

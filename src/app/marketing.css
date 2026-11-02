@@ -932,14 +932,14 @@
   margin-top: 24px;
   gap: 24px;
 }
-/* The pastel field every product demo sits on, in both themes: Train and
-   Studio on the homepage and the Studio page's tabbed demo. One backdrop, so
-   moving between products or stages never changes what is behind the app. */
+/* Each workflow stage has its own static Grainient artwork. */
 .demo-field {
   --ink: #262331;
   --subtle: #65606f;
   padding: 44px 28px;
   border-radius: 24px;
+}
+.demo-field:not([data-palette]) {
   background:
     radial-gradient(ellipse at 95% 0%, #c4cedb 0%, transparent 62%),
     radial-gradient(ellipse at 0% 100%, #c1b7e4 0%, transparent 60%), #e1dced;
@@ -2041,7 +2041,7 @@
   margin: 0;
 }
 .demo-dictation > p[data-empty="true"] {
-  color: var(--sg-text-faint);
+  color: var(--sg-text-muted);
 }
 .demo-dictation-footer {
   display: flex;
@@ -3524,43 +3524,6 @@ button.publisher-remix-glass {
   position: relative;
   isolation: isolate;
 }
-.studio-showcase::before,
-.studio-showcase::after {
-  content: "";
-  position: absolute;
-  pointer-events: none;
-  z-index: -1;
-}
-.studio-showcase::before {
-  inset: 72px -6px 6px;
-  border-radius: 32px;
-  background: conic-gradient(
-    from 200deg at 50% 35%,
-    #9fc7dd,
-    #a9b5ff 30%,
-    #d9ace8 58%,
-    #a6d8cc 80%,
-    #9fc7dd
-  );
-  filter: blur(22px);
-  opacity: 0.24;
-}
-.studio-showcase::after {
-  left: 12%;
-  right: 12%;
-  top: 30px;
-  height: 150px;
-  border-radius: 50%;
-  background: linear-gradient(105deg, #98b9ed, #c8b0e3 48%, #addacb);
-  filter: blur(38px);
-  opacity: 0.34;
-}
-.dark .studio-showcase::before {
-  opacity: 0.25;
-}
-.dark .studio-showcase::after {
-  opacity: 0.26;
-}
 .studio-showcase-tabs {
   --studio-tab-fill: rgba(255, 255, 255, 0.64);
   position: relative;
@@ -3673,10 +3636,6 @@ button.publisher-remix-glass {
   }
   .studio-tab-indicator {
     border-radius: 15px;
-  }
-  .studio-showcase::before {
-    left: max(-4px, calc(50% - 209px));
-    right: max(-4px, calc(50% - 209px));
   }
 }
 @media (prefers-reduced-transparency: reduce) {
@@ -4020,6 +3979,14 @@ button.publisher-remix-glass {
 .feature-focused-preview {
   margin-top: 40px;
   width: 100%;
+  padding: 32px 24px;
+  border-radius: 24px;
+}
+@media (max-width: 700px) {
+  .feature-focused-preview {
+    padding: 20px 12px;
+    border-radius: 20px;
+  }
 }
 .feature-focused-preview .studio-showcase-screen {
   max-width: none;

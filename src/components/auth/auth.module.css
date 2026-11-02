@@ -1,66 +1,48 @@
 .page {
   min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  align-items: center;
+  padding: 24px;
   background: var(--sg-bg);
   color: var(--sg-text);
 }
-
+.container {
+  min-width: 0;
+  width: 100%;
+  max-width: 960px;
+  margin-inline: auto;
+}
 .header {
   display: flex;
-  min-height: 88px;
   align-items: center;
   justify-content: space-between;
+  padding-block: 0 20px;
 }
-
 .themeSwitch {
   width: 52px;
   height: 32px;
 }
-
-.main {
-  flex: 1;
-  display: grid;
-  align-items: center;
-  padding-block: 32px 48px;
-}
-
-/* Both columns sit on the page container's edges, the same ones the header
-   logo and the footer links use. */
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 380px);
-  align-items: center;
-  gap: clamp(48px, 6vw, 96px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   width: 100%;
+  border: 1px solid var(--sg-border);
+  border-radius: 24px;
+  overflow: hidden;
+  background: var(--sg-surface);
+  box-shadow: 0 20px 64px -32px rgb(0 0 0 / 0.24);
 }
-
-.story {
-  min-width: 0;
-}
-
-.description {
-  margin-bottom: 40px;
-  color: var(--sg-text-muted);
-  font-size: 16px;
-  line-height: 1.6;
-}
-
-.headline {
-  margin-bottom: 12px;
-  font-size: clamp(28px, 2.6vw, 36px);
-  font-weight: 600;
-  line-height: 1.1;
-  letter-spacing: -0.035em;
-}
-
 .form {
   min-width: 0;
   width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 40px;
 }
 
 .root,
 .cardBox {
+  min-width: 0;
   width: 100%;
   max-width: none;
 }
@@ -74,12 +56,12 @@
 
 .card {
   padding: 0;
-  gap: 28px;
+  gap: 24px;
 }
 
 .formHeader {
   text-align: left;
-  gap: 12px;
+  gap: 8px;
 }
 
 /* Clerk centers code entry and the account identity. Match that axis on
@@ -89,13 +71,16 @@
 }
 
 .identityText {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
 .title {
   color: var(--sg-text);
-  font-size: 32px;
+  font-size: 28px;
   line-height: 1.15;
   font-weight: 600;
   letter-spacing: -0.035em;
@@ -109,7 +94,7 @@
 
 .socialButton {
   position: relative;
-  min-height: 52px;
+  min-height: 48px;
   border: 1px solid var(--sg-border-strong);
   border-radius: 10px;
   background: var(--sg-surface);
@@ -145,7 +130,7 @@
 }
 
 .input {
-  min-height: 52px;
+  min-height: 48px;
   padding-inline: 16px;
   border: 1px solid var(--sg-border-strong);
   background: var(--sg-surface);
@@ -163,25 +148,29 @@
 
 .primary {
   width: 100%;
-  min-height: 52px;
+  min-height: 48px;
   text-transform: none;
 }
 
 .clerkFooter {
-  margin-top: 28px;
+  margin-top: 24px;
   padding: 0;
   background: transparent;
   border: 0;
 }
 
 .footerAction {
-  justify-content: flex-start;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  text-align: center;
   padding: 0;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   background: transparent;
 }
 
 .textLink {
+  white-space: nowrap;
   color: var(--sg-text);
   font-weight: 600;
   text-decoration: underline;
@@ -226,30 +215,39 @@
   outline-offset: 4px;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 899px) {
+  .container {
+    min-width: 0;
+    max-width: 480px;
+  }
   .layout {
     display: block;
-    max-width: 400px;
-    margin-inline: auto;
   }
-  .story {
-    display: none;
-  }
-  .main {
-    padding-block: 48px 64px;
+  .form {
+    padding: 32px;
   }
 }
-
 @media (max-width: 479px) {
-  .header {
-    min-height: 80px;
+  .otpInputs {
+    gap: 6px;
   }
-  .main {
-    align-items: start;
-    padding-block: 48px;
+  .otpInput {
+    width: 28px;
+    min-width: 0;
+    height: 40px;
+    flex-shrink: 0;
+  }
+  .page {
+    padding: 24px 20px;
+  }
+  .form {
+    padding: 32px 20px;
+  }
+  .layout {
+    border-radius: 20px;
   }
   .title {
-    font-size: 30px;
+    font-size: 26px;
   }
   .footer {
     font-size: 12px;
@@ -257,5 +255,8 @@
   }
   .footer nav {
     gap: 16px;
+  }
+  .socialButton .lastUsed {
+    display: none;
   }
 }
