@@ -163,6 +163,7 @@ export function PublishingScene({
                 ) : (
                   <div
                     className="publisher-skeleton"
+                    role="img"
                     aria-label="Waiting for generated copy"
                   >
                     <i />

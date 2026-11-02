@@ -1,0 +1,143 @@
+.carousel {
+  position: relative;
+  min-width: 0;
+  min-height: 600px;
+  overflow: hidden;
+  isolation: isolate;
+  color: #fff;
+  background: #142b50;
+}
+.slides {
+  height: 100%;
+}
+.slide {
+  isolation: isolate;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 40px 32px 96px;
+  background-position: center;
+  background-size: cover;
+  opacity: 0;
+  visibility: hidden;
+}
+.slide[data-active="true"] {
+  opacity: 1;
+  visibility: visible;
+}
+/* The scrim gives white copy a stable contrast over every static palette. */
+.slide::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.4);
+  z-index: -1;
+}
+.intro p {
+  font-size: 32px;
+  line-height: 1.12;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+}
+.intro span {
+  display: block;
+  margin-top: 12px;
+  font-size: 14px;
+}
+.example {
+  --foreground: #23232a;
+  --muted-foreground: #62626c;
+  --muted: #f0f0f3;
+  padding: 24px;
+  border-radius: 16px;
+  color: var(--foreground);
+  background: #fff;
+  box-shadow: 0 16px 40px -16px rgb(0 0 0 / 0.3);
+}
+.exampleHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.caption h2 {
+  font-size: 20px;
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.caption p {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 32ch;
+}
+.controls {
+  position: absolute;
+  bottom: 24px;
+  inset-inline: 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.indicators {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+}
+.indicator {
+  min-width: 24px;
+  height: 44px;
+  flex: 1;
+  cursor: pointer;
+}
+.indicator span {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 0.4);
+}
+.indicator[aria-pressed="true"] span {
+  background: #fff;
+}
+.indicator:hover span {
+  background: rgb(255 255 255 / 0.8);
+}
+.indicator:active span {
+  height: 6px;
+}
+.playback {
+  color: #fff;
+  background: rgb(0 0 0 / 0.2);
+}
+.playback:hover {
+  color: #fff;
+  background: rgb(0 0 0 / 0.4);
+}
+.playback:active {
+  background: rgb(0 0 0 / 0.55);
+}
+.indicator:focus-visible,
+.playback:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .carousel[data-playing="true"] .slide {
+    isolation: isolate;
+    transition:
+      opacity 240ms ease,
+      visibility 240ms;
+  }
+}
+@media (max-width: 899px) {
+  .carousel {
+    display: none;
+  }
+}

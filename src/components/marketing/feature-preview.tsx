@@ -1,3 +1,4 @@
+import backdrops from "./grainient-background.module.css";
 import IdeaPreview from "./idea-preview";
 import WritingPreview from "./writing-preview";
 import TeleprompterPreview from "./teleprompter-preview";
@@ -18,11 +19,25 @@ const previews = {
   "automatic-captions": CaptionsPreview,
 };
 
+const palettes: Record<string, string> = {
+  "idea-capture": "ideas",
+  "ai-script-writer": "script",
+  "teleprompter-recorder": "record",
+  "transcript-video-editor": "edit",
+  "social-publishing": "publish",
+  "content-library": "script",
+  "content-calendar": "ideas",
+  "automatic-captions": "record",
+};
+
 export default function FeaturePreview({ slug }: { slug: string }) {
   const Preview = previews[slug as keyof typeof previews];
   if (!Preview) return null;
   return (
-    <div className="feature-focused-preview">
+    <div
+      className={`feature-focused-preview ${backdrops.background} ${backdrops.wide}`}
+      data-palette={palettes[slug]}
+    >
       <div className="studio-showcase-screen">
         <Preview />
       </div>

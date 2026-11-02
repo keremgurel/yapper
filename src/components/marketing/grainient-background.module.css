@@ -1,0 +1,37 @@
+/* Static React Bits Grainient renders: no canvas, shader, or animation at runtime. */
+.background {
+  background-color: #263451;
+  background-image: var(--grainient-image);
+  background-size: cover;
+  background-position: center;
+}
+.background[data-palette="ideas"] {
+  --grainient-image: url("/images/grainient/ideas.webp");
+}
+.background[data-palette="script"] {
+  --grainient-image: url("/images/grainient/script.webp");
+}
+.background[data-palette="record"] {
+  --grainient-image: url("/images/grainient/record.webp");
+}
+.background[data-palette="edit"] {
+  --grainient-image: url("/images/grainient/edit.webp");
+}
+.background[data-palette="publish"] {
+  --grainient-image: url("/images/grainient/publish.webp");
+}
+.wide[data-palette="ideas"] {
+  --grainient-image: url("/images/grainient/ideas-wide.webp");
+}
+.wide[data-palette="script"] {
+  --grainient-image: url("/images/grainient/script-wide.webp");
+}
+.wide[data-palette="record"] {
+  --grainient-image: url("/images/grainient/record-wide.webp");
+}
+.wide[data-palette="edit"] {
+  --grainient-image: url("/images/grainient/edit-wide.webp");
+}
+.wide[data-palette="publish"] {
+  --grainient-image: url("/images/grainient/publish-wide.webp");
+}
