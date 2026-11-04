@@ -68,12 +68,9 @@ struct ExportJobRow: View {
     @ViewBuilder
     private var progressBar: some View {
         if job.state == .preparing {
-            ProgressView().progressViewStyle(.linear).tint(Color.yapperOrange)
+            ProgressView().progressViewStyle(.linear).controlSize(.small)
         } else {
-            ProgressView(value: job.state.fraction)
-                .progressViewStyle(.linear)
-                .tint(Color.yapperOrange)
-                .animation(.linear(duration: 0.25), value: job.state.fraction)
+            ExportProgressBar(fraction: job.state.fraction)
         }
     }
 }
