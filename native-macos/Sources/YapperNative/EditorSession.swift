@@ -3125,6 +3125,14 @@ final class EditorSession: ObservableObject {
         rebuildPlayer: Bool,
         preserving error: Error
     ) async {
+        await restoreEditState(state, rebuildPlayer: rebuildPlayer)
+        show(error)
+    }
+
+    /// The same rollback without putting the reason up as the editor's error.
+    /// For a Chirpy plan that was refused: its reply already says why, and the
+    /// "needs attention" sheet on top of it said the same thing twice.
+    func restoreEditState(_ state: RebuiltProjectRollbackState, rebuildPlayer: Bool) async {
         let failedProject = project
         restoreEditStateWithoutRebuild(state)
         if rebuildPlayer {
@@ -3138,7 +3146,6 @@ final class EditorSession: ObservableObject {
             }
         }
         await reconcileDerivedMedia(from: failedProject)
-        show(error)
     }
 
     /// Cancellation is an expected user action, not an editor failure. Restore

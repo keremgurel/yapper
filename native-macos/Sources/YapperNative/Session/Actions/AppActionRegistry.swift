@@ -207,7 +207,13 @@ final class AppActionRegistry {
                 for mutation in mutations { mutation.afterCommit() }
                 replies = receipts(.applied, "Saved.", mutations: mutations)
             } catch {
-                await session.restoreEditState(rollback, rebuildPlayer: false, preserving: error)
+                // A refused plan is answered in the conversation. Only a save
+                // that went wrong is also the editor's error to show.
+                if error is AppActionError || error is CancellationError {
+                    await session.restoreEditState(rollback, rebuildPlayer: false)
+                } else {
+                    await session.restoreEditState(rollback, rebuildPlayer: false, preserving: error)
+                }
                 // A validation error is a rejection: nothing was mutated. Only
                 // a save that went wrong is a failure.
                 let status: AppActionStatus = error is CancellationError ? .canceled : error is AppActionError ? .rejected : .failed

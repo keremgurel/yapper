@@ -26,7 +26,7 @@ extension AppActionRegistry {
                 throw AppActionError("Include an overlay property to change.")
             }
             let targets = try session.actionOverlays(input.overlayIDs, all: input.all == true)
-            let updated = try targets.map { overlay in
+            var updated = try targets.map { overlay in
                 guard let media = session.media(for: overlay) else { throw AppActionError("The overlay source is missing.") }
                 if input.behindSpeaker == true && media.isScene {
                     throw AppActionError("Generated overlays currently sit in front of the video.")
@@ -48,10 +48,8 @@ extension AppActionRegistry {
             }
             if input.track != nil || input.timelineStart != nil || input.duration != nil {
                 let ids = Set(targets.map(\.id))
-                let final = session.overlays.filter { !ids.contains($0.id) } + updated
-                guard !updated.contains(where: { OverlayTracks.isOccupied($0.lane, by: ($0.id, $0.timelineStart, $0.duration), in: final) }) else {
-                    throw AppActionError("That overlay lane is occupied at the requested time.")
-                }
+                updated = try OverlayLaneFit.settle(updated, among: session.overlays.filter { !ids.contains($0.id) },
+                                                    keepingRequestedLane: input.track != nil)
             }
             return try session.mutateActionOverlays(updated, message: "Overlay properties saved")
         }
