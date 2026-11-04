@@ -64,6 +64,30 @@ enum TimelineCue {
         return try base() + (input.offset ?? 0)
     }
 
+    /// Where something that began at `start` should finish: "until I say X".
+    ///
+    /// A phrase lands on the end of its last word. Said more than once and
+    /// with no occurrence named, it is the first time it finishes after the
+    /// start, which is what "until I say it" means; asking which occurrence
+    /// would only make the creator count.
+    static func resolveEnd(
+        _ input: TimelineAnchorInput,
+        after start: Double,
+        project: EditorProject,
+        playhead: Double
+    ) throws -> Double {
+        guard input.kind == .phrase, input.occurrence == nil else {
+            return try resolve(input, project: project, playhead: playhead, edge: .end)
+        }
+        let offset = input.offset ?? 0
+        let matches = TimelinePhrase.matches(input.phrase ?? "", in: project)
+        if let next = matches.first(where: { $0.end + offset > start }) { return next.end + offset }
+        // Not found at all: the ordinary resolution says why (no transcript,
+        // not in the kept speech) and throws.
+        if matches.isEmpty { return try resolve(input, project: project, playhead: playhead, edge: .end) }
+        throw AppActionError("“\(input.phrase ?? "")” finishes before the overlay starts. Choose a later end.")
+    }
+
     private static func phrase(_ input: TimelineAnchorInput, in project: EditorProject) throws -> TimelinePhrase.Match {
         guard !tokens(input.phrase ?? "").isEmpty else { throw AppActionError("Tell me the spoken phrase to use.") }
         guard !words(in: project).isEmpty else { throw AppActionError("Transcribe the video first so I can find that phrase.") }

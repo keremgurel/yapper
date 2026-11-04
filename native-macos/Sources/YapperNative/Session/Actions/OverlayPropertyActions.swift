@@ -64,7 +64,21 @@ extension AppActionRegistry {
             let start = min(time, max(0, session.duration - 0.1))
             let source = input.sourceStart ?? 0
             let available = media.isImage ? EditorSession.imageClipDefaultDuration : media.duration - source
-            let duration = input.duration ?? min(session.duration - start, available)
+            let duration: Double
+            if let until = input.until {
+                // The end is resolved, never computed by the planner: a "while I
+                // say X" placement once ran its whole 13.3 s source over two
+                // later overlays because the arithmetic was off.
+                guard input.duration == nil else { throw AppActionError("Send duration or until, not both.") }
+                let end = try TimelineCue.resolveEnd(until, after: start, project: session.project, playhead: session.currentTime)
+                duration = min(end, session.duration) - start
+                guard duration >= 0.1 else { throw AppActionError("The overlay has to end after it starts.") }
+                guard media.isImage || source + duration <= media.duration + 0.000001 else {
+                    throw AppActionError("\(media.name) is \(String(format: "%.1f", available)) s long, shorter than the \(String(format: "%.1f", duration)) s it would have to cover. Choose an earlier end or a longer clip.")
+                }
+            } else {
+                duration = input.duration ?? min(session.duration - start, available)
+            }
             guard duration >= 0.1, start + duration <= session.duration + 0.000001,
                   media.isImage || source + duration <= media.duration + 0.000001 else {
                 throw AppActionError("Keep the overlay inside the timeline and its source media.")

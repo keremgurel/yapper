@@ -70,7 +70,7 @@
     {
       "id": "editor.overlays.add",
       "symbol": "overlayAdd",
-      "description": "Place one existing media item as an overlay at a known timeline anchor. Optional duration and sourceStart; defaults match Add as overlay. Use designOverlays/placeImported only when editorial placement across speech must be decided.",
+      "description": "Place one existing media item as an overlay at a known timeline anchor. Optional duration and sourceStart; defaults match Add as overlay. For \"while I say X\" or \"until I say Y\", set until instead of duration: a phrase there resolves to where its last word ends, so the end never depends on arithmetic. Use designOverlays/placeImported only when editorial placement across speech must be decided.",
       "input": "OverlayAddInput",
       "effect": "reversibleEdit",
       "requiresRebuild": true
@@ -447,6 +447,10 @@
           "type": "number",
           "minimum": 0.1,
           "maximum": 86400
+        },
+        "until": {
+          "$ref": "#/$defs/TimelineAnchorInput",
+          "description": "Where the overlay ends, instead of duration. A phrase resolves to the end of its last word; without an occurrence it is the first match that ends after the start. Other anchors are the moment they name."
         },
         "sourceStart": {
           "type": "number",

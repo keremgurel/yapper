@@ -321,6 +321,7 @@ export interface OverlayAddInput {
   mediaID: string;
   at: TimelineAnchorInput;
   duration?: number;
+  until?: TimelineAnchorInput;
   sourceStart?: number;
 }
 

@@ -1344,7 +1344,7 @@ final class EditorSession: ObservableObject {
     }
 
     func addOverlay(_ mediaID: UUID) async {
-        await performAppAction(OverlayAddInput(mediaID: mediaID, at: .playhead, duration: nil, sourceStart: nil))
+        await performAppAction(OverlayAddInput(mediaID: mediaID, at: .playhead, duration: nil, until: nil, sourceStart: nil))
     }
 
     /// An overlay sized to its media before it ever reaches the frame: media
