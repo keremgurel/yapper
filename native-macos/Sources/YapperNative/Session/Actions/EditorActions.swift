@@ -36,8 +36,14 @@ extension AppActionRegistry {
             guard Set(input.mediaIDs ?? []).isSubset(of: Set(session.project.media.map(\.id))) else {
                 throw AppActionError("A requested file is no longer in this project.")
             }
+            let before = session.project
             let canceled = await session.placeOverlaysWithAI(input)
             if case let .failed(message) = session.overlayPlacement { throw AppActionError(message) }
+            // A run that changed nothing has to say why, or Chirpy reports the
+            // status line ("Ready") as if something had happened.
+            if !canceled, session.project == before {
+                throw AppActionError(OverlayWorkflowOutcome.nothingChanged(session.overlayPlacement))
+            }
             return canceled
         }
         return registry

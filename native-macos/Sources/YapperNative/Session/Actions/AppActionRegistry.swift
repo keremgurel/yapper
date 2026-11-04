@@ -166,7 +166,9 @@ final class AppActionRegistry {
                 let canceled = try await workflow(session, .object(call.arguments))
                 if canceled { return receipts(.canceled, "The workflow was canceled.") }
                 if let error = session.errorMessage { return receipts(.failed, error) }
-                guard before != session.project else { return receipts(.unchanged, session.statusMessage) }
+                guard before != session.project else {
+                    return receipts(.unchanged, ChirpyReceiptSummary.unchangedWorkflow(status: session.statusMessage))
+                }
                 return receipts(.applied, session.statusMessage, mutations: [.init(message: session.statusMessage,
                     changes: [.init(targetID: projectID, property: "project", before: "Before workflow", after: "Saved workflow result")])])
             } catch { return receipts(.failed, error.localizedDescription) }

@@ -50,6 +50,14 @@ enum ChirpyReceiptSummary {
         return notes
     }
 
+    /// What a workflow that left the project as it was reports. Its own last
+    /// status when that says something; never the idle "Ready", which read as
+    /// a finished edit.
+    static func unchangedWorkflow(status: String) -> String {
+        let trimmed = status.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || trimmed == "Ready" ? "That finished without changing anything in the project." : trimmed
+    }
+
     private static func splitUndo(_ message: String) -> (body: String, undo: Bool) {
         let suffix = separator + undoHint
         if message.hasSuffix(suffix) { return (String(message.dropLast(suffix.count)), true) }
