@@ -156,8 +156,9 @@ extension EditorSession {
             let succeeded = receipts.allSatisfy { $0.status == .applied || $0.status == .unchanged }
             // Only execution receipts can announce success. A model's planned
             // changes are never presented as changes that actually happened.
-            conversation.answer(.chirpy(succeeded ? "\(receipts.map(\.message).joined(separator: " "))" : "I couldn’t complete that edit.",
-                notes: succeeded ? [] : receipts.map(\.message), tone: succeeded ? .done : .trouble))
+            let messages = receipts.map(\.message)
+            conversation.answer(.chirpy(succeeded ? ChirpyReceiptSummary.success(messages) : "I couldn’t complete that edit.",
+                notes: succeeded ? [] : ChirpyReceiptSummary.troubleNotes(messages), tone: succeeded ? .done : .trouble))
         } catch {
             if project.id == projectID {
                 conversation.answer(.chirpy((error is CancellationError || Task.isCancelled) ? "Request canceled." : error.localizedDescription, tone: .trouble))

@@ -54,8 +54,11 @@ struct AssistantMessageRow: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
 
-                ForEach(message.notes, id: \.self) { note in
-                    Label(note, systemImage: "checkmark.circle")
+                // By position, not by text: two notes can say the same thing.
+                ForEach(Array(message.notes.enumerated()), id: \.offset) { _, note in
+                    // A tick is for a change that landed. Under a reply that
+                    // went wrong, the same tick read as success.
+                    Label(note, systemImage: message.tone == .trouble ? "exclamationmark.triangle" : "checkmark.circle")
                         .font(.studioCaption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

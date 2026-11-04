@@ -113,13 +113,19 @@ final class AppActionRegistry {
         guard !calls.isEmpty else { return [] }
         let invocationIDs = suppliedIDs ?? calls.map { _ in UUID() }
         precondition(invocationIDs.count == calls.count)
-        func receipts(_ status: AppActionStatus, _ message: String, mutations: [AppActionMutation] = []) -> [AppActionResult] {
+        // `failedAt` names the one step a failure belongs to. The plan is
+        // atomic, so every receipt still carries its status, but only that step
+        // carries the error; the rest say they were rolled back with it.
+        func receipts(_ status: AppActionStatus, _ message: String, mutations: [AppActionMutation] = [],
+                      failedAt: Int? = nil) -> [AppActionResult] {
             let replies = calls.enumerated().map { index, call in
                 let mutation = mutations.indices.contains(index) ? mutations[index] : nil
+                let stepMessage = failedAt.map { $0 == index ? message : ChirpyReceiptSummary.rolledBack } ?? message
                 return AppActionResult(protocolVersion: AppActionContract.version, invocationID: invocationIDs[index],
                     projectID: projectID, revision: session.actionRevision, action: call.action,
                     status: status == .applied && mutation?.changes.isEmpty == true ? .unchanged : status,
-                    message: mutation?.message ?? message, changes: status == .applied ? mutation?.changes ?? [] : [],
+                    message: failedAt == nil ? mutation?.message ?? message : stepMessage,
+                    changes: status == .applied ? mutation?.changes ?? [] : [],
                     skippedIDs: mutation?.skippedIDs ?? [], persisted: status == .applied && mutation?.changes.isEmpty == false)
             }
             for reply in replies {
@@ -131,12 +137,12 @@ final class AppActionRegistry {
         guard calls.count <= 8, session.activeOperation == nil else {
             return receipts(.rejected, "Wait for the current operation to finish.")
         }
-        do {
-            for call in calls {
+        for (index, call) in calls.enumerated() {
+            do {
                 guard let entry = entries[call.action] else { throw AppActionError("This app version does not support that action.") }
                 try ActionSchema.validate(.object(call.arguments), against: entry.descriptor.parameters)
-            }
-        } catch { return receipts(.rejected, error.localizedDescription) }
+            } catch { return receipts(.rejected, error.localizedDescription, failedAt: calls.count > 1 ? index : nil) }
+        }
         if calls.contains(where: { appScope.contains($0.action) }) {
             guard calls.count == 1, let call = calls.first else {
                 return receipts(.rejected, "Run project and dictionary changes as their own request.")
@@ -175,14 +181,18 @@ final class AppActionRegistry {
                 replies = receipts(.rejected, "The project changed while I was planning. Ask again using its current state."); return
             }
             session.clearError()
+            // The step that threw, so its receipt alone carries the error.
+            var failingStep: Int?
             do {
                 var mutations: [AppActionMutation] = []
-                for call in calls {
+                for (index, call) in calls.enumerated() {
                     try Task.checkCancellation()
+                    failingStep = index
                     let entry = self.entries[call.action]!
                     if let reason = entry.availability(session).reason { throw AppActionError(reason) }
                     mutations.append(try await entry.execute(session, .object(call.arguments)))
                 }
+                failingStep = nil
                 try Task.checkCancellation()
                 guard session.project != rollback.project else {
                     replies = receipts(.unchanged, "Nothing needed changing.", mutations: mutations); return
@@ -199,7 +209,9 @@ final class AppActionRegistry {
                 // A validation error is a rejection: nothing was mutated. Only
                 // a save that went wrong is a failure.
                 let status: AppActionStatus = error is CancellationError ? .canceled : error is AppActionError ? .rejected : .failed
-                replies = receipts(status, error is CancellationError ? "Request canceled. No changes were saved." : error.localizedDescription)
+                replies = error is CancellationError
+                    ? receipts(status, "Request canceled. No changes were saved.")
+                    : receipts(status, error.localizedDescription, failedAt: calls.count > 1 ? failingStep : nil)
             }
         }
         return replies.isEmpty ? receipts(.canceled, "Request canceled.") : replies
