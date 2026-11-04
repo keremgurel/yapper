@@ -105,6 +105,13 @@ struct PlayerPanel: View {
                             )
                         }
                     }
+                    // Outside the clip for the same reason: an overlay can be
+                    // full frame, larger than it or moved partly off it, and
+                    // its grips have to stay where you can reach them. See
+                    // CanvasSelectionChrome.
+                    .overlay {
+                        CanvasSelectionChrome(session: session, stageSize: stageSize)
+                    }
                     // Over the picture and under the offline banner: it points
                     // at something in the picture, so it has to be on top of
                     // it, and it has nothing to say when there is no picture.
@@ -251,41 +258,12 @@ private struct TextLayerCanvasItem: View {
     /// a gesture runs, and a drag kept here went with them.
     @ObservedObject var drag: CanvasDragState
 
-    /// Commits a finished drag through the text actions, keeping its draft on
-    /// screen until the edit lands so the layer does not jump back.
-    private func commitText(_ finished: ProjectTextLayer) {
-        let commit = session.commitTextLayerDraft(finished)
-        Task { _ = await commit.value; drag.releaseText(finished.id) }
-    }
-
-    /// The saved position places the layer; the drag is carried as a transform
-    /// on top. See CaptionCanvasOverlay for why.
-    private var dragOffset: CGSize {
-        guard let draft = drag.textDraft(for: layer.id) else { return .zero }
-        return CGSize(
-            width: (draft.x - layer.x) * canvasSize.width,
-            height: (draft.y - layer.y) * canvasSize.height
-        )
-    }
-
     /// What the gesture is doing right now wins over what is saved, so a drag
     /// stays smooth while the project catches up behind it.
     private var displayed: ProjectTextLayer { drag.textDraft(for: layer.id) ?? layer }
 
     var body: some View {
-        AppearanceText(
-            text: displayed.text.isEmpty ? "Text" : displayed.text,
-            appearance: displayed.appearance,
-            fontSize: max(11, canvasSize.height * displayed.fontScale),
-            lineLimit: 5,
-            minimumScaleFactor: 0.45
-        )
-            .frame(width: max(60, canvasSize.width * displayed.width))
-            // The body takes its own clicks and drags before any decoration
-            // goes on top. A hit shape applied after the corner handles cut
-            // them off: they hang outside the box on purpose, so the shape
-            // clipped exactly the part you reach for, and resizing stopped
-            // working on every item at once.
+        TextLayerCanvasLabel(layer: displayed, canvasSize: canvasSize)
             .contentShape(Rectangle())
             .onTapGesture { session.selectTextLayer(layer.id) }
             .gesture(
@@ -310,37 +288,15 @@ private struct TextLayerCanvasItem: View {
                         drag.updateText(result.layer)
                     }
                     .onEnded { _ in
-                        if let finished = drag.holdText() { commitText(finished) }
+                        if let finished = drag.holdText() {
+                            TextLayerCanvasCommit.commit(finished, session: session, drag: drag)
+                        }
                         alignmentGuides = TextCanvasAlignmentGuides()
                     }
             )
-            .overlay {
-                if selected {
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .stroke(Color.yapperOrange, style: StrokeStyle(lineWidth: 1.25, dash: [5, 3]))
-                        .padding(-4)
-                }
-            }
-            .overlay(alignment: .topLeading) {
-                if selected { resizeHandle(.topLeading) }
-            }
-            .overlay(alignment: .topTrailing) {
-                if selected { resizeHandle(.topTrailing) }
-            }
-            .overlay(alignment: .bottomLeading) {
-                if selected { resizeHandle(.bottomLeading) }
-            }
-            .overlay(alignment: .bottomTrailing) {
-                if selected { resizeHandle(.bottomTrailing) }
-            }
-            .overlay(alignment: .top) {
-                if selected { TurnRing().offset(y: -TurnHandle.reach) }
-            }
-            .overlay {
-                if selected { turnPad(centre: centreOnStage(of: displayed)) }
-            }
-            // The card and its handles turn together, so the corner you grab is
-            // always the corner you can see.
+            // The outline, corners and rotate grip are drawn over the stage by
+            // TextLayerSelectionChrome, so the clip at the frame's edge cannot
+            // cut them off.
             .rotationEffect(.degrees(displayed.rotation))
             // Placed last: `position` hands back a view the size of the whole
             // canvas, so anything after it would claim the lot.
@@ -348,85 +304,8 @@ private struct TextLayerCanvasItem: View {
                 x: canvasSize.width * layer.x,
                 y: canvasSize.height * layer.y
             )
-            .offset(dragOffset)
+            .offset(TextLayerCanvasCommit.dragOffset(for: layer, drag: drag, canvasSize: canvasSize))
     }
-
-    private func centreOnStage(of layer: ProjectTextLayer) -> CGPoint {
-        CGPoint(x: canvasSize.width * layer.x, y: canvasSize.height * layer.y)
-    }
-
-    /// The pad that turns the card, held still while it is dragged: see
-    /// `TurnHandle`. The card is placed from its centre, so that is the point
-    /// the angle is measured about.
-    private func turnPad(centre: CGPoint) -> some View {
-        ZStack(alignment: .top) {
-            Color.clear.allowsHitTesting(false)
-            TurnPad { start, current, ended in
-                if drag.textOrigin?.id != layer.id {
-                    drag.beginText(layer)
-                    if !selected { session.selectTextLayer(layer.id) }
-                }
-                guard let origin = drag.textOrigin else { return }
-                drag.updateText(
-                    TextCanvasGeometry.rotated(
-                        layer: origin,
-                        centre: centre,
-                        from: start,
-                        to: current
-                    )
-                )
-                if ended, let finished = drag.holdText() { commitText(finished) }
-            }
-            .offset(y: -TurnHandle.reach)
-        }
-        // Turned back by however far the card has turned since the drag began,
-        // so that in the frame's own points it stands still.
-        .rotationEffect(.degrees(heldRotation - displayed.rotation))
-        .accessibilityLabel("Rotate text")
-    }
-
-    /// The angle the card stood at when the gesture in flight began.
-    private var heldRotation: Double {
-        guard let origin = drag.textOrigin, origin.id == layer.id else { return displayed.rotation }
-        return origin.rotation
-    }
-
-    private func resizeHandle(_ corner: CanvasResizeCorner) -> some View {
-        RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-            .fill(Color.white)
-            .overlay {
-                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                    .stroke(Color.yapperOrange, lineWidth: 1.5)
-            }
-            .frame(width: 9, height: 9)
-            .offset(x: corner.xOffset, y: corner.yOffset)
-            .contentShape(Rectangle().inset(by: -8))
-            .cursor(.crosshair)
-            .highPriorityGesture(
-                // The handle travels with the corner it is resizing, so it can
-                // no more measure against itself than the layer can.
-                DragGesture(minimumDistance: 0, coordinateSpace: .named(CanvasCoordinateSpace.stage))
-                    .onChanged { value in
-                        if drag.textOrigin?.id != layer.id {
-                            drag.beginText(layer)
-                            if !selected { session.selectTextLayer(layer.id) }
-                        }
-                        guard let origin = drag.textOrigin else { return }
-                        let updated = TextCanvasGeometry.resized(
-                            layer: origin,
-                            translation: value.translation,
-                            corner: corner,
-                            canvasSize: canvasSize
-                        )
-                        drag.updateText(updated)
-                    }
-                    .onEnded { _ in
-                        if let finished = drag.holdText() { commitText(finished) }
-                    }
-            )
-            .accessibilityLabel("Resize text from \(corner.accessibilityName)")
-    }
-
 }
 
 struct TextCanvasAlignmentGuides: Equatable {
