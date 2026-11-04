@@ -36,7 +36,7 @@ enum ImportPanels {
         }
         panel.allowedContentTypes = [.mpeg4Movie]
         panel.nameFieldStringValue = "\(session.project.name)-export.mp4"
-        ExportFolderDefault.apply(to: panel)
+        ExportFolderDefault.pointExportPanel(panel)
         guard panel.runModal() == .OK, let url = panel.url else { return true }
         return await session.export(to: url)
     }

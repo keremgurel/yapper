@@ -69,7 +69,7 @@ struct StorageFolderRow: View {
     private var actions: some View {
         HStack(spacing: 6) {
             if isChosen {
-                Button("Use default") { StorageFolderPanels.useDefault(kind, session: session) }
+                Button("Use default") { StorageFolderPanels.useDefaultFolder(kind, session: session) }
                     .buttonStyle(EditorGhostButtonStyle())
                     .help(kind.usesLastFolderByDefault
                         ? "Open the last folder you exported to"
@@ -82,7 +82,7 @@ struct StorageFolderRow: View {
                 .buttonStyle(EditorGhostButtonStyle())
                 .disabled(availability != .available)
             }
-            Button(opensLastFolder ? "Choose…" : "Change…") { StorageFolderPanels.choose(kind, session: session) }
+            Button(opensLastFolder ? "Choose…" : "Change…") { StorageFolderPanels.chooseFolder(kind, session: session) }
                 .buttonStyle(EditorSecondaryButtonStyle(size: .small))
         }
         .disabled(move.isRunning)

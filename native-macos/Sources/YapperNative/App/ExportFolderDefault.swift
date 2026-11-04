@@ -5,7 +5,7 @@ import AppKit
 /// isn't there says so in the window instead of opening somewhere at random.
 @MainActor
 enum ExportFolderDefault {
-    static func apply(to panel: NSSavePanel, folders: StorageFolders = .standard) {
+    static func pointExportPanel(_ panel: NSSavePanel, folders: StorageFolders = .standard) {
         guard let folder = folders.chosen(.exports) else { return }
         let availability = StorageAvailability.check(folder, isDefault: false)
         if availability == .available {

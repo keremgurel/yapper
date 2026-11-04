@@ -4,7 +4,7 @@ import AppKit
 /// whether the ones already saved should come along.
 @MainActor
 enum StorageFolderPanels {
-    static func choose(_ kind: StorageKind, session: EditorSession, folders: StorageFolders = .standard) {
+    static func chooseFolder(_ kind: StorageKind, session: EditorSession, folders: StorageFolders = .standard) {
         let panel = NSOpenPanel()
         panel.title = "Choose a folder for \(kind.phrase)"
         panel.message = kind.detail
@@ -17,18 +17,18 @@ enum StorageFolderPanels {
         if folders.availability(of: kind) == .available { panel.directoryURL = folders.folder(for: kind) }
         guard panel.runModal() == .OK, let url = panel.url else { return }
         if let problem = StorageFolderCheck.problem(with: url) {
-            alert(title: "Choose another folder", message: problem)
+            showAlert(title: "Choose another folder", message: problem)
             return
         }
-        Task { await apply(url, for: kind, session: session, folders: folders) }
+        Task { await applyFolderChoice(url, for: kind, session: session, folders: folders) }
     }
 
-    static func useDefault(_ kind: StorageKind, session: EditorSession, folders: StorageFolders = .standard) {
-        Task { await apply(nil, for: kind, session: session, folders: folders) }
+    static func useDefaultFolder(_ kind: StorageKind, session: EditorSession, folders: StorageFolders = .standard) {
+        Task { await applyFolderChoice(nil, for: kind, session: session, folders: folders) }
     }
 
     /// `folder` nil means the default.
-    private static func apply(_ folder: URL?, for kind: StorageKind, session: EditorSession, folders: StorageFolders) async {
+    private static func applyFolderChoice(_ folder: URL?, for kind: StorageKind, session: EditorSession, folders: StorageFolders) async {
         let target = folder ?? folders.defaultFolder(for: kind)
         guard target.standardizedFileURL.path != folders.folder(for: kind).standardizedFileURL.path
                 || (folder == nil) != (folders.chosen(kind) == nil)
@@ -48,12 +48,12 @@ enum StorageFolderPanels {
             return
         }
         if let blocker = ProjectFolderMove.shared.blocker(for: session) {
-            alert(title: "Projects can’t move yet", message: blocker)
+            showAlert(title: "Projects can’t move yet", message: blocker)
             return
         }
         switch await askToMove(packages, to: target, from: folders.folder(for: kind)) {
         case .move:
-            await ProjectFolderMove.shared.run(choosing: folder, moving: packages, session: session, folders: folders)
+            await ProjectFolderMove.shared.moveProjects(choosing: folder, moving: packages, session: session, folders: folders)
         case .leave:
             if let folder { folders.choose(folder, for: kind) } else { folders.useDefault(for: kind) }
         case .cancel:
@@ -84,7 +84,7 @@ enum StorageFolderPanels {
         }
     }
 
-    private static func alert(title: String, message: String) {
+    private static func showAlert(title: String, message: String) {
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = message

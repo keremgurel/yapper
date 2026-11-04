@@ -30,7 +30,7 @@ final class ProjectFolderMove: ObservableObject {
     }
 
     /// `folder` nil means the default folder.
-    func run(choosing folder: URL?, moving packages: [ProjectPackage], session: EditorSession,
+    func moveProjects(choosing folder: URL?, moving packages: [ProjectPackage], session: EditorSession,
              folders: StorageFolders = .standard) async {
         if let blocker = blocker(for: session) { outcome = blocker; return }
         outcome = nil
