@@ -83,7 +83,9 @@ export interface PlanInput {
   sessionID: string;
   revision: number;
   context: Record<string, unknown>;
-  catalog: Array<{ id: string }>;
+  /** Each action the client can run, with the parameter schema its own build
+   * validates against when it sends one. */
+  catalog: Array<{ id: string; parameters?: unknown }>;
   messages: Array<{ role: "user" | "assistant"; content: string }>;
 }
 export function parsePlanInput(raw: unknown): PlanInput | null {
@@ -152,10 +154,39 @@ export function parsePlanInput(raw: unknown): PlanInput | null {
 }
 
 export function discoveredCatalog(input: PlanInput) {
-  const ids = new Set(input.catalog.map((item) => item.id));
+  const advertised = new Map(
+    input.catalog.map((item) => [item.id, item.parameters]),
+  );
   return contract["x-actions"]
-    .filter((action) => ids.has(action.id))
-    .map((action) => ({ ...action, parameters: definitions[action.input] }));
+    .filter((action) => advertised.has(action.id))
+    .map((action) => ({
+      ...action,
+      parameters: parametersFor(action.input, advertised.get(action.id)),
+    }));
+}
+
+/** The server's schema for an action, cut down to the top-level fields the
+ * client's own build lists. A field added after that build shipped (style on
+ * editor.text.add, until on editor.overlays.add) would be rejected there as
+ * unknown, so the model never sees it and a plan using it fails validation
+ * here instead. A client that sends no parameters gets the schema as is. */
+function parametersFor(name: string, advertised: unknown): Schema {
+  const schema = definitions[name];
+  const known =
+    record(advertised) && record(advertised.properties)
+      ? advertised.properties
+      : undefined;
+  if (!known || !schema.properties) return schema;
+  const properties = Object.fromEntries(
+    Object.entries(schema.properties).filter(([key]) =>
+      Object.hasOwn(known, key),
+    ),
+  );
+  return {
+    ...schema,
+    properties,
+    required: (schema.required ?? []).filter((key) => key in properties),
+  };
 }
 /** Workflows own their transaction, and app.* actions change which project
  * is open or act outside it, so neither can share an atomic batch. */
