@@ -119,13 +119,7 @@ extension EditorSession {
             }
             await stopManagedMedia(for: package)
             if projectNavigation.currentPackage == package {
-                await leaveCurrentProject()
-                await stopManagedMedia(for: package)
-                store = ProjectStore(directory: FileManager.default.temporaryDirectory
-                    .appending(path: "yapper-detached-\(UUID().uuidString)", directoryHint: .isDirectory))
-                projectNavigation.currentPackage = nil
-                resetProject(to: EditorProject())
-                projectNavigation.showsProjectsHome = true
+                await closeCurrentProject()
             }
             if let listing = try await library.listings().first(where: { $0.package == package }) {
                 await PosterProjectSync.shared.cancel(projectID: listing.summary.id)
@@ -172,6 +166,22 @@ extension EditorSession {
     func hideProjectsHome() {
         guard projectNavigation.currentPackage != nil else { return }
         projectNavigation.showsProjectsHome = false
+    }
+
+    /// Saves and closes the open project, leaving the grid showing and the
+    /// editor writing to nothing, before its package goes to the Trash or to
+    /// another folder. Returns the package that was open.
+    @discardableResult
+    func closeCurrentProject() async -> ProjectPackage? {
+        guard let package = projectNavigation.currentPackage else { return nil }
+        await leaveCurrentProject()
+        await stopManagedMedia(for: package)
+        store = ProjectStore(directory: FileManager.default.temporaryDirectory
+            .appending(path: "yapper-detached-\(UUID().uuidString)", directoryHint: .isDirectory))
+        projectNavigation.currentPackage = nil
+        resetProject(to: EditorProject())
+        projectNavigation.showsProjectsHome = true
+        return package
     }
 
     /// Everything the open project needs before another takes its place: a

@@ -55,6 +55,7 @@ struct RecorderReviewView: View {
                         Label("Download", systemImage: "arrow.down.to.line").frame(maxWidth: .infinity)
                     }
                     .buttonStyle(EditorSecondaryButtonStyle())
+                    .help("Saves the take to “\(RecorderDownload.downloadsFolderName)”. Change the folder in Storage.")
                 }
                 if let warning = take.warning { Text(warning).font(.caption).foregroundStyle(Color.studioDanger) }
                 if let message {
@@ -71,6 +72,8 @@ struct RecorderReviewView: View {
             let kept = try RecorderDownload.keepForEditor(take)
             opening = true
             StudioNavigation.shared.openInEditor(kept)
+        } catch let error as StorageUnavailableError {
+            message = error.localizedDescription
         } catch {
             message = "The take couldn't be kept for the editor. Check there is space, then try again."
         }

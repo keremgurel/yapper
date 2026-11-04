@@ -1,0 +1,94 @@
+import AppKit
+
+/// Choosing a folder for one kind of file, and for editor projects, asking
+/// whether the ones already saved should come along.
+@MainActor
+enum StorageFolderPanels {
+    static func choose(_ kind: StorageKind, session: EditorSession, folders: StorageFolders = .standard) {
+        let panel = NSOpenPanel()
+        panel.title = "Choose a folder for \(kind.phrase)"
+        panel.message = kind.detail
+        panel.prompt = "Use this folder"
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.treatsFilePackagesAsDirectories = false
+        if folders.availability(of: kind) == .available { panel.directoryURL = folders.folder(for: kind) }
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        if let problem = StorageFolderCheck.problem(with: url) {
+            alert(title: "Choose another folder", message: problem)
+            return
+        }
+        Task { await apply(url, for: kind, session: session, folders: folders) }
+    }
+
+    static func useDefault(_ kind: StorageKind, session: EditorSession, folders: StorageFolders = .standard) {
+        Task { await apply(nil, for: kind, session: session, folders: folders) }
+    }
+
+    /// `folder` nil means the default.
+    private static func apply(_ folder: URL?, for kind: StorageKind, session: EditorSession, folders: StorageFolders) async {
+        let target = folder ?? folders.defaultFolder(for: kind)
+        guard target.standardizedFileURL.path != folders.folder(for: kind).standardizedFileURL.path
+                || (folder == nil) != (folders.chosen(kind) == nil)
+        else { return }
+        NativeAnalytics.shared.capture("native_storage_folder_changed", [
+            "kind": kind.rawValue,
+            "custom": folder != nil,
+            "external": StorageVolume.of(target)?.isInternal == false,
+        ])
+        guard kind == .editorProjects else {
+            if let folder { folders.choose(folder, for: kind) } else { folders.useDefault(for: kind) }
+            return
+        }
+        let packages = ((try? await ProjectLibrary.shared.listings()) ?? []).map(\.package)
+        guard !packages.isEmpty else {
+            if let folder { folders.choose(folder, for: kind) } else { folders.useDefault(for: kind) }
+            return
+        }
+        if let blocker = ProjectFolderMove.shared.blocker(for: session) {
+            alert(title: "Projects can’t move yet", message: blocker)
+            return
+        }
+        switch await askToMove(packages, to: target, from: folders.folder(for: kind)) {
+        case .move:
+            await ProjectFolderMove.shared.run(choosing: folder, moving: packages, session: session, folders: folders)
+        case .leave:
+            if let folder { folders.choose(folder, for: kind) } else { folders.useDefault(for: kind) }
+        case .cancel:
+            return
+        }
+    }
+
+    private enum MoveChoice { case move, leave, cancel }
+
+    private static func askToMove(_ packages: [ProjectPackage], to target: URL, from current: URL) async -> MoveChoice {
+        let bytes = await Task.detached(priority: .userInitiated) {
+            packages.reduce(Int64(0)) { $0 + ProjectDiskUsage.bytes(in: $1.url) }
+        }.value
+        let count = packages.count == 1 ? "your project" : "your \(packages.count) projects"
+        let alert = NSAlert()
+        alert.messageText = "Move \(count) to “\(target.lastPathComponent)”?"
+        let sameDisk = StorageVolume.sameVolume(current, target)
+        alert.informativeText = sameDisk
+            ? "They take \(ProjectDiskUsage.label(bytes)). They move to the new folder right away."
+            : "They take \(ProjectDiskUsage.label(bytes)). Yapper copies each one, checks the copy, then puts the original in the Trash. Leave them and they stay in “\(current.lastPathComponent)”, where Open… still finds them."
+        alert.addButton(withTitle: "Move projects")
+        alert.addButton(withTitle: "Leave them")
+        alert.addButton(withTitle: "Cancel")
+        switch alert.runModal() {
+        case .alertFirstButtonReturn: return .move
+        case .alertSecondButtonReturn: return .leave
+        default: return .cancel
+        }
+    }
+
+    private static func alert(title: String, message: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+}

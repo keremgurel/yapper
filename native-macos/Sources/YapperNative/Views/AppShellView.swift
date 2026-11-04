@@ -160,6 +160,7 @@ struct AppShellView: View {
                         }
                     }
                 )
+                    StorageDisconnectedBanner(navigation: projectNavigation) { navigate(.storage) }
                 }
 
                 ZStack {
@@ -172,7 +173,7 @@ struct AppShellView: View {
                         .accessibilityHidden(!isEditorVisible)
 
                     if isSignedIn, isProjectsHomeVisible {
-                        ProjectsHomeView(session: session, navigation: projectNavigation)
+                        ProjectsHomeView(session: session, navigation: projectNavigation) { navigate(.storage) }
                     }
 
                     // Built on arrival and torn down on the way out, unlike the

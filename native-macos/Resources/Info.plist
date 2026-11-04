@@ -76,6 +76,8 @@
     <string>Yapper Studio uses your camera when you record a video.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Yapper Studio uses your microphone for recording and voice idea capture.</string>
+    <key>NSRemovableVolumesUsageDescription</key>
+    <string>Yapper Studio saves projects, recordings and exports to the folders you choose on this drive.</string>
     <key>NSHighResolutionCapable</key>
     <true/>
 </dict>
