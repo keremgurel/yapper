@@ -2221,6 +2221,12 @@ final class EditorSession: ObservableObject {
         statusMessage = message
     }
 
+    /// Returns once the project the app reopens at launch has loaded, so work
+    /// arriving with the launch (a file opened with Yapper) sees it.
+    func awaitRestoration() async {
+        await restorationTask?.value
+    }
+
     /// Resolve the owned Library item before switching projects. Failed reads,
     /// downloads, or saves leave the current timeline intact.
     func openStudioRecording(_ itemID: UUID) async throws {

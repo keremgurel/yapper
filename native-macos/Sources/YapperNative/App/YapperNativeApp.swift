@@ -61,9 +61,12 @@ struct YapperNativeApp: App {
                 .frame(minWidth: 1_100, minHeight: 700)
                 .preferredColorScheme(theme.colorScheme)
                 .onOpenURL { url in
-                    // A project double-clicked in Finder, or the sign-in ticket.
+                    // A project double-clicked in Finder, a video, image or
+                    // sound opened with Yapper, or the sign-in ticket.
                     if url.isFileURL, ProjectPackage.isPackage(url) {
                         Task { await session.openProject(ProjectPackage(url: url)) }
+                    } else if url.isFileURL {
+                        OpenedFileImporter.shared.receive(url, into: session)
                     } else if let request = StudioEditorRequest(url: url) {
                         StudioWebCommands.shared.openEditor(request)
                         NSApp.activate(ignoringOtherApps: true)
