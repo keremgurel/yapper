@@ -26,6 +26,8 @@ enum SceneNumberFormatter {
             body = compact(value)
         case .decimal1:
             body = decimal(value, places: 1, grouping: true)
+        case .clock:
+            body = clock(value)
         }
         return (prefix ?? "") + body + (suffix ?? "")
     }
@@ -46,6 +48,15 @@ enum SceneNumberFormatter {
         // "-0" reads as a bug on a counter that has just started.
         let clean = rounded == 0 ? 0 : rounded
         return formatter.string(from: NSNumber(value: clean)) ?? String(clean)
+    }
+
+    /// Seconds as m:ss, rounded to the nearest second, so a countdown from
+    /// 300 reads 5:00, 4:59 … 0:00. Minutes past 59 stay minutes: a timer
+    /// people read at a glance rarely runs an hour, and 75:00 is still clear.
+    static func clock(_ seconds: Double) -> String {
+        let total = Int(abs(seconds).rounded())
+        let sign = seconds < 0 && total > 0 ? "-" : ""
+        return sign + "\(total / 60):" + String(format: "%02d", total % 60)
     }
 
     /// "1.2K", "3.4M", "2B": one decimal, dropped when it is a zero, the way

@@ -25,7 +25,8 @@ export type SceneNumberFormat =
   | "grouped"
   | "percent"
   | "compact"
-  | "decimal1";
+  | "decimal1"
+  | "clock";
 export type SceneImageFit = "contain" | "cover";
 export type SceneEasing =
   | "linear"
@@ -223,6 +224,7 @@ export const SCENE_NUMBER_FORMATS: readonly SceneNumberFormat[] = [
   "percent",
   "compact",
   "decimal1",
+  "clock",
 ];
 export const SCENE_IMAGE_FITS: readonly SceneImageFit[] = ["contain", "cover"];
 export const SCENE_EASINGS: readonly SceneEasing[] = [
