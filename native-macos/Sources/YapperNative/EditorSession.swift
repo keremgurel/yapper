@@ -1427,7 +1427,7 @@ final class EditorSession: ObservableObject {
     /// `addTextLayer`, which does not wait.
     func insertTextLayer(asHook: Bool = false) async {
         guard duration > 0 else { return }
-        await performAppAction(TextLayerAddInput(text: asHook ? "Your hook" : "Text", at: .playhead, duration: nil, asHook: asHook))
+        await performAppAction(TextLayerAddInput(text: asHook ? "Your hook" : "Text", at: .playhead, duration: nil, asHook: asHook, style: nil))
     }
 
     /// Plays an effect to hear it, and says which one is playing.

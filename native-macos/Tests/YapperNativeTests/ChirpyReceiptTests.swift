@@ -62,7 +62,7 @@ struct ChirpyBatchReceiptTests {
     }
 
     nonisolated private static func addText(_ text: String) throws -> ChirpyActionCall {
-        try call(TextLayerAddInput(text: text, at: .playhead, duration: nil, asHook: nil))
+        try call(TextLayerAddInput(text: text, at: .playhead, duration: nil, asHook: nil, style: nil))
     }
 
     @Test func onlyTheFailingStepCarriesTheError() async throws {
@@ -85,6 +85,30 @@ struct ChirpyBatchReceiptTests {
             "A requested text layer no longer exists.",
             "The other 2 steps in this plan were not applied, so nothing changed.",
         ])
+    }
+
+    @Test func aTextLayerCanBeAddedAlreadyStyled() async throws {
+        let (session, root) = try await session()
+        defer { try? FileManager.default.removeItem(at: root); session.player.replaceCurrentItem(with: nil) }
+        let style: [String: ActionJSON] = [
+            "font": .string("editorial"), "fontScale": .number(0.08), "y": .number(0.3),
+            "color": .string("#FFCC00"), "backgroundEnabled": .bool(false),
+        ]
+        session.chirpyPlanner = { _ in .init(message: "Planned", actions: [
+            .init(action: AppActionID.textLayerAdd.rawValue, arguments: ["text": .string("Comment TEF"), "style": .object(style)]),
+        ]) }
+
+        await session.runAssistant(instruction: "add Comment TEF in yellow, editorial, near the top")
+
+        let layer = try #require(session.project.textLayers?.first)
+        #expect(session.conversation.messages.last?.tone == .done)
+        #expect(layer.appearance.font == .editorial)
+        #expect(layer.appearance.fontScale == 0.08)
+        #expect(layer.y == 0.3)
+        #expect(layer.appearance.color.hex.uppercased().hasPrefix("#FFCC00"))
+        #expect(!layer.appearance.backgroundEnabled)
+        // Everything the style left out is the default look.
+        #expect(layer.width == 0.7 && layer.appearance.textCase == TextAppearance.textLayerDefault.textCase)
     }
 
     @Test func identicalSuccessesAreGroupedInTheReply() async throws {

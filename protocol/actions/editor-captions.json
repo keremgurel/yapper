@@ -70,7 +70,7 @@
       "id": "editor.text.add",
       "symbol": "textLayerAdd",
       "input": "TextLayerAddInput",
-      "description": "Add an on-screen text layer with the given text at a timeline anchor (default the playhead) for duration seconds (default 5). asHook places it at the very start with the hook look.",
+      "description": "Add an on-screen text layer with the given text at a timeline anchor (default the playhead) for duration seconds (default 5). asHook places it at the very start with the hook look. style sets its look and position in the same action, on top of that default; a layer added in this plan has no ID yet, so later actions in the plan cannot restyle or update it.",
       "effect": "reversibleEdit",
       "requiresRebuild": false
     },
@@ -351,6 +351,10 @@
         },
         "asHook": {
           "type": "boolean"
+        },
+        "style": {
+          "$ref": "#/$defs/TextStyleInput",
+          "description": "Optional look and position for the new layer, the same fields as editor.text.setStyle. Send only the fields that differ from the default."
         }
       }
     },

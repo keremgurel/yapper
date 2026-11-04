@@ -210,6 +210,7 @@ export interface TextLayerAddInput {
   at?: TimelineAnchorInput;
   duration?: number;
   asHook?: boolean;
+  style?: TextStyleInput;
 }
 
 export interface TextLayerUpdateInput {
