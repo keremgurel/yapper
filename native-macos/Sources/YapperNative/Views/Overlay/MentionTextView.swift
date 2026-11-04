@@ -73,6 +73,11 @@ struct MentionTextView: NSViewRepresentable {
             height: CGFloat.greatestFiniteMagnitude
         )
 
+        // Named, so VoiceOver and anything driving the app through the
+        // accessibility tree can find the box rather than an unlabeled text area.
+        textView.setAccessibilityLabel("Message Chirpy")
+        textView.setAccessibilityIdentifier("chirpyComposer")
+
         scrollView.documentView = textView
         return scrollView
     }
@@ -85,6 +90,7 @@ struct MentionTextView: NSViewRepresentable {
         textView.onDictate = onDictate
         textView.onSubmit = onSubmit
         textView.placeholderText = placeholder
+        textView.setAccessibilityPlaceholderValue(placeholder)
         // Only write back when the model has moved on its own — accepting a
         // suggestion, say. Echoing every keystroke would fight the field.
         if textView.string != text {
