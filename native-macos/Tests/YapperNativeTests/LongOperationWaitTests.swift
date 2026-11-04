@@ -3,13 +3,13 @@ import Testing
 
 /// A refusal names what holds the editor, never just "the current operation".
 struct LongOperationWaitTests {
-    @Test(arguments: [LongOperation.importingMedia, .exporting, .transcribing, .overlayAI, .recoveringMedia])
+    @Test(arguments: [LongOperation.importingMedia, .autoTrim, .transcribing, .overlayAI, .recoveringMedia])
     func everyOperationSaysWhatToWaitFor(_ operation: LongOperation) {
         #expect(!operation.waitMessage.contains("current operation"))
         #expect(operation.waitMessage.hasPrefix("Wait"))
     }
 
-    @Test func theExportIsNamed() {
-        #expect(LongOperation.exporting.waitMessage == "Wait for the export to finish.")
+    @Test func theImportIsNamed() {
+        #expect(LongOperation.importingMedia.waitMessage == "Wait for the media import to finish.")
     }
 }

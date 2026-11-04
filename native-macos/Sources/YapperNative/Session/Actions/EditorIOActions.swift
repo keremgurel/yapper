@@ -12,7 +12,8 @@ extension AppActionRegistry {
             case .poster:
                 let url = FileManager.default.temporaryDirectory
                     .appending(path: "yapper-poster-\(UUID().uuidString)").appendingPathExtension("mp4")
-                return await session.exportForPosting(to: url)
+                await session.exportForPosting(to: url)
+                return false
             }
         }
         register(SavedAudioAddInput.self, availability: { _ in .available }) { session, input in

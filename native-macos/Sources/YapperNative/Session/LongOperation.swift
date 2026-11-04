@@ -9,7 +9,6 @@ enum LongOperation: Equatable, Sendable {
     case captions
     case autoTrim
     case overlayAI
-    case exporting
     case recoveringMedia
 
     var isAI: Bool {
@@ -18,8 +17,6 @@ enum LongOperation: Equatable, Sendable {
         default: false
         }
     }
-
-    var isExport: Bool { self == .exporting }
 
     /// What a refusal says while this holds the editor. "Wait for the current
     /// operation" left a creator staring at a Projects screen for minutes with
@@ -34,7 +31,6 @@ enum LongOperation: Equatable, Sendable {
         case .captions: "Wait for captions to finish."
         case .autoTrim: "Wait for auto-trim to finish."
         case .overlayAI: "Wait for the overlay job to finish."
-        case .exporting: "Wait for the export to finish."
         case .recoveringMedia: "Wait a moment: Yapper is checking the project's media files."
         }
     }
@@ -46,7 +42,6 @@ enum LongOperation: Equatable, Sendable {
         case .captions: "Cancel captions"
         case .autoTrim: "Cancel auto-trim"
         case .overlayAI: "Cancel overlay placement"
-        case .exporting: "Cancel export"
         default: "Cancel operation"
         }
     }
