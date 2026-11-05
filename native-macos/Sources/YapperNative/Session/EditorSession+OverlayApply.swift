@@ -78,10 +78,13 @@ extension EditorSession {
             let end = unit.map(\.end).max() ?? 0
 
             for (member, box) in zip(unit, boxes) {
-                let duration = min(
+                var duration = min(
                     max(OverlayPlan.minimumSpanSeconds, end - member.start),
                     max(0.1, project.duration - member.start)
                 )
+                // A video never runs past its own last frame: a 3.1 s clip
+                // quoted over 3.43 s of speech was placed for 3.43 s.
+                if !member.media.isImage { duration = min(duration, member.media.duration) }
                 guard duration >= OverlayPlan.minimumSpanSeconds else { continue }
                 // Grouping can extend a member beyond its original quote.
                 // Recheck the final interval against earlier members as well.

@@ -144,7 +144,7 @@
           "type": "number",
           "minimum": 0.012,
           "maximum": 0.22,
-          "description": "Cap height as a fraction of frame height. Captions default near 0.05."
+          "description": "Cap height as a fraction of frame height. Captions default near 0.05. The inspector shows Size as fontScale x 1000, so Size 33 is exactly 0.033 and 0.043 reads as Size 43."
         },
         "textCase": {
           "$ref": "#/$defs/TextCaseChoice"
