@@ -45,7 +45,7 @@ final class OpenedFileImporter {
     private var pending: [URL] = []
     private var drain: Task<Void, Never>?
 
-    func receive(_ url: URL, into session: EditorSession) {
+    func importOpened(_ url: URL, into session: EditorSession) {
         pending.append(url)
         guard drain == nil else { return }
         drain = Task { [weak self] in

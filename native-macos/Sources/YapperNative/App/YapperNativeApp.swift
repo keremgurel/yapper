@@ -66,7 +66,7 @@ struct YapperNativeApp: App {
                     if url.isFileURL, ProjectPackage.isPackage(url) {
                         Task { await session.openProject(ProjectPackage(url: url)) }
                     } else if url.isFileURL {
-                        OpenedFileImporter.shared.receive(url, into: session)
+                        OpenedFileImporter.shared.importOpened(url, into: session)
                     } else if let request = StudioEditorRequest(url: url) {
                         StudioWebCommands.shared.openEditor(request)
                         NSApp.activate(ignoringOtherApps: true)

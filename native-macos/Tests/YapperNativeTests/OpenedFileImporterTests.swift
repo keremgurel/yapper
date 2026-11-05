@@ -42,7 +42,7 @@ struct OpenedFileImporterTests {
         #expect(session.projectNavigation.currentPackage == nil)
 
         let importer = OpenedFileImporter()
-        importer.receive(url, into: session)
+        importer.importOpened(url, into: session)
         await importer.settle()
 
         let package = try #require(session.projectNavigation.currentPackage)
@@ -67,7 +67,7 @@ struct OpenedFileImporterTests {
 
         // One URL at a time, the way Finder delivers a multi-file Open With.
         let importer = OpenedFileImporter()
-        for url in [main, broll, notes] { importer.receive(url, into: session) }
+        for url in [main, broll, notes] { importer.importOpened(url, into: session) }
         await importer.settle()
 
         #expect(session.projectNavigation.currentPackage == package)
