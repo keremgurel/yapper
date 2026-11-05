@@ -79,7 +79,11 @@ jobs:
     needs: changes
     if: needs.changes.outputs.native == 'true'
     runs-on: macos-26
-    timeout-minutes: 20
+    # A debug build, the serial suite and a release build from scratch took
+    # 13 minutes on a quick runner (2026-11-01) and passed 20 on a slow one
+    # (2026-11-05: every step, dependencies included, ran 1.5 to 3 times
+    # longer). The limit is for a hung test, not a slow machine.
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: native-macos
