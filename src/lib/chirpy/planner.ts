@@ -22,6 +22,19 @@ timelineItems lists every clip, caption, text layer, overlay and sound with its 
 A request about "the video", "the footage" or "my clips" with nothing selected means every main-track clip; with a selection it means the selected clips; "this clip" means the clip under the playhead. For lock or speed edits choose explicit current clip/caption IDs; use the selected IDs unless the user requests all or names another target. For a workflow, copy the user's relevant instruction and use that workflow alone. Up to eight deterministic actions can form one atomic edit. Something an action creates has no ID until the plan runs, so no later action in the same plan can reference it: when editor.text.add offers style, give it the look (font, fontScale, colours, position) in that same action rather than following it with editor.text.setStyle or editor.text.update. Do not combine workflows with other actions. Project library (app.projects.*) and dictionary (app.dictionary.*) actions also run alone; take project IDs from projectLibrary and terms from dictionary. Moving a project to the Trash asks the creator to confirm, so propose it only when they asked for it. If the requested capability isn't in the catalog, explain the limitation honestly. Never fall back to an unrelated action.
 Include only the schema's fields. No markdown. Local deterministic actions are free; this planning call costs ${PAID_ACTIONS.chirpy_plan.credits} credits and generation workflows have their own existing charges.`;
 
+/** Failures that say nothing about the plan itself. */
+const RETRYABLE_PROVIDER_FAILURES = new Set([
+  "empty_answer",
+  "network_error",
+  "invalid_response",
+  "ai_500",
+  "ai_502",
+  "ai_503",
+  "ai_529",
+]);
+/** Below this there is no time left for a second plan to be useful. */
+const MIN_RETRY_WINDOW_MS = 12_000;
+
 export async function planChirpy(input: PlanInput, signal?: AbortSignal) {
   const { selectedOverlayImage, ...context } = input.context;
   const image = selectedOverlayImage as
@@ -71,16 +84,41 @@ export async function planChirpy(input: PlanInput, signal?: AbortSignal) {
   // original deadline and the ledger still charges only one successful plan.
   const deadline = Date.now() + request.timeoutMs;
   let issue: string | undefined;
+  let providerRetried = false;
   for (let attempt = 0; attempt < 2; attempt++) {
     const remaining = deadline - Date.now();
     if (remaining <= 0) throw new Error("timeout");
-    const reply = await callSceneModel({
-      ...request,
-      timeoutMs: remaining,
-      user: issue
-        ? `${request.user}\nThe previous reply failed validation: ${issue}. Return a complete corrected plan using only the advertised actions. If unavailable, return an explanation with no actions.`
-        : request.user,
-    });
+    let reply: Awaited<ReturnType<typeof callSceneModel>>;
+    try {
+      reply = await callSceneModel({
+        ...request,
+        timeoutMs: remaining,
+        user: issue
+          ? `${request.user}\nThe previous reply failed validation: ${issue}. Return a complete corrected plan using only the advertised actions. If unavailable, return an explanation with no actions.`
+          : request.user,
+      });
+    } catch (error) {
+      // One in four plans failed on the first try and worked when the
+      // creator sent the same words again. A provider that answered nothing
+      // or dropped the connection gets one more go while there is time for
+      // it; a timeout or a refusal does not.
+      const reason = error instanceof Error ? error.message : "unknown";
+      console.warn("[chirpy/plan] provider call failed", {
+        reason,
+        attempt,
+        elapsedMs: Date.now() - (deadline - request.timeoutMs),
+      });
+      if (
+        !providerRetried &&
+        RETRYABLE_PROVIDER_FAILURES.has(reason) &&
+        deadline - Date.now() > MIN_RETRY_WINDOW_MS
+      ) {
+        providerRetried = true;
+        attempt--;
+        continue;
+      }
+      throw error;
+    }
     const raw = extractJsonObject(reply.content);
     const plan = parsePlanReply(raw, input);
     if (plan) return plan;

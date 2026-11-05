@@ -48,10 +48,14 @@ async function trackedPOST(req: Request): Promise<Response> {
       return Response.json({ error: "insufficient_credits" }, { status: 402 });
     if (error instanceof PlanConflict)
       return Response.json({ error: "execution_conflict" }, { status: 409 });
-    console.error(
-      "[chirpy/plan] failed",
-      error instanceof Error ? error.message : "unknown",
-    );
+    console.error("[chirpy/plan] failed", {
+      reason: error instanceof Error ? error.message : "unknown",
+      name: error instanceof Error ? error.name : typeof error,
+      cause:
+        error instanceof Error && error.cause instanceof Error
+          ? error.cause.message
+          : undefined,
+    });
     const reason =
       error instanceof Error && error.message === "invalid_action_plan"
         ? "invalid_action_plan"
