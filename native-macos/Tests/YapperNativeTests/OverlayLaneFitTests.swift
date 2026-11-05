@@ -28,6 +28,33 @@ struct OverlayLaneFitTests {
         #expect(settled.map(\.lane) == [0, 1])
     }
 
+    /// Project "5": 21.71588571110309 + 2.16 runs 5 µs into a neighbour at
+    /// 23.8758807111031. That is butting, not overlapping.
+    @Test func floatDriftIsTouchingNotOverlapping() throws {
+        let next = ProjectOverlay(mediaID: media, timelineStart: 23.8758807111031, duration: 3)
+        var writing = ProjectOverlay(mediaID: media, timelineStart: 21.71588571110309, duration: 1)
+        writing.duration = 2.160
+        #expect(!OverlayTracks.collide(writing.timelineStart, writing.duration, next.timelineStart, next.duration))
+        let settled = try OverlayLaneFit.settle([writing], among: [next], keepingRequestedLane: true)
+        #expect(settled.first?.lane == 0)
+        // Pulled onto the neighbour, so they hand over on the same frame.
+        #expect(settled.first.map { $0.timelineStart + $0.duration } == next.timelineStart)
+        // A real overlap still is one.
+        #expect(OverlayTracks.collide(21.7, 2.2, next.timelineStart, next.duration))
+    }
+
+    @Test func aRefusedLaneNamesWhatItRanInto() {
+        let sitting = ProjectOverlay(mediaID: media, timelineStart: 2, duration: 2)
+        let moved = ProjectOverlay(mediaID: media, timelineStart: 3, duration: 1)
+        do {
+            _ = try OverlayLaneFit.settle([moved], among: [sitting], keepingRequestedLane: true,
+                                          name: { $0.id == moved.id ? "writing.mp4" : "live call.mp4" })
+            Issue.record("A taken named lane was accepted")
+        } catch {
+            #expect((error as? AppActionError)?.message == "writing.mp4 would overlap live call.mp4 on lane 1 at 2.00 s.")
+        }
+    }
+
     @Test func aNamedLaneIsStillRefusedWhenTaken() {
         let sitting = ProjectOverlay(mediaID: media, timelineStart: 2, duration: 2)
         let moved = ProjectOverlay(mediaID: media, timelineStart: 3, duration: 1)

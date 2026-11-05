@@ -52,7 +52,8 @@ extension AppActionRegistry {
             if input.track != nil || input.timelineStart != nil || input.duration != nil {
                 let ids = Set(targets.map(\.id))
                 updated = try OverlayLaneFit.settle(updated, among: session.overlays.filter { !ids.contains($0.id) },
-                                                    keepingRequestedLane: input.track != nil)
+                                                    keepingRequestedLane: input.track != nil,
+                                                    name: { session.media(for: $0)?.name ?? "That overlay" })
             }
             return try session.mutateActionOverlays(updated, message: "Overlay properties saved")
         }

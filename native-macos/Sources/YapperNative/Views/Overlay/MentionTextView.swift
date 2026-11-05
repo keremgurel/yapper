@@ -242,8 +242,9 @@ final class MentionNSTextView: NSTextView {
             onEscape?()
             return
         }
-        // Return sends the instruction, Shift-Return starts a new line.
-        if event.keyCode == 36, !event.modifierFlags.contains(.shift) {
+        // Return (or the keypad's Enter) sends the instruction, Shift-Return
+        // starts a new line.
+        if event.keyCode == 36 || event.keyCode == 76, !event.modifierFlags.contains(.shift) {
             onSubmit?()
             return
         }
