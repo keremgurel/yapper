@@ -156,6 +156,7 @@ export interface TextStyleInput {
   rotation?: number;
   font?: TextFontChoice;
   fontScale?: number;
+  size?: number;
   textCase?: TextCaseChoice;
   color?: string;
   strokeEnabled?: boolean;
@@ -210,6 +211,7 @@ export interface TextLayerAddInput {
   at?: TimelineAnchorInput;
   duration?: number;
   asHook?: boolean;
+  style?: TextStyleInput;
 }
 
 export interface TextLayerUpdateInput {
@@ -320,6 +322,7 @@ export interface OverlayAddInput {
   mediaID: string;
   at: TimelineAnchorInput;
   duration?: number;
+  until?: TimelineAnchorInput;
   sourceStart?: number;
 }
 

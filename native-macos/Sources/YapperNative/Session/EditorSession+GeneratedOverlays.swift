@@ -148,7 +148,12 @@ extension EditorSession {
                 for item in batch {
                     try Task.checkCancellation()
                     guard let result = (response["scenes"] as? [[String: Any]])?.first(where: { $0["id"] as? String == item.design["id"] as? String }) else {
-                        notes.append("Couldn’t generate \(item.moment["name"] as? String ?? "that visual"); it was skipped.")
+                        // The server says why a design failed; a note without
+                        // the reason left the creator nothing to act on.
+                        let reason = (response["failed"] as? [[String: Any]])?
+                            .first { $0["id"] as? String == item.design["id"] as? String }?["reason"] as? String
+                        notes.append(OverlayWorkflowOutcome.skippedDesign(
+                            name: item.moment["name"] as? String ?? "that visual", reason: reason))
                         continue
                     }
                     do {

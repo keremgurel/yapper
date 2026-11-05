@@ -59,7 +59,7 @@ describe("scene quality", () => {
     });
     expect(JSON.parse(reply).scene.duration).toBe(4);
     expect(vi.mocked(callSceneModel).mock.calls[1][0].user).toContain(
-      "exceeded the output budget",
+      "ran out of room before the JSON was complete",
     );
   });
   it("does not round transcript duration outside the validator tolerance", () => {

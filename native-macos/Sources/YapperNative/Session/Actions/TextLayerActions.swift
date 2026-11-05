@@ -1,7 +1,8 @@
 import Foundation
 
 /// On-screen text layers as actions: add one, change its words or timing.
-/// Style is `editor.text.setStyle`; removal is `editor.timeline.delete`.
+/// A new layer can carry its style; restyling an existing one is
+/// `editor.text.setStyle`, and removal is `editor.timeline.delete`.
 extension AppActionRegistry {
     func registerTextLayerActions() {
         registerTextLayerAdd()
@@ -23,10 +24,13 @@ extension AppActionRegistry {
             }
             let span = TextLayerPlacement.span(asHook: asHook, currentTime: start, projectDuration: session.duration)
             let duration = min(input.duration ?? span.duration, max(0.1, session.duration - span.start))
-            let layer = ProjectTextLayer(
+            var layer = ProjectTextLayer(
                 text: input.text, timelineStart: span.start, duration: duration,
                 y: asHook ? 0.14 : 0.5, width: asHook ? 0.74 : 0.7,
                 appearance: asHook ? .hookDefault : .textLayerDefault)
+            // The look arrives with the layer. The layer's ID is made here, so a
+            // later step in the same plan has nothing to restyle it by.
+            if let style = input.style { layer.apply(try TextStylePatch(style)) }
             session.updateProject { project in
                 var layers = project.textLayers ?? []
                 layers.append(layer)

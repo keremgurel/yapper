@@ -119,8 +119,8 @@ extension EditorSession {
     func runContextualAssistant(_ text: String) async {
         conversation.attach(projectID: project.id, root: projectNavigation.currentPackage?.url)
         conversation.ask(text)
-        guard activeOperation == nil else {
-            conversation.answer(.chirpy("Wait for the current operation to finish before asking for another edit.", tone: .trouble)); return
+        if let busy = activeOperation {
+            conversation.answer(.chirpy(busy.operation.waitMessage + " Then ask again.", tone: .trouble)); return
         }
         let projectID = project.id, revision = actionRevision, executionID = UUID()
         do {
@@ -156,8 +156,9 @@ extension EditorSession {
             let succeeded = receipts.allSatisfy { $0.status == .applied || $0.status == .unchanged }
             // Only execution receipts can announce success. A model's planned
             // changes are never presented as changes that actually happened.
-            conversation.answer(.chirpy(succeeded ? "\(receipts.map(\.message).joined(separator: " "))" : "I couldn’t complete that edit.",
-                notes: succeeded ? [] : receipts.map(\.message), tone: succeeded ? .done : .trouble))
+            let messages = receipts.map(\.message)
+            conversation.answer(.chirpy(succeeded ? ChirpyReceiptSummary.success(messages) : "I couldn’t complete that edit.",
+                notes: succeeded ? [] : ChirpyReceiptSummary.troubleNotes(messages), tone: succeeded ? .done : .trouble))
         } catch {
             if project.id == projectID {
                 conversation.answer(.chirpy((error is CancellationError || Task.isCancelled) ? "Request canceled." : error.localizedDescription, tone: .trouble))
@@ -171,15 +172,35 @@ private extension String {
 }
 
 enum ChirpyPlanningService {
+    /// A plan the server could not produce (502) is asked for once more before
+    /// the creator hears about it: about one plan in four failed first time and
+    /// went through when the same words were sent again. Nothing is charged
+    /// for a plan that failed, and the execution ID keeps a retry from being
+    /// charged twice.
+    static let attempts = 2
+
     static func plan(_ body: [String: ActionJSON]) async throws -> ChirpyPlanReply {
-        var request = await YapperAPI.authenticatedRequest(url: YapperAPI.url(path: "api/chirpy/plan"))
-        request.httpMethod = "POST"
-        request.timeoutInterval = 55
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try ChirpyRequestBudget.encode(body)
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw AppActionError("Chirpy returned no response.") }
-        guard (200..<300).contains(http.statusCode) else { throw YapperAPI.failure(status: http.statusCode, body: data, action: "Planning the edit") }
+        let payload = try ChirpyRequestBudget.encode(body)
+        var attempt = 0
+        while true {
+            attempt += 1
+            var request = await YapperAPI.authenticatedRequest(url: YapperAPI.url(path: "api/chirpy/plan"))
+            request.httpMethod = "POST"
+            request.timeoutInterval = 55
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = payload
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else { throw AppActionError("Chirpy returned no response.") }
+            if http.statusCode == 502, attempt < attempts {
+                try Task.checkCancellation()
+                continue
+            }
+            return try reply(status: http.statusCode, data: data)
+        }
+    }
+
+    private static func reply(status: Int, data: Data) throws -> ChirpyPlanReply {
+        guard (200..<300).contains(status) else { throw YapperAPI.failure(status: status, body: data, action: "Planning the edit") }
         guard data.count <= 64 * 1024 else { throw AppActionError("Chirpy’s response was too large.") }
         return try JSONDecoder().decode(ChirpyPlanReply.self, from: data)
     }

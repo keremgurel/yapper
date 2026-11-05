@@ -156,6 +156,15 @@ struct HookPlacementTests {
         #expect(hook?.duration == 5)
     }
 
+    @Test func aHookOpensOnModernAtSizeThirtyThree() async {
+        let session = sessionWithFootage()
+        await session.insertTextLayer(asHook: true)
+
+        let hook = session.project.textLayers?.last
+        #expect(hook?.appearance.font == .modern)
+        #expect(hook?.appearance.fontScale == 0.033)
+    }
+
 
     @Test func aHookOnAShortProjectStopsAtTheEnd() async {
         let session = EditorSession(store: HookPlacementStore())

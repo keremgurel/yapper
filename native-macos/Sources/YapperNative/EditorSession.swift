@@ -1344,7 +1344,7 @@ final class EditorSession: ObservableObject {
     }
 
     func addOverlay(_ mediaID: UUID) async {
-        await performAppAction(OverlayAddInput(mediaID: mediaID, at: .playhead, duration: nil, sourceStart: nil))
+        await performAppAction(OverlayAddInput(mediaID: mediaID, at: .playhead, duration: nil, until: nil, sourceStart: nil))
     }
 
     /// An overlay sized to its media before it ever reaches the frame: media
@@ -1427,7 +1427,7 @@ final class EditorSession: ObservableObject {
     /// `addTextLayer`, which does not wait.
     func insertTextLayer(asHook: Bool = false) async {
         guard duration > 0 else { return }
-        await performAppAction(TextLayerAddInput(text: asHook ? "Your hook" : "Text", at: .playhead, duration: nil, asHook: asHook))
+        await performAppAction(TextLayerAddInput(text: asHook ? "Your hook" : "Text", at: .playhead, duration: nil, asHook: asHook, style: nil))
     }
 
     /// Plays an effect to hear it, and says which one is playing.
@@ -2219,6 +2219,12 @@ final class EditorSession: ObservableObject {
 
     func setStatus(_ message: String) {
         statusMessage = message
+    }
+
+    /// Returns once the project the app reopens at launch has loaded, so work
+    /// arriving with the launch (a file opened with Yapper) sees it.
+    func awaitRestoration() async {
+        await restorationTask?.value
     }
 
     /// Resolve the owned Library item before switching projects. Failed reads,
@@ -3119,6 +3125,14 @@ final class EditorSession: ObservableObject {
         rebuildPlayer: Bool,
         preserving error: Error
     ) async {
+        await restoreEditState(state, rebuildPlayer: rebuildPlayer)
+        show(error)
+    }
+
+    /// The same rollback without putting the reason up as the editor's error.
+    /// For a Chirpy plan that was refused: its reply already says why, and the
+    /// "needs attention" sheet on top of it said the same thing twice.
+    func restoreEditState(_ state: RebuiltProjectRollbackState, rebuildPlayer: Bool) async {
         let failedProject = project
         restoreEditStateWithoutRebuild(state)
         if rebuildPlayer {
@@ -3132,7 +3146,6 @@ final class EditorSession: ObservableObject {
             }
         }
         await reconcileDerivedMedia(from: failedProject)
-        show(error)
     }
 
     /// Cancellation is an expected user action, not an editor failure. Restore

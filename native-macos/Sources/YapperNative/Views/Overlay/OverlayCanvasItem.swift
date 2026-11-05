@@ -1,8 +1,8 @@
 @preconcurrency import AppKit
 import SwiftUI
 
-/// One overlay on the player canvas: drawn where it will be exported, moved by
-/// dragging it, resized by its corners.
+/// One overlay on the player canvas: drawn where it will be exported and moved
+/// by dragging it. Its corners and rotate grip are `OverlaySelectionChrome`.
 struct OverlayCanvasItem: View {
     @ObservedObject var session: EditorSession
     let overlay: ProjectOverlay
@@ -13,6 +13,10 @@ struct OverlayCanvasItem: View {
     /// The drag lives on the session, not here: these views are rebuilt while a
     /// gesture is running, and state kept here went with them.
     @ObservedObject var drag: CanvasDragState
+
+    private var placement: OverlayCanvasPlacement {
+        OverlayCanvasPlacement(session: session, overlay: overlay, drag: drag, canvasSize: canvasSize)
+    }
 
     /// What the gesture is doing right now wins over what is saved, so a drag
     /// stays smooth while the project catches up behind it.
@@ -38,40 +42,13 @@ struct OverlayCanvasItem: View {
         isImage && !session.project.compositedOverlayIDs.contains(overlay.id)
     }
 
-    private var box: CGRect {
-        OverlayFrame.fitted(
-            OverlayFrame.box(displayed, in: canvasSize),
-            mediaAspect: session.aspects(for: displayed).media
-        )
-    }
-
-    /// The saved box places the overlay; the drag is carried as a transform on
-    /// top. See CaptionCanvasOverlay for why.
-    private var dragOffset: CGSize {
-        guard drag.overlayDraft(for: overlay.id) != nil else { return .zero }
-        let saved = savedBox
-        return CGSize(width: box.midX - saved.midX, height: box.midY - saved.midY)
-    }
-
-    /// The saved box, which is where the item is placed from.
-    private var savedBox: CGRect {
-        OverlayFrame.fitted(
-            OverlayFrame.box(overlay, in: canvasSize),
-            mediaAspect: session.aspects(for: overlay).media
-        )
-    }
-
     var body: some View {
         // Sized from the drag, so a resize is live; placed from the saved box,
         // so a move is a transform rather than a layout pass.
-        let frame = box
-        content
+        let placement = placement
+        let frame = placement.box
+        content(box: frame)
             .frame(width: max(1, frame.width), height: max(1, frame.height))
-            // The body takes its own clicks and drags before any decoration
-            // goes on top. A hit shape applied after the corner handles cut
-            // them off: they hang outside the box on purpose, so the shape
-            // clipped exactly the part you reach for, and resizing stopped
-            // working on every item at once.
             .contentShape(Rectangle())
             .onTapGesture { session.selectOverlay(overlay.id) }
             .contextMenu {
@@ -79,28 +56,22 @@ struct OverlayCanvasItem: View {
             }
             .gesture(moveGesture)
             .overlay { cutawayHint }
-            .overlay(alignment: .topLeading) { handle(.topLeading) }
-            .overlay(alignment: .topTrailing) { handle(.topTrailing) }
-            .overlay(alignment: .bottomLeading) { handle(.bottomLeading) }
-            .overlay(alignment: .bottomTrailing) { handle(.bottomTrailing) }
-            .overlay(alignment: .top) { turnRing }
-            .overlay { turnPad(centre: CGPoint(x: frame.midX, y: frame.midY)) }
-            // The card and everything drawn on it turn together, so the corner
-            // you grab is always the corner you can see.
-            .rotationEffect(.degrees(displayed.resolvedRotation))
+            // The corners and the rotate grip are not here: they are drawn over
+            // the stage by OverlaySelectionChrome, so the clip at the frame's
+            // edge cannot cut them off.
+            .rotationEffect(.degrees(placement.displayed.resolvedRotation))
             // Placed last: `position` hands back a view the size of the whole
             // canvas, so anything after it would claim the lot.
-            .position(x: savedBox.midX, y: savedBox.midY)
-            .offset(dragOffset)
+            .position(x: placement.savedBox.midX, y: placement.savedBox.midY)
+            .offset(placement.dragOffset)
     }
 
     @ViewBuilder
-    private var content: some View {
+    private func content(box frame: CGRect) -> some View {
         if let media, media.isScene {
-            SceneCanvasPreview(media: media, overlay: displayed, size: box.size, clock: session.playbackClock)
+            SceneCanvasPreview(media: media, overlay: displayed, size: frame.size, clock: session.playbackClock)
         } else if drawsItsOwnPicture, let image = session.thumbnailsByMedia[overlay.mediaID]?.first {
             let full = OverlayFrame.isFullFrame(displayed)
-            let frame = box
             CroppedOverlayImage(
                 image: session.gradedOverlayImage(image),
                 crop: displayed.resolvedCrop,
@@ -140,72 +111,6 @@ struct OverlayCanvasItem: View {
                 .stroke(Color.white.opacity(0.22), lineWidth: 1)
                 .padding(-2)
         }
-    }
-
-    @ViewBuilder
-    private func handle(_ corner: CanvasResizeCorner) -> some View {
-        if isSelected {
-            OverlayResizeHandle(corner: corner) { phase, translation in
-                resize(corner: corner, translation: translation, ended: phase)
-            }
-        }
-    }
-
-    /// The handle you can see, standing off the top edge so it never reads as a
-    /// fifth corner. It sweeps round with the card and takes no clicks.
-    @ViewBuilder
-    private var turnRing: some View {
-        if isSelected { TurnRing().offset(y: -TurnHandle.reach) }
-    }
-
-    /// The handle you can grab, which stands still for as long as it is held.
-    ///
-    /// Turned back by however far the card has turned since the drag began, so
-    /// that in the frame's own points it does not move. A pad that swept round
-    /// with the ring left the pointer behind within a few degrees, SwiftUI
-    /// cancelled the drag and offered a fresh one, and every restart threw away
-    /// the movement it began with: a card turning a fraction of the way the
-    /// pointer swept, in jumps.
-    @ViewBuilder
-    private func turnPad(centre: CGPoint) -> some View {
-        if isSelected {
-            ZStack(alignment: .top) {
-                Color.clear.allowsHitTesting(false)
-                TurnPad { start, current, ended in
-                    turn(centre: centre, from: start, to: current, ended: ended)
-                }
-                .offset(y: -TurnHandle.reach)
-            }
-            .rotationEffect(.degrees(heldRotation - displayed.resolvedRotation))
-            .accessibilityLabel("Rotate overlay")
-        }
-    }
-
-    /// The angle the card stood at when the gesture in flight began, which is
-    /// where anything that owns a drag has to stay.
-    private var heldRotation: Double {
-        guard let origin = drag.overlayOrigin, origin.id == overlay.id else {
-            return displayed.resolvedRotation
-        }
-        return origin.resolvedRotation
-    }
-
-    private func turn(centre: CGPoint, from start: CGPoint, to current: CGPoint, ended: Bool) {
-        if drag.overlayOrigin?.id != overlay.id {
-            drag.beginOverlay(overlay)
-            if !isSelected { session.selectOverlay(overlay.id) }
-        }
-        guard let origin = drag.overlayOrigin else { return }
-        drag.updateOverlay(
-            OverlayCanvasGeometry.rotated(
-                overlay: origin,
-                centre: centre,
-                from: start,
-                to: current,
-                snapping: !isSnapBypassed
-            )
-        )
-        if ended { finish() }
     }
 
     private var moveGesture: some Gesture {
@@ -248,32 +153,8 @@ struct OverlayCanvasItem: View {
             }
     }
 
-    /// Every step of a resize measures from where the overlay was when the
-    /// handle was grabbed. Measuring from the frame it is being dragged through
-    /// would compound each step into the next and run away.
-    private func resize(corner: CanvasResizeCorner, translation: CGSize, ended: Bool) {
-        if drag.overlayOrigin?.id != overlay.id {
-            drag.beginOverlay(overlay)
-            if !isSelected { session.selectOverlay(overlay.id) }
-        }
-        guard let origin = drag.overlayOrigin else { return }
-        let aspects = session.aspects(for: origin)
-        let resized = OverlayCanvasGeometry.resized(
-            overlay: origin,
-            translation: translation,
-            corner: corner,
-            canvasSize: canvasSize,
-            mediaAspect: aspects.media,
-            frameAspect: aspects.frame
-        )
-        drag.updateOverlay(resized)
-        // Same as the move: the drag draws itself, and the project hears about
-        // it once, at the end.
-        if ended { finish() }
-    }
-
     private func finish() {
-        if let finished = drag.endOverlay() { session.commitOverlayEdit(finished) }
+        OverlayCanvasCommit.finish(session: session, drag: drag)
         onGuidesChanged([])
     }
 
@@ -295,34 +176,6 @@ enum OverlayCanvasChrome {
         isSelected: Bool
     ) -> Bool {
         !isBehindSpeaker && !isImage && !isSelected
-    }
-}
-
-/// One corner grip. Reports the drag as it happens and once more when it ends,
-/// so the caller can redraw cheaply and save once.
-private struct OverlayResizeHandle: View {
-    let corner: CanvasResizeCorner
-    let onDrag: (_ ended: Bool, _ translation: CGSize) -> Void
-
-    var body: some View {
-        RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-            .fill(Color.white)
-            .overlay {
-                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                    .stroke(Color.yapperOrange, lineWidth: 1.5)
-            }
-            .frame(width: 9, height: 9)
-            .offset(x: corner.xOffset, y: corner.yOffset)
-            .contentShape(Rectangle().inset(by: -8))
-            .cursor(.crosshair)
-            .highPriorityGesture(
-                // The handle travels with the corner it is resizing, so it can
-                // no more measure against itself than the overlay can.
-                DragGesture(minimumDistance: 0, coordinateSpace: .named(CanvasCoordinateSpace.stage))
-                    .onChanged { onDrag(false, $0.translation) }
-                    .onEnded { onDrag(true, $0.translation) }
-            )
-            .accessibilityLabel("Resize overlay from \(corner.accessibilityName)")
     }
 }
 

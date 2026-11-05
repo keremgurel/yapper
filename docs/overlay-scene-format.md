@@ -50,7 +50,7 @@ Common fields: `id` (unique in the scene), `type`, `x`, `y`, `width`,
 | type      | fields                                                                                                                                                                                                                   |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `text`    | `text`, `font` (`modern`, `rounded`, `editorial`), `weight` (`regular`, `medium`, `semibold`, `bold`, `black`), `size`, `color`, `align` (`left`, `center`, `right`), `lineHeight` (multiple, default 1.15), `uppercase` |
-| `number`  | Everything `text` takes except `text`, plus `from`, `to`, `format` (`plain`, `grouped`, `percent`, `compact`, `decimal1`), `prefix`, `suffix`. Draws the value at `value` progress between `from` and `to`.              |
+| `number`  | Everything `text` takes except `text`, plus `from`, `to`, `format` (`plain`, `grouped`, `percent`, `compact`, `decimal1`, `clock`), `prefix`, `suffix`. Draws the value at `value` progress between `from` and `to`.     |
 | `rect`    | `fill`, `stroke`, `strokeWidth`, `cornerRadius`                                                                                                                                                                          |
 | `ellipse` | `fill`, `stroke`, `strokeWidth`                                                                                                                                                                                          |
 | `line`    | `x2`, `y2` (end point, same units as `x`, `y`), `stroke`, `strokeWidth`, `dashed`                                                                                                                                        |
@@ -60,7 +60,10 @@ Common fields: `id` (unique in the scene), `type`, `x`, `y`, `width`,
 | `group`   | `children` (nodes positioned inside the group's box)                                                                                                                                                                     |
 
 Text sizes and stroke widths are fractions of the box height. A `number` node
-formats with `en-US` grouping.
+formats with `en-US` grouping. `clock` reads the value as seconds and shows it
+as `m:ss`, rounded to the nearest second, with minutes past 59 kept as minutes
+(`75:00`). A five minute countdown is one node: `from` 300, `to` 0, `format`
+`clock`, and a `value` animation from 0 to 1 with `linear` easing.
 
 Generated text/number nodes should provide explicit height and enough width
 for their longest content. Small fonts are flagged, never enlarged in place.

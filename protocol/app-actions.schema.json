@@ -305,7 +305,7 @@
     {
       "id": "editor.overlays.add",
       "symbol": "overlayAdd",
-      "description": "Place one existing media item as an overlay at a known timeline anchor. Optional duration and sourceStart; defaults match Add as overlay. Use designOverlays/placeImported only when editorial placement across speech must be decided.",
+      "description": "Place one existing media item as an overlay at a known timeline anchor. Optional duration and sourceStart; defaults match Add as overlay. For \"while I say X\" (at and until both X) or \"until I say Y\", set until instead of duration, so the end never depends on arithmetic. Use designOverlays/placeImported only when editorial placement across speech must be decided.",
       "input": "OverlayAddInput",
       "effect": "reversibleEdit",
       "requiresRebuild": true,
@@ -416,7 +416,7 @@
       "id": "editor.text.add",
       "symbol": "textLayerAdd",
       "input": "TextLayerAddInput",
-      "description": "Add an on-screen text layer with the given text at a timeline anchor (default the playhead) for duration seconds (default 5). asHook places it at the very start with the hook look.",
+      "description": "Add an on-screen text layer with the given text at a timeline anchor (default the playhead) for duration seconds (default 5). asHook places it at the very start with the hook look. style sets its look and position in the same action, on top of that default; a layer added in this plan has no ID yet, so later actions in the plan cannot restyle or update it.",
       "effect": "reversibleEdit",
       "requiresRebuild": false,
       "runtime": "client"
@@ -1467,7 +1467,13 @@
           "type": "number",
           "minimum": 0.012,
           "maximum": 0.22,
-          "description": "Cap height as a fraction of frame height. Captions default near 0.05."
+          "description": "Cap height as a fraction of frame height. Captions default near 0.05. The inspector shows Size as fontScale x 1000, so Size 33 is exactly 0.033 and 0.043 reads as Size 43."
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 12,
+          "maximum": 220,
+          "description": "The text size the inspector shows. Sets fontScale to size / 1000 exactly, so 33 is 0.033. Use it whenever the creator gives a size number; it wins over fontScale."
         },
         "textCase": {
           "$ref": "#/$defs/TextCaseChoice"
@@ -1694,6 +1700,10 @@
         },
         "asHook": {
           "type": "boolean"
+        },
+        "style": {
+          "$ref": "#/$defs/TextStyleInput",
+          "description": "Optional look and position for the new layer, the same fields as editor.text.setStyle. Send only the fields that differ from the default."
         }
       }
     },
@@ -2156,6 +2166,10 @@
           "type": "number",
           "minimum": 0.1,
           "maximum": 86400
+        },
+        "until": {
+          "$ref": "#/$defs/TimelineAnchorInput",
+          "description": "Where the overlay ends, instead of duration. A phrase ends it where that phrase begins (until I say Y); when the overlay starts on that same phrase (while I say X) it ends where the phrase ends. Without an occurrence the phrase is the first match after the start. Other anchors are the moment they name."
         },
         "sourceStart": {
           "type": "number",
