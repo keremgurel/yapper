@@ -15,6 +15,18 @@ enum OverlayWorkflowOutcome {
         return reasons.isEmpty ? "No overlay was added." : "No overlay was added. " + reasons.joined(separator: " ")
     }
 
+    /// One line for each named file that did not land, saying where it was
+    /// lost: never chosen, quoted words not found, or turned away on arrival.
+    static func unplaced(_ files: [ProjectMedia], planned: Set<String>, matched: Set<String>,
+                         landed: Set<UUID>) -> [String] {
+        files.filter { !landed.contains($0.id) }.map { file in
+            let why = !planned.contains(file.name) ? "no moment was chosen for it"
+                : !matched.contains(file.name) ? "its words were not found in the kept speech"
+                : "that moment already had it, or overlapped another placement"
+            return "Not placed: \(file.name), because \(why)."
+        }
+    }
+
     /// One visual the designer could not make, with the server's reason.
     static func skippedDesign(name: String, reason: String?) -> String {
         guard let reason, !reason.isEmpty else { return "Couldn’t generate \(name); it was skipped." }
