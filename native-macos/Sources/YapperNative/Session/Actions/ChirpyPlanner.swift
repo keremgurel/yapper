@@ -119,8 +119,8 @@ extension EditorSession {
     func runContextualAssistant(_ text: String) async {
         conversation.attach(projectID: project.id, root: projectNavigation.currentPackage?.url)
         conversation.ask(text)
-        guard activeOperation == nil else {
-            conversation.answer(.chirpy("Wait for the current operation to finish before asking for another edit.", tone: .trouble)); return
+        if let busy = activeOperation {
+            conversation.answer(.chirpy(busy.operation.waitMessage + " Then ask again.", tone: .trouble)); return
         }
         let projectID = project.id, revision = actionRevision, executionID = UUID()
         do {

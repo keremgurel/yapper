@@ -21,6 +21,24 @@ enum LongOperation: Equatable, Sendable {
 
     var isExport: Bool { self == .exporting }
 
+    /// What a refusal says while this holds the editor. "Wait for the current
+    /// operation" left a creator staring at a Projects screen for minutes with
+    /// nothing visibly running and no way to tell what to wait for.
+    var waitMessage: String {
+        switch self {
+        case .importingMedia: "Wait for the media import to finish."
+        case .importingAudio: "Wait for the audio import to finish."
+        case .relinkingMedia: "Wait for the media relink to finish."
+        case .transcribing: "Wait for transcription to finish."
+        case .oneClickEdit: "Wait for 1-Click Edit to finish."
+        case .captions: "Wait for captions to finish."
+        case .autoTrim: "Wait for auto-trim to finish."
+        case .overlayAI: "Wait for the overlay job to finish."
+        case .exporting: "Wait for the export to finish."
+        case .recoveringMedia: "Wait a moment: Yapper is checking the project's media files."
+        }
+    }
+
     var cancelLabel: String {
         switch self {
         case .transcribing: "Cancel transcription"

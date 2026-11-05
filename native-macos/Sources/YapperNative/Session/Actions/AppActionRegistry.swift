@@ -102,7 +102,7 @@ final class AppActionRegistry {
 
     func availability(_ id: AppActionID, in session: EditorSession) -> AppActionAvailability {
         guard let entry = entries[id.rawValue] else { return .init(reason: "This action is unavailable in this app version.") }
-        if session.activeOperation != nil { return .init(reason: "Wait for the current operation to finish.") }
+        if let busy = session.activeOperation { return .init(reason: busy.operation.waitMessage) }
         return entry.availability(session)
     }
 
@@ -135,7 +135,7 @@ final class AppActionRegistry {
             return replies
         }
         guard calls.count <= 8, session.activeOperation == nil else {
-            return receipts(.rejected, "Wait for the current operation to finish.")
+            return receipts(.rejected, session.activeOperation?.operation.waitMessage ?? "Up to eight steps can run in one edit.")
         }
         for (index, call) in calls.enumerated() {
             do {
@@ -246,7 +246,7 @@ final class AppActionRegistry {
         catch { return result(.rejected, error.localizedDescription) }
         if appScope.contains(request.action) {
             if session.activeOperation != nil && session.activeOperation?.token != owner?.token {
-                return result(.rejected, "Wait for the current operation to finish.")
+                return result(.rejected, session.activeOperation?.operation.waitMessage ?? "Wait for the current operation to finish.")
             }
             let outcome = await appScope.run(request.action, arguments: .object(request.arguments), in: session, fromAssistant: false)
             return result(outcome.status, outcome.message, mutation: outcome.mutation)
@@ -255,7 +255,7 @@ final class AppActionRegistry {
             if request.projectID != session.project.id { return "The active project changed. Read the current project before editing." }
             if request.revision != session.actionRevision { return "The project changed. Read its current state before editing." }
             if session.activeOperation != nil && session.activeOperation?.token != owner?.token {
-                return "Wait for the current operation to finish."
+                return session.activeOperation?.operation.waitMessage ?? "Wait for the current operation to finish."
             }
             return entry.availability(session).reason
         }
@@ -271,7 +271,7 @@ final class AppActionRegistry {
                 reply = await self.execute(request, in: session, owner: lease)
             }
             return reply ?? result(canceled ? .canceled : .rejected,
-                                   canceled ? "Action canceled." : "Wait for the current operation to finish.")
+                                   canceled ? "Action canceled." : session.activeOperation?.operation.waitMessage ?? "Wait for the current operation to finish.")
         }
         session.clearError()
         guard let rollback = await session.beginPreparedTimelineEdit() else {
