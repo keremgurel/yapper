@@ -156,6 +156,7 @@ export interface TextStyleInput {
   rotation?: number;
   font?: TextFontChoice;
   fontScale?: number;
+  size?: number;
   textCase?: TextCaseChoice;
   color?: string;
   strokeEnabled?: boolean;

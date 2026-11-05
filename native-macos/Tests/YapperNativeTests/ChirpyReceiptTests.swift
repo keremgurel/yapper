@@ -111,6 +111,30 @@ struct ChirpyBatchReceiptTests {
         #expect(layer.width == 0.7 && layer.appearance.textCase == TextAppearance.textLayerDefault.textCase)
     }
 
+    @Test func aStyledHookLandsExactlyAsAsked() async throws {
+        let (session, root) = try await session()
+        defer { try? FileManager.default.removeItem(at: root); session.player.replaceCurrentItem(with: nil) }
+        // The ads 3 and 4 request: modern, size 33, black on white, y 0.14,
+        // width 0.74, in one action.
+        let style: [String: ActionJSON] = [
+            "font": .string("modern"), "size": .number(33), "y": .number(0.14), "width": .number(0.74),
+            "color": .string("#000000"), "backgroundEnabled": .bool(true), "backgroundColor": .string("#FFFFFF"),
+        ]
+        session.chirpyPlanner = { _ in .init(message: "Planned", actions: [
+            .init(action: AppActionID.textLayerAdd.rawValue, arguments: [
+                "text": .string("Your TEF score in 10 minutes"), "asHook": .bool(true), "style": .object(style)]),
+        ]) }
+
+        await session.runAssistant(instruction: "add a hook text, modern font, size 33, black on white, y 0.14, width 0.74")
+
+        let hook = try #require(session.project.textLayers?.first)
+        #expect(hook.appearance.font == .modern)
+        #expect(hook.appearance.fontScale == 0.033)
+        #expect(hook.y == 0.14 && hook.width == 0.74)
+        #expect(hook.appearance.color.hex.uppercased().hasPrefix("#000000"))
+        #expect(hook.appearance.backgroundEnabled)
+    }
+
     @Test func identicalSuccessesAreGroupedInTheReply() async throws {
         let (session, root) = try await session()
         defer { try? FileManager.default.removeItem(at: root); session.player.replaceCurrentItem(with: nil) }
