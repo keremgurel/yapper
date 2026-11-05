@@ -58,13 +58,43 @@ struct OverlayUntilAnchorTests {
         let (session, broll, root) = try await session()
         defer { try? FileManager.default.removeItem(at: root); session.player.replaceCurrentItem(with: nil) }
 
-        // "comment TEF" is said twice; from 2.5 s the next one ends at 4.2 s.
+        // "comment TEF" is said twice; from 2.5 s the next one begins at 3.3 s,
+        // and "until I say it" is gone by then.
         let result = await session.performAppAction(OverlayAddInput(
             mediaID: broll, at: time(2.5), duration: nil, until: phrase("comment TEF"), sourceStart: nil))
 
         #expect(result.status == .applied)
         let overlay = try #require(session.overlays.first)
-        #expect(abs(overlay.timelineStart + overlay.duration - 4.2) < 1e-6)
+        #expect(abs(overlay.timelineStart + overlay.duration - 3.3) < 1e-6)
+    }
+
+    @Test func fromOnePhraseUntilAnotherEndsWhereTheSecondBegins() async throws {
+        let (session, broll, root) = try await session()
+        defer { try? FileManager.default.removeItem(at: root); session.player.replaceCurrentItem(with: nil) }
+
+        let result = await session.performAppAction(OverlayAddInput(
+            mediaID: broll, at: phrase("TEF below"), duration: nil, until: phrase("and comment"), sourceStart: nil))
+
+        #expect(result.status == .applied)
+        let overlay = try #require(session.overlays.first)
+        #expect(abs(overlay.timelineStart - 1.0) < 1e-6)
+        #expect(abs(overlay.timelineStart + overlay.duration - 3.0) < 1e-6)
+    }
+
+    @Test func aLengthJustPastTheClipIsTrimmedToIt() async throws {
+        let (session, broll, root) = try await session()
+        defer { try? FileManager.default.removeItem(at: root); session.player.replaceCurrentItem(with: nil) }
+        let clip = try #require(session.project.media.first { $0.id == broll })
+
+        // "3.03 seconds" for a 3 s clip is rounding, not a request to overrun.
+        let result = await session.performAppAction(OverlayAddInput(
+            mediaID: broll, at: time(0.5), duration: clip.duration + 0.03, until: nil, sourceStart: nil))
+
+        #expect(result.status == .applied)
+        #expect(abs((session.overlays.first?.duration ?? 0) - clip.duration) < 1e-6)
+        let far = await session.performAppAction(OverlayAddInput(
+            mediaID: broll, at: time(4), duration: clip.duration + 0.5, until: nil, sourceStart: nil))
+        #expect(far.status == .rejected && far.message.contains(clip.name))
     }
 
     @Test func impossibleEndsAreRejectedWithAReason() async throws {
@@ -77,9 +107,9 @@ struct OverlayUntilAnchorTests {
 
         let before = await session.performAppAction(OverlayAddInput(
             mediaID: broll, at: time(5), duration: nil, until: phrase("below"), sourceStart: nil))
-        #expect(before.status == .rejected && before.message.contains("finishes before"))
+        #expect(before.status == .rejected && before.message.contains("is not said after the overlay starts"))
 
-        // The B-roll is 3 s long; 0.5 s to 4.8 s would need more of it.
+        // The B-roll is 3 s long; 0.5 s until "again" (4.3 s) would need more.
         let tooLong = await session.performAppAction(OverlayAddInput(
             mediaID: broll, at: time(0.5), duration: nil, until: phrase("again"), sourceStart: nil))
         #expect(tooLong.status == .rejected && tooLong.message.contains("shorter than"))

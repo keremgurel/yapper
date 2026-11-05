@@ -64,28 +64,41 @@ enum TimelineCue {
         return try base() + (input.offset ?? 0)
     }
 
-    /// Where something that began at `start` should finish: "until I say X".
+    /// Where something that began at `start` should finish.
     ///
-    /// A phrase lands on the end of its last word. Said more than once and
-    /// with no occurrence named, it is the first time it finishes after the
-    /// start, which is what "until I say it" means; asking which occurrence
-    /// would only make the creator count.
+    /// "Until I say X" ends where X begins: the overlay is gone by the time the
+    /// words are heard. "While I say X" starts on X and so is already inside
+    /// it; that one ends where X ends. Said more than once and with no
+    /// occurrence named, X is the first time it comes after the start.
     static func resolveEnd(
         _ input: TimelineAnchorInput,
         after start: Double,
         project: EditorProject,
         playhead: Double
     ) throws -> Double {
-        guard input.kind == .phrase, input.occurrence == nil else {
+        guard input.kind == .phrase else {
             return try resolve(input, project: project, playhead: playhead, edge: .end)
         }
         let offset = input.offset ?? 0
         let matches = TimelinePhrase.matches(input.phrase ?? "", in: project)
-        if let next = matches.first(where: { $0.end + offset > start }) { return next.end + offset }
         // Not found at all: the ordinary resolution says why (no transcript,
         // not in the kept speech) and throws.
         if matches.isEmpty { return try resolve(input, project: project, playhead: playhead, edge: .end) }
-        throw AppActionError("“\(input.phrase ?? "")” finishes before the overlay starts. Choose a later end.")
+        let candidates: [TimelinePhrase.Match]
+        if let occurrence = input.occurrence {
+            guard matches.indices.contains(occurrence - 1) else { throw AppActionError("That occurrence is not in the kept speech.") }
+            candidates = [matches[occurrence - 1]]
+        } else {
+            candidates = matches
+        }
+        // A beat of slack, so an overlay that comes on just before its own
+        // phrase still counts as covering it.
+        let slack = 0.25
+        if let covering = candidates.first(where: { $0.start + offset <= start + slack && $0.end + offset > start }) {
+            return covering.end + offset
+        }
+        if let next = candidates.first(where: { $0.start + offset > start }) { return next.start + offset }
+        throw AppActionError("“\(input.phrase ?? "")” is not said after the overlay starts. Choose a later end.")
     }
 
     private static func phrase(_ input: TimelineAnchorInput, in project: EditorProject) throws -> TimelinePhrase.Match {
