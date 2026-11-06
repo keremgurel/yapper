@@ -92,8 +92,9 @@ final class OpenedFileImporter {
         showEditor(session)
     }
 
-    /// An import, an export or a transcription in flight would turn the
-    /// import away. The files wait for it instead of being dropped.
+    /// An import or a transcription in flight would turn the import away. The
+    /// files wait for it instead of being dropped. Exports run beside the
+    /// editor and never hold it, so they are not waited for.
     private func waitForIdle(_ session: EditorSession) async {
         guard session.activeOperation != nil else { return }
         session.setStatus("Opening the file once the current job finishes…")
