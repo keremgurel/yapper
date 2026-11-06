@@ -30,10 +30,7 @@ extension EditorSession {
     /// bin.
     func appendSelectedMediaToTimeline() async {
         let wanted = project.media.filter { mediaSelection.contains($0.id) && !$0.isImage }
-        guard !wanted.isEmpty else { return }
-        for media in wanted {
-            await appendMediaToTimeline(media.id)
-        }
+        await appendMediaToTimeline(wanted.map(\.id))
     }
 
     /// The files a drop is offering that this editor can actually open.

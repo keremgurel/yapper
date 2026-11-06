@@ -167,6 +167,12 @@ final class EditorSession: ObservableObject {
     /// A drag in progress on the player canvas, held outside the views so
     /// rebuilding them cannot lose it.
     let canvasDrag = CanvasDragState()
+    /// Text typed into a caption or text layer and not yet saved.
+    let typingPreview = TypingPreviewState()
+    /// The saved-audio library the shelf and Chirpy add sounds from.
+    var audioLibrary: AudioLibraryStore = .shared
+    /// Where timeline sounds are copied to and pasted from.
+    var timelinePasteboard: NSPasteboard = .general
     /// What framing the composition on screen is actually rendering, so the
     /// canvas can carry the picture the rest of the way while a rebuild runs.
     let renderedFraming = RenderedFramingStore()
@@ -697,22 +703,24 @@ final class EditorSession: ObservableObject {
         })
     }
 
-    /// The drop at the end of a timeline drag. It stays one transaction so the
-    /// reorder and the slides land as one Undo step; the edits themselves are
-    /// the same cores the registered reorder and shift actions run.
+    /// The drop at the end of a timeline drag, through the reorder and shift
+    /// actions Chirpy uses. They land as one edit, so the reorder and the
+    /// slides undo together.
     func commitTimelineSelectionMove() async {
         let delta = timelineSelectionDragDelta
         let committedPlan = timelineReorderPlan ?? reorderPlan(for: delta)
         timelineDrag.clear()
         guard abs(delta) > 0.000_001, !timelineSelection.isEmpty else { return }
-        await commitTimelineEdit {
-            var changed = false
-            if !draggedClipIDs.isEmpty, let plan = committedPlan {
-                changed = reorderClips(draggedClipIDs, insertionIndex: plan.insertionIndex) || changed
-            }
-            changed = shiftTimelineItems(timelineSelection, by: delta) || changed
-            return changed
+        var actions: [any AppActionInput] = []
+        let clips = draggedClipIDs.sorted { $0.uuidString < $1.uuidString }
+        if !clips.isEmpty, project.clips.count > 1, let plan = committedPlan {
+            actions.append(ClipReorderInput(clipIDs: clips, insertionIndex: min(5_000, max(0, plan.insertionIndex))))
         }
+        let riders = timelineSelection.filter { if case .clip = $0 { false } else { true } }.map(\.id).sorted { $0.uuidString < $1.uuidString }
+        if !riders.isEmpty {
+            actions.append(TimelineShiftInput(itemIDs: riders, deltaSeconds: min(86_400, max(-86_400, delta))))
+        }
+        await performAppActions(actions)
     }
 
     private func timelineSpan(for item: TimelineSelectionItem) -> (start: Double, end: Double)? {
@@ -813,10 +821,7 @@ final class EditorSession: ObservableObject {
 
     func setAspectRatio(_ aspectRatio: ProjectAspectRatio) async {
         guard project.selectedAspectRatio != aspectRatio else { return }
-        await commitTimelineEdit(successStatus: "Frame set to \(aspectRatio.title)") {
-            project.aspectRatio = aspectRatio
-            return true
-        }
+        await performAppAction(ProjectSettingsInput(aspectRatio: aspectRatio.actionInput))
     }
 
     func setActiveTimelineSnap(_ match: TimelineSnapMatch?) {
@@ -1268,52 +1273,36 @@ final class EditorSession: ObservableObject {
         return current || history.referencesSavedAudio(item, url: canonical)
     }
 
+    /// A clip's edge dragged on the timeline, saved through the source range
+    /// action Chirpy uses.
     func commitClipTrim(_ updated: TimelineClip) async {
-        await commitTimelineEdit {
-            guard project.applyManualClipTrim(updated) else { return false }
-            selectedClipID = updated.id
-            timelineSelection = [.clip(updated.id)]
-            currentTime = min(currentTime, project.duration)
-            return true
-        }
+        await performAppAction(ClipSourceRangeInput(clipID: updated.id, sourceStart: min(86_400, max(0, updated.sourceStart)),
+                                                    sourceEnd: min(86_400, max(0.01, updated.sourceEnd))))
     }
 
     /// How long a picture holds on the timeline when it is first added.
     static let imageClipDefaultDuration: Double = 4
 
+    /// Lays media onto the end of the main track, through the media action
+    /// Chirpy uses. A still gets the same default hold an image overlay gets
+    /// and is trimmed from there like any other clip.
     func appendMediaToTimeline(_ mediaID: UUID) async {
-        guard let media = project.media.first(where: { $0.id == mediaID }) else { return }
-        guard !media.isScene else {
-            setStatus("Use Add as overlay for generated visuals.")
-            return
-        }
-        await commitTimelineEdit {
-            // A still has no duration of its own, so it gets the same default
-            // hold an image overlay gets and is trimmed from there like any
-            // other clip.
-            let length = media.isImage ? Self.imageClipDefaultDuration : media.duration
-            project.clips.append(TimelineClip(
-                mediaID: media.id,
-                sourceStart: 0,
-                sourceEnd: length
-            ))
-            selectedClipID = project.clips.last?.id
-            return true
-        }
+        await appendMediaToTimeline([mediaID])
+    }
+
+    func appendMediaToTimeline(_ mediaIDs: [UUID]) async {
+        guard !mediaIDs.isEmpty else { return }
+        let result = await performAppAction(MediaEditInput(mediaIDs: mediaIDs, operation: .append))
+        if result.status == .applied, let clip = result.changes.last?.targetID { selectedClipID = clip }
     }
 
     func resetMediaToSource(_ mediaID: UUID) async {
         guard let media = project.media.first(where: { $0.id == mediaID }), !media.isImage else { return }
-        await commitTimelineEdit(successStatus: "Reset \(media.name) to its full source · ⌘Z to undo") {
-            guard let replacement = project.resetMainTrack(
-                mediaID: mediaID,
-                sourceDuration: media.duration
-            ) else { return false }
-            selectedClipID = replacement.id
-            timelineSelection = [.clip(replacement.id)]
-            currentTime = project.timelineStart(for: replacement.id) ?? 0
-            return true
-        }
+        let result = await performAppAction(MediaEditInput(mediaIDs: [mediaID], operation: .resetToSource))
+        guard result.status == .applied, let replacement = result.changes.first?.targetID else { return }
+        selectTimelineItem(.clip(replacement))
+        currentTime = project.timelineStart(for: replacement) ?? 0
+        setStatus("Reset \(media.name) to its full source · ⌘Z to undo")
     }
 
     func deleteImportedMedia(_ mediaID: UUID) async {
@@ -1326,21 +1315,11 @@ final class EditorSession: ObservableObject {
         let wanted = Set(mediaIDs)
         let doomed = project.media.filter { wanted.contains($0.id) }
         guard !doomed.isEmpty else { return }
-        var removed: [String] = []
-        let success = await commitTimelineEdit(
-            successStatus: "Removed \(removed.count == 1 ? removed[0] : "\(removed.count) files") from this project · \(removed.count == 1 ? "source file kept" : "source files kept") · ⌘Z to undo"
-        ) {
-            for media in doomed {
-                guard project.removeImportedMedia(media.id) else { continue }
-                removed.append(media.name)
-            }
-            guard !removed.isEmpty else { return false }
-            mediaSelection = mediaSelection.reconciled(against: project.media.map(\.id))
-            reconcileSelectionAfterProjectChange()
-            currentTime = min(currentTime, project.duration)
-            return true
-        }
-        guard success else { return }
+        let result = await performAppAction(MediaEditInput(mediaIDs: doomed.map(\.id), operation: .remove))
+        guard result.status == .applied else { return }
+        currentTime = min(currentTime, project.duration)
+        let removed = doomed.filter { media in result.changes.contains { $0.targetID == media.id } }.map(\.name)
+        setStatus("Removed \(removed.count == 1 ? removed[0] : "\(removed.count) files") from this project · \(removed.count == 1 ? "source file kept" : "source files kept") · ⌘Z to undo")
     }
 
     func addOverlay(_ mediaID: UUID) async {
@@ -1398,24 +1377,15 @@ final class EditorSession: ObservableObject {
         )
     }
 
-    /// Lifts a clip onto an overlay lane, landing it where it was dropped.
+    /// Lifts a clip onto an overlay lane, landing it where it was dropped,
+    /// through the track transfer action Chirpy uses.
     func promoteClipToOverlay(
         _ clipID: UUID,
         start: Double? = nil,
         lane: Int? = nil
     ) async {
-        var laneNumber = 1
-        await commitTimelineEdit(
-            successStatus: "Lifted to overlay lane \(laneNumber) · ⌘Z to undo"
-        ) {
-            guard let overlay = project.promoteClipToOverlay(clipID, start: start, lane: lane) else {
-                setStatus("A clip has to stay on the video track")
-                return false
-            }
-            laneNumber = overlay.lane + 1
-            selectTimelineItem(.overlay(overlay.id))
-            return true
-        }
+        await performAppAction(TrackTransferInput(itemID: clipID, direction: .toOverlay, at: start.map(TimelineAnchorInput.time),
+                                                  track: lane.map { min(5_000, max(0, $0)) }, insertionIndex: nil))
     }
 
     func addTextLayer(asHook: Bool = false) {
@@ -1536,24 +1506,28 @@ final class EditorSession: ObservableObject {
 
     func deleteSelectedAudioLayer() async {
         guard let selectedAudioLayerID else { return }
-        await commitTimelineEdit {
-            project.audioLayers?.removeAll { $0.id == selectedAudioLayerID }
-            self.selectedAudioLayerID = project.audioLayers?.last?.id
-            return true
-        }
+        let result = await performAppAction(TimelineDeleteInput(itemIDs: [selectedAudioLayerID]))
+        if result.status == .applied { self.selectedAudioLayerID = project.audioLayers?.last?.id }
     }
 
     func selectOverlay(_ id: UUID) {
         selectTimelineItem(.overlay(id))
     }
 
+    /// A sound dragged or trimmed on the timeline, saved through the audio
+    /// trim action Chirpy uses, with only the fields the drag changed.
     func commitAudioTrim(_ updated: ProjectAudioLayer) async {
-        await commitTimelineEdit {
-            guard let index = project.audioLayers?.firstIndex(where: { $0.id == updated.id }) else { return false }
-            project.audioLayers?[index] = updated
-            selectedAudioLayerID = updated.id
-            return true
+        guard let layer = project.audioLayers?.first(where: { $0.id == updated.id }) else { return }
+        func changed(_ value: Double, from old: Double, in range: ClosedRange<Double>) -> Double? {
+            value == old ? nil : min(range.upperBound, max(range.lowerBound, value))
         }
+        let input = AudioTrimInput(layerIDs: [layer.id],
+                                   sourceStart: changed(updated.sourceStart, from: layer.sourceStart, in: 0 ... 86_400),
+                                   duration: changed(updated.duration, from: layer.duration, in: 0.02 ... 86_400),
+                                   timelineStart: changed(updated.timelineStart, from: layer.timelineStart, in: 0 ... 86_400))
+        guard input.sourceStart != nil || input.duration != nil || input.timelineStart != nil else { return }
+        let result = await performAppAction(input)
+        if result.status == .applied { selectedAudioLayerID = layer.id }
     }
 
     func selectTextLayer(_ id: UUID) {
@@ -1644,18 +1618,11 @@ final class EditorSession: ObservableObject {
         }
     }
 
+    /// The Transcribe buttons, through the transcription workflow Chirpy
+    /// runs. Cancel still reaches the transcription it starts.
     func startTranscription() {
         guard transcriptionTask == nil, activeOperation == nil else { return }
-        lastTranscriptionWasCanceled = false
-        let token = UUID()
-        transcriptionToken = token
-        transcriptionTask = Task { [weak self] in
-            await self?.performTranscription()
-            if self?.transcriptionToken == token {
-                self?.transcriptionTask = nil
-                self?.transcriptionToken = nil
-            }
-        }
+        Task { await performAppAction(TranscribeWorkflowInput(instruction: "Transcribe the project")) }
     }
 
     func cancelCurrentTranscription() {
@@ -1682,8 +1649,17 @@ final class EditorSession: ObservableObject {
         }
     }
 
+    /// The 1-Click Edit button, through the cleanup workflow Chirpy runs.
+    /// Returns whether it was canceled.
     @discardableResult
     func runOneClickEdit() async -> Bool {
+        guard !project.clips.isEmpty else { return false }
+        return await performAppAction(CleanupWorkflowInput(instruction: "1-Click Edit + Captions")).status == .canceled
+    }
+
+    /// Only the cleanup workflow action calls this.
+    @discardableResult
+    func runOneClickEditWorkflow() async -> Bool {
         guard !project.clips.isEmpty else { return false }
         return await runTrackedLongOperation(.oneClickEdit) { [weak self] operation in
             await self?.performOneClickEdit(owner: operation)
@@ -1859,15 +1835,16 @@ final class EditorSession: ObservableObject {
         if activeOperation?.operation == .captions {
             return await withCheckedContinuation { captionOperationWaiters.append($0) }
         }
-        return await runTrackedLongOperation(.captions) { [weak self] operation in
-            await self?.performCaptionToggle(owner: operation)
-        }
+        // Nothing is queued, so resolving the toggle now is resolving it when
+        // its turn starts. The action runs its own captions operation.
+        return await performAppAction(CaptionVisibilityInput(visible: project.captionsEnabled != true)).status == .canceled
     }
 
+    /// Resolves a toggle when its queued turn starts, not when the click was
+    /// made, through the visibility action Chirpy uses. Explicit model calls
+    /// use setVisible and never invert state. The registry acquires the edit
+    /// slot and flushes pending gestures.
     private func performCaptionToggle(owner: LongOperationLease) async {
-        // Resolve a toggle when its queued turn starts, not when the click was
-        // made. Explicit model calls use setVisible and never invert state.
-        // The registry acquires the edit slot and flushes pending gestures.
         await performAppAction(CaptionVisibilityInput(visible: project.captionsEnabled != true), owner: owner)
     }
 
@@ -1884,6 +1861,13 @@ final class EditorSession: ObservableObject {
             let count = project.captionEntries.count
             return "Captions shown · \(count) card\(count == 1 ? "" : "s")"
         }
+        return try await regenerateCaptionCards()
+    }
+
+    /// Rebuilds every card from the current transcript and cut, transcribing
+    /// first if the project has never been listened to. Called only inside the
+    /// caption visibility action's prepared transaction.
+    func regenerateCaptionCards() async throws -> String {
         let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
         for mediaID in mediaIDs {
             try Task.checkCancellation()
@@ -1897,6 +1881,7 @@ final class EditorSession: ObservableObject {
             project.transcript = transcript
             project.markTranscriptionCurrent(for: mediaID)
         }
+        try Task.checkCancellation()
         guard !project.timelineTranscript.isEmpty else { throw NativeEditorError.aiFailed("No spoken words were found to caption.") }
         project.regenerateCaptions()
         setSelectedCaptionIDs([])
@@ -1904,70 +1889,31 @@ final class EditorSession: ObservableObject {
         return "Captions ready · \(count) card\(count == 1 ? "" : "s")"
     }
 
-    /// Rebuilds every card from the current transcript and cut, transcribing
-    /// first if the project has never been listened to. Regeneration is always
-    /// explicit, so hand-edited text is never silently thrown away.
+    /// Rebuilds every card from the current transcript and cut, through the
+    /// caption action Chirpy uses. Regeneration is always explicit, so
+    /// hand-edited text is never silently thrown away. Returns whether it was
+    /// canceled.
     @discardableResult
     func generateCaptions() async -> Bool {
         guard !project.clips.isEmpty else { return false }
-        return await runTrackedLongOperation(.captions) { [weak self] operation in
-            await self?.performCaptionGeneration(owner: operation)
-        }
+        return await performAppAction(CaptionVisibilityInput(visible: true, regenerate: true)).status == .canceled
     }
 
-    private func performCaptionGeneration(owner _: LongOperationLease) async {
-        guard !Task.isCancelled else {
-            markCurrentLongOperationCanceled()
-            statusMessage = "Caption generation canceled"
-            return
-        }
-        guard let rollbackState = await beginPreparedTimelineEdit() else { return }
-        defer { endPreparedTimelineEdit() }
-        errorMessage = nil
-        defer {
-        }
-        do {
-            let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
-            for mediaID in mediaIDs {
-                try Task.checkCancellation()
-                guard
-                    !(project.transcript ?? []).contains(where: { $0.mediaID == mediaID }),
-                    let media = project.media.first(where: { $0.id == mediaID })
-                else { continue }
-                statusMessage = "Transcribing before adding captions…"
-                let words = try await transcribedWords(of: media)
-                var transcript = project.transcript ?? []
-                transcript.removeAll { $0.mediaID == mediaID }
-                transcript.append(contentsOf: words)
-                project.transcript = transcript
-                project.markTranscriptionCurrent(for: mediaID)
-            }
-            guard !project.timelineTranscript.isEmpty else {
-                throw NativeEditorError.aiFailed("No spoken words were found to caption.")
-            }
-            project.regenerateCaptions()
-            setSelectedCaptionIDs([])
-            try Task.checkCancellation()
-            try await persist()
-            recordHistory(before: rollbackState.project)
-            let count = project.captionEntries.count
-            statusMessage = "Captions ready · \(count) card\(count == 1 ? "" : "s")"
-        } catch is CancellationError {
-            markCurrentLongOperationCanceled()
-            await restoreCanceledEditState(
-                rollbackState,
-                rebuildPlayer: false,
-                status: "Caption generation canceled"
-            )
-        } catch {
-            await restoreEditState(rollbackState, rebuildPlayer: false, preserving: error)
-        }
-    }
-
+    /// Cuts silent gaps, through the silence workflow Chirpy runs. With
+    /// `clipIDs`, only the parts of the recording those clips show are
+    /// touched; without, the whole timeline is trimmed. Returns whether it was
+    /// canceled.
     @discardableResult
-    /// Cuts silent gaps. With `clipIDs`, only the parts of the recording those
-    /// clips show are touched; without, the whole timeline is trimmed.
     func autoTrimSilences(clipIDs: Set<UUID>? = nil) async -> Bool {
+        guard !project.clips.isEmpty else { return false }
+        let input = SilenceWorkflowInput(instruction: "Auto-trim silent gaps",
+                                         clipIDs: clipIDs.map { $0.sorted { $0.uuidString < $1.uuidString } })
+        return await performAppAction(input).status == .canceled
+    }
+
+    /// Only the silence workflow action calls this.
+    @discardableResult
+    func autoTrimSilencesWorkflow(clipIDs: Set<UUID>?) async -> Bool {
         guard !project.clips.isEmpty else { return false }
         return await runTrackedLongOperation(.autoTrim) { [weak self] operation in
             await self?.performAutoTrim(owner: operation, clipIDs: clipIDs)
@@ -2064,12 +2010,19 @@ final class EditorSession: ObservableObject {
         errorMessage = nil
     }
 
+    /// ⌘Z and ⇧⌘Z, through the history action Chirpy uses.
     func undo() async {
-        await restoreHistorySnapshot(direction: .undo)
+        await performAppAction(HistoryInput(direction: .undo))
     }
 
     func redo() async {
-        await restoreHistorySnapshot(direction: .redo)
+        await performAppAction(HistoryInput(direction: .redo))
+    }
+
+    /// Steps through history. Only the history action calls this.
+    func restoreHistory(_ direction: HistoryDirectionInput) async {
+        typingPreview.forgetAll()
+        await restoreHistorySnapshot(direction: direction == .undo ? .undo : .redo)
     }
 
     private enum HistoryDirection {

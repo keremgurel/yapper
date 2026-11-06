@@ -63,7 +63,8 @@ private struct TextLayerSelectionChromeLayer: View {
         if let id = session.selectedTextLayerID,
            cursor.canvasItems.textLayerIDs.contains(id),
            let layer = session.project.textLayers?.first(where: { $0.id == id }) {
-            TextLayerSelectionChrome(session: session, layer: layer, canvasSize: canvasSize, drag: session.canvasDrag)
+            TextLayerSelectionChrome(session: session, layer: layer, canvasSize: canvasSize, drag: session.canvasDrag,
+                                     typing: session.typingPreview)
                 .id(id)
         }
     }
@@ -86,7 +87,8 @@ private struct CaptionSelectionChromeLayer: View {
         if let id = cursor.canvasItems.captionID,
            session.isCaptionSelected(id),
            let cue = session.captionCue(id) {
-            CaptionSelectionChrome(session: session, cue: cue, canvasSize: canvasSize, drag: session.canvasDrag)
+            CaptionSelectionChrome(session: session, cue: cue, canvasSize: canvasSize, drag: session.canvasDrag,
+                                   typing: session.typingPreview)
                 .id(id)
         }
     }

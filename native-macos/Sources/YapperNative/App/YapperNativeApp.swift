@@ -26,6 +26,8 @@ final class YapperNativeAppDelegate: NSObject, NSApplicationDelegate {
         guard let session else { return .terminateNow }
 
         terminationTask = Task { @MainActor [weak self] in
+            // A caption or text layer still being typed into is saved first.
+            await session.commitTyping()
             let shouldTerminate = await session.prepareForTermination()
             self?.terminationTask = nil
             if shouldTerminate { NativeAnalytics.shared.flush() }

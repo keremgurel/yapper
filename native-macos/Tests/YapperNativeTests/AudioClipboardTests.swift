@@ -41,10 +41,11 @@ struct AudioClipboardTests {
         defer { try? FileManager.default.removeItem(at: url) }
         let board = NSPasteboard.withUniqueName()
         defer { board.releaseGlobally() }
-        #expect(session.copyTimelineAudio(to: board))
+        session.timelinePasteboard = board
+        #expect(session.copyTimelineAudio())
         session.updateProject { $0.audioLayers?[0].volume = 0.2 }
         session.scrub(to: 1.5)
-        #expect(await session.pasteTimelineAudio(from: board))
+        #expect(await session.pasteTimelineAudio())
         let first = try #require(session.project.audioLayers?.last)
         var expected = original
         expected.id = first.id
@@ -54,7 +55,7 @@ struct AudioClipboardTests {
         #expect(session.timelineSelection == [.audio(first.id)])
         #expect(session.currentTime == 1.5)
         session.scrub(to: 2.5)
-        #expect(await session.pasteTimelineAudio(from: board))
+        #expect(await session.pasteTimelineAudio())
         let second = try #require(session.project.audioLayers?.last)
         #expect(second.id != first.id)
         #expect(second.timelineStart == 2.5)
@@ -71,9 +72,10 @@ struct AudioClipboardTests {
         defer { try? FileManager.default.removeItem(at: url) }
         let board = NSPasteboard.withUniqueName()
         defer { board.releaseGlobally() }
-        #expect(session.copyTimelineAudio(to: board))
+        session.timelinePasteboard = board
+        #expect(session.copyTimelineAudio())
         session.scrub(to: 3.9)
-        #expect(await session.pasteTimelineAudio(from: board))
+        #expect(await session.pasteTimelineAudio())
         let copy = try #require(session.project.audioLayers?.last)
         #expect(abs(copy.timelineStart - 3.9) < 0.0001)
         #expect(abs(copy.duration - 0.1) < 0.0001)
@@ -85,15 +87,16 @@ struct AudioClipboardTests {
         defer { try? FileManager.default.removeItem(at: url) }
         let board = NSPasteboard.withUniqueName()
         defer { board.releaseGlobally() }
-        #expect(session.copyTimelineAudio(to: board))
+        session.timelinePasteboard = board
+        #expect(session.copyTimelineAudio())
         session.updateProject { $0.id = UUID() }
-        #expect(!session.canPasteTimelineAudio(from: board))
-        #expect(!(await session.pasteTimelineAudio(from: board)))
+        #expect(!session.canPasteTimelineAudio())
+        #expect(!(await session.pasteTimelineAudio()))
         board.clearContents()
         board.setString("Text to paste", forType: .string)
-        #expect(!session.canPasteTimelineAudio(from: board))
+        #expect(!session.canPasteTimelineAudio())
         session.setTimelineSelection([])
-        #expect(!session.copyTimelineAudio(to: board))
+        #expect(!session.copyTimelineAudio())
         #expect(board.string(forType: .string) == "Text to paste")
         #expect(session.project.audioLayers == [original])
     }
@@ -105,10 +108,11 @@ struct AudioClipboardTests {
         defer { try? FileManager.default.removeItem(at: url) }
         let board = NSPasteboard.withUniqueName()
         defer { board.releaseGlobally() }
-        #expect(session.copyTimelineAudio(to: board))
+        session.timelinePasteboard = board
+        #expect(session.copyTimelineAudio())
         session.scrub(to: 2)
         await store.failSaves()
-        #expect(!(await session.pasteTimelineAudio(from: board)))
+        #expect(!(await session.pasteTimelineAudio()))
         #expect(session.project.audioLayers == [original])
         #expect(session.timelineSelection == [.audio(original.id)])
     }
