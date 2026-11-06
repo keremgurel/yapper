@@ -79,6 +79,8 @@ export function failureFrom(
     bad_view: "That view needs a name.",
     rate_limited: "That’s a lot of AI work in a short time. Try again soon.",
     generate_failed: `Writing on ${subject} failed. Nothing was charged.`,
+    changed_while_working:
+      "The idea changed while I was writing, so I left it alone. Nothing was charged.",
     brainstorm_failed: `Writing ${subject} failed, so the credit was refunded.`,
   };
   return new StudioActionFailure(

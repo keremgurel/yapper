@@ -11,6 +11,8 @@ protocol IdeaCanvasBody: AnyObject {
     var hooks: [String] { get }
     /// Flushed before an ask: the server edits the version it has saved.
     var autosave: IdeaCanvasAutosave { get }
+    /// Records fields the server saved itself, as the base of the next save.
+    func markSaved(_ fields: IdeaCanvasPatch)
     func setBlocks(_ next: [IdeaCanvasBlock])
     func setHooks(_ hooks: [String])
 }

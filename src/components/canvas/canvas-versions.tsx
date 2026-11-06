@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import type { ContentDetail, ContentVersionDetail } from "@/lib/content/client";
 import type { VersionFormat } from "@/lib/content/formats";
 import CanvasVersionTabs from "@/components/canvas/canvas-version-tabs";
-import { hookTexts } from "@/lib/content/normalize";
+import { hookTexts, normalizeHooks } from "@/lib/content/normalize";
+import { afterSave, baseFor, baseOf } from "@/lib/content/save-base";
 
 /** Saved versions use the same API as Mac. Each writer owns only its version. */
 export default function CanvasVersions({
@@ -171,7 +172,12 @@ function VersionEditor({
   registerFlush: (flush: (() => Promise<void>) | null) => void;
 }) {
   const [draft, setDraft] = useState(version);
+  // The stored copy each field was last read or saved as, and the newest
+  // local copy, so a save merges with a change made elsewhere.
+  const base = useRef(baseOf(version));
+  const latest = useRef(draft);
   useEffect(() => {
+    latest.current = draft;
     onDraft(draft);
   }, [draft, onDraft]);
   const save = async (
@@ -183,12 +189,32 @@ function VersionEditor({
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
+        body: JSON.stringify({ ...patch, base: baseFor(patch, base.current) }),
         keepalive: options?.keepalive,
       },
     );
     if (!response.ok) throw new Error("Version could not be saved");
-    const result = (await response.json()) as { version: ContentVersionDetail };
+    const result = (await response.json()) as {
+      version: ContentVersionDetail;
+      rebased?: boolean;
+    };
+    const next = afterSave({
+      base: base.current,
+      sent: patch,
+      saved: result.version,
+      latest: latest.current,
+      rebased: result.rebased === true,
+    });
+    base.current = next.base;
+    if (Object.keys(next.show).length)
+      setDraft((current) => ({
+        ...current,
+        ...next.show,
+        hooks:
+          next.show.hooks === undefined
+            ? current.hooks
+            : normalizeHooks(next.show.hooks),
+      }));
     onSaved(result.version);
   };
   const autosave = useAutosave<ContentPatch>(save);

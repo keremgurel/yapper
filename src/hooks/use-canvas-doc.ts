@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   docFromItem,
+  keepIds,
   patchFromDoc,
   type CanvasBlock,
 } from "@/lib/content/canvas-doc";
@@ -27,12 +28,24 @@ export function useCanvasDoc(
   const [state, setState] = useState<{
     id: string | null;
     blocks: CanvasBlock[];
+    /** The stored blocks this copy was derived from or last wrote. */
+    source: unknown;
   }>({
     id: null,
     blocks: [],
+    source: null,
   });
   if (item && state.id !== item.id) {
-    setState({ id: item.id, blocks: docFromItem(item) });
+    setState({ id: item.id, blocks: docFromItem(item), source: item.blocks });
+  } else if (item && state.source !== item.blocks) {
+    // The item's blocks changed without passing through here: a save was
+    // merged with someone else's change. Show the merged copy, keeping the
+    // ids of blocks that did not change so focus and scroll stay put.
+    setState({
+      id: item.id,
+      blocks: keepIds(docFromItem(item), state.blocks),
+      source: item.blocks,
+    });
   }
   const blocks = useMemo(
     () => (item && state.id === item.id ? state.blocks : NO_BLOCKS),
@@ -50,8 +63,9 @@ export function useCanvasDoc(
     (next: CanvasBlock[] | ((current: CanvasBlock[]) => CanvasBlock[])) => {
       const resolved = typeof next === "function" ? next(latest.current) : next;
       latest.current = resolved;
-      setState({ id: itemId, blocks: resolved });
-      update(patchFromDoc(resolved));
+      const patch = patchFromDoc(resolved);
+      setState({ id: itemId, blocks: resolved, source: patch.blocks });
+      update(patch);
     },
     [itemId, update],
   );

@@ -32,13 +32,19 @@ struct IdeaCanvasAskReply: Equatable {
     var actions: [IdeaCanvasAction]
     let note: String?
     let messages: [IdeaCanvasMessage]?
+    /// The version as the server saved it, the base of the next autosave.
+    var document: IdeaCanvasPatch?
 
     static func parse(_ data: Data, blockCount: Int) -> IdeaCanvasAskReply {
         let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+        let document = (root["document"] as? [String: Any])
+            .flatMap { try? JSONSerialization.data(withJSONObject: ["item": $0]) }
+            .flatMap { try? JSONDecoder().decode(IdeaCanvasSaveReply.self, from: $0) }
         return IdeaCanvasAskReply(
             actions: IdeaCanvasActionParser.parse(root, blockCount: blockCount),
             note: root["note"] as? String,
-            messages: (root["messages"] as? [Any]).map { $0.compactMap(IdeaCanvasMessage.parse) }
+            messages: (root["messages"] as? [Any]).map { $0.compactMap(IdeaCanvasMessage.parse) },
+            document: document?.fields
         )
     }
 

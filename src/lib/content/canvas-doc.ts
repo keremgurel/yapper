@@ -64,6 +64,27 @@ export function docFromItem(item: {
   return blocks;
 }
 
+/** `next` with each block that matches one in `previous` word for word
+ * taking that block's id, in order, so a reloaded document keeps focus. */
+export function keepIds(
+  next: CanvasBlock[],
+  previous: CanvasBlock[],
+): CanvasBlock[] {
+  const unused = [...previous];
+  return next.map((block) => {
+    const index = unused.findIndex(
+      (old) =>
+        old.label === block.label &&
+        old.kind === block.kind &&
+        old.text === block.text &&
+        old.items.join("\n") === block.items.join("\n"),
+    );
+    if (index < 0) return block;
+    const [match] = unused.splice(index, 1);
+    return { ...block, id: match.id };
+  });
+}
+
 /** What the recorder will read: the first script block, or nothing. */
 export function scriptOf(blocks: CanvasBlock[]): string | null {
   const block = blocks.find((candidate) => candidate.kind === "script");

@@ -19,6 +19,19 @@ enum IdeaCanvasDoc {
         return blocks
     }
 
+    /// `next` with each block that matches one in `previous` word for word
+    /// taking that block's id, in order, so a reloaded document keeps focus.
+    static func keepingIDs(_ next: [IdeaCanvasBlock], from previous: [IdeaCanvasBlock]) -> [IdeaCanvasBlock] {
+        var unused = previous
+        return next.map { block in
+            guard let index = unused.firstIndex(where: {
+                $0.label == block.label && $0.kind == block.kind && $0.text == block.text && $0.items == block.items
+            }) else { return block }
+            let id = unused.remove(at: index).id
+            return IdeaCanvasBlock(id: id, label: block.label, kind: block.kind, text: block.text, items: block.items)
+        }
+    }
+
     /// What the recorder will read: the first script block, or nothing.
     static func script(of blocks: [IdeaCanvasBlock]) -> String? {
         guard let block = blocks.first(where: { $0.kind == .script }) else { return nil }

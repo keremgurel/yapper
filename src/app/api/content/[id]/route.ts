@@ -43,7 +43,8 @@ export async function GET(_req: Request, { params }: Params) {
 }
 
 /** Partial update (workbench autosave, status changes, recording link). The
- * ownership checks live in the shared operation, which Chirpy calls too. */
+ * ownership checks, and the merge with a `base` the canvas sends, live in
+ * the shared operation, which Chirpy calls too. */
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
@@ -53,7 +54,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const updated = await updateOwnContentItem(userId, id, body);
   if (!updated.ok) return refusalResponse(updated);
   if (updated.value.enrichRecording) after(() => enrichRecording(userId, id));
-  return Response.json({ item: updated.value.item });
+  return Response.json({
+    item: updated.value.item,
+    rebased: updated.value.rebased,
+  });
 }
 
 /** Delete one of the user's own items. The linked submission (if any) is NOT

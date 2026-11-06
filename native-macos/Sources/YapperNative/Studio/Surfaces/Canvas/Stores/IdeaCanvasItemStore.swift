@@ -12,7 +12,9 @@ extension Notification.Name {
 
 /// One idea on the canvas: the loaded row, its blocks with client ids, and
 /// the single writer every edit goes through (`update`), which feeds the
-/// autosave. Chirpy's changes go through the same writer.
+/// autosave. Chirpy's changes go through the same writer. Saves carry the
+/// copy they started from (`sync`), so one landing after a change made
+/// elsewhere is merged rather than replacing it.
 @MainActor
 final class IdeaCanvasItemStore: ObservableObject {
     enum Phase: Equatable { case loading, loaded, missing, failed }
@@ -21,19 +23,23 @@ final class IdeaCanvasItemStore: ObservableObject {
     private static var cache: [String: IdeaCanvasItem] = [:]
 
     let itemID: String
+    let sync: IdeaCanvasSync
     let autosave: IdeaCanvasAutosave
     @Published private(set) var item: IdeaCanvasItem?
     @Published private(set) var blocks: [IdeaCanvasBlock] = []
     @Published private(set) var phase: Phase = .loading
 
-    init(itemID: String) {
+    /// `transport` and `loaded` let tests drive the store without the network.
+    init(itemID: String, transport: IdeaCanvasSync.Transport? = nil, loaded: IdeaCanvasItem? = nil) {
         self.itemID = itemID
         let path = "api/content/\(itemID)"
-        autosave = IdeaCanvasAutosave { patch in
-            try await StudioJSONClient.raw(path, method: "PATCH", body: StudioJSONClient.encoder.encode(patch))
-            NotificationCenter.default.post(name: .ideaCanvasDidSave, object: itemID)
-        }
-        if let cached = Self.cache[itemID] { show(cached) }
+        let sync = transport.map { IdeaCanvasSync(path: path, method: "PATCH", itemID: itemID, transport: $0) }
+            ?? IdeaCanvasSync(path: path, method: "PATCH", itemID: itemID)
+        self.sync = sync
+        autosave = IdeaCanvasAutosave { patch in try await sync.save(patch) }
+        sync.latest = { [weak self] in self?.item.map(Self.fields) ?? IdeaCanvasPatch() }
+        sync.show = { [weak self] fields in self?.adopt(fields) }
+        if let loaded { show(loaded) } else if let cached = Self.cache[itemID] { show(cached) }
     }
 
     var hooks: [String] { item?.hooks ?? [] }
@@ -52,6 +58,9 @@ final class IdeaCanvasItemStore: ObservableObject {
             if item == nil { phase = .failed }
         }
     }
+
+    /// The server saved these fields itself (a canvas ask).
+    func markSaved(_ fields: IdeaCanvasPatch) { sync.markSaved(fields) }
 
     func update(_ patch: IdeaCanvasPatch) {
         guard let current = item else { return }
@@ -79,8 +88,25 @@ final class IdeaCanvasItemStore: ObservableObject {
 
     private func show(_ loaded: IdeaCanvasItem) {
         item = loaded
-        blocks = IdeaCanvasDoc.blocks(from: loaded.blocks, script: loaded.script)
+        blocks = IdeaCanvasDoc.keepingIDs(IdeaCanvasDoc.blocks(from: loaded.blocks, script: loaded.script), from: blocks)
         phase = .loaded
         Self.cache[itemID] = loaded
+        sync.read(Self.fields(loaded))
+    }
+
+    /// A merged save kept someone else's change: show it without saving it
+    /// again, keeping the ids of blocks that did not change.
+    private func adopt(_ fields: IdeaCanvasPatch) {
+        guard let current = item else { return }
+        let next = current.applying(fields)
+        item = next
+        Self.cache[itemID] = next
+        if fields.blocks != nil || fields.script != nil {
+            blocks = IdeaCanvasDoc.keepingIDs(IdeaCanvasDoc.blocks(from: next.blocks, script: next.script), from: blocks)
+        }
+    }
+
+    private static func fields(_ item: IdeaCanvasItem) -> IdeaCanvasPatch {
+        IdeaCanvasPatch(title: item.title, hooks: item.hooks, blocks: item.blocks, script: IdeaCanvasNullable(item.script))
     }
 }

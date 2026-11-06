@@ -8,8 +8,17 @@ import {
   type CanvasAction,
 } from "@/lib/content/canvas-actions";
 import type { CanvasBlock } from "@/lib/content/canvas-doc";
+import type { ContentBase } from "@/lib/content/rebase";
+import { baseOf } from "@/lib/content/save-base";
 
-export type CanvasAskError = "locked" | "insufficient" | "failed" | "limited";
+export type CanvasAskError =
+  | "locked"
+  | "insufficient"
+  | "failed"
+  | "limited"
+  /** The creator saved an edit while the writer worked; nothing was saved
+   * or charged. */
+  | "changed";
 
 export interface CanvasAskContext {
   title: string;
@@ -29,6 +38,8 @@ export interface CanvasAskReply {
   used: BrainUsed | null;
   /** The exchange as the server saved it to the idea's thread, when it did. */
   messages: unknown[] | null;
+  /** The lead as the server saved it, the base of the next autosave. */
+  document: ContentBase | null;
 }
 
 function readUsed(data: Record<string, unknown>): BrainUsed | null {
@@ -45,9 +56,9 @@ function readUsed(data: Record<string, unknown>): BrainUsed | null {
 
 /**
  * One ask at a time against the canvas route, which edits and saves the
- * idea's stored document itself. The reply's actions are parsed against the
- * block count the request was made with, so the caller can apply the same
- * edit to what it shows.
+ * idea's stored document itself (`serverSaves`). The reply's actions are
+ * parsed against the block count the request was made with, so the caller
+ * can apply the same edit to what it shows.
  */
 export function useCanvasAsk() {
   const [busy, setBusy] = useState(false);
@@ -59,7 +70,7 @@ export function useCanvasAsk() {
     context: CanvasAskContext,
     target: number | null,
     contentId: string | null = null,
-  ): Promise<CanvasAskReply | null> => {
+  ): Promise<CanvasAskReply | { failed: CanvasAskError } | null> => {
     if (inFlight.current || !instruction.trim()) return null;
     inFlight.current = true;
     setBusy(true);
@@ -77,6 +88,7 @@ export function useCanvasAsk() {
           source: context.source,
           target,
           contentId,
+          serverSaves: true,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as Record<
@@ -84,26 +96,32 @@ export function useCanvasAsk() {
         unknown
       >;
       if (!res.ok) {
-        setError(
+        const failed: CanvasAskError =
           data.error === "not_entitled"
             ? "locked"
-            : res.status === 402
-              ? "insufficient"
-              : res.status === 429
-                ? "limited"
-                : "failed",
-        );
-        return null;
+            : data.error === "changed_while_working"
+              ? "changed"
+              : res.status === 402
+                ? "insufficient"
+                : res.status === 429
+                  ? "limited"
+                  : "failed";
+        setError(failed);
+        return { failed };
       }
       return {
         actions: parseCanvasActions(data, context.blocks.length),
         note: typeof data.note === "string" ? data.note : null,
         used: readUsed(data),
         messages: Array.isArray(data.messages) ? data.messages : null,
+        document:
+          data.document && typeof data.document === "object"
+            ? baseOf(data.document as Parameters<typeof baseOf>[0])
+            : null,
       };
     } catch {
       setError("failed");
-      return null;
+      return { failed: "failed" };
     } finally {
       inFlight.current = false;
       setBusy(false);

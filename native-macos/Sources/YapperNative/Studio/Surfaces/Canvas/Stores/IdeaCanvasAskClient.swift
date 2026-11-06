@@ -3,6 +3,9 @@ import Foundation
 /// Why an ask came back empty, in the creator's terms.
 enum IdeaCanvasAskError: Error, Equatable {
     case locked, insufficient, limited, failed
+    /// The creator saved an edit while the writer worked; nothing was saved
+    /// or charged.
+    case changed
 
     var message: String {
         switch self {
@@ -10,6 +13,7 @@ enum IdeaCanvasAskError: Error, Equatable {
         case .insufficient: "You're out of credits. Top up to keep asking Chirpy."
         case .limited: "That's as many asks as this hour allows. Try again in a bit."
         case .failed: "Chirpy couldn't finish that. Nothing changed; try again."
+        case .changed: "Your writing changed while I was working, so I didn't change anything. Nothing was charged. Ask again."
         }
     }
 }
@@ -58,7 +62,7 @@ struct IdeaCanvasAskBody: Encodable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case instruction, title, blocks, hooks, originalNote, source, target, contentId, format
+        case instruction, title, blocks, hooks, originalNote, source, target, contentId, format, serverSaves
     }
 
     func encode(to encoder: Encoder) throws {
@@ -72,9 +76,13 @@ struct IdeaCanvasAskBody: Encodable {
         if let target { try c.encode(target, forKey: .target) } else { try c.encodeNil(forKey: .target) }
         try c.encode(contentId, forKey: .contentId)
         try c.encode(format.rawValue, forKey: .format)
+        // This build has saved its edits first and lets the server save the
+        // reply; builds without it apply the reply and save it themselves.
+        try c.encode(true, forKey: .serverSaves)
     }
 }
 
+@MainActor
 enum IdeaCanvasAskClient {
     static func ask(_ body: IdeaCanvasAskBody, blockCount: Int) async -> Result<IdeaCanvasAskReply, IdeaCanvasAskError> {
         do {
@@ -84,6 +92,7 @@ enum IdeaCanvasAskClient {
             return .success(IdeaCanvasAskReply.parse(data, blockCount: blockCount))
         } catch let error as StudioAPIError {
             if error.code == "not_entitled" { return .failure(.locked) }
+            if error.code == "changed_while_working" { return .failure(.changed) }
             if error.status == 402 { return .failure(.insufficient) }
             if error.status == 429 { return .failure(.limited) }
             return .failure(.failed)

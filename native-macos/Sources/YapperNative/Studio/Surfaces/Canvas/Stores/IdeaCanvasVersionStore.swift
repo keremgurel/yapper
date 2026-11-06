@@ -6,19 +6,23 @@ import Foundation
 @MainActor
 final class IdeaCanvasVersionStore: ObservableObject, IdeaCanvasBody {
     let format: IdeaCanvasVersionFormat
+    let sync: IdeaCanvasSync
     let autosave: IdeaCanvasAutosave
     @Published private(set) var version: IdeaCanvasVersion
     @Published private(set) var blocks: [IdeaCanvasBlock]
 
-    init(itemID: String, version: IdeaCanvasVersion) {
+    init(itemID: String, version: IdeaCanvasVersion, transport: IdeaCanvasSync.Transport? = nil) {
         format = version.format
         self.version = version
         blocks = IdeaCanvasDoc.blocks(from: version.blocks, script: version.script)
         let path = "api/content/\(itemID)/versions/\(version.format.rawValue)"
-        autosave = IdeaCanvasAutosave { patch in
-            try await StudioJSONClient.raw(path, method: "PUT", body: StudioJSONClient.encoder.encode(patch))
-            NotificationCenter.default.post(name: .ideaCanvasDidSave, object: itemID)
-        }
+        let sync = transport.map { IdeaCanvasSync(path: path, method: "PUT", itemID: itemID, transport: $0) }
+            ?? IdeaCanvasSync(path: path, method: "PUT", itemID: itemID)
+        self.sync = sync
+        autosave = IdeaCanvasAutosave { patch in try await sync.save(patch) }
+        sync.read(Self.fields(version))
+        sync.latest = { [weak self] in self.map { Self.fields($0.version) } ?? IdeaCanvasPatch() }
+        sync.show = { [weak self] fields in self?.adopt(fields) }
     }
 
     var hooks: [String] { version.hooks }
@@ -27,7 +31,16 @@ final class IdeaCanvasVersionStore: ObservableObject, IdeaCanvasBody {
     func reload(_ saved: IdeaCanvasVersion) {
         guard !autosave.hasUnsaved, saved != version else { return }
         version = saved
-        blocks = IdeaCanvasDoc.blocks(from: saved.blocks, script: saved.script)
+        blocks = IdeaCanvasDoc.keepingIDs(IdeaCanvasDoc.blocks(from: saved.blocks, script: saved.script), from: blocks)
+        sync.read(Self.fields(saved))
+    }
+
+    /// The server saved these fields itself (a canvas ask). The version's
+    /// title follows its first opener, so the idea's title is not its base.
+    func markSaved(_ fields: IdeaCanvasPatch) {
+        var fields = fields
+        fields.title = nil
+        sync.markSaved(fields)
     }
 
     func setBlocks(_ next: [IdeaCanvasBlock]) {
@@ -43,5 +56,18 @@ final class IdeaCanvasVersionStore: ObservableObject, IdeaCanvasBody {
     private func update(_ patch: IdeaCanvasPatch) {
         version = version.applying(patch)
         autosave.queue(patch)
+    }
+
+    /// A merged save kept someone else's change: show it without saving it
+    /// again.
+    private func adopt(_ fields: IdeaCanvasPatch) {
+        version = version.applying(fields)
+        if fields.blocks != nil || fields.script != nil {
+            blocks = IdeaCanvasDoc.keepingIDs(IdeaCanvasDoc.blocks(from: version.blocks, script: version.script), from: blocks)
+        }
+    }
+
+    private static func fields(_ version: IdeaCanvasVersion) -> IdeaCanvasPatch {
+        IdeaCanvasPatch(title: version.title, hooks: version.hooks, blocks: version.blocks, script: IdeaCanvasNullable(version.script))
     }
 }
