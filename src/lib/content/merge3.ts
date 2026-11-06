@@ -7,7 +7,8 @@
  * all apply, so a block appended by Chirpy and a line typed into another
  * block both survive; two insertions at one spot keep both, ours first.
  * Where both sides changed the same stretch, ours wins, because it is the
- * creator's newest typing.
+ * creator's newest typing. Lists too long to compare cheaply (a canvas has
+ * at most a few dozen blocks) are not merged: ours is kept as sent.
  */
 export function merge3<T>(
   base: readonly T[],
@@ -15,6 +16,13 @@ export function merge3<T>(
   theirs: readonly T[],
   same: (a: T, b: T) => boolean,
 ): T[] {
+  // The comparison table is base × other cells, and both lists can come
+  // from a client, so its size is capped.
+  if (
+    (base.length + 1) * (Math.max(ours.length, theirs.length) + 1) >
+    MAX_CELLS
+  )
+    return [...ours];
   const all = [
     ...hunks(base, ours, same, true),
     ...hunks(base, theirs, same, false),
@@ -51,6 +59,8 @@ export function merge3<T>(
   result.push(...base.slice(at));
   return result;
 }
+
+const MAX_CELLS = 40_000;
 
 interface Hunk<T> {
   /** The base stretch [start, end) this replaces; empty for an insertion. */

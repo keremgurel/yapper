@@ -50,3 +50,13 @@ describe("merge3 in place", () => {
     expect(merge(["a", "b"], ["a", "B"], ["A", "b"])).toEqual(["A", "B"]);
   });
 });
+
+describe("merge3 limits", () => {
+  it("keeps ours as sent for lists too long to compare", () => {
+    const long = Array.from({ length: 300 }, (_, index) => `b${index}`);
+    expect(merge(long, [...long, "mine"], ["theirs"])).toEqual([
+      ...long,
+      "mine",
+    ]);
+  });
+});
