@@ -1,31 +1,38 @@
 import AppKit
 
 /// Where a take goes once it is done. Nothing is uploaded: the take is a file
-/// on this Mac, and it stays one.
+/// on this Mac, and it stays one. Both folders are the ones chosen in Storage.
 enum RecorderDownload {
-    /// Copies the take into Downloads under its timestamped name and shows it
-    /// in Finder. Returns a message when the copy failed.
+    /// Copies the take into the recorder downloads folder (Downloads unless
+    /// another was chosen) under its timestamped name and shows it in Finder.
+    /// Returns a message when the copy failed.
     @MainActor
     static func toDownloads(_ take: RecorderTake) -> String? {
-        let folder = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
-        guard let folder else { return "Your Downloads folder couldn't be found." }
+        let folder: URL
+        do {
+            folder = try StorageFolders.standard.usableFolder(for: .recorderDownloads)
+        } catch {
+            return error.localizedDescription
+        }
         do {
             let destination = try copy(take, into: folder)
             NSWorkspace.shared.activateFileViewerSelecting([destination])
             return nil
         } catch {
-            return "The take couldn't be saved to Downloads. Check there is space, then try again."
+            return "The take couldn’t be saved to “\(folder.lastPathComponent)”. Check there is space, then try again."
         }
     }
 
-    /// Keeps the take in Movies/Yapper Recordings, where an editor project can
-    /// point at it for good (the capture file lives in a temporary folder).
+    /// Where Download saves, for the button's tooltip.
+    static var downloadsFolderName: String {
+        StorageFolders.standard.folder(for: .recorderDownloads).lastPathComponent
+    }
+
+    /// Keeps the take in the recordings folder (Movies/Yapper Recordings unless
+    /// another was chosen), where an editor project can point at it for good:
+    /// the capture file lives in a temporary folder.
     static func keepForEditor(_ take: RecorderTake) throws -> URL {
-        let movies = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask).first
-            ?? FileManager.default.homeDirectoryForCurrentUser.appending(path: "Movies")
-        let folder = movies.appending(path: "Yapper Recordings", directoryHint: .isDirectory)
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        return try copy(take, into: folder)
+        try copy(take, into: StorageFolders.standard.usableFolder(for: .editorRecordings))
     }
 
     private static func copy(_ take: RecorderTake, into folder: URL) throws -> URL {

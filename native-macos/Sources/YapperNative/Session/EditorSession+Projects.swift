@@ -52,26 +52,35 @@ extension EditorSession {
         }
     }
 
-    func createProject(named name: String) async {
+    /// False when the project couldn't be made, for example because the
+    /// projects folder is on a drive that isn't plugged in.
+    @discardableResult
+    func createProject(named name: String) async -> Bool {
         do {
             let package = try await library.create(named: name)
             NativeAnalytics.shared.capture("native_project_created")
             projectNavigation.noteLibraryChanged()
             await openProject(package)
+            return true
         } catch {
             show(error)
+            return false
         }
     }
 
     /// Screen Studio's "Create project from video": one drop, a project named
     /// after the file, with the file already on the timeline.
-    func createProject(fromVideos urls: [URL]) async {
-        guard let first = urls.first else { return }
+    /// The videos go in only when the project was made, so they never land in
+    /// whatever project was open before.
+    @discardableResult
+    func createProject(fromVideos urls: [URL]) async -> Bool {
+        guard let first = urls.first else { return false }
         do {
             for url in urls { _ = try await MediaProbe.inspect(url: url) }
-        } catch { show(error); return }
-        await createProject(named: first.deletingPathExtension().lastPathComponent)
+        } catch { show(error); return false }
+        guard await createProject(named: first.deletingPathExtension().lastPathComponent) else { return false }
         await importMedia(urls)
+        return true
     }
 
     func renameCurrentProject(to name: String) async {
@@ -119,13 +128,7 @@ extension EditorSession {
             }
             await stopManagedMedia(for: package)
             if projectNavigation.currentPackage == package {
-                await leaveCurrentProject()
-                await stopManagedMedia(for: package)
-                store = ProjectStore(directory: FileManager.default.temporaryDirectory
-                    .appending(path: "yapper-detached-\(UUID().uuidString)", directoryHint: .isDirectory))
-                projectNavigation.currentPackage = nil
-                resetProject(to: EditorProject())
-                projectNavigation.showsProjectsHome = true
+                await closeCurrentProject()
             }
             if let listing = try await library.listings().first(where: { $0.package == package }) {
                 await PosterProjectSync.shared.cancel(projectID: listing.summary.id)
@@ -172,6 +175,22 @@ extension EditorSession {
     func hideProjectsHome() {
         guard projectNavigation.currentPackage != nil else { return }
         projectNavigation.showsProjectsHome = false
+    }
+
+    /// Saves and closes the open project, leaving the grid showing and the
+    /// editor writing to nothing, before its package goes to the Trash or to
+    /// another folder. Returns the package that was open.
+    @discardableResult
+    func closeCurrentProject() async -> ProjectPackage? {
+        guard let package = projectNavigation.currentPackage else { return nil }
+        await leaveCurrentProject()
+        await stopManagedMedia(for: package)
+        store = ProjectStore(directory: FileManager.default.temporaryDirectory
+            .appending(path: "yapper-detached-\(UUID().uuidString)", directoryHint: .isDirectory))
+        projectNavigation.currentPackage = nil
+        resetProject(to: EditorProject())
+        projectNavigation.showsProjectsHome = true
+        return package
     }
 
     /// Everything the open project needs before another takes its place: a
