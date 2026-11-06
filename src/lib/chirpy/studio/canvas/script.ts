@@ -12,11 +12,18 @@ import {
   type StudioActionDefinition,
 } from "../executor";
 import { ideaLabel } from "../ideas/labels";
+import { saidVerbatim } from "../said";
 
 /** The creator's own words into a version's first script block, saved the
- * way the canvas autosave saves a typed edit. */
+ * way the canvas autosave saves a typed edit. The words must be in their
+ * latest message as they are: model text never replaces a script here. */
 export const setScriptAction: StudioActionDefinition<IdeaSetScriptInput> = {
-  async run({ ideaID, format, script }, { userId }) {
+  async run({ ideaID, format, script }, { userId, messages }) {
+    if (!saidVerbatim(script, messages))
+      throw new StudioActionFailure(
+        "not_verbatim",
+        "I only put in a script you paste word for word. To change the one you have, ask me to rewrite it.",
+      );
     const item = await getContentItem(userId, ideaID);
     if (!item)
       throw new StudioActionFailure(

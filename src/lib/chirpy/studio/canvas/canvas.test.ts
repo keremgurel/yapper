@@ -73,6 +73,13 @@ describe("studio.ideas.canvasEdit", () => {
         balance: 10,
         used: { skills: [], context: [] },
         messages: [],
+        document: {
+          format: "short",
+          title: "Gym myths",
+          hooks: [],
+          blocks: [],
+          script: null,
+        },
       },
     });
     const outcome = await CANVAS_ACTIONS["studio.ideas.canvasEdit"].run(
@@ -113,6 +120,13 @@ describe("studio.ideas.canvasEdit", () => {
         balance: 9,
         used: { skills: [], context: [] },
         messages: [],
+        document: {
+          format: "short",
+          title: "Gym myths",
+          hooks: [],
+          blocks: [],
+          script: null,
+        },
       },
     });
     const answer = await CANVAS_ACTIONS["studio.ideas.canvasEdit"].run(

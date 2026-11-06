@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getContent,
-  patchContent,
+  saveContentFields,
   type ContentDetail,
   type ContentPatch,
 } from "@/lib/content/client";
+import type { ContentBase } from "@/lib/content/rebase";
+import { afterSave, baseFor, baseOf } from "@/lib/content/save-base";
 import { useAutosave, type SaveState } from "@/hooks/use-autosave";
 import { normalizeHooks } from "@/lib/content/normalize";
 import {
@@ -38,18 +40,26 @@ export function useContentItem(id: string): {
   loadError: boolean;
   reload: () => void;
   flush: () => Promise<void>;
+  /** Records fields the server saved itself (a canvas ask), as the copy the
+   * next autosave of them starts from. */
+  markSaved: (fields: ContentBase) => void;
 } {
   // Loading is derived: we're loading whenever the fetched result isn't for
   // the current id (avoids sync setState-in-effect resets on id change).
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [version, setVersion] = useState(0);
+  // The stored copy each canvas field was last read or saved as, and the
+  // newest local copy, so a save can be merged with a change made elsewhere.
+  const base = useRef<ContentBase>({});
+  const latest = useRef<ContentDetail | null>(null);
 
   useEffect(() => {
     let active = true;
     getContent(id).then(
       (detail) => {
-        if (active)
-          setLoaded({ id, item: detail, missing: false, error: false });
+        if (!active) return;
+        base.current = baseOf(detail);
+        setLoaded({ id, item: detail, missing: false, error: false });
       },
       (cause: unknown) => {
         const missing =
@@ -63,10 +73,46 @@ export function useContentItem(id: string): {
   }, [id, version]);
 
   const current = loaded?.id === id ? loaded : null;
+  useEffect(() => {
+    latest.current = current?.item ?? null;
+  });
 
   const save = useCallback(
     async (dirty: ContentPatch, opts?: { keepalive?: boolean }) => {
-      const saved = await patchContent(id, dirty, opts);
+      const { item: saved, rebased } = await saveContentFields(
+        id,
+        dirty,
+        baseFor(dirty, base.current),
+        opts,
+      );
+      const next = afterSave({
+        base: base.current,
+        sent: dirty,
+        saved,
+        latest: latest.current ?? {},
+        rebased,
+      });
+      base.current = next.base;
+      // Someone else's change was merged in: show it where the creator has
+      // not typed since.
+      const { title, hooks, ...body } = next.show;
+      if (Object.keys(next.show).length)
+        setLoaded((prev) =>
+          prev && prev.id === id && prev.item
+            ? {
+                ...prev,
+                item: {
+                  ...prev.item,
+                  ...body,
+                  title: title ?? prev.item.title,
+                  hooks:
+                    hooks === undefined
+                      ? prev.item.hooks
+                      : normalizeHooks(hooks),
+                },
+              }
+            : prev,
+        );
       for (const key of [
         STUDIO_RESOURCE_KEYS.content,
         STUDIO_RESOURCE_KEYS.posterContent,
@@ -116,5 +162,8 @@ export function useContentItem(id: string): {
     loadError: current?.error ?? false,
     reload: () => setVersion((value) => value + 1),
     flush,
+    markSaved: (fields) => {
+      base.current = { ...base.current, ...fields };
+    },
   };
 }

@@ -33,29 +33,50 @@ export async function listContentVersions(
     .orderBy(asc(contentVersions.createdAt));
 }
 
-/** Creates the version or merges into it. Null when the idea isn't theirs. */
+/**
+ * Creates the version or merges into it. Null when the idea isn't theirs.
+ * `reconcile` sees the locked row (null when there is none yet) and returns
+ * the input to write, or throws ContentConflict to write nothing.
+ */
 export async function saveContentVersion(
   userId: string,
   itemId: string,
   format: VersionFormat,
-  input: ContentVersionInput,
+  requested: ContentVersionInput,
+  reconcile?: (current: ContentVersionRow | null) => ContentVersionInput,
 ): Promise<ContentVersionRow | null> {
   if (!(await ownsItem(userId, itemId))) return null;
-  const now = new Date();
-  const [row] = await getDb()
-    .insert(contentVersions)
-    .values({ contentItemId: itemId, format, ...input, updatedAt: now })
-    .onConflictDoUpdate({
-      target: [contentVersions.contentItemId, contentVersions.format],
-      set: { ...input, updatedAt: now },
-    })
-    .returning();
-  // The idea's own timestamp moves too, so the list shows it as touched.
-  await getDb()
-    .update(contentItems)
-    .set({ updatedAt: now })
-    .where(eq(contentItems.id, itemId));
-  return row ?? null;
+  return getDb().transaction(async (tx) => {
+    const now = new Date();
+    // The idea's row is locked first, so two saves of one version queue
+    // even while the version row does not exist yet. Its timestamp moves
+    // too, so the list shows the idea as touched.
+    await tx
+      .update(contentItems)
+      .set({ updatedAt: now })
+      .where(eq(contentItems.id, itemId));
+    const [current] = await tx
+      .select()
+      .from(contentVersions)
+      .where(
+        and(
+          eq(contentVersions.contentItemId, itemId),
+          eq(contentVersions.format, format),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    const input = reconcile ? reconcile(current ?? null) : requested;
+    const [row] = await tx
+      .insert(contentVersions)
+      .values({ contentItemId: itemId, format, ...input, updatedAt: now })
+      .onConflictDoUpdate({
+        target: [contentVersions.contentItemId, contentVersions.format],
+        set: { ...input, updatedAt: now },
+      })
+      .returning();
+    return row ?? null;
+  });
 }
 
 /** True when a version was removed. */
