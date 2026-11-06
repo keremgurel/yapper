@@ -124,6 +124,28 @@ struct StorageFoldersTests {
         }
     }
 
+    @Test("Open, save and export panels start in the chosen folder, or say why they can't")
+    func filePanelsStartInTheChosenFolder() async throws {
+        try await withSandbox { box in
+            let projectsDefault = box.folders.defaultFolder(for: .editorProjects)
+            #expect(FilePanelFolder.start(for: .editorProjects, folders: box.folders) == .folder(projectsDefault))
+            #expect(FilePanelFolder.start(for: .exports, folders: box.folders) == .lastUsed)
+
+            let drive = try box.make("Drive/Projects")
+            box.folders.choose(drive, for: .editorProjects)
+            let chosen = box.folders.folder(for: .editorProjects)
+            #expect(FilePanelFolder.start(for: .editorProjects, folders: box.folders) == .folder(chosen))
+
+            try FileManager.default.removeItem(at: drive)
+            guard case .unavailable(let problem) = FilePanelFolder.start(for: .editorProjects, folders: box.folders) else {
+                Issue.record("A projects folder that's gone should say so")
+                return
+            }
+            #expect(problem.contains("“Projects”"))
+            #expect(!exists(drive))
+        }
+    }
+
     @Test("A picked folder has to be a folder you can write to, outside any project")
     func pickedFolderChecks() async throws {
         try await withSandbox { box in

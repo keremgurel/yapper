@@ -78,7 +78,7 @@ final class OpenedFileImporter {
                 session.setStatus("Open a project with a video before adding sound")
                 return
             }
-            await session.createProject(fromVideos: media)
+            guard await session.createProject(fromVideos: media) else { return }
         } else if !media.isEmpty {
             await session.importMedia(media)
         }

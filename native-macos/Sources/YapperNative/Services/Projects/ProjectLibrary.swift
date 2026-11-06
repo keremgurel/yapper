@@ -21,10 +21,6 @@ actor ProjectLibrary {
         self.folders = folders
     }
 
-    static var defaultDirectory: URL {
-        StorageFolders.standard.folder(for: .editorProjects)
-    }
-
     /// Newest edited first.
     func listings() throws -> [ProjectListing] {
         try ensureDirectory()

@@ -84,7 +84,7 @@ enum StorageFolderPanels {
         }
     }
 
-    private static func showAlert(title: String, message: String) {
+    static func showAlert(title: String, message: String) {
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = message

@@ -52,26 +52,35 @@ extension EditorSession {
         }
     }
 
-    func createProject(named name: String) async {
+    /// False when the project couldn't be made, for example because the
+    /// projects folder is on a drive that isn't plugged in.
+    @discardableResult
+    func createProject(named name: String) async -> Bool {
         do {
             let package = try await library.create(named: name)
             NativeAnalytics.shared.capture("native_project_created")
             projectNavigation.noteLibraryChanged()
             await openProject(package)
+            return true
         } catch {
             show(error)
+            return false
         }
     }
 
     /// Screen Studio's "Create project from video": one drop, a project named
     /// after the file, with the file already on the timeline.
-    func createProject(fromVideos urls: [URL]) async {
-        guard let first = urls.first else { return }
+    /// The videos go in only when the project was made, so they never land in
+    /// whatever project was open before.
+    @discardableResult
+    func createProject(fromVideos urls: [URL]) async -> Bool {
+        guard let first = urls.first else { return false }
         do {
             for url in urls { _ = try await MediaProbe.inspect(url: url) }
-        } catch { show(error); return }
-        await createProject(named: first.deletingPathExtension().lastPathComponent)
+        } catch { show(error); return false }
+        guard await createProject(named: first.deletingPathExtension().lastPathComponent) else { return false }
         await importMedia(urls)
+        return true
     }
 
     func renameCurrentProject(to name: String) async {
