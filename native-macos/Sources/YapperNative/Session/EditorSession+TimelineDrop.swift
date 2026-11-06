@@ -56,13 +56,8 @@ extension EditorSession {
     /// Drops an overlay back onto the speaker's track, at the place in the
     /// running order the pointer picked.
     func demoteOverlayToClip(_ overlayID: UUID, insertionIndex: Int) async {
-        await commitTimelineEdit(successStatus: "Dropped onto the video track · ⌘Z to undo") {
-            var demoted: TimelineClip?
-            updateProject { demoted = $0.demoteOverlayToClip(overlayID, insertionIndex: insertionIndex) }
-            guard let clip = demoted else { return false }
-            selectTimelineItem(.clip(clip.id))
-            return true
-        }
+        await performAppAction(TrackTransferInput(itemID: overlayID, direction: .toMainTrack, at: nil, track: nil,
+                                                  insertionIndex: min(5_000, max(0, insertionIndex))))
     }
 
     /// The mouse came up a moment ago and something is still mid-drag, so the

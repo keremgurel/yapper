@@ -7,10 +7,12 @@ import Foundation
 /// item that is not part of the selection lands on that item alone, which is
 /// the same rule dragging follows.
 extension EditorSession {
-    func copyProperties(of item: TimelineSelectionItem) {
-        guard let copied = properties(of: item) else { return }
+    @discardableResult
+    func copyProperties(of item: TimelineSelectionItem) -> Bool {
+        guard let copied = properties(of: item) else { return false }
         copiedProperties = copied
         setStatus("Copied \(copied.noun) properties")
+        return true
     }
 
     /// What the paste item should say, or nil when there is nothing of this
@@ -24,56 +26,43 @@ extension EditorSession {
             : "Paste properties onto \(count) \(copied.noun)s"
     }
 
-    func pasteProperties(onto item: TimelineSelectionItem) {
-        guard let copied = copiedProperties, copied.matches(item) else { return }
+    /// Paste properties, through the action Chirpy uses to match one item's
+    /// look to others.
+    @discardableResult
+    func pasteProperties(onto item: TimelineSelectionItem) -> Task<AppActionResult?, Never> {
+        guard let copied = copiedProperties, copied.matches(item) else { return Task { nil } }
         let targets = propertyPasteTargets(for: item)
-        guard !targets.isEmpty else { return }
-        let said = "Properties pasted onto \(targets.count) \(copied.noun)\(targets.count == 1 ? "" : "s")"
+        guard !targets.isEmpty else { return Task { nil } }
+        let input = PropertiesPasteInput(itemIDs: targets.sorted { $0.uuidString < $1.uuidString }, fromItemID: nil)
+        return Task { await performAppAction(input) }
+    }
 
+    /// Writes a copied look onto items of its own kind. Only the properties
+    /// paste action calls this, inside its edit.
+    func applyCopiedProperties(_ copied: CopiedProperties, to targets: Set<UUID>) {
         switch copied {
         case let .caption(style):
-            scheduleVisualCommit(successStatus: said) { [self] in
-                updateProject {
-                    $0.applyCaptionStyle(
-                        .everything(in: style),
-                        applyToAll: false,
-                        selection: targets
-                    )
-                }
-                return true
-            }
+            updateProject { $0.applyCaptionStyle(.everything(in: style), applyToAll: false, selection: targets) }
         case let .text(style):
-            scheduleVisualCommit(successStatus: said) { [self] in
-                updateProject { project in
-                    project.textLayers = (project.textLayers ?? []).map { layer in
-                        guard targets.contains(layer.id) else { return layer }
-                        var copy = layer
-                        copy.apply(.everything(in: style))
-                        return copy
-                    }
-                    project.updatedAt = Date()
+            updateProject { project in
+                project.textLayers = (project.textLayers ?? []).map { layer in
+                    guard targets.contains(layer.id) else { return layer }
+                    var copy = layer
+                    copy.apply(.everything(in: style))
+                    return copy
                 }
-                return true
             }
         case let .cutaway(look):
-            scheduleCompositionCommit(successStatus: said) { [self] in
-                updateProject { project in
-                    project.overlays = (project.overlays ?? []).map { overlay in
-                        targets.contains(overlay.id) ? look.applied(to: overlay) : overlay
-                    }
-                    project.updatedAt = Date()
+            updateProject { project in
+                project.overlays = (project.overlays ?? []).map { overlay in
+                    targets.contains(overlay.id) ? look.applied(to: overlay) : overlay
                 }
-                return true
             }
         case let .clip(look):
-            scheduleCompositionCommit(successStatus: said) { [self] in
-                updateProject { project in
-                    project.clips = project.clips.map { clip in
-                        targets.contains(clip.id) ? look.applied(to: clip) : clip
-                    }
-                    project.updatedAt = Date()
+            updateProject { project in
+                project.clips = project.clips.map { clip in
+                    targets.contains(clip.id) ? look.applied(to: clip) : clip
                 }
-                return true
             }
         }
     }
