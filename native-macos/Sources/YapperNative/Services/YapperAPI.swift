@@ -160,7 +160,7 @@ enum YapperAPI {
     }
 
     /// The server's own word for what went wrong, in the creator's language.
-    private static func readable(_ code: String) -> String {
+    static func readable(_ code: String) -> String {
         switch code {
         case "invalid_action_plan":
             return "Chirpy could not produce a valid edit for this app version. Nothing was changed and no planning credits were charged"

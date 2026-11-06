@@ -395,7 +395,7 @@ private struct AssistantPanel: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text("Ask Yapper")
                     .font(.system(size: 12, weight: .bold))
-                Text(isWorking ? "Working on it…" : "Yapper")
+                Text(isWorking ? AssistantWorkingLine.text(status: session.statusMessage) : "Yapper")
                     .font(.studioCaption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

@@ -194,3 +194,36 @@ it("lets a project or dictionary action run only on its own", () => {
     planValidationIssue({ message: "", actions: [add, hide] }, withApp),
   ).toContain("Project and dictionary actions must run alone");
 });
+
+it("keeps to the fields the client's own build knows", () => {
+  const known = {
+    type: "object",
+    additionalProperties: false,
+    required: ["text"],
+    properties: { text: {}, at: {}, duration: {}, asHook: {} },
+  };
+  const older: PlanInput = {
+    ...input,
+    catalog: [{ id: "editor.text.add", parameters: known }],
+  };
+  const newer: PlanInput = { ...input, catalog: [{ id: "editor.text.add" }] };
+  const styled = {
+    message: "Adding it.",
+    actions: [
+      {
+        action: "editor.text.add",
+        arguments: { text: "Comment TEF", style: { font: "editorial" } },
+      },
+    ],
+  };
+  const plain = {
+    ...styled,
+    actions: [{ ...styled.actions[0], arguments: { text: "Comment TEF" } }],
+  };
+  expect(
+    Object.keys(discoveredCatalog(older)[0].parameters.properties ?? {}),
+  ).toEqual(["text", "at", "duration", "asHook"]);
+  expect(parsePlanReply(styled, older)).toBeNull();
+  expect(parsePlanReply(plain, older)).toEqual(plain);
+  expect(parsePlanReply(styled, newer)).toEqual(styled);
+});

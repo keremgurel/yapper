@@ -115,6 +115,8 @@ actor OverlayPlacementService: OverlayPlacementPlanning {
             let cue: String?
             let group: String?
             let sound: String?
+            let fullLength: Bool?
+            let sourceStart: Double?
         }
 
         struct Sound: Decodable {
@@ -209,7 +211,9 @@ actor OverlayPlacementService: OverlayPlacementPlanning {
                 ),
                 cue: placement.cue,
                 group: placement.group,
-                sound: placement.sound
+                sound: placement.sound,
+                fullLength: placement.fullLength == true,
+                sourceStart: placement.sourceStart.flatMap { $0 > 0 ? $0 : nil }
             )
         }
         let sounds = (reply.sounds ?? []).compactMap { sound -> SoundRequest? in

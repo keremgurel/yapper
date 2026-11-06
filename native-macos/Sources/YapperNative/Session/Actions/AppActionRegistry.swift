@@ -102,7 +102,7 @@ final class AppActionRegistry {
 
     func availability(_ id: AppActionID, in session: EditorSession) -> AppActionAvailability {
         guard let entry = entries[id.rawValue] else { return .init(reason: "This action is unavailable in this app version.") }
-        if session.activeOperation != nil { return .init(reason: "Wait for the current operation to finish.") }
+        if let busy = session.activeOperation { return .init(reason: busy.operation.waitMessage) }
         return entry.availability(session)
     }
 
@@ -113,13 +113,19 @@ final class AppActionRegistry {
         guard !calls.isEmpty else { return [] }
         let invocationIDs = suppliedIDs ?? calls.map { _ in UUID() }
         precondition(invocationIDs.count == calls.count)
-        func receipts(_ status: AppActionStatus, _ message: String, mutations: [AppActionMutation] = []) -> [AppActionResult] {
+        // `failedAt` names the one step a failure belongs to. The plan is
+        // atomic, so every receipt still carries its status, but only that step
+        // carries the error; the rest say they were rolled back with it.
+        func receipts(_ status: AppActionStatus, _ message: String, mutations: [AppActionMutation] = [],
+                      failedAt: Int? = nil) -> [AppActionResult] {
             let replies = calls.enumerated().map { index, call in
                 let mutation = mutations.indices.contains(index) ? mutations[index] : nil
+                let stepMessage = failedAt.map { $0 == index ? message : ChirpyReceiptSummary.rolledBack } ?? message
                 return AppActionResult(protocolVersion: AppActionContract.version, invocationID: invocationIDs[index],
                     projectID: projectID, revision: session.actionRevision, action: call.action,
                     status: status == .applied && mutation?.changes.isEmpty == true ? .unchanged : status,
-                    message: mutation?.message ?? message, changes: status == .applied ? mutation?.changes ?? [] : [],
+                    message: failedAt == nil ? mutation?.message ?? message : stepMessage,
+                    changes: status == .applied ? mutation?.changes ?? [] : [],
                     skippedIDs: mutation?.skippedIDs ?? [], persisted: status == .applied && mutation?.changes.isEmpty == false)
             }
             for reply in replies {
@@ -129,14 +135,14 @@ final class AppActionRegistry {
             return replies
         }
         guard calls.count <= 8, session.activeOperation == nil else {
-            return receipts(.rejected, "Wait for the current operation to finish.")
+            return receipts(.rejected, session.activeOperation?.operation.waitMessage ?? "Up to eight steps can run in one edit.")
         }
-        do {
-            for call in calls {
+        for (index, call) in calls.enumerated() {
+            do {
                 guard let entry = entries[call.action] else { throw AppActionError("This app version does not support that action.") }
                 try ActionSchema.validate(.object(call.arguments), against: entry.descriptor.parameters)
-            }
-        } catch { return receipts(.rejected, error.localizedDescription) }
+            } catch { return receipts(.rejected, error.localizedDescription, failedAt: calls.count > 1 ? index : nil) }
+        }
         if calls.contains(where: { appScope.contains($0.action) }) {
             guard calls.count == 1, let call = calls.first else {
                 return receipts(.rejected, "Run project and dictionary changes as their own request.")
@@ -160,7 +166,9 @@ final class AppActionRegistry {
                 let canceled = try await workflow(session, .object(call.arguments))
                 if canceled { return receipts(.canceled, "The workflow was canceled.") }
                 if let error = session.errorMessage { return receipts(.failed, error) }
-                guard before != session.project else { return receipts(.unchanged, session.statusMessage) }
+                guard before != session.project else {
+                    return receipts(.unchanged, ChirpyReceiptSummary.unchangedWorkflow(status: session.statusMessage))
+                }
                 return receipts(.applied, session.statusMessage, mutations: [.init(message: session.statusMessage,
                     changes: [.init(targetID: projectID, property: "project", before: "Before workflow", after: "Saved workflow result")])])
             } catch { return receipts(.failed, error.localizedDescription) }
@@ -175,14 +183,18 @@ final class AppActionRegistry {
                 replies = receipts(.rejected, "The project changed while I was planning. Ask again using its current state."); return
             }
             session.clearError()
+            // The step that threw, so its receipt alone carries the error.
+            var failingStep: Int?
             do {
                 var mutations: [AppActionMutation] = []
-                for call in calls {
+                for (index, call) in calls.enumerated() {
                     try Task.checkCancellation()
+                    failingStep = index
                     let entry = self.entries[call.action]!
                     if let reason = entry.availability(session).reason { throw AppActionError(reason) }
                     mutations.append(try await entry.execute(session, .object(call.arguments)))
                 }
+                failingStep = nil
                 try Task.checkCancellation()
                 guard session.project != rollback.project else {
                     replies = receipts(.unchanged, "Nothing needed changing.", mutations: mutations); return
@@ -195,11 +207,19 @@ final class AppActionRegistry {
                 for mutation in mutations { mutation.afterCommit() }
                 replies = receipts(.applied, "Saved.", mutations: mutations)
             } catch {
-                await session.restoreEditState(rollback, rebuildPlayer: false, preserving: error)
+                // A refused plan is answered in the conversation. Only a save
+                // that went wrong is also the editor's error to show.
+                if error is AppActionError || error is CancellationError {
+                    await session.restoreEditState(rollback, rebuildPlayer: false)
+                } else {
+                    await session.restoreEditState(rollback, rebuildPlayer: false, preserving: error)
+                }
                 // A validation error is a rejection: nothing was mutated. Only
                 // a save that went wrong is a failure.
                 let status: AppActionStatus = error is CancellationError ? .canceled : error is AppActionError ? .rejected : .failed
-                replies = receipts(status, error is CancellationError ? "Request canceled. No changes were saved." : error.localizedDescription)
+                replies = error is CancellationError
+                    ? receipts(status, "Request canceled. No changes were saved.")
+                    : receipts(status, error.localizedDescription, failedAt: calls.count > 1 ? failingStep : nil)
             }
         }
         return replies.isEmpty ? receipts(.canceled, "Request canceled.") : replies
@@ -226,7 +246,7 @@ final class AppActionRegistry {
         catch { return result(.rejected, error.localizedDescription) }
         if appScope.contains(request.action) {
             if session.activeOperation != nil && session.activeOperation?.token != owner?.token {
-                return result(.rejected, "Wait for the current operation to finish.")
+                return result(.rejected, session.activeOperation?.operation.waitMessage ?? "Wait for the current operation to finish.")
             }
             let outcome = await appScope.run(request.action, arguments: .object(request.arguments), in: session, fromAssistant: false)
             return result(outcome.status, outcome.message, mutation: outcome.mutation)
@@ -235,7 +255,7 @@ final class AppActionRegistry {
             if request.projectID != session.project.id { return "The active project changed. Read the current project before editing." }
             if request.revision != session.actionRevision { return "The project changed. Read its current state before editing." }
             if session.activeOperation != nil && session.activeOperation?.token != owner?.token {
-                return "Wait for the current operation to finish."
+                return session.activeOperation?.operation.waitMessage ?? "Wait for the current operation to finish."
             }
             return entry.availability(session).reason
         }
@@ -251,7 +271,7 @@ final class AppActionRegistry {
                 reply = await self.execute(request, in: session, owner: lease)
             }
             return reply ?? result(canceled ? .canceled : .rejected,
-                                   canceled ? "Action canceled." : "Wait for the current operation to finish.")
+                                   canceled ? "Action canceled." : session.activeOperation?.operation.waitMessage ?? "Wait for the current operation to finish.")
         }
         session.clearError()
         guard let rollback = await session.beginPreparedTimelineEdit() else {

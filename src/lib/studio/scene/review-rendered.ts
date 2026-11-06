@@ -14,6 +14,7 @@ import { parseReviseInput } from "./revise-input";
 import { finiteBetween, record } from "./input-guards";
 import { inspectionText, parseTimelineInspection } from "./timeline-inspection";
 import { callSceneModel, sceneModelFailureReason } from "./scene-model-call";
+import { SCENE_BUDGETS } from "./scene-budgets";
 import { extractJsonObject } from "./reply-json";
 import { designChecked } from "./design-checked";
 import { buildReviseUserMessage } from "./prompts/revise-prompt";
@@ -155,8 +156,8 @@ export async function handleRenderedReview(req: Request): Promise<Response> {
       system: REVIEW_SYSTEM,
       user: reviewContext,
       images,
-      maxCompletionTokens: 1200,
-      timeoutMs: 55_000,
+      maxCompletionTokens: SCENE_BUDGETS.renderReview.maxCompletionTokens,
+      timeoutMs: SCENE_BUDGETS.renderReview.timeoutMs,
       signal: req.signal,
     });
     const review = parseRenderedReview(content);

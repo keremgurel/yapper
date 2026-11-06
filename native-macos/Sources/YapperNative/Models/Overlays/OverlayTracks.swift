@@ -22,14 +22,42 @@ enum OverlayTracks {
         overlays.filter { $0.lane == track }
     }
 
-    /// Two spans share at least one instant. Touching edges do not.
+    /// Overlaps shorter than this are two overlays butting end to end. A
+    /// start of 21.71588571110309 plus 2.16 lands 5 µs past a neighbour at
+    /// 23.8758807111031, and refusing that refused exactly the cut the creator
+    /// asked for: one overlay handing straight over to the next.
+    static let touchTolerance = 0.001
+
+    /// Two spans share more than a moment. Touching edges do not, and nor do
+    /// edges that miss touching by float drift.
     static func collide(
         _ start: Double,
         _ duration: Double,
         _ otherStart: Double,
         _ otherDuration: Double
     ) -> Bool {
-        start < otherStart + otherDuration && otherStart < start + duration
+        min(start + duration, otherStart + otherDuration) - max(start, otherStart) > touchTolerance
+    }
+
+    /// The overlay with its edges pulled onto any neighbour on its lane that
+    /// they overrun by drift, so butting overlays hand over on the same frame
+    /// instead of sharing a few microseconds.
+    static func butted(_ overlay: ProjectOverlay, against others: [ProjectOverlay]) -> ProjectOverlay {
+        var fitted = overlay
+        for other in others where other.id != overlay.id && other.lane == overlay.lane {
+            let end = fitted.timelineStart + fitted.duration
+            let otherEnd = other.timelineStart + other.duration
+            if other.timelineStart > fitted.timelineStart, end > other.timelineStart,
+               end - other.timelineStart <= touchTolerance {
+                fitted.duration = other.timelineStart - fitted.timelineStart
+            }
+            if otherEnd < end, fitted.timelineStart < otherEnd, otherEnd - fitted.timelineStart <= touchTolerance {
+                let shift = otherEnd - fitted.timelineStart
+                fitted.timelineStart = otherEnd
+                fitted.duration -= shift
+            }
+        }
+        return fitted
     }
 
     /// Something other than `id` is already on that lane at that time. A lane

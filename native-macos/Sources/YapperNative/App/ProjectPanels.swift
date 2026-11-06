@@ -51,12 +51,14 @@ enum ProjectPanels {
         panel.allowsMultipleSelection = false
         panel.treatsFilePackagesAsDirectories = false
         panel.directoryURL = ProjectLibrary.defaultDirectory
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        guard ProjectPackage.isPackage(url) else {
-            session.setStatus("Choose a .\(ProjectPackage.pathExtension) project.")
-            return
+        Task {
+            guard await FilePanelPresenter.present(panel) == .OK, let url = panel.url else { return }
+            guard ProjectPackage.isPackage(url) else {
+                session.setStatus("Choose a .\(ProjectPackage.pathExtension) project.")
+                return
+            }
+            await session.openProject(ProjectPackage(url: url))
         }
-        Task { await session.openProject(ProjectPackage(url: url)) }
     }
 
     static func saveCopy(for session: EditorSession) {
@@ -66,11 +68,13 @@ enum ProjectPanels {
         panel.nameFieldStringValue = ProjectPackage.fileName(for: session.project.name + " copy")
         panel.directoryURL = ProjectLibrary.defaultDirectory
         panel.canCreateDirectories = true
-        guard panel.runModal() == .OK, var url = panel.url else { return }
-        if !ProjectPackage.isPackage(url) {
-            url = url.appendingPathExtension(ProjectPackage.pathExtension)
+        Task {
+            guard await FilePanelPresenter.present(panel) == .OK, var url = panel.url else { return }
+            if !ProjectPackage.isPackage(url) {
+                url = url.appendingPathExtension(ProjectPackage.pathExtension)
+            }
+            await session.saveCopy(to: url)
         }
-        Task { await session.saveCopy(to: url) }
     }
 
     static func revealInFinder(_ package: ProjectPackage) {

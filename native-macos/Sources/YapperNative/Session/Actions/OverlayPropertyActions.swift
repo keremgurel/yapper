@@ -26,7 +26,7 @@ extension AppActionRegistry {
                 throw AppActionError("Include an overlay property to change.")
             }
             let targets = try session.actionOverlays(input.overlayIDs, all: input.all == true)
-            let updated = try targets.map { overlay in
+            var updated = try targets.map { overlay in
                 guard let media = session.media(for: overlay) else { throw AppActionError("The overlay source is missing.") }
                 if input.behindSpeaker == true && media.isScene {
                     throw AppActionError("Generated overlays currently sit in front of the video.")
@@ -39,19 +39,21 @@ extension AppActionRegistry {
                 if let start = input.sourceStart { copy.sourceStart = start }
                 if let track = input.track { copy.track = track == 0 ? nil : track }
                 if input.timelineStart != nil || input.duration != nil || input.sourceStart != nil {
-                    guard copy.timelineStart + copy.duration <= session.duration + 0.000001,
-                          media.isImage || copy.sourceStart + copy.sourceDuration <= media.duration + 0.000001 else {
-                        throw AppActionError("Keep the overlay inside the timeline and its source media.")
+                    guard let fitted = OverlaySpanBounds.fitted(duration: copy.duration, start: copy.timelineStart,
+                        sourceStart: copy.sourceStart, mediaDuration: media.isImage ? nil : media.duration,
+                        rate: copy.duration > 0 ? copy.sourceDuration / copy.duration : 1,
+                        timelineDuration: session.duration) else {
+                        throw AppActionError(OverlaySpanBounds.refusal(media: media, sourceStart: copy.sourceStart))
                     }
+                    copy.duration = fitted
                 }
                 return copy
             }
             if input.track != nil || input.timelineStart != nil || input.duration != nil {
                 let ids = Set(targets.map(\.id))
-                let final = session.overlays.filter { !ids.contains($0.id) } + updated
-                guard !updated.contains(where: { OverlayTracks.isOccupied($0.lane, by: ($0.id, $0.timelineStart, $0.duration), in: final) }) else {
-                    throw AppActionError("That overlay lane is occupied at the requested time.")
-                }
+                updated = try OverlayLaneFit.settle(updated, among: session.overlays.filter { !ids.contains($0.id) },
+                                                    keepingRequestedLane: input.track != nil,
+                                                    name: { session.media(for: $0)?.name ?? "That overlay" })
             }
             return try session.mutateActionOverlays(updated, message: "Overlay properties saved")
         }
@@ -64,12 +66,26 @@ extension AppActionRegistry {
             let start = min(time, max(0, session.duration - 0.1))
             let source = input.sourceStart ?? 0
             let available = media.isImage ? EditorSession.imageClipDefaultDuration : media.duration - source
-            let duration = input.duration ?? min(session.duration - start, available)
-            guard duration >= 0.1, start + duration <= session.duration + 0.000001,
-                  media.isImage || source + duration <= media.duration + 0.000001 else {
-                throw AppActionError("Keep the overlay inside the timeline and its source media.")
+            let duration: Double
+            if let until = input.until {
+                // The end is resolved, never computed by the planner: a "while I
+                // say X" placement once ran its whole 13.3 s source over two
+                // later overlays because the arithmetic was off.
+                guard input.duration == nil else { throw AppActionError("Send duration or until, not both.") }
+                let end = try TimelineCue.resolveEnd(until, after: start, project: session.project, playhead: session.currentTime)
+                duration = min(end, session.duration) - start
+                guard duration >= 0.1 else { throw AppActionError("The overlay has to end after it starts.") }
+                guard media.isImage || source + duration <= media.duration + OverlaySpanBounds.tolerance else {
+                    throw AppActionError("\(media.name) is \(String(format: "%.1f", available)) s long, shorter than the \(String(format: "%.1f", duration)) s it would have to cover. Choose an earlier end or a longer clip.")
+                }
+            } else {
+                duration = input.duration ?? min(session.duration - start, available)
             }
-            let overlay = session.introducedOverlay(media: media, timelineStart: start, duration: duration, sourceStart: source)
+            guard let fitted = OverlaySpanBounds.fitted(duration: duration, start: start, sourceStart: source,
+                mediaDuration: media.isImage ? nil : media.duration, timelineDuration: session.duration) else {
+                throw AppActionError(OverlaySpanBounds.refusal(media: media, sourceStart: source))
+            }
+            let overlay = session.introducedOverlay(media: media, timelineStart: start, duration: fitted, sourceStart: source)
             session.updateProject { $0.overlays = ($0.overlays ?? []) + [overlay] }
             return .init(message: "Overlay added · ⌘Z to undo", changes: [.init(targetID: overlay.id, property: "overlay", before: "none", after: media.name)],
                          afterCommit: { session.selectTimelineItem(.overlay(overlay.id)); session.requestInspector("Overlays") })

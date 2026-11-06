@@ -31,8 +31,6 @@ export interface DesignMomentsResult {
 
 /** Three designer calls in flight at once; see run-limited.ts. */
 export const DESIGN_CONCURRENCY = 3;
-export const DESIGN_MAX_COMPLETION_TOKENS = 6_000;
-export const DESIGN_TIMEOUT_MS = 120_000;
 
 /**
  * Design every moment in a batch. Each one is its own provider call and its

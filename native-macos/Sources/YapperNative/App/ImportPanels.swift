@@ -14,7 +14,7 @@ enum ImportPanels {
         panel.allowedContentTypes = kind == .audio ? [.audio, .mp3, .mpeg4Audio, .wav, .aiff] : [.movie, .mpeg4Movie, .quickTimeMovie, .image]
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
-        guard panel.runModal() == .OK else { return true }
+        guard await FilePanelPresenter.present(panel) == .OK else { return true }
         if kind == .audio { await session.importAudio(panel.urls) }
         else { await session.importMedia(panel.urls) }
         return Task.isCancelled
@@ -37,7 +37,7 @@ enum ImportPanels {
         panel.allowedContentTypes = [.mpeg4Movie]
         panel.nameFieldStringValue = "\(session.project.name)-export.mp4"
         ExportFolderDefault.pointExportPanel(panel)
-        guard panel.runModal() == .OK, let url = panel.url else { return true }
+        guard await FilePanelPresenter.present(panel) == .OK, let url = panel.url else { return true }
         return await session.export(to: url)
     }
 
@@ -66,8 +66,9 @@ enum ImportPanels {
         panel.canChooseFiles = true
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
-        guard panel.runModal() == .OK else { return }
-        let urls = panel.urls
-        Task { _ = try? await store.add(urls) }
+        Task {
+            guard await FilePanelPresenter.present(panel) == .OK else { return }
+            _ = try? await store.add(panel.urls)
+        }
     }
 }
