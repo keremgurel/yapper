@@ -19,12 +19,20 @@ export interface PosterPrefill {
   scheduleAt?: string;
 }
 
+/** The actions whose result is Poster opened on their video. A reply opens
+ * one tab, so a plan may name only one video across them. */
+export const POSTER_OPENERS: readonly string[] = [
+  "studio.poster.prepare",
+  "studio.poster.writeCaptions",
+];
+
 /** A tab a reply opens, with its state filled in. */
 export type StudioOpen = { tab: "poster"; params: PosterPrefill };
 
 /** One platform's caption with the later one's filled-in fields on top, so a
- * title set after written captions keeps their body. */
-function mergeCaption(
+ * title set after written captions keeps their body, and a caption Chirpy
+ * fills in keeps the creator's own title and hashtags. */
+export function mergeCaption(
   earlier: PlatformCaption | undefined,
   later: PlatformCaption,
 ): PlatformCaption {

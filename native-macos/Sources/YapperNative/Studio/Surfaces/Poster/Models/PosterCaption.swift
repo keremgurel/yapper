@@ -56,6 +56,26 @@ extension Dictionary where Key == PublishPlatform, Value == PosterCaption {
         self[platform] ?? .blank(platform)
     }
 
+    /// Chirpy's fill-in, field by field: an empty title, body or hashtag
+    /// list never wipes what the creator already has.
+    func filling(_ captions: [PosterCaption]) -> PosterCaptionSet {
+        var filled = self
+        for caption in captions {
+            guard let platform = PublishPlatform(rawValue: caption.platform) else { continue }
+            guard var existing = filled[platform] else {
+                filled[platform] = caption
+                continue
+            }
+            if !caption.title.isEmpty { existing.title = caption.title }
+            if !caption.body.isEmpty {
+                existing.body = caption.body
+                existing.hashtags = caption.hashtags
+            }
+            filled[platform] = existing
+        }
+        return filled
+    }
+
     /// Generated captions land here; a title-only pass never replaces a
     /// caption edited while the request ran.
     func merging(generated: [PosterCaption], titleOnly: Bool, sourceCaption: String) -> PosterCaptionSet {

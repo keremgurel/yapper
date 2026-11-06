@@ -6,7 +6,7 @@ import { executeStudioPlan } from "./execute";
 import type { StudioActionContext, StudioNames } from "./executor";
 import { namesFrom, readStudioOverview } from "./overview";
 import { planStudio } from "./planner";
-import { latestPendingExecution } from "./receipts";
+import { expirePending, latestPendingExecution } from "./receipts";
 import { turnReply } from "./reply";
 import { typedDecision } from "./typed-decision";
 import type { StudioTurnInput, StudioTurnReply } from "./wire";
@@ -68,6 +68,9 @@ export async function runStudioTurn(
     }
   }
 
+  // Anything else moves the conversation on: an earlier question that went
+  // unanswered no longer waits for a typed yes.
+  await expirePending(userId, input.executionID);
   const project = await getActiveProject(userId);
   const record = await withPlanLedger<
     StudioTurnInput & { projectID: string },

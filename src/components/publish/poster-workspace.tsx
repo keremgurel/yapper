@@ -128,7 +128,8 @@ export default function PosterWorkspace() {
     {},
   );
 
-  const { byVideo, setCaption, applyGenerated } = useCaptionDrafts();
+  const { byVideo, setCaption, applyGenerated, fillFromChirpy } =
+    useCaptionDrafts();
   const [descriptions, setDescriptions] = useState<Record<string, string>>({});
   const { generating, reading, error, errorVideoId, noSpeech, generate } =
     useCaptionGeneration(
@@ -247,7 +248,7 @@ export default function PosterWorkspace() {
   useRequestedVideo(requested, library, bench.setActive, params.get("prep"));
   const prefilled = usePosterPrefill(
     active?.id,
-    applyGenerated,
+    fillFromChirpy,
     setDestinationsByVideo,
   );
 

@@ -19,9 +19,15 @@ export default function ChirpyConfirmation({
   return (
     <div className="border-border bg-card mt-2 rounded-lg border p-2.5">
       <p className="text-foreground text-sm">{confirm.question}</p>
-      {confirm.state === "confirmed" || confirm.state === "canceled" ? (
+      {confirm.state === "confirmed" ||
+      confirm.state === "canceled" ||
+      confirm.state === "expired" ? (
         <p className="text-muted-foreground mt-1.5 text-[11px]">
-          {confirm.state === "confirmed" ? "Confirmed" : "Canceled"}
+          {confirm.state === "confirmed"
+            ? "Confirmed"
+            : confirm.state === "canceled"
+              ? "Canceled"
+              : "Expired. Nothing changed; ask again if you still want it."}
         </p>
       ) : (
         <div className="mt-2 flex gap-2">

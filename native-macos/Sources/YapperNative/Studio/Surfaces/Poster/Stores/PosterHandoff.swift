@@ -20,10 +20,15 @@ final class PosterHandoff: ObservableObject {
     private var scheduleTimes: [String: Date] = [:]
     private var thumbnailPrompts: [String: String] = [:]
 
-    /// True when this is a new hand-over to act on.
+    /// The video Chirpy's waiting fill-in is for, if one waits.
+    var prefillVideoID: String? { pendingPrefill?.videoID }
+
+    /// True when this is a new hand-over to act on. A hand-over of another
+    /// video drops Chirpy's fill-in, so it never lands on a later visit.
     func take(generation: Int, itemID: String?) -> Bool {
         guard generation != handledGeneration, let itemID else { return false }
         handledGeneration = generation
+        if pendingPrefill?.videoID != itemID { pendingPrefill = nil }
         pendingItemID = itemID
         return true
     }
@@ -36,12 +41,14 @@ final class PosterHandoff: ObservableObject {
     func openIfReady(in library: PosterLibraryStore, bench: PosterBench, drafts: PosterDraftStore = .shared) {
         guard let pendingItemID, let video = library.videos.first(where: { $0.id == pendingItemID }) else { return }
         self.pendingItemID = nil
-        if let prefill = pendingPrefill, prefill.videoID == video.id {
+        if let prefill = pendingPrefill {
             pendingPrefill = nil
-            if let platforms = prefill.platforms { drafts.choose(platforms, for: video) }
-            if !prefill.captions.isEmpty {
-                drafts.applyGenerated(prefill.captions, to: video.id, titleOnly: false, sourceCaption: "")
+            guard prefill.videoID == video.id else {
+                bench.active = video
+                return
             }
+            if let platforms = prefill.platforms { drafts.choose(platforms, for: video) }
+            if !prefill.captions.isEmpty { drafts.fill(prefill.captions, to: video.id) }
             scheduleTimes[video.id] = prefill.scheduleAt
             thumbnailPrompts[video.id] = prefill.thumbnailPrompt
             revision += 1

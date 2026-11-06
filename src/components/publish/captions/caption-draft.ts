@@ -4,6 +4,7 @@ import {
   type PlatformCaption,
 } from "@/lib/publish/caption-format";
 import { captionSpec } from "@/lib/publish/caption-specs";
+import { mergeCaption } from "@/lib/chirpy/studio/poster/prefill";
 
 /**
  * One video's captions, keyed by platform.
@@ -13,6 +14,18 @@ import { captionSpec } from "@/lib/publish/caption-specs";
  * rather than an empty caption that looks generated.
  */
 export type CaptionSet = Partial<Record<PublishPlatform, PlatformCaption>>;
+
+/** Chirpy's fill-in on top of what the creator already has, field by field:
+ * an empty title, body or hashtag list never wipes theirs. */
+export function fillCaptions(
+  current: CaptionSet | undefined,
+  captions: readonly PlatformCaption[],
+): CaptionSet {
+  const filled: CaptionSet = { ...current };
+  for (const caption of captions)
+    filled[caption.platform] = mergeCaption(filled[caption.platform], caption);
+  return filled;
+}
 
 export function blankCaption(platform: PublishPlatform): PlatformCaption {
   return { platform, title: "", body: "", hashtags: [] };

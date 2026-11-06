@@ -50,6 +50,11 @@ final class PosterDraftStore: ObservableObject {
         captions[video.id] = set
     }
 
+    /// Chirpy's fill-in, merged so the creator's title and hashtags survive.
+    func fill(_ filled: [PosterCaption], to videoID: String) {
+        captions[videoID] = (captions[videoID] ?? [:]).filling(filled)
+    }
+
     func applyGenerated(_ generated: [PosterCaption], to videoID: String, titleOnly: Bool, sourceCaption: String) {
         captions[videoID] = (captions[videoID] ?? [:]).merging(generated: generated, titleOnly: titleOnly, sourceCaption: sourceCaption)
     }

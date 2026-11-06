@@ -9,7 +9,10 @@ import type { PosterPrefill } from "@/lib/chirpy/studio/poster/prefill";
 const pending = new Map<string, PosterPrefill>();
 const EVENT = "studio:poster-prefill";
 
+/** Only the latest hand-over waits: one whose video never opened is dropped
+ * rather than landing on a later visit. */
 export function handPosterPrefill(prefill: PosterPrefill): void {
+  pending.clear();
   pending.set(prefill.videoID, prefill);
   window.dispatchEvent(new Event(EVENT));
 }

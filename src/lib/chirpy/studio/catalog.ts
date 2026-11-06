@@ -1,6 +1,7 @@
 import contract from "../../../../protocol/app-actions.schema.json";
 import type { ChirpyPlanReply } from "../../../../protocol/app-actions.generated";
 import { validate } from "../protocol";
+import { POSTER_OPENERS } from "./poster/prefill";
 import { STUDIO_ACTIONS, type StudioActionID } from "./registry.generated";
 import { isLocalDay, isLocalTime } from "./zoned-time";
 
@@ -79,6 +80,15 @@ export function studioPlanIssue(raw: unknown): string | null {
     if (action.effect === "workflow" && reply.actions.length > 1)
       return `${action.id} must run alone. Do not mix it with other actions.`;
   }
+  // One reply opens Poster on one video; a second would be charged and then
+  // lost when the first one's tab replaces it.
+  const opened = new Set(
+    reply.actions
+      .filter((call) => POSTER_OPENERS.includes(call.action))
+      .map((call) => call.arguments.videoID),
+  );
+  if (opened.size > 1)
+    return "Poster opens one video per reply: use prepare and writeCaptions for one videoID only, and offer to do the others next.";
   return null;
 }
 

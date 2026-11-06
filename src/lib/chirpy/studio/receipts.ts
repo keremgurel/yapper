@@ -23,6 +23,8 @@ export interface StudioInvocation {
   status: StudioReceiptStatus | "pending";
   /** The confirmation question's subject, for pending actions. */
   label?: string;
+  /** Dropped unanswered because the creator went on to something else. */
+  expired?: boolean;
   summary?: string;
   effects?: StudioEffect[];
   partial?: boolean;
@@ -151,6 +153,34 @@ export async function takePending(
   return rows
     .map((row) => row.response as unknown as StudioInvocation)
     .sort((a, b) => a.index - b.index);
+}
+
+/**
+ * Drop every confirmation still waiting from an earlier turn. A turn the
+ * creator sends instead of answering moves the conversation on, so a later
+ * "yes" must answer the question shown last, never an older one such as
+ * cancelling a scheduled post. The turn's own actions (a retried request) are
+ * kept. Returns how many were dropped.
+ */
+export async function expirePending(
+  userId: string,
+  exceptExecutionID: string,
+): Promise<number> {
+  const rows = await getDb()
+    .update(chirpyPlans)
+    .set({
+      response: sql`${chirpyPlans.response} || '{"status": "canceled", "expired": true}'::jsonb`,
+    })
+    .where(
+      and(
+        eq(chirpyPlans.userId, userId),
+        isInvocation,
+        sql`${chirpyPlans.response}->>'status' = 'pending'`,
+        sql`${chirpyPlans.response}->>'executionID' <> ${exceptExecutionID.toLowerCase()}`,
+      ),
+    )
+    .returning({ id: chirpyPlans.executionId });
+  return rows.length;
 }
 
 /** The turn whose actions most recently started waiting for the creator. */

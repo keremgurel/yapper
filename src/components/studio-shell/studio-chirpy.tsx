@@ -16,7 +16,10 @@ import { usePathname, useRouter } from "next/navigation";
 import type { ChirpyExpression } from "@/components/brand/chirpy";
 import ChirpyPanel from "@/components/studio-shell/chirpy-panel";
 import ChirpyDock from "@/components/studio-shell/chirpy-dock/chirpy-dock";
-import type { ChirpyMessage } from "@/components/studio-shell/chirpy-message";
+import {
+  expireOpenConfirmations,
+  type ChirpyMessage,
+} from "@/components/studio-shell/chirpy-message";
 import { typedDecision } from "@/lib/chirpy/studio/typed-decision";
 import type { StudioEffect } from "@/lib/chirpy/studio/wire";
 import { useStudioTurn } from "@/components/studio-shell/use-studio-turn";
@@ -250,7 +253,10 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
           );
         }
         // A typed yes or no answers the open confirmation, as its buttons do.
+        // Anything else moves on, so an earlier question stops waiting (the
+        // server drops it too) and a later yes can't answer it.
         const decision = typedDecision(text);
+        if (!decision) setMessages(expireOpenConfirmations);
         const waiting = messages.findLast(
           (message) => message.confirm?.state === "open",
         )?.confirm;

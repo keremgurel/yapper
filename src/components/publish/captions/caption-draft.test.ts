@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addHashtags,
+  fillCaptions,
   copyCaptionToOthers,
   unchangedCaption,
   blankCaption,
@@ -162,4 +163,50 @@ it("detects edits made while a caption request is in flight", () => {
   );
   expect(unchangedCaption(initial, undefined)).toBe(false);
   expect(unchangedCaption(undefined, undefined)).toBe(true);
+});
+
+describe("fillCaptions", () => {
+  const current = {
+    youtube: {
+      platform: "youtube" as const,
+      title: "My own title",
+      body: "My description",
+      hashtags: ["gym"],
+    },
+    tiktok: {
+      platform: "tiktok" as const,
+      title: "",
+      body: "Old caption",
+      hashtags: ["fitness", "myths"],
+    },
+  };
+
+  it("never wipes the creator's title, body or hashtags with an empty field", () => {
+    expect(
+      fillCaptions(current, [
+        { platform: "youtube", title: "", body: "New words", hashtags: [] },
+        { platform: "tiktok", title: "", body: "", hashtags: [] },
+      ]),
+    ).toEqual({
+      youtube: {
+        platform: "youtube",
+        title: "My own title",
+        body: "New words",
+        hashtags: [],
+      },
+      tiktok: current.tiktok,
+    });
+  });
+
+  it("sets a title on its own and adds captions for new platforms", () => {
+    const filled = fillCaptions(current, [
+      { platform: "youtube", title: "Three gym myths", body: "", hashtags: [] },
+      { platform: "instagram", title: "", body: "Reel caption", hashtags: [] },
+    ]);
+    expect(filled.youtube).toEqual({
+      ...current.youtube,
+      title: "Three gym myths",
+    });
+    expect(filled.instagram?.body).toBe("Reel caption");
+  });
 });

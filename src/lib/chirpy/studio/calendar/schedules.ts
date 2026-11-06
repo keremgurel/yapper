@@ -10,6 +10,7 @@ import { changeSchedule } from "@/lib/publish/operations/change-schedule";
 import { PLATFORMS } from "@/lib/publish/platforms";
 import {
   failureFrom,
+  someDone,
   StudioActionFailure,
   type StudioActionDefinition,
   type StudioNames,
@@ -50,7 +51,7 @@ function scheduleList(rows: readonly { title: string; platform: string }[]) {
 async function ownSchedules(
   userId: string,
   ids: readonly string[],
-): Promise<PublishingSchedule[]> {
+): Promise<{ rows: PublishingSchedule[]; missing: StudioActionFailure[] }> {
   const rows = await getDb()
     .select()
     .from(publishingSchedules)
@@ -65,7 +66,18 @@ async function ownSchedules(
       "not_found",
       "I couldn’t find that scheduled post. It may have gone out or been canceled.",
     );
-  return rows;
+  const gone = ids.length - rows.length;
+  return {
+    rows,
+    missing: gone
+      ? [
+          new StudioActionFailure(
+            "not_found",
+            `I couldn’t find ${gone === 1 ? "one of them" : `${gone} of them`}; ${gone === 1 ? "it" : "they"} may have gone out or been canceled.`,
+          ),
+        ]
+      : [],
+  };
 }
 
 const CONFLICTS: Record<string, string> = {
@@ -97,20 +109,36 @@ function described(ids: readonly string[], names: StudioNames) {
  * calendar's Reschedule control. */
 export const rescheduleAction: StudioActionDefinition<ScheduleMoveInput> = {
   async run({ scheduleIDs, date, time }, { userId, timeZone }) {
-    const rows = await ownSchedules(userId, scheduleIDs);
+    const { rows, missing } = await ownSchedules(userId, scheduleIDs);
     const moved: PublishingSchedule[] = [];
+    const refused = [...missing];
     let last: Date | null = null;
+    // Every post is tried, so one that already started never hides the ones
+    // that did move.
     for (const row of rows) {
-      const at = postingInstant(date, time, row.scheduledFor, timeZone);
+      let at: Date;
+      try {
+        at = postingInstant(date, time, row.scheduledFor, timeZone);
+      } catch (error) {
+        if (!(error instanceof StudioActionFailure)) throw error;
+        refused.push(error);
+        continue;
+      }
       const result = await changeSchedule(userId, row.id, "reschedule", at);
-      if (!result.ok) throw changeFailure(row, result);
+      if (!result.ok) {
+        refused.push(changeFailure(row, result));
+        continue;
+      }
       moved.push(result.value);
       last = at;
     }
-    return {
-      summary: `Moved ${scheduleList(moved)} to ${dayLabel(last!, timeZone, true)}.`,
-      effects: ["schedules", "ideas"],
-    };
+    return someDone(
+      moved.length
+        ? `Moved ${scheduleList(moved)} to ${dayLabel(last!, timeZone, true)}.`
+        : null,
+      refused,
+      ["schedules", "ideas"],
+    );
   },
   describe({ scheduleIDs, date, time }, names) {
     return `Move ${described(scheduleIDs, names)} to ${localLabel(date, time)}`;
@@ -122,17 +150,24 @@ export const rescheduleAction: StudioActionDefinition<ScheduleMoveInput> = {
  * calendar's Cancel control. */
 export const cancelAction: StudioActionDefinition<ScheduleCancelInput> = {
   async run({ scheduleIDs }, { userId }) {
-    const rows = await ownSchedules(userId, scheduleIDs);
+    const { rows, missing } = await ownSchedules(userId, scheduleIDs);
     const canceled: PublishingSchedule[] = [];
+    const refused = [...missing];
     for (const row of rows) {
       const result = await changeSchedule(userId, row.id, "cancel");
-      if (!result.ok) throw changeFailure(row, result);
+      if (!result.ok) {
+        refused.push(changeFailure(row, result));
+        continue;
+      }
       canceled.push(result.value);
     }
-    return {
-      summary: `Canceled ${scheduleList(canceled)}. The video and its idea are still there.`,
-      effects: ["schedules"],
-    };
+    return someDone(
+      canceled.length
+        ? `Canceled ${scheduleList(canceled)}. The video and its idea are still there.`
+        : null,
+      refused,
+      ["schedules"],
+    );
   },
   describe({ scheduleIDs }, names) {
     return `Cancel ${described(scheduleIDs, names)}`;

@@ -11,6 +11,25 @@ vi.mock("@/lib/studio/scene/scene-model-call", () => ({
   sceneModelFailureReason: () => "ai_failed",
 }));
 vi.mock("@/lib/db/r2-drain", () => ({ drainR2AfterResponse: () => {} }));
+// The caption call itself is the route's tested operation; here it only has
+// to answer, so the test can see what Poster is told to open.
+vi.mock("@/lib/publish/operations/captions", () => ({
+  chargedCaptions: vi.fn(async () => ({
+    ok: true,
+    value: {
+      captions: [
+        {
+          platform: "youtube",
+          title: "Desk tour",
+          body: "Written",
+          hashtags: [],
+        },
+      ],
+      balance: 0,
+      used: [],
+    },
+  })),
+}));
 vi.mock("next/server", async (original) => ({
   ...(await original<typeof import("next/server")>()),
   after: () => {},
@@ -74,7 +93,7 @@ async function scheduleRow(id: string) {
 beforeAll(async () => {
   vi.stubEnv("STUDIO_SCHEDULER_ENABLED", "1");
   vi.stubEnv("CRON_SECRET", "test");
-  await pool.query("insert into users(id, credits_balance) values ($1, 20)", [
+  await pool.query("insert into users(id, credits_balance) values ($1, 60)", [
     user,
   ]);
   await pool.query(
@@ -283,13 +302,146 @@ it("moves a scheduled post after a yes, keeping its time", async () => {
   expect(local(now)).toEqual([day, local(was)[1]]);
 });
 
-it("removes a Poster upload only after a yes", async () => {
+it("never lets a later yes confirm a question the creator moved past", async () => {
+  const id = await schedule("tiktok");
   reply({
-    message: "Removed it.",
+    message: "Canceled it.",
+    actions: [
+      { action: "studio.calendar.cancel", arguments: { scheduleIDs: [id] } },
+    ],
+  });
+  const asked = await runStudioTurn(
+    user,
+    request,
+    turn("cancel the desk tour post", "/studio/calendar"),
+    gate,
+  );
+  expect(asked.confirm?.confirmLabel).toBe("Cancel it");
+
+  // Instead of answering, the creator asks something else, and Chirpy asks
+  // a question of its own.
+  reply({ message: "Want it on TikTok too?", actions: [] });
+  await runStudioTurn(
+    user,
+    request,
+    turn("what else is coming up this week?", "/studio/calendar"),
+    gate,
+  );
+  // Their yes answers that question, through the planner, not the cancel.
+  reply({ message: "Which video should go to TikTok?", actions: [] });
+  const yes = await runStudioTurn(
+    user,
+    request,
+    turn("yes", "/studio/calendar"),
+    gate,
+  );
+  expect(vi.mocked(callSceneModel)).toHaveBeenCalledTimes(3);
+  expect(yes.message).toBe("Which video should go to TikTok?");
+  expect((await scheduleRow(id)).status).toBe("scheduled");
+
+  // The old buttons report that it expired and change nothing.
+  expect(
+    await resolveConfirmation(
+      { userId: user, request, timeZone },
+      asked.executionID,
+      "confirm",
+    ),
+  ).toBeNull();
+  expect((await scheduleRow(id)).status).toBe("scheduled");
+});
+
+it("moves every post it can and says which one could not", async () => {
+  const ready = await schedule("tiktok");
+  const sending = await schedule("youtube");
+  await pool.query(
+    "update publishing_schedules set status = 'running' where id = $1",
+    [sending],
+  );
+  const before = (await scheduleRow(sending)).scheduled_for as Date;
+  reply({
+    message: "Moved them.",
+    actions: [
+      {
+        action: "studio.calendar.reschedule",
+        arguments: { scheduleIDs: [ready, sending], date: dayAhead(6) },
+      },
+    ],
+  });
+  const asked = await runStudioTurn(
+    user,
+    request,
+    turn("move both desk tour posts to next week", "/studio/calendar"),
+    gate,
+  );
+  const done = await resolveConfirmation(
+    { userId: user, request, timeZone },
+    asked.executionID,
+    "confirm",
+  );
+  expect(done).toMatchObject({
+    tone: "trouble",
+    message: "Part of that didn’t go through; the notes say what changed.",
+    effects: ["schedules", "ideas"],
+  });
+  expect(done!.notes[0]).toMatch(/^Moved “Desk tour” on TikTok to /);
+  expect(done!.notes[0]).toMatch(
+    /“Desk tour” on YouTube has already started going out, so it can’t change now\./,
+  );
+  expect((await scheduleRow(ready)).scheduled_for).not.toEqual(before);
+  expect((await scheduleRow(sending)).scheduled_for).toEqual(before);
+});
+
+it("writes captions without re-ticking platforms the creator chose", async () => {
+  await pool.query(
+    "update content_items set recorded_transcript = 'my whole desk setup', transcript_status = 'ready' where id = $1",
+    [video],
+  );
+  reply({
+    message: "Wrote captions.",
+    actions: [
+      { action: "studio.poster.writeCaptions", arguments: { videoID: video } },
+    ],
+  });
+  const written = await runStudioTurn(
+    user,
+    request,
+    turn("write captions for this"),
+    gate,
+  );
+  expect(written.open?.params.captions).toHaveLength(1);
+  expect(written.open?.params).not.toHaveProperty("platforms");
+
+  reply({
+    message: "Wrote a TikTok caption.",
+    actions: [
+      {
+        action: "studio.poster.writeCaptions",
+        arguments: { videoID: video, platforms: ["tiktok"] },
+      },
+    ],
+  });
+  const named = await runStudioTurn(
+    user,
+    request,
+    turn("write a tiktok caption for this"),
+    gate,
+  );
+  expect(named.open?.params.platforms).toEqual(["tiktok"]);
+});
+
+it("removes a Poster upload only after a yes, and says what it kept", async () => {
+  const { rows: library } = await pool.query(
+    `insert into content_items (user_id, title, stage)
+     values ($1, 'Gym myths', 'library') returning id`,
+    [user],
+  );
+  const notUpload = library[0].id as string;
+  reply({
+    message: "Removed them.",
     actions: [
       {
         action: "studio.poster.removeUpload",
-        arguments: { videoIDs: [video] },
+        arguments: { videoIDs: [video, notUpload] },
       },
     ],
   });
@@ -300,8 +452,8 @@ it("removes a Poster upload only after a yes", async () => {
     gate,
   );
   expect(asked.confirm).toMatchObject({
-    question: "Remove “Desk tour” from Poster? This can’t be undone.",
     confirmLabel: "Remove",
+    cancelLabel: "Keep it",
   });
   const waiting = await pool.query(
     "select count(*)::int n from content_items where id = $1",
@@ -314,7 +466,10 @@ it("removes a Poster upload only after a yes", async () => {
     asked.executionID,
     "confirm",
   );
-  expect(done).toMatchObject({ tone: "done", effects: ["posterVideos"] });
+  expect(done).toMatchObject({ tone: "trouble", effects: ["posterVideos"] });
+  expect(done!.notes[0]).toBe(
+    "Removed “Desk tour” from Poster. One wasn’t a Poster upload or was already removed.",
+  );
   const gone = await pool.query(
     "select count(*)::int n from content_items where id = $1",
     [video],

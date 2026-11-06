@@ -56,6 +56,40 @@ describe("Studio plans", () => {
     ).toBeNull();
   });
 
+  it("opens Poster on one video per reply", () => {
+    const other = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    expect(
+      studioPlanIssue({
+        message: "",
+        actions: [
+          {
+            action: "studio.poster.writeCaptions",
+            arguments: { videoID: IDEA },
+          },
+          {
+            action: "studio.poster.writeCaptions",
+            arguments: { videoID: other },
+          },
+        ],
+      }),
+    ).toMatch(/one video per reply/);
+    expect(
+      studioPlanIssue({
+        message: "Set up with captions.",
+        actions: [
+          {
+            action: "studio.poster.writeCaptions",
+            arguments: { videoID: IDEA },
+          },
+          {
+            action: "studio.poster.prepare",
+            arguments: { videoID: IDEA, platforms: ["tiktok"] },
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
   it("refuses client actions, impossible days and a time without a day", () => {
     expect(
       studioPlanIssue({

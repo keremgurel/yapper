@@ -9,7 +9,8 @@ export interface ChirpyConfirmation {
   cancelLabel: string;
   /** How to answer in words, for the Mac's thread, which has no buttons. */
   typedHint: string;
-  state: "open" | "working" | "confirmed" | "canceled";
+  /** `expired` once the creator sent something else instead of answering. */
+  state: "open" | "working" | "confirmed" | "canceled" | "expired";
 }
 
 /** One turn in the Chirpy panel's conversation. */
@@ -20,4 +21,19 @@ export interface ChirpyMessage {
   notes?: string[];
   tone?: "done" | "trouble";
   confirm?: ChirpyConfirmation;
+}
+
+/** The thread with every unanswered question marked expired, so a later
+ * typed yes or no can only answer a question asked after it. The same array
+ * when nothing was waiting. */
+export function expireOpenConfirmations(
+  messages: ChirpyMessage[],
+): ChirpyMessage[] {
+  if (!messages.some((message) => message.confirm?.state === "open"))
+    return messages;
+  return messages.map((message) =>
+    message.confirm?.state === "open"
+      ? { ...message, confirm: { ...message.confirm, state: "expired" } }
+      : message,
+  );
 }

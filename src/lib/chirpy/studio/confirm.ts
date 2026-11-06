@@ -50,10 +50,16 @@ function replyFrom(
       effects: [],
     };
   const failed = records.find((record) => record.status === "failed");
+  // An action over several posts that changed some and not others.
+  const partial = records.some((record) => record.partial);
   return {
     executionID,
-    message: failed ? (failed.summary ?? "That didn’t go through.") : "Done.",
-    tone: failed ? "trouble" : "done",
+    message: failed
+      ? (failed.summary ?? "That didn’t go through.")
+      : partial
+        ? "Part of that didn’t go through; the notes say what changed."
+        : "Done.",
+    tone: failed || partial ? "trouble" : "done",
     notes: records
       .filter((record) => record.status === "done")
       .map((record) => record.summary ?? "")
@@ -83,9 +89,12 @@ export async function resolveConfirmation(
     const earlier = (await turnInvocations(context.userId, executionID)).filter(
       (record) => record.label !== undefined,
     );
+    // Waiting still (expired by time), or dropped when the creator moved on:
+    // the caller says it expired and nothing changed.
     if (
       !earlier.length ||
-      earlier.some((record) => record.status === "pending")
+      earlier.some((record) => record.status === "pending") ||
+      earlier.every((record) => record.expired)
     )
       return null;
     const canceled = earlier.every((record) => record.status === "canceled");

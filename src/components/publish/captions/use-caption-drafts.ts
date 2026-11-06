@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import {
+  fillCaptions,
   mergeGeneratedCaptions,
   unchangedCaption,
   type CaptionSet,
@@ -56,5 +57,16 @@ export function useCaptionDrafts() {
     [],
   );
 
-  return { byVideo, setCaption, applyGenerated };
+  /** Chirpy's fill-in, merged field by field so the creator's title and
+   * hashtags survive a caption Chirpy adds. */
+  const fillFromChirpy = useCallback(
+    (videoId: string, captions: PlatformCaption[]) =>
+      setByVideo((current) => ({
+        ...current,
+        [videoId]: fillCaptions(current[videoId], captions),
+      })),
+    [],
+  );
+
+  return { byVideo, setCaption, applyGenerated, fillFromChirpy };
 }

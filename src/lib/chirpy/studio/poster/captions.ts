@@ -66,10 +66,12 @@ export const writeCaptionsAction: StudioActionDefinition<PosterCaptionsInput> =
         effects: [],
         open: {
           tab: "poster",
+          // Platforms the creator named are ticked; otherwise their own
+          // choice in Poster stands, and the captions wait under each.
           params: {
             videoID: item.id,
             title,
-            platforms,
+            ...(input.platforms ? { platforms: input.platforms } : {}),
             captions: written.value.captions,
           },
         },

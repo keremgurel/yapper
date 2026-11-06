@@ -81,6 +81,28 @@ export function requireOpen(
     );
 }
 
+/**
+ * What an action over several items reports: what changed, then why each of
+ * the rest did not, with the effects of what changed. It is partial when
+ * anything was refused, and a refusal outright when nothing changed, so a
+ * receipt never hides a change that did happen.
+ */
+export function someDone(
+  done: string | null,
+  refusals: readonly StudioActionFailure[],
+  effects: StudioEffect[],
+): ActionOutcome {
+  if (!done)
+    throw (
+      refusals[0] ?? new StudioActionFailure("not_found", "Nothing changed.")
+    );
+  return {
+    summary: [done, ...refusals.map((refusal) => refusal.sentence)].join(" "),
+    effects,
+    ...(refusals.length ? { partial: true } : {}),
+  };
+}
+
 /** Turn an operation's refusal into a sentence the creator can act on. */
 export function failureFrom(
   refusal: OperationRefusal,
