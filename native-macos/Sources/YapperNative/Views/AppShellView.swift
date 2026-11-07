@@ -480,16 +480,10 @@ private struct StudioTopBar: View {
                         .stroke(Color.studioLine, lineWidth: 1)
                 }
 
-                if session.isBusy || session.isExporting {
+                if session.isBusy {
                     ProgressView().controlSize(.small)
                 }
                 ManagedMediaNotice(session: session)
-                if let url = session.lastExportURL, !session.isBusy {
-                    Menu("Export complete") {
-                        Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
-                        Button("Continue to Poster") { onNavigate(.poster) }
-                    }.menuStyle(.borderlessButton).fixedSize()
-                }
                 Text(session.statusMessage)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
@@ -525,6 +519,10 @@ private struct StudioTopBar: View {
                 .disabled(session.project.clips.isEmpty || session.isBusy)
 
             }
+
+            // Outside the editor's own controls: an export keeps running on
+            // every tab and across project switches, so its progress does too.
+            ExportJobsIndicator(center: session.exportJobs, onNavigate: onNavigate)
 
             NativeThemeSwitcher(theme: theme, action: toggleTheme)
 

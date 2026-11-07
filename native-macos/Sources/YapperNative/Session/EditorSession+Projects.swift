@@ -126,6 +126,10 @@ extension EditorSession {
     /// Into the Trash. Trashing the open project leaves the grid showing.
     func trashProject(_ package: ProjectPackage) async {
         guard !projectsAreMoving() else { return }
+        if exportJobs.isReadingSources(of: package) {
+            showMessage("Wait for the export to finish preparing this project’s footage before moving it to Trash.")
+            return
+        }
         do {
             if let listing = try await library.listings().first(where: { $0.package == package }),
                PosterProjectSync.shared.isUploading(projectID: listing.summary.id) {

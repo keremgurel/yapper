@@ -357,7 +357,7 @@ private struct EditorHeader: View {
 
             Spacer()
 
-            if session.isBusy || session.isExporting {
+            if session.isBusy {
                 ProgressView()
                     .controlSize(.small)
             }

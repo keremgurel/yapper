@@ -24,6 +24,9 @@ final class YapperNativeAppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard terminationTask == nil else { return .terminateLater }
         guard let session else { return .terminateNow }
+        guard ExportQuitConfirmation.allowsQuit(running: session.exportJobs.runningJobs.count) else {
+            return .terminateCancel
+        }
 
         terminationTask = Task { @MainActor [weak self] in
             let shouldTerminate = await session.prepareForTermination()
@@ -83,13 +86,13 @@ struct YapperNativeApp: App {
                     Task { await session.undo() }
                 }
                 .keyboardShortcut("z", modifiers: [.command])
-                .disabled(!session.canUndo || session.isBusy || session.isExporting)
+                .disabled(!session.canUndo || session.isBusy)
 
                 Button("Redo") {
                     Task { await session.redo() }
                 }
                 .keyboardShortcut("z", modifiers: [.command, .shift])
-                .disabled(!session.canRedo || session.isBusy || session.isExporting)
+                .disabled(!session.canRedo || session.isBusy)
             }
             CommandGroup(after: .toolbar) {
                 Button("Audio library") {

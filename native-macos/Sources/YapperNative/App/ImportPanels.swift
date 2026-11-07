@@ -38,7 +38,9 @@ enum ImportPanels {
         panel.nameFieldStringValue = "\(session.project.name)-export.mp4"
         FilePanelFolder.pointFilePanel(panel, at: .exports)
         guard await FilePanelPresenter.present(panel) == .OK, let url = panel.url else { return true }
-        return await session.export(to: url)
+        // Returns once the export is running. It finishes in the background.
+        await session.export(to: url)
+        return false
     }
 
     /// The fast path: render to an app-owned temporary file, upload that exact
