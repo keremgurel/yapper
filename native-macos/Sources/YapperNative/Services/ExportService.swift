@@ -14,14 +14,32 @@ private final class ExportSessionCancellation: @unchecked Sendable {
     }
 }
 
+/// How far an export has got, from 0 to 1. Called off the main thread, a few
+/// times a second, and never backwards within one export.
+typealias ExportProgressHandler = @Sendable (Double) -> Void
+
 enum ExportService {
     static func export(project: EditorProject, to outputURL: URL) async throws {
         try await export(project: project, to: outputURL, maximumRenderDimension: nil)
     }
 
-    static func export(project: EditorProject, to outputURL: URL, maximumRenderDimension: Double?, range: CMTimeRange? = nil) async throws {
+    static func export(project: EditorProject, to outputURL: URL, progress: @escaping ExportProgressHandler) async throws {
+        try await export(project: project, to: outputURL, maximumRenderDimension: nil, progress: progress)
+    }
+
+    /// `progress` first fires with 0 once every source has its private copy,
+    /// which is the point after which the project can move or close safely.
+    static func export(
+        project: EditorProject,
+        to outputURL: URL,
+        maximumRenderDimension: Double?,
+        range: CMTimeRange? = nil,
+        progress: ExportProgressHandler? = nil
+    ) async throws {
+        let progress = progress.map { MonotonicExportProgress($0).handler }
         let snapshot = try await ExportSourceSnapshot.create(project: project)
         defer { snapshot.discard() }
+        progress?(0)
 
         // Everything, including the captions and the text: this is the one that
         // has to look like the finished video, because it is.
@@ -56,7 +74,8 @@ enum ExportService {
                             animationTool: animationTool,
                             range: range,
                             to: stagedURL,
-                            cancellation: cancellation
+                            cancellation: cancellation,
+                            progress: progress
                         )
                     } else {
                         try await export(
@@ -65,7 +84,8 @@ enum ExportService {
                             audioMix: built.audioMix,
                             range: range,
                             to: stagedURL,
-                            cancellation: cancellation
+                            cancellation: cancellation,
+                            progress: progress.map { ExportPassProgress(span: 0 ... 1, report: $0) }
                         )
                     }
                 } onCancel: {
@@ -123,7 +143,8 @@ enum ExportService {
         animationTool: AVVideoCompositionCoreAnimationTool,
         range: CMTimeRange?,
         to outputURL: URL,
-        cancellation: ExportSessionCancellation
+        cancellation: ExportSessionCancellation,
+        progress: ExportProgressHandler?
     ) async throws {
         let intermediateURL = FileManager.default.temporaryDirectory
             .appending(path: "yapper-composited-\(UUID().uuidString).mp4")
@@ -139,7 +160,8 @@ enum ExportService {
             audioMix: built.audioMix,
             range: range,
             to: intermediateURL,
-            cancellation: cancellation
+            cancellation: cancellation,
+            progress: progress.map { ExportPassProgress(span: 0 ... ExportPassProgress.compositedShare, report: $0) }
         )
 
         let intermediate = AVURLAsset(url: intermediateURL)
@@ -183,7 +205,8 @@ enum ExportService {
             videoComposition: secondPass,
             audioMix: nil,
             to: outputURL,
-            cancellation: cancellation
+            cancellation: cancellation,
+            progress: progress.map { ExportPassProgress(span: ExportPassProgress.compositedShare ... 1, report: $0) }
         )
     }
 
@@ -193,7 +216,8 @@ enum ExportService {
         audioMix: AVAudioMix?,
         range: CMTimeRange? = nil,
         to outputURL: URL,
-        cancellation: ExportSessionCancellation
+        cancellation: ExportSessionCancellation,
+        progress: ExportPassProgress? = nil
     ) async throws {
         try Task.checkCancellation()
         guard let session = AVAssetExportSession(
@@ -207,6 +231,9 @@ enum ExportService {
         if let range { session.timeRange = range }
         session.shouldOptimizeForNetworkUse = true
         cancellation.use(session)
+        let monitor = progress.map { ExportSessionProgress.watch(session, pass: $0) }
+        defer { monitor?.cancel() }
         try await session.export(to: outputURL, as: .mp4)
+        progress?.report(1)
     }
 }
