@@ -29,7 +29,9 @@ struct StorageFolderRow: View {
                 }
                 Text(kind.detail).font(.system(size: 12)).foregroundStyle(.secondary)
                 location
-                StorageFolderNotes(kind: kind, folder: folder, availability: availability, volume: volume, move: move)
+                StorageFolderNotes(kind: kind, folder: folder, availability: availability, volume: volume, move: move) {
+                    Task { await move.retryLeftBehind(session: session) }
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             actions
@@ -97,6 +99,7 @@ private struct StorageFolderNotes: View {
     let availability: StorageAvailability
     let volume: StorageVolume?
     @ObservedObject var move: ProjectFolderMove
+    let retry: () -> Void
 
     var body: some View {
         if let problem = StorageWarningCopy.problem(kind: kind, folder: folder, availability: availability, inStorage: true) {
@@ -115,6 +118,11 @@ private struct StorageFolderNotes: View {
             .padding(.top, 2)
         } else if kind == .editorProjects, let outcome = move.outcome {
             note(outcome).foregroundStyle(.secondary)
+            if move.leftBehind != nil {
+                Button("Try again", action: retry)
+                    .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+                    .padding(.top, 2)
+            }
         }
     }
 

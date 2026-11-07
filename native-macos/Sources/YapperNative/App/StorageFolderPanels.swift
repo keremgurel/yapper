@@ -30,19 +30,20 @@ enum StorageFolderPanels {
     /// `folder` nil means the default.
     private static func applyFolderChoice(_ folder: URL?, for kind: StorageKind, session: EditorSession, folders: StorageFolders) async {
         let target = folder ?? folders.defaultFolder(for: kind)
-        guard target.standardizedFileURL.path != folders.folder(for: kind).standardizedFileURL.path
-                || (folder == nil) != (folders.chosen(kind) == nil)
-        else { return }
+        let sameFolder = folders.isCurrentFolder(target, for: kind)
+        guard !sameFolder || (folder == nil) != (folders.chosen(kind) == nil) else { return }
         NativeAnalytics.shared.capture("native_storage_folder_changed", [
             "kind": kind.rawValue,
             "custom": folder != nil,
             "external": StorageVolume.of(target)?.isInternal == false,
         ])
-        guard kind == .editorProjects else {
+        // The folder already in use, by another path or picked by hand while
+        // it was the default: remember the choice and move nothing.
+        guard kind == .editorProjects, !sameFolder else {
             if let folder { folders.choose(folder, for: kind) } else { folders.useDefault(for: kind) }
             return
         }
-        let packages = ((try? await ProjectLibrary.shared.listings()) ?? []).map(\.package)
+        let packages = (try? await ProjectLibrary.shared.packages()) ?? []
         guard !packages.isEmpty else {
             if let folder { folders.choose(folder, for: kind) } else { folders.useDefault(for: kind) }
             return

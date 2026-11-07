@@ -11,6 +11,8 @@ extension EditorSession {
     /// so a creator upgrading finds their work as the first project rather than
     /// an empty grid.
     func restoreLastProject() async {
+        let folders = StorageFolders.standard
+        Task.detached(priority: .utility) { ProjectMoveStaging.sweepAfterLaunch(folders: folders) }
         do {
             if let migrated = try await library.migrateLegacyProject(from: ProjectStore.directory) {
                 await openProject(migrated)
@@ -29,6 +31,7 @@ extension EditorSession {
     }
 
     func openProject(_ package: ProjectPackage) async {
+        guard !projectsAreMoving() else { return }
         assistantTask?.cancel()
         if projectNavigation.currentPackage == package {
             projectNavigation.showsProjectsHome = false
@@ -56,6 +59,7 @@ extension EditorSession {
     /// projects folder is on a drive that isn't plugged in.
     @discardableResult
     func createProject(named name: String) async -> Bool {
+        guard !projectsAreMoving() else { return false }
         do {
             let package = try await library.create(named: name)
             NativeAnalytics.shared.capture("native_project_created")
@@ -84,7 +88,7 @@ extension EditorSession {
     }
 
     func renameCurrentProject(to name: String) async {
-        guard let package = projectNavigation.currentPackage else { return }
+        guard !projectsAreMoving(), let package = projectNavigation.currentPackage else { return }
         await stopManagedMedia(for: projectNavigation.currentPackage)
         do {
             let renamed = try await library.rename(package, to: name)
@@ -108,6 +112,7 @@ extension EditorSession {
     }
 
     func duplicateProject(_ package: ProjectPackage) async {
+        guard !projectsAreMoving() else { return }
         await stopManagedMedia(for: package)
         do {
             let copy = try await library.duplicate(package)
@@ -120,6 +125,7 @@ extension EditorSession {
 
     /// Into the Trash. Trashing the open project leaves the grid showing.
     func trashProject(_ package: ProjectPackage) async {
+        guard !projectsAreMoving() else { return }
         do {
             if let listing = try await library.listings().first(where: { $0.package == package }),
                PosterProjectSync.shared.isUploading(projectID: listing.summary.id) {
@@ -145,6 +151,7 @@ extension EditorSession {
     /// The same project written to a second package, which then becomes the
     /// open one. What Cmd+S means in an app that already saves everything.
     func saveCopy(to url: URL) async {
+        guard !projectsAreMoving() else { return }
         let destination = ProjectPackage(url: url)
         await stopManagedMedia(for: projectNavigation.currentPackage)
         do {
@@ -191,6 +198,13 @@ extension EditorSession {
         resetProject(to: EditorProject())
         projectNavigation.showsProjectsHome = true
         return package
+    }
+
+    /// True, with a note saying so, while projects move to another folder.
+    func projectsAreMoving() -> Bool {
+        guard projectNavigation.isMovingProjects else { return false }
+        showMessage("Wait for your projects to finish moving.")
+        return true
     }
 
     /// Everything the open project needs before another takes its place: a

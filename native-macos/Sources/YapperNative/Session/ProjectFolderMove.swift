@@ -1,14 +1,18 @@
 import Foundation
 
-/// Points editor projects at a new folder and brings the existing ones along,
-/// one package at a time, with progress the Storage page shows.
+/// Brings the existing projects to a new projects folder, one package at a
+/// time, with progress the Storage page shows.
 ///
-/// The open project is saved and closed before anything moves, so nothing
-/// writes into a package while it is being copied, and it reopens from its
-/// new place afterwards.
+/// The order is what keeps work safe. The destination is readied before
+/// anything closes. The open project is saved, and a failed save stops the
+/// move. Nothing can open, make or change a project until the move ends. The
+/// setting switches only once at least one project is in the new folder, and
+/// any that couldn't move are kept by path so Try again can still reach them.
 @MainActor
 final class ProjectFolderMove: ObservableObject {
     static let shared = ProjectFolderMove()
+
+    typealias MoveOne = @Sendable (ProjectPackage, URL) throws -> ProjectMover.Moved?
 
     struct Progress: Equatable {
         let done: Int
@@ -16,66 +20,122 @@ final class ProjectFolderMove: ObservableObject {
         let name: String
     }
 
+    /// Projects a move couldn't take, and the folder they were going to.
+    struct LeftBehind: Equatable {
+        let packages: [ProjectPackage]
+        /// Nil means the default folder.
+        let folder: URL?
+    }
+
     @Published private(set) var progress: Progress?
     /// What the last move did, in a sentence or two.
     @Published private(set) var outcome: String?
+    @Published private(set) var leftBehind: LeftBehind?
+
+    private let moveOne: MoveOne
+
+    /// `moveOne` lets tests fail a chosen package.
+    init(moveOne: @escaping MoveOne = { try ProjectMover.move($0, into: $1) }) {
+        self.moveOne = moveOne
+    }
 
     var isRunning: Bool { progress != nil }
 
     /// Why a move can't start now, or nil when it can.
     func blocker(for session: EditorSession) -> String? {
-        if isRunning { return "Projects are already moving." }
-        if session.isBusy { return "Wait for the current task in the editor to finish, then move your projects." }
+        if isRunning || session.projectNavigation.isMovingProjects { return "Projects are already moving." }
+        if session.isBusy || session.isExporting {
+            return "Wait for the current task in the editor to finish, then move your projects."
+        }
         return nil
     }
 
     /// `folder` nil means the default folder.
     func moveProjects(choosing folder: URL?, moving packages: [ProjectPackage], session: EditorSession,
-             folders: StorageFolders = .standard) async {
+                      folders: StorageFolders = .standard) async {
         if let blocker = blocker(for: session) { outcome = blocker; return }
         outcome = nil
+        leftBehind = nil
         progress = Progress(done: 0, total: packages.count, name: packages.first?.displayName ?? "")
-        defer { progress = nil }
-
-        if let reason = await uploadBlocker(packages) { outcome = reason; return }
+        session.projectNavigation.isMovingProjects = true
         var reopen: ProjectPackage?
-        if let open = session.projectNavigation.currentPackage, packages.contains(open) {
-            reopen = await session.closeCurrentProject()
-        }
-        await session.stopManagedMedia()
+        var moved: [ProjectMover.Moved] = []
+        var failures: [ProjectPackage: String] = [:]
+        var destination: URL?
+        var ranMoves = false
 
-        if let folder { folders.choose(folder, for: .editorProjects) } else { folders.useDefault(for: .editorProjects) }
-        let destination: URL
+        defer { progress = nil }
         do {
-            destination = try folders.usableFolder(for: .editorProjects)
+            let target = try folders.usableFolder(folder, for: .editorProjects)
+            destination = target
+            if let reason = await uploadBlocker(packages) { throw ProjectMoveStop(reason) }
+            reopen = try await closeIfMoving(packages, session: session)
+            await session.stopManagedMedia()
+            ProjectMoveStaging.sweep(in: target)
+            ProjectMoveStaging.noteMoving(into: target, preferences: folders.preferences)
+            for (index, package) in packages.enumerated() {
+                progress = Progress(done: index, total: packages.count, name: package.displayName)
+                do {
+                    let moveOne = moveOne
+                    let result = try await Task.detached(priority: .userInitiated) { try moveOne(package, target) }.value
+                    guard let result else { continue }
+                    RecentProjects.replace(result.from, with: result.to)
+                    await ProjectPosterLoader.shared.invalidate(package)
+                    moved.append(result)
+                } catch {
+                    failures[package] = error.localizedDescription
+                }
+            }
+            ProjectMoveStaging.noteMoving(into: nil, preferences: folders.preferences)
+            ranMoves = true
         } catch {
             outcome = error.localizedDescription
-            return
         }
 
-        var moved: [ProjectMover.Moved] = []
-        var failures: [String] = []
-        for (index, package) in packages.enumerated() {
-            progress = Progress(done: index, total: packages.count, name: package.displayName)
-            do {
-                let result = try await Task.detached(priority: .userInitiated) {
-                    try ProjectMover.move(package, into: destination)
-                }.value
-                RecentProjects.replace(result.from, with: result.to)
-                await ProjectPosterLoader.shared.invalidate(package)
-                moved.append(result)
-            } catch {
-                failures.append("“\(package.displayName)”: \(error.localizedDescription)")
-            }
+        if !moved.isEmpty || (ranMoves && failures.isEmpty) {
+            if let folder { folders.choose(folder, for: .editorProjects) } else { folders.useDefault(for: .editorProjects) }
         }
+        let stuck = packages.filter { failures[$0] != nil }
+        if !stuck.isEmpty { leftBehind = LeftBehind(packages: stuck, folder: folder) }
+        session.projectNavigation.isMovingProjects = false
         session.projectNavigation.noteLibraryChanged()
-        NativeAnalytics.shared.capture("native_projects_moved", ["moved": moved.count, "failed": failures.count])
+        if !moved.isEmpty || !failures.isEmpty {
+            NativeAnalytics.shared.capture("native_projects_moved", ["moved": moved.count, "failed": failures.count])
+        }
 
         if let reopen {
             let next = moved.first(where: { ProjectPackage(url: $0.from) == reopen }).map { ProjectPackage(url: $0.to) } ?? reopen
             await session.openProject(next)
         }
-        outcome = Self.summary(moved: moved, failures: failures, folder: destination)
+        if ranMoves, let destination {
+            let sentence = ProjectMoveSummary.sentence(
+                moved: moved,
+                failures: stuck.compactMap { package in failures[package].map { "“\(package.displayName)”: \($0)" } },
+                folder: destination
+            )
+            outcome = sentence.isEmpty ? nil : sentence
+        }
+    }
+
+    /// Moves the projects the last move couldn't, to the folder it was taking
+    /// them to. They are found by path, so it works whether or not the setting
+    /// has switched.
+    func retryLeftBehind(session: EditorSession, folders: StorageFolders = .standard) async {
+        guard let leftBehind else { return }
+        let packages = leftBehind.packages.filter { FileManager.default.fileExists(atPath: $0.url.path) }
+        await moveProjects(choosing: leftBehind.folder, moving: packages, session: session, folders: folders)
+    }
+
+    /// Saves and closes the open project when it is one of those moving. A
+    /// save that fails stops the move rather than leave edits behind.
+    private func closeIfMoving(_ packages: [ProjectPackage], session: EditorSession) async throws -> ProjectPackage? {
+        guard let open = session.projectNavigation.currentPackage, packages.contains(open) else { return nil }
+        do {
+            try await session.persist()
+        } catch {
+            throw ProjectMoveStop("“\(open.displayName)” couldn’t be saved, so nothing was moved. \(error.localizedDescription)")
+        }
+        return await session.closeCurrentProject()
     }
 
     private func uploadBlocker(_ packages: [ProjectPackage]) async -> String? {
@@ -87,22 +147,11 @@ final class ProjectFolderMove: ObservableObject {
         }
         return nil
     }
+}
 
-    static func summary(moved: [ProjectMover.Moved], failures: [String], folder: URL) -> String {
-        var parts: [String] = []
-        if !moved.isEmpty {
-            let count = moved.count == 1 ? "1 project" : "\(moved.count) projects"
-            parts.append("Moved \(count) to “\(folder.lastPathComponent)”.")
-        }
-        if moved.contains(where: \.originalInTrash) {
-            parts.append("The originals are in the Trash. Empty it to free the space.")
-        }
-        if moved.contains(where: \.originalKept) {
-            parts.append("Some originals couldn’t go to the Trash, so they’re still in the old folder.")
-        }
-        if !failures.isEmpty {
-            parts.append("Not moved, still in the old folder: " + failures.joined(separator: " "))
-        }
-        return parts.joined(separator: " ")
-    }
+/// A reason a move stopped before any project moved.
+private struct ProjectMoveStop: LocalizedError {
+    let reason: String
+    init(_ reason: String) { self.reason = reason }
+    var errorDescription: String? { reason }
 }

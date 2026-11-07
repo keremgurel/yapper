@@ -88,13 +88,14 @@ struct ProjectsHomeView: View {
                 Label("Open…", systemImage: "folder")
             }
             .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+            .disabled(navigation.isMovingProjects)
             Button {
                 ProjectPanels.newProject(for: session)
             } label: {
                 Label("New project", systemImage: "plus")
             }
             .buttonStyle(EditorPrimaryButtonStyle(size: .small))
-            .disabled(monitor.status(of: .editorProjects) != .available)
+            .disabled(monitor.status(of: .editorProjects) != .available || navigation.isMovingProjects)
             .help(monitor.status(of: .editorProjects) == .available ? "" : "Plug the drive back in, or choose another folder in Storage, to make a project.")
         }
     }

@@ -82,8 +82,15 @@ struct StorageFolders: @unchecked Sendable {
     /// The folder, ready to write into. A default is created on first use; a
     /// chosen folder has to be there already.
     func usableFolder(for kind: StorageKind) throws -> URL {
-        let folder = folder(for: kind)
-        guard chosen(kind) != nil else {
+        try usableFolder(chosen(kind), for: kind)
+    }
+
+    /// The same for a folder that isn't the setting yet: `folder`, or the
+    /// default when it's nil. A move readies its destination this way and
+    /// switches the setting only once projects are there.
+    func usableFolder(_ folder: URL?, for kind: StorageKind) throws -> URL {
+        guard let folder else {
+            let folder = defaultFolder(for: kind)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             return folder
         }
@@ -92,5 +99,11 @@ struct StorageFolders: @unchecked Sendable {
             throw StorageUnavailableError(kind: kind, folder: folder, availability: availability)
         }
         return folder
+    }
+
+    /// True when `folder` is the one already in use, reached by another path
+    /// or picked by hand while it was the default.
+    func isCurrentFolder(_ folder: URL, for kind: StorageKind) -> Bool {
+        FolderIdentity.same(folder, self.folder(for: kind))
     }
 }

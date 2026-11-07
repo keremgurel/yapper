@@ -21,22 +21,28 @@ actor ProjectLibrary {
         self.folders = folders
     }
 
-    /// Newest edited first.
+    /// Newest edited first. A package whose summary can't be read isn't
+    /// listed; `packages()` still finds it.
     func listings() throws -> [ProjectListing] {
+        var listings: [ProjectListing] = []
+        for package in try packages() {
+            if let summary = summary(for: package) {
+                listings.append(ProjectListing(package: package, summary: summary))
+            }
+        }
+        return listings.sorted { $0.summary.updatedAt > $1.summary.updatedAt }
+    }
+
+    /// Every package in the folder, readable or not. A move takes all of them
+    /// so none is left behind unseen.
+    func packages() throws -> [ProjectPackage] {
         try ensureDirectory()
         let contents = try FileManager.default.contentsOfDirectory(
             at: directory,
             includingPropertiesForKeys: [.contentModificationDateKey],
             options: [.skipsHiddenFiles]
         )
-        var listings: [ProjectListing] = []
-        for url in contents where ProjectPackage.isPackage(url) {
-            let package = ProjectPackage(url: url)
-            if let summary = summary(for: package) {
-                listings.append(ProjectListing(package: package, summary: summary))
-            }
-        }
-        return listings.sorted { $0.summary.updatedAt > $1.summary.updatedAt }
+        return contents.filter(ProjectPackage.isPackage).map { ProjectPackage(url: $0) }
     }
 
     /// The summary sidecar, or one rebuilt from the project when the sidecar
