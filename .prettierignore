@@ -15,6 +15,7 @@ native-macos/dist
 
 # lockfiles (large, auto-generated)
 package-lock.json
+pnpm-lock.yaml
 
 # generated
 next-env.d.ts

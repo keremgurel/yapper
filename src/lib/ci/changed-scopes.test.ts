@@ -43,6 +43,20 @@ describe("changedScopes", () => {
     });
   });
 
+  it("checks the site and PostgreSQL when dependencies change", () => {
+    for (const file of [
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+    ]) {
+      expect(changedScopes([file])).toEqual({
+        web: true,
+        native: false,
+        postgres: true,
+      });
+    }
+  });
+
   it("runs every gate when CI classification itself changes", () => {
     expect(changedScopes([".github/workflows/ci.yml"])).toEqual({
       web: true,

@@ -27,7 +27,7 @@ export function changedScopes(files) {
         file.startsWith("drizzle/") ||
         file.startsWith("scripts/") ||
         file.startsWith("protocol/") ||
-        /^(package(-lock)?\.json|next\.config\.[^.]+|tsconfig\.json|vitest\.config\.[^.]+|eslint\.config\.[^.]+|postcss\.config\.[^.]+|drizzle\.config\.[^.]+|components\.json)$/.test(
+        /^(package\.json|pnpm-(lock|workspace)\.yaml|next\.config\.[^.]+|tsconfig\.json|vitest\.config\.[^.]+|eslint\.config\.[^.]+|postcss\.config\.[^.]+|drizzle\.config\.[^.]+|components\.json)$/.test(
           file,
         ),
     );
@@ -39,7 +39,9 @@ export function changedScopes(files) {
         file.startsWith("src/lib/db/") ||
         file.startsWith("src/app/api/") ||
         file.endsWith(".integration.test.ts") ||
-        /^(package(-lock)?\.json|drizzle\.config\.[^.]+)$/.test(file),
+        /^(package\.json|pnpm-(lock|workspace)\.yaml|drizzle\.config\.[^.]+)$/.test(
+          file,
+        ),
     );
   return { web, native, postgres };
 }

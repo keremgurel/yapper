@@ -30,7 +30,7 @@ PGlite tests cover transcript recovery, user isolation, manual edits and clears,
 The optional synthetic provider evaluation runs with `RUN_MEMORY_PROVIDER_TESTS=1` and `SURPLUS_API_KEY` configured:
 
 ```sh
-npx vitest run src/lib/brain/context/published-memory.provider.test.ts
+pnpm exec vitest run src/lib/brain/context/published-memory.provider.test.ts
 ```
 
 Migration `0038_recording_memory` adds only server-owned enrichment fields. Production applies it through the existing deployment migration step.

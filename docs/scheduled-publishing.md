@@ -102,9 +102,9 @@ again. After an hour of processing it shows "Check the platform".
    Never print or commit it.
 
    ```bash
-   cd workers/publish-clock && npm install
-   npx wrangler secret put PUBLISH_SCHEDULER_SECRET
-   npx wrangler deploy
+   cd workers/publish-clock && pnpm install
+   pnpm exec wrangler secret put PUBLISH_SCHEDULER_SECRET
+   pnpm run deploy
    ```
 
 2. In Vercel production, set `PUBLISH_SCHEDULER_SECRET` to the same value,

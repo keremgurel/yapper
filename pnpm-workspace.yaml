@@ -1,0 +1,21 @@
+# Settings only: the repository is a single package. workers/publish-clock has
+# its own pnpm-workspace.yaml and lockfile so the site install never pulls in
+# wrangler.
+
+# pnpm 10 skips dependency install scripts unless they are listed here.
+# These three fetch or verify native binaries the build and tests use.
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - unrs-resolver
+
+# Install scripts we have read and do not need: funding or telemetry notices,
+# msw's service worker copy, and webgpu removing the macOS quarantine flag
+# from a binary only server-side rendering would load.
+ignoredBuiltDependencies:
+  - "@clerk/shared"
+  - "@tsparticles/engine"
+  - "@vgpu/adapter-node"
+  - core-js
+  - msw
+  - webgpu

@@ -58,22 +58,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Reads the version from "packageManager" in package.json.
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
+          cache: pnpm
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
-      - run: npm run lint
+      - run: pnpm run lint
 
-      - run: npm run format:check
+      - run: pnpm run format:check
 
-      - run: npm run typecheck
+      - run: pnpm run typecheck
 
-      - run: npm test
+      - run: pnpm test
 
-      - run: npm run build
+      - run: pnpm run build
 
   native-macos:
     needs: changes
@@ -127,15 +130,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Reads the version from "packageManager" in package.json.
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
+          cache: pnpm
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       - name: Apply migrations
-        run: npm run db:migrate
+        run: pnpm run db:migrate
 
       - name: Test PostgreSQL protocols
-        run: npm run test:integration
+        run: pnpm run test:integration

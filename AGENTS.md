@@ -4,6 +4,14 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+# Package manager
+
+Use pnpm, not npm or yarn. In a new worktree run `pnpm install` after `bash scripts/link-worktree-env.sh`. pnpm links packages from one shared store (`~/Library/pnpm/store`) instead of writing another full copy, so an extra worktree no longer costs the 1.3 GB of `node_modules` that npm wrote. `npm install` fails on purpose (`scripts/require-pnpm.mjs`). If it ran anyway, delete the `node_modules` and `package-lock.json` it left behind and run `pnpm install`.
+
+- Add a dependency with `pnpm add <name>` or `pnpm add -D <name>`. Run scripts with `pnpm run <script>` and binaries with `pnpm exec <bin>`.
+- pnpm skips dependency install scripts that are not listed in `pnpm-workspace.yaml`. When it reports an ignored build script for a new dependency, read the script, then add the package to `onlyBuiltDependencies` if it needs to run or to `ignoredBuiltDependencies` if it does not.
+- `workers/publish-clock` has its own lockfile. Install it from that folder and deploy with `pnpm run deploy`, since `pnpm deploy` is a different built-in command.
+
 # Testing a change
 
 - Follow `docs/testing.md`. Test on dev before opening the PR and write the prod steps for after deploy, using `the.ypr.app+clerk_test@gmail.com` on dev (code 424242) and `the.ypr.app+qa@gmail.com` on prod (real email verification). Do not use Clerk’s reserved test-address suffix in production.

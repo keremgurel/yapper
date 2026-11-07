@@ -14,7 +14,7 @@ Every Vercel environment requires:
 - `CRON_SECRET`: required by the existing maintenance cron, which also removes
   expired limiter buckets in bounded batches.
 
-`npm run build` runs `scripts/validate-deploy-env.mjs` and fails a Vercel build
+`pnpm run build` runs `scripts/validate-deploy-env.mjs` and fails a Vercel build
 when either rate-limit variable is missing or invalid. Local and generic CI
 builds are not behind Vercel and therefore do not require proxy trust.
 

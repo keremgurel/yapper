@@ -6,7 +6,7 @@ With `YAPPER_FAKE_AUTH=1`, `next.config.ts` aliases `@clerk/nextjs` and
 one local test user. Nothing talks to Clerk.
 
 ```bash
-YAPPER_FAKE_AUTH=1 npx next dev -H 127.0.0.1 -p 3112
+YAPPER_FAKE_AUTH=1 pnpm exec next dev -H 127.0.0.1 -p 3112
 ```
 
 The `.claude/launch.json` entry `yapper-dev-fake-auth` runs the same thing.

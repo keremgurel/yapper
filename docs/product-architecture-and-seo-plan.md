@@ -88,7 +88,7 @@ The homepage carries `WebSite` and `Organization`. Each product overview carries
 
 ## Sitemap and lastmod
 
-The sitemap is built from one registry, `src/lib/seo/public-routes.json`, plus blog posts. It contains canonical 200 pages only. `lastmod` is the date of the last git commit that touched the files that render each page, written by `npm run seo:lastmod` into a committed file, the same method celpip-practice uses. Blog posts use their published date. `priority` and `changefreq` were removed because Google ignores them.
+The sitemap is built from one registry, `src/lib/seo/public-routes.json`, plus blog posts. It contains canonical 200 pages only. `lastmod` is the date of the last git commit that touched the files that render each page, written by `pnpm run seo:lastmod` into a committed file, the same method celpip-practice uses. Blog posts use their published date. `priority` and `changefreq` were removed because Google ignores them.
 
 The generated dates currently read October 1 for every page because the changes are uncommitted and the generator was run with `--allow-dirty`. Run it again after committing.
 
@@ -129,7 +129,7 @@ Seen in a browser: homepage, Train pricing, Studio pricing, pricing chooser and 
 
 1. Decide whether to release the wallet split. It adds columns and changes where new welcome credits land. Read `docs/pricing-2026-10.md` first.
 2. Connect Yapper's PostHog project and record the conversion baseline before release.
-3. Commit, run `npm run seo:lastmod`, commit the generated dates.
+3. Commit, run `pnpm run seo:lastmod`, commit the generated dates.
 4. Replace the sample content in Studio demos with real product captures.
 5. Rewrite the eight Studio feature pages' body copy. Their titles and H1s were set earlier today from intent, without volumes. The matrix marks which ones should change.
 6. Give `/training/interview-prep` and `/tools/words-per-minute` the content the matrix describes. Those two have the clearest demand after the generator.

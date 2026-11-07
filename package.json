@@ -2,6 +2,7 @@
   "name": "yapper",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.34.9",
   "scripts": {
     "dev": "next dev",
     "build": "node scripts/validate-deploy-env.mjs && node scripts/migrate-production.mjs && next build",
@@ -14,7 +15,8 @@
     "seo:lastmod": "node scripts/update-sitemap-lastmod.mjs",
     "seo:audit": "python3 scripts/audit-marketing-seo.py",
     "posthog:query": "node scripts/posthog-query.mjs",
-    "check": "npm run lint && npm run format:check && npm run typecheck && npm run test",
+    "check": "pnpm run lint && pnpm run format:check && pnpm run typecheck && pnpm run test",
+    "preinstall": "node scripts/require-pnpm.mjs",
     "prepare": "husky",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

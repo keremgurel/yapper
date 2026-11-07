@@ -1,6 +1,7 @@
 {
   "name": "yapper-publish-clock",
   "private": true,
+  "packageManager": "pnpm@10.34.9",
   "description": "Wakes Yapper's scheduled-publishing worker at the minute a post is due.",
   "scripts": {
     "dev": "wrangler dev --test-scheduled",

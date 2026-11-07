@@ -207,11 +207,11 @@ They are opt-in and paid, and write only to a scratch folder.
 
 ```
 RUN_INTEGRATION_TESTS=1 RUN_OVERLAY_LIVE_EVAL=1 OVERLAY_EVAL_OUTPUT=/tmp/out \
-  npx vitest run src/lib/studio/scene/live-quality.integration.test.ts
+  pnpm exec vitest run src/lib/studio/scene/live-quality.integration.test.ts
 
 RUN_INTEGRATION_TESTS=1 RUN_OVERLAY_LIVE_EVAL=1 OVERLAY_EVAL_OUTPUT=/tmp/out \
   OVERLAY_EDITORIAL_FILE=/tmp/some-run/editorial.json \
-  npx vitest run src/lib/studio/scene/live-editorial-file.integration.test.ts
+  pnpm exec vitest run src/lib/studio/scene/live-editorial-file.integration.test.ts
 
 cd native-macos && OVERLAY_EVAL_OUTPUT=/tmp/out swift test --filter SceneLayoutQualityTests
 ```

@@ -18,7 +18,7 @@ Use the address for the environment below.
 Clerk reserves `+clerk_test` addresses for test mode, enabled by default on development instances. They are not ordinary production addresses: production rejected this address with “Email address must be a valid email address.” Keep production test mode disabled and use the ordinary `+qa` alias, whose real verification email reaches `the.ypr.app@gmail.com`. See [Clerk’s test-email guidance](https://clerk.com/docs/guides/development/testing/test-emails-and-phones).
 
 Dev and prod are separate Clerk users with separate data. Create the dev one
-with `npm run test-account`; dev sign-up asks for a password and the script
+with `pnpm run test-account`; dev sign-up asks for a password and the script
 skips that. On prod, sign up with the address the first time.
 
 For sign-up checks on dev, use a new address such as
@@ -34,10 +34,10 @@ bash scripts/link-worktree-env.sh
 ```
 
 ```bash
-npm ci
+pnpm install
 ```
 
-Then run `npm run dev`, open `/sign-in` and sign in with the test account and 424242. Local dev uses whatever database `.env.local` points at, so the test
+Then run `pnpm dev`, open `/sign-in` and sign in with the test account and 424242. Local dev uses whatever database `.env.local` points at, so the test
 account's ideas and videos land there (see [local fake auth](local-fake-auth.md)).
 
 Running another app's dev server in the same browser can break Clerk sign-in

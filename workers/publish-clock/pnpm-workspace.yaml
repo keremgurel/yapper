@@ -1,0 +1,6 @@
+# Its own workspace root, so `pnpm install` here uses this folder's lockfile
+# and never the site's. Wrangler needs these two install scripts to set up
+# its bundler and the local workerd runtime.
+onlyBuiltDependencies:
+  - esbuild
+  - workerd
