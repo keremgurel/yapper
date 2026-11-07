@@ -41,11 +41,16 @@ final class ProjectFolderMove: ObservableObject {
 
     var isRunning: Bool { progress != nil }
 
-    /// Why a move can't start now, or nil when it can.
-    func blocker(for session: EditorSession) -> String? {
+    /// Why a move can't start now, or nil when it can. An export only reads
+    /// a project's own files while it prepares; after that it renders from
+    /// its own copy and the project can move.
+    func blocker(for session: EditorSession, moving packages: [ProjectPackage]) -> String? {
         if isRunning || session.projectNavigation.isMovingProjects { return "Projects are already moving." }
-        if session.isBusy || session.isExporting {
+        if session.isBusy {
             return "Wait for the current task in the editor to finish, then move your projects."
+        }
+        if let exporting = packages.first(where: session.exportJobs.isReadingSources(of:)) {
+            return "Wait for the export of “\(exporting.displayName)” to finish preparing its footage, then move your projects."
         }
         return nil
     }
@@ -53,7 +58,7 @@ final class ProjectFolderMove: ObservableObject {
     /// `folder` nil means the default folder.
     func moveProjects(choosing folder: URL?, moving packages: [ProjectPackage], session: EditorSession,
                       folders: StorageFolders = .standard) async {
-        if let blocker = blocker(for: session) { outcome = blocker; return }
+        if let blocker = blocker(for: session, moving: packages) { outcome = blocker; return }
         outcome = nil
         leftBehind = nil
         progress = Progress(done: 0, total: packages.count, name: packages.first?.displayName ?? "")

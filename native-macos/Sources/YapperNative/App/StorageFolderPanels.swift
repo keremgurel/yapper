@@ -48,7 +48,7 @@ enum StorageFolderPanels {
             if let folder { folders.choose(folder, for: kind) } else { folders.useDefault(for: kind) }
             return
         }
-        if let blocker = ProjectFolderMove.shared.blocker(for: session) {
+        if let blocker = ProjectFolderMove.shared.blocker(for: session, moving: packages) {
             showAlert(title: "Projects can’t move yet", message: blocker)
             return
         }

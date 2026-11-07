@@ -151,7 +151,7 @@ struct ProjectFolderMoveTests {
         #expect(rig.session.projectNavigation.currentPackage == rig.first)
         #expect(await rig.session.createProject(named: "Day 27") == false)
         #expect(rig.session.statusMessage == "Wait for your projects to finish moving.")
-        #expect(ProjectFolderMove().blocker(for: rig.session) != nil)
+        #expect(ProjectFolderMove().blocker(for: rig.session, moving: [rig.first]) != nil)
         rig.session.projectNavigation.isMovingProjects = false
     }
 
