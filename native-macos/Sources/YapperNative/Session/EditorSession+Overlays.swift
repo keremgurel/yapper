@@ -147,13 +147,21 @@ extension EditorSession {
     /// whole project is composited, so it always rebuilds.
     func setOverlayBehindSpeaker(_ overlay: ProjectOverlay, behind: Bool) {
         Task { await performAppAction(OverlayPropertiesInput(overlayIDs: [overlay.id], all: nil,
-            hidden: nil, behindSpeaker: behind, sourceStart: nil, timelineStart: nil, duration: nil, track: nil)) }
+            hidden: nil, behindSpeaker: behind, backdrop: nil, sourceStart: nil, timelineStart: nil, duration: nil, track: nil)) }
+    }
+
+    /// What fills the frame behind this card. Remembered as the choice for the
+    /// next overlay added, so picking one look for a video is one click, not
+    /// one per cutaway. See `OverlayBackdropDefault`.
+    func setOverlayBackdrop(_ overlay: ProjectOverlay, to backdrop: OverlayBackdrop?) {
+        OverlayBackdropDefault.remember(backdrop)
+        OverlayBackdropCommits.shared.request(backdrop, for: overlay.id, in: self)
     }
 
     /// Visibility changes are independent of placement keys.
     func setOverlayHidden(_ overlay: ProjectOverlay, hidden: Bool) {
         Task { await performAppAction(OverlayPropertiesInput(overlayIDs: [overlay.id], all: nil,
-            hidden: hidden, behindSpeaker: nil, sourceStart: nil, timelineStart: nil, duration: nil, track: nil)) }
+            hidden: hidden, behindSpeaker: nil, backdrop: nil, sourceStart: nil, timelineStart: nil, duration: nil, track: nil)) }
     }
 
     /// Live during a drag: saved, but the composition is left alone.

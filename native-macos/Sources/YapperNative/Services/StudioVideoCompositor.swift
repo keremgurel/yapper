@@ -70,6 +70,12 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
         /// How much the face in this layer is retouched. Neutral on everything
         /// but the speaker's own clip.
         let retouch: ClipRetouch
+        /// True on the frosted backdrop behind a card: the picture, once
+        /// placed, is enlarged, blurred and dimmed to fill the frame. See
+        /// `FrostedBackdrop`.
+        let frost: Bool
+        /// When this layer eases in, for a backdrop arriving with its card.
+        let fade: LayerFade?
 
         /// The track this layer draws, when it draws one.
         var trackID: CMPersistentTrackID? {
@@ -87,7 +93,9 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
             matte: Bool = false,
             card: OverlayCardStyle? = nil,
             cardRotation: Double = 0,
-            retouch: ClipRetouch = .none
+            retouch: ClipRetouch = .none,
+            frost: Bool = false,
+            fade: LayerFade? = nil
         ) {
             self.source = source
             self.transform = transform
@@ -99,6 +107,8 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
             self.card = card
             self.cardRotation = cardRotation
             self.retouch = retouch
+            self.frost = frost
+            self.fade = fade
         }
 
         /// The transform this layer has at `progress` through the instruction,
@@ -133,23 +143,28 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
     /// What the frame is filled with before anything is drawn on it: behind a
     /// clip with its background removed, and in any letterboxing.
     let backdrop: CIColor
+    /// A preset painted at the render size, drawn instead of `backdrop`.
+    let backdropImage: CIImage?
 
     init(
         timeRange: CMTimeRange,
         layers: [Layer],
         colorMatrix: ColorMatrix,
         matteQuality: MatteQuality = .accurate,
-        backdrop: CIColor = .black
+        backdrop: CIColor = .black,
+        backdropImage: CIImage? = nil
     ) {
         self.timeRange = timeRange
         self.layers = layers
         self.colorMatrix = colorMatrix
         self.matteQuality = matteQuality
         self.backdrop = backdrop
+        self.backdropImage = backdropImage
         // A matted layer is a different shape on every frame even when nothing
         // in the edit moves, so an instruction carrying one is never a still.
         containsTweening = layers.contains {
             $0.endTransform != nil || $0.overlayMotion != nil || $0.matte || !$0.retouch.isNeutral
+                || $0.frost || $0.fade != nil
         }
         // A track drawn both whole and cut out is named twice, and asking
         // AVFoundation for the same source twice is not a request it honours.
@@ -159,6 +174,20 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
             .compactMap(\.trackID)
             .filter { seen.insert($0).inserted }
             .map { NSNumber(value: $0) }
+    }
+}
+
+/// A layer easing in from nothing, measured on the timeline.
+struct LayerFade: Equatable, Sendable {
+    let start: Double
+    let duration: Double
+
+    /// Smoothstep from 0 at `start` to 1 a `duration` later: no jump at either
+    /// end, which a linear ramp has at the moment it lands.
+    func opacity(atTimeline time: Double) -> Double {
+        guard duration > 0 else { return 1 }
+        let t = min(1, max(0, (time - start) / duration))
+        return t * t * (3 - 2 * t)
     }
 }
 
@@ -210,7 +239,7 @@ final class StudioVideoCompositor: NSObject, AVVideoCompositing {
 
             let size = request.renderContext.size
             let frame = CGRect(origin: .zero, size: size)
-            var output = CIImage(color: instruction.backdrop).cropped(to: frame)
+            var output = (instruction.backdropImage ?? CIImage(color: instruction.backdrop)).cropped(to: frame)
 
             // How far into this instruction the frame being asked for is, which
             // is what a moving layer is drawn from.
@@ -301,11 +330,18 @@ final class StudioVideoCompositor: NSObject, AVVideoCompositing {
                     )
                 }
 
-                if layer.opacity < 1 {
+                if layer.frost {
+                    image = FrostedBackdrop.frosted(image, frame: frame)
+                }
+
+                let opacity = layer.opacity
+                    * Float(layer.fade?.opacity(atTimeline: request.compositionTime.seconds) ?? 1)
+                guard opacity > 0 else { continue }
+                if opacity < 1 {
                     image = image.applyingFilter(
                         "CIColorMatrix",
                         parameters: [
-                            "inputAVector": CIVector(x: 0, y: 0, z: 0, w: CGFloat(layer.opacity)),
+                            "inputAVector": CIVector(x: 0, y: 0, z: 0, w: CGFloat(opacity)),
                         ]
                     )
                 }

@@ -312,6 +312,7 @@ export interface OverlayPropertiesInput {
   all?: boolean;
   hidden?: boolean;
   behindSpeaker?: boolean;
+  backdrop?: string;
   sourceStart?: number;
   timelineStart?: number;
   duration?: number;
@@ -335,7 +336,8 @@ export interface OverlayTrackInput {
 }
 
 export interface ProjectBackdropInput {
-  color: string;
+  color?: string;
+  preset?: string;
 }
 
 export type ProjectAspectInput = "original" | "portrait" | "feedPortrait" | "square" | "landscape";

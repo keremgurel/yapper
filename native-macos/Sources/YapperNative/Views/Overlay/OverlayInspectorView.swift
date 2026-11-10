@@ -234,6 +234,10 @@ struct OverlayInspectorView: View {
                     .lineLimit(1)
             }
 
+            InspectorRow("Backdrop", alignment: .top) {
+                OverlayBackdropPicker(session: session, overlay: overlay)
+            }
+
             InspectorRow("Crop") {
                 HStack(spacing: 8) {
                     Button("Crop…") { session.beginCropping(overlayID: overlay.id) }

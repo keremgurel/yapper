@@ -27,9 +27,9 @@ extension EditorSession {
     /// visual-only commit would move the swatch and leave the frame behind.
     /// The commit's own settling time folds the drag into one rebuild.
     func setBackdrop(_ color: StudioColor, live: Bool = false) {
-        guard color != project.resolvedBackdrop else { return }
+        guard color != project.resolvedBackdrop || project.backdropPreset != nil else { return }
         guard live else {
-            Task { await performAppAction(ProjectBackdropInput(color: color.hex)) }
+            Task { await performAppAction(ProjectBackdropInput(color: color.hex, preset: nil)) }
             return
         }
         scheduleCompositionCommit { [self] in
@@ -37,9 +37,18 @@ extension EditorSession {
                 // Black is what the frame was filled with before there was a
                 // choice, so choosing it is stored as no choice at all.
                 project.backdrop = color == .black ? nil : color
+                project.backdropPreset = nil
                 project.updatedAt = Date()
             }
             return true
         }
+    }
+
+    /// A generated surface behind the speaker instead of a flat colour, which
+    /// with Remove background is a background swap. `nil` goes back to the
+    /// colour.
+    func setBackdropPreset(_ preset: BackdropPreset?) {
+        guard preset != project.backdropPreset else { return }
+        Task { await performAppAction(ProjectBackdropInput(color: nil, preset: preset?.rawValue ?? "none")) }
     }
 }

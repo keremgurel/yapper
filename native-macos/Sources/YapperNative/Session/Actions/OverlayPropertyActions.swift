@@ -22,7 +22,7 @@ extension AppActionRegistry {
             return try session.mutateActionOverlays(updated, message: input.fit == .full ? "Overlays set to full frame" : "Overlay framing saved")
         }
         register(OverlayPropertiesInput.self, availability: { _ in .available }) { session, input in
-            guard input.hidden != nil || input.behindSpeaker != nil || input.sourceStart != nil || input.timelineStart != nil || input.duration != nil || input.track != nil else {
+            guard input.hidden != nil || input.behindSpeaker != nil || input.backdrop != nil || input.sourceStart != nil || input.timelineStart != nil || input.duration != nil || input.track != nil else {
                 throw AppActionError("Include an overlay property to change.")
             }
             let targets = try session.actionOverlays(input.overlayIDs, all: input.all == true)
@@ -34,6 +34,12 @@ extension AppActionRegistry {
                 var copy = overlay
                 if let hidden = input.hidden { copy.isHidden = hidden ? true : nil }
                 if let behind = input.behindSpeaker { copy.behindSpeaker = behind ? true : nil }
+                if let token = input.backdrop {
+                    guard token == "none" || OverlayBackdrop(token: token) != nil else {
+                        throw AppActionError("Choose none, frosted or one of the backdrop presets.")
+                    }
+                    copy.backdrop = OverlayBackdrop(token: token)
+                }
                 if let start = input.timelineStart { copy.timelineStart = start }
                 if let duration = input.duration { copy.duration = duration }
                 if let start = input.sourceStart { copy.sourceStart = start }

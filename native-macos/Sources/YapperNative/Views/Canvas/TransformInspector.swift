@@ -108,17 +108,38 @@ struct TransformInspector: View {
     /// photograph or a video behind the speaker is a full-frame overlay set to
     /// sit behind them, which is a control that already exists.
     private var backdropRow: some View {
-        InspectorRow("Behind") {
-            InspectorColorWell(color: session.backdrop) { color, live in
-                session.setBackdrop(color, live: live)
+        InspectorRow("Behind", alignment: .top) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    BackdropSwatch(name: "Colour", selected: preset == nil) {
+                        session.setBackdropPreset(nil)
+                    } picture: {
+                        session.backdrop.swiftUIColor
+                    }
+                    ForEach(BackdropPreset.allCases) { option in
+                        BackdropSwatch(name: option.title, selected: preset == option) {
+                            session.setBackdropPreset(option)
+                        } picture: {
+                            BackdropPresetPicture(preset: option)
+                        }
+                    }
+                }
+                HStack(spacing: 8) {
+                    if preset == nil {
+                        InspectorColorWell(color: session.backdrop) { color, live in
+                            session.setBackdrop(color, live: live)
+                        }
+                    }
+                    Text(preset.map { "\($0.title) behind you" } ?? "A colour, or a full-frame overlay behind you")
+                        .font(.studioCaption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
-
-            Text("Or put a full-frame overlay behind you")
-                .font(.studioCaption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
         }
     }
+
+    private var preset: BackdropPreset? { session.project.backdropPreset }
 
     /// Scale and the keyframe row, always on screen: the size of the shot is
     /// what anyone opens this panel for, and the diamond has to be next to the

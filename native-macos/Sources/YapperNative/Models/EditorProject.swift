@@ -305,6 +305,9 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
     /// The boxes this cutaway moves through, in seconds from its own start.
     /// `nil` or empty means it holds still. See `OverlayKey`.
     var keys: [OverlayKey]?
+    /// What fills the frame behind the card while it is up. `nil` draws
+    /// nothing, which is every overlay saved before this existed.
+    var backdrop: OverlayBackdrop?
 
     init(
         id: UUID = UUID(),
@@ -323,7 +326,8 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
         behindSpeaker: Bool? = nil,
         keys: [OverlayKey]? = nil,
         playbackRate: Double? = nil,
-        audioDetached: Bool? = nil
+        audioDetached: Bool? = nil,
+        backdrop: OverlayBackdrop? = nil
     ) {
         self.id = id
         self.mediaID = mediaID
@@ -342,6 +346,7 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
         self.keys = keys
         self.audioDetached = audioDetached
         self.playbackRate = playbackRate
+        self.backdrop = backdrop
     }
 
     var resolvedCrop: OverlayCrop { crop ?? .full }
@@ -627,6 +632,10 @@ struct EditorProject: Codable, Equatable, Sendable {
     /// them, and that already works, so putting a second way to do it here
     /// would be two controls for one result.
     var backdrop: StudioColor?
+    /// A generated surface in place of `backdrop`'s flat colour. With a clip's
+    /// background removed, this is a background swap drawn in code, so it
+    /// costs no disk space. `nil` uses the colour.
+    var backdropPreset: BackdropPreset?
 
     init(
         id: UUID = UUID(),
@@ -747,9 +756,14 @@ struct EditorProject: Codable, Equatable, Sendable {
         !isVideoTrackHidden && clips.contains { $0.removesBackground }
     }
 
+    /// True when any card on screen has something drawn behind it.
+    var hasOverlayBackdrops: Bool {
+        (overlays ?? []).contains { $0.isVisible && $0.backdrop?.isDrawable == true }
+    }
+
     /// True when the frame behind the picture is not the plain black
     /// AVFoundation would fill it with anyway.
-    var hasBackdrop: Bool { resolvedBackdrop != .black }
+    var hasBackdrop: Bool { resolvedBackdrop != .black || backdropPreset != nil }
 
     /// True when the editor has to composite this project itself.
     ///
@@ -761,6 +775,7 @@ struct EditorProject: Codable, Equatable, Sendable {
             || cutsOutTheSpeaker
             || removesAnyBackground
             || hasBackdrop
+            || hasOverlayBackdrops
             || retouchesAnyClip
             || hasImageClip
             || (overlays ?? []).contains { overlay in
