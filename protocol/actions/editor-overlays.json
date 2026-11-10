@@ -411,7 +411,15 @@
         },
         "backdrop": {
           "type": "string",
-          "enum": ["none", "frosted", "navyGlow", "aurora", "lightRays", "grainient", "shapeGrid"]
+          "enum": [
+            "none",
+            "frosted",
+            "navyGlow",
+            "aurora",
+            "lightRays",
+            "grainient",
+            "shapeGrid"
+          ]
         },
         "sourceStart": {
           "type": "number",

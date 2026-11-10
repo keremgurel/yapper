@@ -41,7 +41,14 @@
         },
         "preset": {
           "type": "string",
-          "enum": ["none", "navyGlow", "aurora", "lightRays", "grainient", "shapeGrid"],
+          "enum": [
+            "none",
+            "navyGlow",
+            "aurora",
+            "lightRays",
+            "grainient",
+            "shapeGrid"
+          ],
           "description": "A generated dark surface instead of a flat colour; none goes back to the colour."
         }
       }

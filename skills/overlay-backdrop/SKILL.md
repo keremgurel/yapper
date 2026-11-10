@@ -13,13 +13,13 @@ Frosted is the speaker's own frame scaled 1.5x about the centre, blurred with a 
 
 The presets are drawn in code, so they need no image files. All of them are dark and still, and all of them darken the band 75 to 85% down the frame, where white captions with a black outline sit.
 
-| Preset | Look |
-| --- | --- |
-| `navyGlow` | Deep navy, a tall soft glow and a brand-blue halo behind the card, fine grain |
-| `aurora` | Faint teal and violet bands across the top of a near-black sky |
-| `lightRays` | Soft rays from just above the frame, fading by a third of the way down |
-| `grainient` | Dark mesh of plum, ember and navy with heavier grain |
-| `shapeGrid` | Faint grid that only shows around the card |
+| Preset      | Look                                                                          |
+| ----------- | ----------------------------------------------------------------------------- |
+| `navyGlow`  | Deep navy, a tall soft glow and a brand-blue halo behind the card, fine grain |
+| `aurora`    | Faint teal and violet bands across the top of a near-black sky                |
+| `lightRays` | Soft rays from just above the frame, fading by a third of the way down        |
+| `grainient` | Dark mesh of plum, ember and navy with heavier grain                          |
+| `shapeGrid` | Faint grid that only shows around the card                                    |
 
 Keep them calm. Kerem has rejected backdrops that drift, glow hard or pull the eye off the card. Do not use Runway or any video-to-video model for this: it repaints the room differently on every clip.
 

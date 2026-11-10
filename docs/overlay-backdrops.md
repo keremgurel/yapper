@@ -16,16 +16,16 @@ Swapping the speaker's whole background was already in the app as Video tab, Bac
 
 ## Choices
 
-| Choice | What it is | State |
-| --- | --- | --- |
-| Frosted | The speaker's frame scaled 1.5x, blurred at 2.5% of the frame width, brightness -0.07, saturation 0.9 | Built |
-| Navy glow | Deep navy, a tall soft glow and a brand-blue halo centred on the card, from `glow-backdrop.tsx` | Built |
-| Aurora | Faint teal and violet bands across the top | Built |
-| Light rays | Soft rays from above the frame | Built |
-| Grainient | Dark plum, ember and navy mesh with heavier grain | Built |
-| Grid | A faint grid that only shows around the card | Built |
-| Your image | A picture from Media, aspect-filled | Designed, not built |
-| From a prompt | An image generated from a sentence, then used like your image | Designed, not built |
+| Choice        | What it is                                                                                            | State               |
+| ------------- | ----------------------------------------------------------------------------------------------------- | ------------------- |
+| Frosted       | The speaker's frame scaled 1.5x, blurred at 2.5% of the frame width, brightness -0.07, saturation 0.9 | Built               |
+| Navy glow     | Deep navy, a tall soft glow and a brand-blue halo centred on the card, from `glow-backdrop.tsx`       | Built               |
+| Aurora        | Faint teal and violet bands across the top                                                            | Built               |
+| Light rays    | Soft rays from above the frame                                                                        | Built               |
+| Grainient     | Dark plum, ember and navy mesh with heavier grain                                                     | Built               |
+| Grid          | A faint grid that only shows around the card                                                          | Built               |
+| Your image    | A picture from Media, aspect-filled                                                                   | Designed, not built |
+| From a prompt | An image generated from a sentence, then used like your image                                         | Designed, not built |
 
 Every preset is dark and still, has fine grain against banding, and darkens the band 75 to 85% down the frame where white outlined captions sit. A test checks that band on every preset.
 
