@@ -25,19 +25,10 @@ struct OverlayInspectorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             essentials
-            HStack {
-                Button("Zoom into area…") { session.pausePlayback(); showsZoom = true }
-                    .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
-                if media?.isImage == true {
-                    Button("Mask area…") { session.pausePlayback(); showsMask = true }
-                        .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                .sheet(isPresented: $showsZoom) { OverlayZoomSheet(session: session, overlay: overlay) }
+                .sheet(isPresented: $showsMask) {
+                    if let media { MaskEditorSheet(session: session, overlay: overlay, media: media) }
                 }
-            }
-            .padding(.bottom, 10)
-            .sheet(isPresented: $showsZoom) { OverlayZoomSheet(session: session, overlay: overlay) }
-            .sheet(isPresented: $showsMask) {
-                if let media { MaskEditorSheet(session: session, overlay: overlay, media: media) }
-            }
 
             if let media, media.generated?.revealSourceMediaID != nil {
                 Divider()
@@ -46,7 +37,18 @@ struct OverlayInspectorView: View {
 
             Divider()
 
-            InspectorSection("Position", id: "overlay.position") {
+            InspectorSection(
+                "Position",
+                id: "overlay.position",
+                accessory: AnyView(OverlayApplyMenu(
+                    what: "size and position",
+                    lane: overlay.lane + 1,
+                    laneCount: session.overlayTargetCount(from: overlay, scope: .lane),
+                    projectCount: session.overlayTargetCount(from: overlay, scope: .project)
+                ) { scope in
+                    session.applyOverlayFrame(of: overlay, scope: scope)
+                })
+            ) {
                 InspectorRow("Fit") {
                     InspectorSegmentedControl(
                         options: [
@@ -89,15 +91,6 @@ struct OverlayInspectorView: View {
                             decimals: 0
                         ) { percent in
                             commit { $0.y = OverlayCanvasGeometry.clampedOrigin(percent / 100, extent: overlay.height) }
-                        }
-
-                        OverlayApplyMenu(
-                            what: "size and position",
-                            lane: overlay.lane + 1,
-                            laneCount: session.overlayTargetCount(from: overlay, scope: .lane),
-                            projectCount: session.overlayTargetCount(from: overlay, scope: .project)
-                        ) { scope in
-                            session.applyOverlayFrame(of: overlay, scope: scope)
                         }
                     }
                 }
@@ -157,7 +150,7 @@ struct OverlayInspectorView: View {
                 }
 
                 if let media, !media.isImage {
-                    InspectorRow("Source") {
+                    InspectorRow("Source", detail: "Where in \(media.name) it starts playing") {
                         InspectorNumberField(
                             value: overlay.sourceStart,
                             range: 0 ... max(0, media.duration),
@@ -166,10 +159,7 @@ struct OverlayInspectorView: View {
                         ) { start in
                             commit { $0.sourceStart = start }
                         }
-                        Text("seconds into \(media.name)")
-                            .font(.studioCaption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                        Text("seconds").font(.studioCaption).foregroundStyle(.secondary)
                     }
                 }
             }
@@ -192,12 +182,6 @@ struct OverlayInspectorView: View {
                 .buttonStyle(EditorSecondaryButtonStyle())
 
                 Spacer(minLength: 0)
-
-                if let media {
-                    Text(media.isScene ? "Generated overlay" : media.isImage ? "Image overlay" : "Video cutaway")
-                        .font(.studioCaption)
-                        .foregroundStyle(.secondary)
-                }
             }
             .padding(.top, 10)
         }
@@ -209,15 +193,11 @@ struct OverlayInspectorView: View {
     /// one of them was too small to aim in. See `CropSheet`.
     private var essentials: some View {
         VStack(alignment: .leading, spacing: 9) {
-            InspectorRow("Keyframe") {
+            InspectorRow("Keyframe", detail: keyframeSummary) {
                 OverlayKeyframeControls(session: session, overlay: overlay)
-                Text(keyframeSummary)
-                    .font(.studioCaption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
             }
 
-            InspectorRow("Depth") {
+            InspectorRow("Depth", detail: depthSummary) {
                 InspectorSegmentedControl(
                     options: [
                         .init(value: OverlayDepth.inFront, label: "In front"),
@@ -227,27 +207,24 @@ struct OverlayInspectorView: View {
                 ) { depth in
                     session.setOverlayBehindSpeaker(overlay, behind: depth == .behind)
                 }
-
-                Text(depthSummary)
-                    .font(.studioCaption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
             }
 
-            InspectorRow("Crop") {
-                HStack(spacing: 8) {
-                    Button("Crop…") { session.beginCropping(overlayID: overlay.id) }
+            InspectorRow("Backdrop", alignment: .top) {
+                OverlayBackdropPicker(session: session, overlay: overlay)
+            }
+
+            InspectorRow("Crop", detail: cropReadout) {
+                Button("Crop…") { session.beginCropping(overlayID: overlay.id) }
+                    .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                Button("Zoom into area…") { session.pausePlayback(); showsZoom = true }
+                    .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                if media?.isImage == true {
+                    Button("Mask area…") { session.pausePlayback(); showsMask = true }
                         .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
-
-                    Text(cropReadout)
-                        .font(.studioCaption)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-
-                    if !shown.resolvedCrop.isFull {
-                        Button("Reset") { session.setOverlayCrop(overlay, crop: .full) }
-                            .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
-                    }
+                }
+                if !shown.resolvedCrop.isFull {
+                    Button("Reset") { session.setOverlayCrop(overlay, crop: .full) }
+                        .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
                 }
             }
         }
@@ -271,8 +248,8 @@ struct OverlayInspectorView: View {
 
     private var cropReadout: String {
         let crop = shown.resolvedCrop
-        guard !crop.isFull else { return "Whole picture" }
-        return "\(Int((crop.width * 100).rounded()))% × \(Int((crop.height * 100).rounded()))%"
+        guard !crop.isFull else { return "Showing the whole picture" }
+        return "Showing \(Int((crop.width * 100).rounded()))% × \(Int((crop.height * 100).rounded()))% of it"
     }
 
     private func quarterTurn(_ icon: String, degrees: Double, help: String) -> some View {

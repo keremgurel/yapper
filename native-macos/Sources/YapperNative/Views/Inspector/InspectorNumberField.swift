@@ -79,6 +79,7 @@ struct InspectorSlider: View {
             .accessibilityLabel(controlLabel)
             .controlSize(.small)
             .tint(Color.yapperOrange)
+            .frame(minWidth: 90, maxWidth: 260)
 
             InspectorNumberField(
                 value: value,
@@ -86,6 +87,7 @@ struct InspectorSlider: View {
                 decimals: decimals,
                 onCommit: onChange
             )
+            .fixedSize()
         }
     }
 }

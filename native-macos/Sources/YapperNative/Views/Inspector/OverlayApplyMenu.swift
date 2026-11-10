@@ -25,7 +25,7 @@ struct OverlayApplyMenu: View {
 
     var body: some View {
         if projectCount > 0 {
-            Menu("Match...") {
+            Menu {
                 if laneCount > 0 {
                     Button("Others on lane \(lane) (\(laneCount))") { apply(.lane) }
                 }
@@ -34,8 +34,12 @@ struct OverlayApplyMenu: View {
                 if projectCount > laneCount {
                     Button("All overlays (\(projectCount))") { apply(.project) }
                 }
+            } label: {
+                Label("Apply to others", systemImage: "square.on.square")
+                    .font(.studioCaption)
             }
             .menuStyle(.borderlessButton)
+            .menuIndicator(.visible)
             .fixedSize()
             .help("Give other overlays this \(what)")
         }

@@ -15,6 +15,10 @@ struct InspectorSection<Content: View>: View {
     /// Shows the reset control. Left false for sections with nothing to undo.
     var isModified = false
     var onReset: (() -> Void)?
+    /// The section's one way to copy its settings to other items, drawn in
+    /// the header: `ApplyToAllButton` or `OverlayApplyMenu`. Once per
+    /// section, never once per row.
+    var accessory: AnyView?
     @ViewBuilder let content: Content
 
     @AppStorage private var isExpanded: Bool
@@ -27,12 +31,14 @@ struct InspectorSection<Content: View>: View {
         isEnabled: Binding<Bool>? = nil,
         isModified: Bool = false,
         onReset: (() -> Void)? = nil,
+        accessory: AnyView? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
         self.isEnabled = isEnabled
         self.isModified = isModified
         self.onReset = onReset
+        self.accessory = accessory
         self.content = content()
         _isExpanded = AppStorage(wrappedValue: expandedByDefault, "inspector.section.\(id)")
     }
@@ -65,10 +71,8 @@ struct InspectorSection<Content: View>: View {
                         .foregroundStyle(.secondary)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                     Text(title)
-                        .font(.system(size: 10.5, weight: .bold))
-                        .textCase(.uppercase)
-                        .kerning(0.4)
-                        .foregroundStyle(.secondary)
+                        .font(.studioCaptionStrong)
+                        .foregroundStyle(.primary)
                 }
                 .contentShape(Rectangle())
             }
@@ -90,11 +94,15 @@ struct InspectorSection<Content: View>: View {
                 .help("Reset \(title.lowercased())")
             }
 
+            if isExpanded, let accessory {
+                accessory
+            }
+
             if let isEnabled {
                 InspectorSwitch(isOn: isEnabled)
             }
         }
-        .frame(height: 28)
+        .frame(height: 30)
     }
 }
 

@@ -40,9 +40,8 @@ struct FiltersWorkbench: View {
                 if filter.id != .original {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
-                            Text("STRENGTH")
-                                .font(.studioCaptionStrong)
-                                .foregroundStyle(.secondary)
+                            Text("Strength")
+                                .font(.studioBodyStrong)
                             Spacer()
                             Text("\(Int((filter.strength * 100).rounded()))%")
                                 .font(.studioCaption)

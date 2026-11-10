@@ -107,16 +107,10 @@ struct TextLayerInspectorView: View {
     }
 
     private var footer: some View {
-        HStack {
-            Label(
-                "\(formatTimePrecise(layer.timelineStart)) to \(formatTimePrecise(layer.timelineStart + layer.duration)) · trim on the timeline",
-                systemImage: "arrow.left.and.right"
-            )
-            .font(.studioCaption)
-            .foregroundStyle(.secondary)
-
-            Spacer(minLength: 8)
-
+        InspectorRow(
+            "Timing",
+            detail: "\(formatTimePrecise(layer.timelineStart)) to \(formatTimePrecise(layer.timelineStart + layer.duration)). Trim it on the timeline."
+        ) {
             Button(role: .destructive) {
                 session.deleteSelectedTextLayer()
             } label: {

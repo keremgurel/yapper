@@ -9,24 +9,36 @@ extension EnvironmentValues {
     }
 }
 enum InspectorMetrics {
-    static let labelWidth: CGFloat = 58
+    /// Wide enough for the longest label in the app ("Clear blemishes") on
+    /// one line. A label that wraps or a control that starts at a different x
+    /// on every row is what made the panels read as a jumble.
+    static let labelWidth: CGFloat = 92
+    /// Between the controls inside one row.
+    static let controlSpacing: CGFloat = 8
 }
 
 /// One labelled line of properties. Every label starts at the same x and every
 /// control at the same one after it, which is what makes a stack of unrelated
 /// properties scan as a single column.
+///
+/// `detail` is the quiet line that says what the setting does or what it is
+/// set to. It goes under the controls, never beside them: grey words sitting
+/// next to a button read as another, weaker button.
 struct InspectorRow<Content: View>: View {
     let title: String
     var alignment: VerticalAlignment = .center
+    var detail: String?
     let content: Content
 
     init(
         _ title: String,
         alignment: VerticalAlignment = .center,
+        detail: String? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
-        self.alignment = alignment
+        self.alignment = detail == nil ? alignment : .top
+        self.detail = detail
         self.content = content()
     }
 
@@ -35,9 +47,21 @@ struct InspectorRow<Content: View>: View {
             Text(title)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
                 .frame(width: InspectorMetrics.labelWidth, alignment: .leading)
-                .padding(.top, alignment == .top ? 3 : 0)
-            content.environment(\.inspectorControlLabel, title)
+                .frame(minHeight: 24)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: InspectorMetrics.controlSpacing) {
+                    content.environment(\.inspectorControlLabel, title)
+                }
+                .frame(minHeight: 24)
+                if let detail {
+                    Text(detail)
+                        .font(.studioCaption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
             Spacer(minLength: 0)
         }
     }
@@ -75,6 +99,9 @@ struct InspectorSegmentedControl<Value: Hashable>: View {
         .padding(2)
         .background(Color.studioInputBackground)
         .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+        // As wide as its choices need, not the whole row: a two-way switch
+        // stretched across a wide pane looked like a progress bar.
+        .frame(maxWidth: CGFloat(options.count) * 96, alignment: .leading)
     }
 
     private func segment(_ option: Option) -> some View {

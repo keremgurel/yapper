@@ -1295,7 +1295,10 @@ final class EditorSession: ObservableObject {
             y: box.y,
             width: box.width,
             height: box.height,
-            track: track == 0 ? nil : track
+            track: track == 0 ? nil : track,
+            // The look picked last, so every cutaway in a video gets the same
+            // backdrop without being asked for it again.
+            backdrop: OverlayBackdropDefault.current
         )
     }
 

@@ -15,6 +15,10 @@ struct EditorPrimaryButtonStyle: ButtonStyle {
         let textShadow = StudioMetal.accentTextShadow(dark: isDark)
 
         return configuration.label
+            // A button says all of its label or it is not a button: "Crop..."
+            // and "Match..." were labels cut down by the row around them.
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             .font(size.font)
             .foregroundStyle(StudioMetal.accentForeground(dark: isDark))
             .shadow(color: textShadow.color, radius: 1, y: textShadow.y)
@@ -52,6 +56,10 @@ struct EditorSecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         let shape = RoundedRectangle(cornerRadius: size.cornerRadius, style: .continuous)
         return configuration.label
+            // A button says all of its label or it is not a button: "Crop..."
+            // and "Match..." were labels cut down by the row around them.
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             .font(size.font)
             .foregroundStyle(.primary)
             .padding(.horizontal, size.horizontalPadding)
@@ -80,6 +88,10 @@ struct EditorGhostButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         let shape = RoundedRectangle(cornerRadius: size.cornerRadius, style: .continuous)
         return configuration.label
+            // A button says all of its label or it is not a button: "Crop..."
+            // and "Match..." were labels cut down by the row around them.
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             .font(size.font)
             .foregroundStyle(.primary)
             .padding(.horizontal, size.horizontalPadding)
@@ -109,6 +121,10 @@ struct EditorDestructiveButtonStyle: ButtonStyle {
         let shape = RoundedRectangle(cornerRadius: size.cornerRadius, style: .continuous)
         let fill = Color.studioDanger.opacity(colorScheme == .dark ? 0.60 : 1)
         return configuration.label
+            // A button says all of its label or it is not a button: "Crop..."
+            // and "Match..." were labels cut down by the row around them.
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             .font(size.font)
             .foregroundStyle(.white)
             .padding(.horizontal, size.horizontalPadding)

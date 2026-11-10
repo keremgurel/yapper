@@ -69,9 +69,8 @@ private struct OverlayStrip: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            Text("PLACED")
-                .font(.studioCaptionStrong)
-                .foregroundStyle(.secondary)
+            Text("On the timeline")
+                .font(.studioBodyStrong)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 7) {
                     ForEach(sorted) { overlay in
@@ -121,13 +120,17 @@ private struct OverlayChip: View {
                     Text(name)
                         .font(.studioBodyStrong)
                         .lineLimit(1)
+                        .help(name)
                     Text("\(formatTime(overlay.timelineStart)) · \(String(format: "%.1fs", overlay.duration))")
                         .font(.studioCaption)
                         .foregroundStyle(.secondary)
                 }
             }
             .padding(.horizontal, 9)
-            .frame(width: 186, height: 52, alignment: .leading)
+            // As wide as the name needs, up to a point, so short names are
+            // not padded out and most long ones are not cut.
+            .frame(minWidth: 150, maxWidth: 300, minHeight: 52, maxHeight: 52, alignment: .leading)
+            .fixedSize(horizontal: true, vertical: false)
             .background(selected ? Color.studioSelectedFill : Color.raisedBackground)
             .overlay {
                 RoundedRectangle(cornerRadius: 7)
