@@ -636,6 +636,9 @@ struct EditorProject: Codable, Equatable, Sendable {
     /// background removed, this is a background swap drawn in code, so it
     /// costs no disk space. `nil` uses the colour.
     var backdropPreset: BackdropPreset?
+    /// The preset's colours where the creator changed them. See
+    /// `OverlayBackdrop.colors`.
+    var backdropPresetColors: [String]?
 
     init(
         id: UUID = UUID(),

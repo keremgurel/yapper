@@ -50,6 +50,16 @@
             "shapeGrid"
           ],
           "description": "A generated dark surface instead of a flat colour; none goes back to the colour."
+        },
+        "presetColors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 7,
+            "maxLength": 7
+          },
+          "maxItems": 4,
+          "description": "Colours for the preset as #RRGGBB, background first, in the same slot order as editor.overlays.setProperties backdropColors. An empty array goes back to the preset's own colours."
         }
       }
     },

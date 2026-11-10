@@ -26,16 +26,28 @@ struct TransformInspector: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             speedSection
-            essentials
-                .disabled(session.framingClip?.locked == true)
             Divider().opacity(0.45)
-            InspectorSection("Position", id: "video.position") {
+            InspectorSection(
+                "Framing",
+                id: "video.position",
+                accessory: AnyView(ApplyToAllButton(what: "scale and position", count: session.otherClipCount) {
+                    session.applyFramingToAllClips()
+                })
+            ) {
+                essentials
                 positionRow
                 rotationRow
                 if session.isFramingKeyed { keyframeSummary }
             }
+            .disabled(session.framingClip?.locked == true)
             Divider().opacity(0.45)
-            InspectorSection("Background", id: "video.background") {
+            InspectorSection(
+                "Background",
+                id: "video.background",
+                accessory: AnyView(ApplyToAllButton(what: "background", count: session.otherClipCount) {
+                    session.applyBackgroundToAllClips()
+                })
+            ) {
                 backgroundRow
                 if session.removesBackground { backdropRow }
             }
@@ -45,9 +57,17 @@ struct TransformInspector: View {
     }
 
     private var speedSection: some View {
-        InspectorSection("Clip", id: "video.clip") {
+        InspectorSection(
+            "Clip",
+            id: "video.clip",
+            accessory: session.speedClip.map { clip in
+                AnyView(ApplyToAllButton(what: "speed", count: session.otherClipCount) {
+                    Task { await session.setClipSpeed(clip.resolvedPlaybackRate, applyToAll: true) }
+                })
+            }
+        ) {
             if let clip = session.speedClip {
-                InspectorRow("Speed") {
+                InspectorRow("Speed", detail: "Pitch stays the same at any speed") {
                     InspectorSelect(
                         options: ClipSpeed.presets.map { .init(value: $0, label: ClipSpeed.label($0)) },
                         selection: clip.resolvedPlaybackRate,
@@ -58,15 +78,9 @@ struct TransformInspector: View {
                         Task { await session.setClipSpeed(rate) }
                     }
                     .disabled(clip.locked || session.project.media(for: clip)?.isImage != false)
-                    ApplyToAllButton(what: "speed", count: session.otherClipCount) {
-                        Task { await session.setClipSpeed(clip.resolvedPlaybackRate, applyToAll: true) }
-                    }
                 }
                 .help("Playback speed from 0.25× to 4×; the number field accepts a custom speed.")
                 .disabled(!session.appActions.availability(.clipSpeed, in: session).isAvailable)
-                InspectorRow("Voice") {
-                    Text("Pitch preserved").font(.studioCaption).foregroundStyle(.secondary)
-                }
                 InspectorRow("Lock") {
                     Button {
                         Task { await session.toggleTimelineLock(.clip(clip.id)) }
@@ -82,7 +96,7 @@ struct TransformInspector: View {
 
     /// Keeping or throwing away the room behind the speaker.
     private var backgroundRow: some View {
-        InspectorRow("Room") {
+        InspectorRow("Room", detail: session.removesBackground ? "Only you are kept" : "The whole picture is kept") {
             InspectorSegmentedControl(
                 options: [
                     .init(value: BackgroundChoice.keep, label: "Keep"),
@@ -91,15 +105,6 @@ struct TransformInspector: View {
                 selection: session.removesBackground ? .remove : .keep
             ) { choice in
                 session.setBackgroundRemoved(choice == .remove)
-            }
-
-            Text(session.removesBackground ? "Only you are kept" : "The whole picture")
-                .font(.studioCaption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-
-            ApplyToAllButton(what: "background", count: session.otherClipCount) {
-                session.applyBackgroundToAllClips()
             }
         }
     }
@@ -110,30 +115,38 @@ struct TransformInspector: View {
     private var backdropRow: some View {
         InspectorRow("Behind", alignment: .top) {
             VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
+                LazyVGrid(columns: BackdropSwatchGrid.columns, alignment: .leading, spacing: 6) {
                     BackdropSwatch(name: "Colour", selected: preset == nil) {
+                        guard preset != nil else { return }
                         session.setBackdropPreset(nil)
                     } picture: {
                         session.backdrop.swiftUIColor
                     }
                     ForEach(BackdropPreset.allCases) { option in
                         BackdropSwatch(name: option.title, selected: preset == option) {
+                            guard preset != option else { return }
                             session.setBackdropPreset(option)
                         } picture: {
-                            BackdropPresetPicture(preset: option)
+                            BackdropPresetPicture(
+                                preset: option,
+                                colors: preset == option ? session.project.backdropPresetColors : nil
+                            )
                         }
                     }
                 }
-                HStack(spacing: 8) {
-                    if preset == nil {
-                        InspectorColorWell(color: session.backdrop) { color, live in
-                            session.setBackdrop(color, live: live)
-                        }
+                if preset == nil {
+                    InspectorColorWell(color: session.backdrop) { color, live in
+                        session.setBackdrop(color, live: live)
                     }
-                    Text(preset.map { "\($0.title) behind you" } ?? "A colour, or a full-frame overlay behind you")
-                        .font(.studioCaption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                }
+                Text(preset.map { "\($0.title) behind you" } ?? "A colour, or a full-frame overlay behind you")
+                    .font(.studioCaption)
+                    .foregroundStyle(.secondary)
+                if let preset {
+                    BackdropColorControls(preset: preset, colors: session.project.backdropPresetColors) { colors in
+                        session.setBackdropPresetColors(colors)
+                    }
+                    .padding(.top, 4)
                 }
             }
         }
@@ -144,8 +157,8 @@ struct TransformInspector: View {
     /// Scale and the keyframe row, always on screen: the size of the shot is
     /// what anyone opens this panel for, and the diamond has to be next to the
     /// thing it records.
+    @ViewBuilder
     private var essentials: some View {
-        VStack(alignment: .leading, spacing: 9) {
             InspectorRow("Scale") {
                 InspectorSlider(
                     value: Double(framing.percent),
@@ -156,20 +169,17 @@ struct TransformInspector: View {
                 }
             }
 
-            Button("Animate framing…") { session.pausePlayback(); showsFramingAnimation = true }
-                .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
-                .sheet(isPresented: $showsFramingAnimation) {
-                    VideoAnimationSheet(session: session, playhead: session.currentTime)
-                }
-
-            InspectorRow("Keyframe") {
+            InspectorRow(
+                "Keyframe",
+                detail: session.isFramingKeyed ? "This shot moves" : "Mark where a move starts, then change the scale later on"
+            ) {
                 KeyframeControls(session: session, clock: clock)
-                Text(session.isFramingKeyed ? "This shot moves" : "Mark the start of a move")
-                    .font(.studioCaption)
-                    .foregroundStyle(.secondary)
+                Button("Animate framing…") { session.pausePlayback(); showsFramingAnimation = true }
+                    .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                    .sheet(isPresented: $showsFramingAnimation) {
+                        VideoAnimationSheet(session: session, playhead: session.currentTime)
+                    }
             }
-        }
-        .padding(.vertical, 10)
     }
 
     private var positionRow: some View {
@@ -193,13 +203,6 @@ struct TransformInspector: View {
                     decimals: 0
                 ) { percent in
                     session.setFramingOffset(x: framing.x, y: percent / 100)
-                }
-
-                ApplyToAllButton(
-                    what: "scale and position",
-                    count: session.otherClipCount
-                ) {
-                    session.applyFramingToAllClips()
                 }
             }
         }
@@ -245,14 +248,9 @@ struct TransformInspector: View {
     }
 
     private var keyframeSummary: some View {
-        InspectorRow("Move") {
-            HStack(spacing: 8) {
-                Text(summary)
-                    .font(.studioCaption)
-                    .foregroundStyle(.secondary)
-                Button("Clear") { session.clearFramingKeys() }
-                    .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
-            }
+        InspectorRow("Move", detail: summary) {
+            Button("Clear keyframes") { session.clearFramingKeys() }
+                .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
         }
     }
 

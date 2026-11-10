@@ -80,6 +80,7 @@ extension EditorProject {
         // The colour the frame is filled with before anything is drawn on it.
         normalised.backdrop = other.backdrop
         normalised.backdropPreset = other.backdropPreset
+        normalised.backdropPresetColors = other.backdropPresetColors
         for index in normalised.audioLayers?.indices ?? (0 ..< 0).indices {
             normalised.audioLayers?[index].volume = other.audioLayers?[index].volume ?? 1
         }

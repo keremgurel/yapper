@@ -147,7 +147,7 @@ extension EditorSession {
     /// whole project is composited, so it always rebuilds.
     func setOverlayBehindSpeaker(_ overlay: ProjectOverlay, behind: Bool) {
         Task { await performAppAction(OverlayPropertiesInput(overlayIDs: [overlay.id], all: nil,
-            hidden: nil, behindSpeaker: behind, backdrop: nil, sourceStart: nil, timelineStart: nil, duration: nil, track: nil)) }
+            hidden: nil, behindSpeaker: behind, backdrop: nil, backdropColors: nil, backdropMediaID: nil, sourceStart: nil, timelineStart: nil, duration: nil, track: nil)) }
     }
 
     /// What fills the frame behind this card. Remembered as the choice for the
@@ -155,13 +155,18 @@ extension EditorSession {
     /// one per cutaway. See `OverlayBackdropDefault`.
     func setOverlayBackdrop(_ overlay: ProjectOverlay, to backdrop: OverlayBackdrop?) {
         OverlayBackdropDefault.remember(backdrop)
-        OverlayBackdropCommits.shared.request(backdrop, for: overlay.id, in: self)
+        let id = overlay.id
+        LatestActionQueue.shared.request("overlay.backdrop.\(id)") { [self] in
+            await performAppAction(OverlayPropertiesInput(overlayIDs: [id], all: nil, hidden: nil, behindSpeaker: nil,
+                backdrop: backdrop?.token ?? "none", backdropColors: backdrop?.colors, backdropMediaID: backdrop?.mediaID, sourceStart: nil,
+                timelineStart: nil, duration: nil, track: nil))
+        }
     }
 
     /// Visibility changes are independent of placement keys.
     func setOverlayHidden(_ overlay: ProjectOverlay, hidden: Bool) {
         Task { await performAppAction(OverlayPropertiesInput(overlayIDs: [overlay.id], all: nil,
-            hidden: hidden, behindSpeaker: nil, backdrop: nil, sourceStart: nil, timelineStart: nil, duration: nil, track: nil)) }
+            hidden: hidden, behindSpeaker: nil, backdrop: nil, backdropColors: nil, backdropMediaID: nil, sourceStart: nil, timelineStart: nil, duration: nil, track: nil)) }
     }
 
     /// Live during a drag: saved, but the composition is left alone.
@@ -439,5 +444,28 @@ extension EditorSession {
         let graded = filter.colorMatrix.graded(image) ?? image
         gradedOverlayImages[ObjectIdentifier(image)] = (filter, graded)
         return graded
+    }
+}
+
+// MARK: - Picture backdrops
+
+@MainActor
+extension EditorSession {
+    /// Imports a picture into Media and puts it behind this card.
+    func setOverlayBackdropImage(_ overlay: ProjectOverlay, from url: URL) async {
+        let before = Set(project.media.map(\.id))
+        await importMedia([url])
+        let canonical = url.resolvingSymlinksInPath()
+        guard let picture = project.media.first(where: { !before.contains($0.id) && $0.isImage })
+            ?? project.media.first(where: { $0.isImage && $0.url == canonical })
+        else { return }
+        setOverlayBackdrop(overlay, to: .image(picture.id))
+    }
+
+    /// Generates a picture from a sentence and puts it behind this card.
+    /// Throws with a message worth showing when generation fails.
+    func generateOverlayBackdrop(_ overlay: ProjectOverlay, prompt: String) async throws {
+        let url = try await BackdropImageGenerator.generate(prompt)
+        await setOverlayBackdropImage(overlay, from: url)
     }
 }

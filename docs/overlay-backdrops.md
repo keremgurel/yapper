@@ -29,13 +29,15 @@ Swapping the speaker's whole background was already in the app as Video tab, Bac
 
 Every preset is dark and still, has fine grain against banding, and darkens the band 75 to 85% down the frame where white outlined captions sit. A test checks that band on every preset.
 
-Your image and From a prompt would both end as a picture in Media, so they need one more model case (`kind: image` with a media ID) and one more compositor fill. The prompt version needs an image generation endpoint on the server; there is none in the native app today, which is why neither shipped here.
+Your image and From a prompt both end as a picture in Media, drawn as `kind: image` with that media ID. Generation calls `api/publish/thumbnail`, the route the Poster's AI thumbnails already use. It wraps the creator's sentence so the picture comes back dark, soft, free of text and plain in the lower third, and charges one AI thumbnail credit (refunded by the server on failure). It needs a signed-in account with credits; the QA build used for screenshots runs without a sign-in, so that call was not exercised end to end.
+
+Every preset's colours can be changed. Each preset has named slots (navy glow: background, glow, halo, and so on), defaults are the colours it was tuned with, and the controls appear under the swatches once a preset is picked, with a way back to the preset's own. A colour set too bright can still fight white captions; the caption band is darkened by a third whatever the colours.
 
 ## Data
 
-`ProjectOverlay.backdrop: OverlayBackdrop?`, where `OverlayBackdrop` is `{ kind: frosted | preset, preset? }`. `nil` draws nothing, which is every overlay saved before this. `EditorProject.backdropPreset: BackdropPreset?` sits next to the existing `backdrop` colour for the background swap.
+`ProjectOverlay.backdrop: OverlayBackdrop?`, where `OverlayBackdrop` is `{ kind: frosted | preset | image, preset?, colors?, mediaID? }`. `nil` draws nothing, which is every overlay saved before this. `EditorProject.backdropPreset: BackdropPreset?` and `backdropPresetColors` sit next to the existing `backdrop` colour for the background swap.
 
-Both go through app actions, so Chirpy can set them too: `editor.overlays.setProperties` takes `backdrop` (`none`, `frosted` or a preset name) and `editor.project.setBackdrop` takes `preset` as well as `color`.
+Both go through app actions, so Chirpy can set them too: `editor.overlays.setProperties` takes `backdrop` (`none`, `frosted`, `image` with `backdropMediaID`, or a preset name) and `backdropColors` and `editor.project.setBackdrop` takes `preset` and `presetColors` as well as `color`.
 
 ## Render path
 

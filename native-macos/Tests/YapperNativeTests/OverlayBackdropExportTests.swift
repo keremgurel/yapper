@@ -58,6 +58,45 @@ struct OverlayBackdropExportTests {
         }
     }
 
+    /// A picture from Media behind the card fills the frame around it.
+    @Test func imageBackdropFillsTheFrame() async throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: "picture-\(UUID())")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let videoURL = directory.appending(path: "base.mov")
+        let cardURL = directory.appending(path: "card.mov")
+        let pictureURL = directory.appending(path: "backdrop.png")
+        try await SyntheticVideo.write(color: NSColor.green.cgColor, size: CGSize(width: 180, height: 320), seconds: 3, to: videoURL)
+        try await SyntheticVideo.write(color: NSColor.red.cgColor, size: CGSize(width: 160, height: 120), seconds: 3, to: cardURL)
+        let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 120, pixelsHigh: 60, bitsPerSample: 8,
+            samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        NSColor.blue.setFill()
+        NSRect(x: 0, y: 0, width: 120, height: 60).fill()
+        NSGraphicsContext.restoreGraphicsState()
+        try rep.representation(using: .png, properties: [:])!.write(to: pictureURL)
+        let video = try await MediaProbe.inspect(url: videoURL)
+        let card = try await MediaProbe.inspect(url: cardURL)
+        let picture = try await MediaProbe.inspect(url: pictureURL)
+        let overlay = ProjectOverlay(mediaID: card.id, timelineStart: 0.5, duration: 2,
+            x: 0.25, y: 0.3, width: 0.5, height: 0.2, backdrop: .image(picture.id))
+        let project = EditorProject(media: [video, card, picture],
+            clips: [TimelineClip(mediaID: video.id, sourceStart: 0, sourceEnd: 3)],
+            overlays: [overlay], aspectRatio: .source)
+        let built = try await CompositionBuilder.build(project: project)
+        let generator = AVAssetImageGenerator(asset: built.asset)
+        generator.videoComposition = built.playbackVideoComposition
+        generator.requestedTimeToleranceBefore = .zero
+        generator.requestedTimeToleranceAfter = .zero
+        let frame = try generator.copyCGImage(at: CMTime(seconds: 2, preferredTimescale: 600), actualTime: nil)
+        for (u, v) in [(0.05, 0.05), (0.95, 0.95), (0.5, 0.8)] {
+            let pixel = try #require(frame.sample(x: Int(u * Double(frame.width)), y: Int(v * Double(frame.height))))
+            #expect(pixel.isMostlyBlue, "picture at \(u),\(v): \(pixel)")
+        }
+        #expect(try #require(frame.sample(x: frame.width / 2, y: Int(Double(frame.height) * 0.4))).isMostlyRed)
+    }
+
     /// Remove background with a preset behind: a background swap. A
     /// synthetic clip has nobody in it, so the matte keeps nothing and the
     /// whole frame is the preset.

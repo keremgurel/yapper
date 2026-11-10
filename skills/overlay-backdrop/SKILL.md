@@ -31,12 +31,12 @@ skills/overlay-backdrop/scripts/backdrop.sh \
   --card overlay.mov --out talk-with-cutaway.mp4
 ```
 
-`--card` is a full-frame overlay with alpha, which is what the Remotion overlays render (ProRes 4444 `.mov`) and what a full-frame PNG with transparency gives you. Leave it out to lay in only the backdrop. For a preset, `--focus 0.5,0.4` moves the glow to the card's centre, in fractions of the frame. Audio is copied from the speaker file.
+`--card` is a full-frame overlay with alpha, which is what the Remotion overlays render (ProRes 4444 `.mov`) and what a full-frame PNG with transparency gives you. Leave it out to lay in only the backdrop. For a preset, `--focus 0.5,0.4` moves the glow to the card's centre, in fractions of the frame, and `--colors '#200808,#7A1E1E,#E05A3A'` recolours it, background first in the order the table below gives. Missing slots keep the preset's own colour. Audio is copied from the speaker file.
 
 To get a preset as a still plate at any size:
 
 ```bash
-swift skills/overlay-backdrop/scripts/render-preset.swift navyGlow 1080 1920 plate.png 0.5 0.42
+swift skills/overlay-backdrop/scripts/render-preset.swift navyGlow 1080 1920 plate.png 0.5 0.42 '#0D1B3A,#284E92,#5488F5'
 ```
 
 ## Check the result

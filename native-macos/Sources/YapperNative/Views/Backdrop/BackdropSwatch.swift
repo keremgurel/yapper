@@ -34,12 +34,18 @@ struct BackdropSwatch<Picture: View>: View {
 /// A preset, painted small.
 struct BackdropPresetPicture: View {
     let preset: BackdropPreset
+    var colors: [String]?
 
     var body: some View {
-        if let image = BackdropPresetRenderer.image(preset, width: 68, height: 96) {
+        if let image = BackdropPresetRenderer.image(preset, width: 68, height: 96, colors: colors) {
             Image(decorative: image, scale: 2).resizable()
         } else {
             Color.black
         }
     }
+}
+
+/// Swatches wrap onto a second line rather than run off a narrow pane.
+enum BackdropSwatchGrid {
+    static let columns = [GridItem(.adaptive(minimum: 38, maximum: 38), spacing: 6, alignment: .leading)]
 }

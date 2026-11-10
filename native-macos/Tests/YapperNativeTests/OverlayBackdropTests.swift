@@ -79,4 +79,22 @@ struct OverlayBackdropTests {
         let speaker = CIImage(color: .gray).cropped(to: CGRect(x: 0, y: 300, width: 1080, height: 1320))
         #expect(FrostedBackdrop.frosted(speaker, frame: frame).extent == frame)
     }
+
+    @Test func presetColoursFallBackSlotBySlot() {
+        let preset = BackdropPreset.navyGlow
+        #expect(preset.resolvedColors(nil) == preset.defaultColors)
+        #expect(preset.resolvedColors(["#112233"]) == ["#112233"] + preset.defaultColors.dropFirst())
+        #expect(preset.resolvedColors(["nope", "#aabbcc"]) == [preset.defaultColors[0], "#AABBCC", preset.defaultColors[2]])
+        for preset in BackdropPreset.allCases {
+            #expect(preset.colorNames.count == preset.defaultColors.count)
+        }
+    }
+
+    @Test func customColoursRepaintThePreset() throws {
+        let plain = try #require(BackdropPresetRenderer.image(.shapeGrid, width: 90, height: 160))
+        let red = try #require(BackdropPresetRenderer.image(.shapeGrid, width: 90, height: 160, colors: ["#600000"]))
+        let a = try #require(plain.sample(x: 45, y: 10))
+        let b = try #require(red.sample(x: 45, y: 10))
+        #expect(b.red > a.red + 40 && b.red > b.blue)
+    }
 }

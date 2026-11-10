@@ -9,13 +9,16 @@ guard
     let height = Int(arguments[2])
 else {
     let names = BackdropPreset.allCases.map(\.rawValue).joined(separator: ", ")
-    FileHandle.standardError.write(Data("usage: swift render-preset.swift <\(names)> <width> <height> <out.png> [focusX focusY]\n".utf8))
+    FileHandle.standardError.write(Data("usage: swift render-preset.swift <\(names)> <width> <height> <out.png> [focusX focusY [colors]]\n".utf8))
     exit(2)
 }
 let focus = arguments.count >= 6
     ? (Double(arguments[4]) ?? 0.5, Double(arguments[5]) ?? 0.42)
     : (0.5, 0.42)
-guard let image = BackdropPresetRenderer.image(preset, width: width, height: height, focus: focus) else {
+// Optional seventh argument: the preset's colours, background first, comma
+// separated (#0D1B3A,#284E92,#5488F5). Missing slots keep the preset's own.
+let colors = arguments.count >= 7 ? arguments[6].split(separator: ",").map(String.init) : nil
+guard let image = BackdropPresetRenderer.image(preset, width: width, height: height, focus: focus, colors: colors) else {
     FileHandle.standardError.write(Data("could not render \(preset.rawValue)\n".utf8))
     exit(1)
 }

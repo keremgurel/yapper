@@ -23,11 +23,32 @@ struct OverlayBackdrop: Codable, Equatable, Hashable, Sendable {
         case frosted
         /// A generated surface. See `BackdropPreset`.
         case preset
+        /// A picture in the project's media, filling the frame: one the
+        /// creator imported, or one generated from a sentence.
+        case image
     }
 
     var kind: Kind
     /// Which surface, when `kind` is `.preset`.
     var preset: BackdropPreset?
+    /// The preset's colours as `#RRGGBB`, background first, in the order of
+    /// `BackdropPreset.colorNames`. `nil` uses the preset's own.
+    var colors: [String]?
+    /// The picture, when `kind` is `.image`.
+    var mediaID: UUID?
+
+    /// The colours a preset is drawn with: the creator's where they set them,
+    /// the preset's own everywhere else.
+    var resolvedColors: [String] {
+        guard let preset else { return [] }
+        return preset.resolvedColors(colors)
+    }
+
+    /// The same look, whatever its colours. What a swatch compares against.
+    func isSameLook(as other: OverlayBackdrop?) -> Bool {
+        guard let other else { return false }
+        return kind == other.kind && preset == other.preset && mediaID == other.mediaID
+    }
 
     static let frosted = OverlayBackdrop(kind: .frosted)
     static func preset(_ preset: BackdropPreset) -> OverlayBackdrop {
@@ -38,8 +59,19 @@ struct OverlayBackdrop: Codable, Equatable, Hashable, Sendable {
     /// to feel like the card bringing it, long enough not to read as a cut.
     static let fadeIn: Double = 0.35
 
-    /// A backdrop that can be drawn. A preset with no preset named is not one.
-    var isDrawable: Bool { kind == .frosted || preset != nil }
+    static func image(_ mediaID: UUID) -> OverlayBackdrop {
+        OverlayBackdrop(kind: .image, mediaID: mediaID)
+    }
+
+    /// A backdrop that can be drawn. A preset or image with nothing named is
+    /// not one.
+    var isDrawable: Bool {
+        switch kind {
+        case .frosted: true
+        case .preset: preset != nil
+        case .image: mediaID != nil
+        }
+    }
 
     /// The token Chirpy and the action contract use: `frosted`, a preset's
     /// raw value, or `none`.
@@ -47,6 +79,7 @@ struct OverlayBackdrop: Codable, Equatable, Hashable, Sendable {
         switch kind {
         case .frosted: "frosted"
         case .preset: preset?.rawValue ?? "none"
+        case .image: "image"
         }
     }
 
@@ -61,9 +94,11 @@ struct OverlayBackdrop: Codable, Equatable, Hashable, Sendable {
         }
     }
 
-    init(kind: Kind, preset: BackdropPreset? = nil) {
+    init(kind: Kind, preset: BackdropPreset? = nil, colors: [String]? = nil, mediaID: UUID? = nil) {
         self.kind = kind
         self.preset = preset
+        self.colors = colors
+        self.mediaID = mediaID
     }
 }
 
@@ -98,6 +133,43 @@ enum BackdropPreset: String, Codable, CaseIterable, Identifiable, Sendable {
         case .shapeGrid: "Grid"
         }
     }
+
+    /// What each colour does, background first. The colour controls are
+    /// labelled with these.
+    var colorNames: [String] {
+        switch self {
+        case .navyGlow: ["Background", "Glow", "Halo"]
+        case .aurora: ["Sky", "Upper band", "Lower band"]
+        case .lightRays: ["Background", "Rays", "Light"]
+        case .grainient: ["Background", "Top left", "Right", "Bottom"]
+        case .shapeGrid: ["Background", "Lines", "Glow"]
+        }
+    }
+
+    /// The colours the preset was tuned with.
+    var defaultColors: [String] {
+        switch self {
+        case .navyGlow: ["#0D1B3A", "#284E92", "#5488F5"]
+        case .aurora: ["#0A0F1E", "#349692", "#604EB2"]
+        case .lightRays: ["#080A12", "#96B2E4", "#7896D2"]
+        case .grainient: ["#0B0910", "#461A42", "#964028", "#183484"]
+        case .shapeGrid: ["#0A0C12", "#96A5C8", "#283C6E"]
+        }
+    }
+
+    /// `custom` laid over the defaults slot by slot, so a short or partly
+    /// invalid list still gives every slot a colour.
+    func resolvedColors(_ custom: [String]?) -> [String] {
+        defaultColors.enumerated().map { index, fallback in
+            guard let custom, custom.indices.contains(index), BackdropPreset.isHex(custom[index]) else { return fallback }
+            return custom[index].uppercased()
+        }
+    }
+
+    static func isHex(_ value: String) -> Bool {
+        let digits = value.hasPrefix("#") ? value.dropFirst() : Substring(value)
+        return digits.count == 6 && digits.allSatisfy(\.isHexDigit)
+    }
 }
 
 // MARK: - Services/Backdrop/BackdropShading.swift
@@ -122,6 +194,12 @@ struct ShadeColor: Equatable, Sendable {
         self.r = r
         self.g = g
         self.b = b
+    }
+
+    /// From `#RRGGBB`. Anything else reads as black.
+    init(hexString: String) {
+        let digits = hexString.hasPrefix("#") ? String(hexString.dropFirst()) : hexString
+        self.init(hex: UInt32(digits, radix: 16) ?? 0)
     }
 
     init(hex: UInt32) {
@@ -241,6 +319,19 @@ struct BackdropPresetShader: Sendable {
     /// Width over height of the frame, so round things stay round.
     let aspect: Double
     let focus: (x: Double, y: Double)
+    /// The preset's colours, background first, resolved against its defaults.
+    let palette: [ShadeColor]
+
+    init(preset: BackdropPreset, aspect: Double, focus: (x: Double, y: Double), colors: [String]? = nil) {
+        self.preset = preset
+        self.aspect = aspect
+        self.focus = focus
+        palette = preset.resolvedColors(colors).map(ShadeColor.init(hexString:))
+    }
+
+    private func slot(_ index: Int) -> ShadeColor {
+        palette.indices.contains(index) ? palette[index] : ShadeColor(0, 0, 0)
+    }
 
     /// How much fine grain is added, in 0 to 1 of full scale. Enough to stop
     /// the gradients banding in an 8-bit phone export and no more.
@@ -270,24 +361,27 @@ struct BackdropPresetShader: Sendable {
     /// spilling just past the card's edges, and a dark edge. Ported stop for
     /// stop from `glow-backdrop.tsx`.
     private func navyGlow(_ u: Double, _ v: Double) -> ShadeColor {
-        let top = ShadeColor(hex: 0x0D1B3A)
-        let middle = ShadeColor(hex: 0x0B1631)
-        let bottom = ShadeColor(hex: 0x070F23)
+        let base = slot(0)
+        let glow = slot(1)
+        let halo = slot(2)
+        let top = base
+        let middle = base.scaled(0.86)
+        let bottom = base.scaled(0.56)
         var c = v < 0.52 ? top.mixed(with: middle, v / 0.52) : middle.mixed(with: bottom, (v - 0.52) / 0.48)
         let fy = focus.y
         c = Shade.radial(c, u, v, cx: focus.x, cy: fy + 0.01, rx: 0.64, ry: 0.46, stops: [
-            ShadeStop(0, ShadeColor(40, 78, 146), 0.95),
-            ShadeStop(0.42, ShadeColor(26, 54, 108), 0.6),
-            ShadeStop(1, ShadeColor(14, 30, 64), 0),
+            ShadeStop(0, glow, 0.95),
+            ShadeStop(0.42, glow.scaled(0.68), 0.6),
+            ShadeStop(1, glow.scaled(0.36), 0),
         ])
         c = Shade.radial(c, u, v, cx: focus.x, cy: fy, rx: 0.66, ry: 0.44, stops: [
-            ShadeStop(0, ShadeColor(84, 136, 245), 0.5),
-            ShadeStop(0.64, ShadeColor(70, 118, 235), 0.36),
-            ShadeStop(1, ShadeColor(59, 103, 220), 0),
+            ShadeStop(0, halo, 0.5),
+            ShadeStop(0.64, halo.scaled(0.9), 0.36),
+            ShadeStop(1, halo.scaled(0.85), 0),
         ])
         c = Shade.radial(c, u, v, cx: 0.5, cy: 0.44, rx: 1.2, ry: 0.78, stops: [
-            ShadeStop(0.52, ShadeColor(4, 9, 22), 0),
-            ShadeStop(1, ShadeColor(4, 9, 22), 0.72),
+            ShadeStop(0.52, base.scaled(0.32), 0),
+            ShadeStop(1, base.scaled(0.32), 0.72),
         ])
         return c
     }
@@ -295,22 +389,22 @@ struct BackdropPresetShader: Sendable {
     /// Two slow curtains of light across the top: muted teal over a violet
     /// one, on a sky that falls to near black.
     private func aurora(_ u: Double, _ v: Double) -> ShadeColor {
-        var c = ShadeColor(hex: 0x0A0F1E).mixed(with: ShadeColor(hex: 0x05070D), Shade.smoothstep(0, 0.9, v))
+        var c = slot(0).mixed(with: slot(0).scaled(0.48), Shade.smoothstep(0, 0.9, v))
         let wave1 = 0.20 + 0.045 * sin(u * 5.2 + 0.6) + 0.02 * sin(u * 11.0 + 2.1)
         let wave2 = 0.30 + 0.05 * sin(u * 4.1 + 2.4) + 0.015 * sin(u * 9.0 + 0.4)
         let teal = Shade.gaussian(v, centre: wave1, width: 0.075) * (0.7 + 0.3 * sin(u * 3.1 + 1.0))
         let violet = Shade.gaussian(v, centre: wave2, width: 0.10) * (0.6 + 0.4 * sin(u * 2.3 + 3.0))
-        c = c.under(ShadeColor(52, 150, 146), alpha: 0.32 * teal)
-        c = c.under(ShadeColor(96, 78, 178), alpha: 0.28 * violet)
+        c = c.under(slot(1), alpha: 0.32 * teal)
+        c = c.under(slot(2), alpha: 0.28 * violet)
         // A faint wash where the curtains glow onto the sky below them.
-        c = c.under(ShadeColor(40, 70, 120), alpha: 0.12 * Shade.gaussian(v, centre: 0.38, width: 0.22))
+        c = c.under(slot(1).mixed(with: slot(2), 0.5).scaled(0.62), alpha: 0.12 * Shade.gaussian(v, centre: 0.38, width: 0.22))
         return c
     }
 
     /// Soft rays from a light just above the frame, fading by a third of the
     /// way down.
     private func lightRays(_ u: Double, _ v: Double) -> ShadeColor {
-        var c = ShadeColor(hex: 0x080A12).mixed(with: ShadeColor(hex: 0x05060A), v)
+        var c = slot(0).mixed(with: slot(0).scaled(0.6), v)
         let ox = 0.5
         let oy = -0.12
         let dx = (u - ox) * aspect
@@ -321,39 +415,39 @@ struct BackdropPresetShader: Sendable {
             + 0.45 * pow(0.5 + 0.5 * cos(angle * 7 - 1.3), 4)
         let cone = Shade.gaussian(angle, centre: 0, width: 0.75)
         let falloff = exp(-distance * 2.1)
-        c = c.under(ShadeColor(150, 178, 228), alpha: 0.30 * rays * cone * falloff)
+        c = c.under(slot(1), alpha: 0.30 * rays * cone * falloff)
         // The light itself, a soft pool where the rays begin.
-        c = c.under(ShadeColor(120, 150, 210), alpha: 0.18 * exp(-distance * 5.5))
+        c = c.under(slot(2), alpha: 0.18 * exp(-distance * 5.5))
         return c
     }
 
     /// A grainy mesh of three soft blobs, warm against cool, kept dark.
     private func grainient(_ u: Double, _ v: Double) -> ShadeColor {
-        var c = ShadeColor(hex: 0x0B0910)
+        var c = slot(0)
         let x = u * aspect
         func blob(_ bx: Double, _ by: Double, _ radius: Double) -> Double {
             let dx = x - bx * aspect
             let dy = v - by
             return exp(-(dx * dx + dy * dy) / (radius * radius))
         }
-        c = c.under(ShadeColor(70, 26, 66), alpha: 0.85 * blob(0.18, 0.22, 0.42))
-        c = c.under(ShadeColor(150, 64, 40), alpha: 0.55 * blob(0.92, 0.36, 0.34))
-        c = c.under(ShadeColor(24, 52, 132), alpha: 0.75 * blob(0.42, 0.66, 0.40))
+        c = c.under(slot(1), alpha: 0.85 * blob(0.18, 0.22, 0.42))
+        c = c.under(slot(2), alpha: 0.55 * blob(0.92, 0.36, 0.34))
+        c = c.under(slot(3), alpha: 0.75 * blob(0.42, 0.66, 0.40))
         return c
     }
 
     /// A fine grid of squares that is only there in the middle, like light
     /// falling on graph paper.
     private func shapeGrid(_ u: Double, _ v: Double) -> ShadeColor {
-        var c = ShadeColor(hex: 0x0A0C12)
+        var c = slot(0)
         let cell = 0.075
         let gx = (u * aspect).truncatingRemainder(dividingBy: cell) / cell
         let gy = v.truncatingRemainder(dividingBy: cell) / cell
         let line = 0.035
         let onLine = (gx < line || gx > 1 - line || gy < line || gy > 1 - line) ? 1.0 : 0.0
         let spot = exp(-pow(Shade.ellipse(u, v, cx: focus.x, cy: focus.y, rx: 0.75, ry: 0.5), 2) * 1.6)
-        c = c.under(ShadeColor(150, 165, 200), alpha: 0.10 * onLine * spot)
-        c = c.under(ShadeColor(40, 60, 110), alpha: 0.35 * spot)
+        c = c.under(slot(1), alpha: 0.10 * onLine * spot)
+        c = c.under(slot(2), alpha: 0.35 * spot)
         return c
     }
 
@@ -384,19 +478,22 @@ enum BackdropPresetRenderer {
         _ preset: BackdropPreset,
         width: Int,
         height: Int,
-        focus: (x: Double, y: Double) = (0.5, 0.42)
+        focus: (x: Double, y: Double) = (0.5, 0.42),
+        colors: [String]? = nil
     ) -> CGImage? {
         guard width > 0, height > 0 else { return nil }
         // Rounded so a card nudged a pixel does not repaint the backdrop.
         let fx = (focus.x * 50).rounded() / 50
         let fy = (focus.y * 50).rounded() / 50
-        let key = "\(preset.rawValue)-\(width)x\(height)-\(fx)-\(fy)"
+        let palette = preset.resolvedColors(colors)
+        let key = "\(preset.rawValue)-\(width)x\(height)-\(fx)-\(fy)-\(palette.joined())"
         if let cached = cache.image(for: key) { return cached }
 
         let shader = BackdropPresetShader(
             preset: preset,
             aspect: Double(width) / Double(height),
-            focus: (fx, fy)
+            focus: (fx, fy),
+            colors: palette
         )
         let bytesPerRow = width * 4
         var pixels = [UInt8](repeating: 255, count: bytesPerRow * height)
@@ -479,13 +576,16 @@ guard
     let height = Int(arguments[2])
 else {
     let names = BackdropPreset.allCases.map(\.rawValue).joined(separator: ", ")
-    FileHandle.standardError.write(Data("usage: swift render-preset.swift <\(names)> <width> <height> <out.png> [focusX focusY]\n".utf8))
+    FileHandle.standardError.write(Data("usage: swift render-preset.swift <\(names)> <width> <height> <out.png> [focusX focusY [colors]]\n".utf8))
     exit(2)
 }
 let focus = arguments.count >= 6
     ? (Double(arguments[4]) ?? 0.5, Double(arguments[5]) ?? 0.42)
     : (0.5, 0.42)
-guard let image = BackdropPresetRenderer.image(preset, width: width, height: height, focus: focus) else {
+// Optional seventh argument: the preset's colours, background first, comma
+// separated (#0D1B3A,#284E92,#5488F5). Missing slots keep the preset's own.
+let colors = arguments.count >= 7 ? arguments[6].split(separator: ",").map(String.init) : nil
+guard let image = BackdropPresetRenderer.image(preset, width: width, height: height, focus: focus, colors: colors) else {
     FileHandle.standardError.write(Data("could not render \(preset.rawValue)\n".utf8))
     exit(1)
 }

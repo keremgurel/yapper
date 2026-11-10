@@ -326,12 +326,16 @@ enum CompositionBuilder {
         let usesCustomCompositor = project.needsStudioCompositor
         let backdrop = project.resolvedBackdrop.ciColor
         let backdropImage = project.backdropPreset
-            .flatMap { BackdropPresetRenderer.image($0, width: Int(renderSize.width), height: Int(renderSize.height)) }
+            .flatMap {
+                BackdropPresetRenderer.image($0, width: Int(renderSize.width), height: Int(renderSize.height),
+                                             colors: project.backdropPresetColors)
+            }
             .map { CIImage(cgImage: $0) }
         let backdropSpans = OverlayBackdropSpans.make(
             overlays,
             isMainTrackHidden: project.isVideoTrackHidden,
-            renderSize: renderSize
+            renderSize: renderSize,
+            media: project.media
         )
         let instructions = instructions(
             segments: segments,

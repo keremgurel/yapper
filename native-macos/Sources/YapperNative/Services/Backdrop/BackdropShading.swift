@@ -22,6 +22,12 @@ struct ShadeColor: Equatable, Sendable {
         self.b = b
     }
 
+    /// From `#RRGGBB`. Anything else reads as black.
+    init(hexString: String) {
+        let digits = hexString.hasPrefix("#") ? String(hexString.dropFirst()) : hexString
+        self.init(hex: UInt32(digits, radix: 16) ?? 0)
+    }
+
     init(hex: UInt32) {
         self.init(Double((hex >> 16) & 0xFF), Double((hex >> 8) & 0xFF), Double(hex & 0xFF))
     }

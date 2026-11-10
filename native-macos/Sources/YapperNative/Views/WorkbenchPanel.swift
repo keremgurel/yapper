@@ -772,9 +772,8 @@ private struct TextWorkbench: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 } else {
                     VStack(alignment: .leading, spacing: 7) {
-                        Text("LAYERS")
-                            .font(.studioCaptionStrong)
-                            .foregroundStyle(.secondary)
+                        Text("Text layers")
+                            .font(.studioBodyStrong)
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 7) {
                                 ForEach(layers) { layer in
@@ -821,7 +820,8 @@ private struct TextLayerChip: View {
                     .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 10)
-            .frame(width: 150, height: 48, alignment: .leading)
+            .frame(minWidth: 150, maxWidth: 300, minHeight: 48, maxHeight: 48, alignment: .leading)
+            .fixedSize(horizontal: true, vertical: false)
             .background(selected ? Color.studioSelectedFill : Color.raisedBackground)
             .overlay {
                 RoundedRectangle(cornerRadius: 7)

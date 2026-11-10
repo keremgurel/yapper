@@ -350,7 +350,7 @@
     {
       "id": "editor.overlays.setProperties",
       "symbol": "overlayProperties",
-      "description": "Edit existing overlays: visibility, behind-speaker depth, backdrop (what fills the frame behind the card: frosted is the speaker blurred and dimmed; navyGlow, aurora, lightRays, grainient and shapeGrid are dark generated surfaces; none removes it), source in point, timeline start/duration, or zero-based lane. Only supplied fields change. all=true targets every overlay; otherwise use overlayIDs. Cannot put generated scenes behind the speaker, exceed video source bounds, or collide on a lane.",
+      "description": "Edit existing overlays: visibility, behind-speaker depth, backdrop (what fills the frame behind the card: frosted is the speaker blurred and dimmed; image is a picture already in the project's media, named by backdropMediaID; navyGlow, aurora, lightRays, grainient and shapeGrid are dark generated surfaces; none removes it), source in point, timeline start/duration, or zero-based lane. Only supplied fields change. all=true targets every overlay; otherwise use overlayIDs. Cannot put generated scenes behind the speaker, exceed video source bounds, or collide on a lane.",
       "input": "OverlayPropertiesInput",
       "effect": "reversibleEdit",
       "requiresRebuild": true,
@@ -2130,12 +2130,28 @@
           "enum": [
             "none",
             "frosted",
+            "image",
             "navyGlow",
             "aurora",
             "lightRays",
             "grainient",
             "shapeGrid"
           ]
+        },
+        "backdropColors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 7,
+            "maxLength": 7
+          },
+          "maxItems": 4,
+          "description": "The preset's colours as #RRGGBB, background first, in the preset's slot order (navyGlow: background, glow, halo; aurora: sky, upper band, lower band; lightRays: background, rays, light; grainient: background, top left, right, bottom; shapeGrid: background, lines, glow). An empty array goes back to the preset's own colours. Needs a preset backdrop."
+        },
+        "backdropMediaID": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The imported picture shown behind the card when backdrop is image."
         },
         "sourceStart": {
           "type": "number",
@@ -2240,6 +2256,16 @@
             "shapeGrid"
           ],
           "description": "A generated dark surface instead of a flat colour; none goes back to the colour."
+        },
+        "presetColors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 7,
+            "maxLength": 7
+          },
+          "maxItems": 4,
+          "description": "Colours for the preset as #RRGGBB, background first, in the same slot order as editor.overlays.setProperties backdropColors. An empty array goes back to the preset's own colours."
         }
       }
     },

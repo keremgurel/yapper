@@ -9,10 +9,11 @@
 # full-frame transparent ProRes 4444 .mov (what the Remotion overlays render)
 # or a full-frame PNG with alpha. Without --card only the backdrop is laid in.
 # --focus X,Y moves a preset's glow to the card's centre, in 0..1 of the frame.
+# --colors '#0D1B3A,#284E92,#5488F5' recolours a preset, background first.
 set -euo pipefail
 here=${0:A:h}
 
-speaker= card= start= end= look= out= focus="0.5,0.42"
+speaker= card= start= end= look= out= focus="0.5,0.42" colors=
 while (( $# )); do
   case $1 in
     --speaker) speaker=$2; shift 2 ;;
@@ -21,6 +22,7 @@ while (( $# )); do
     --end) end=$2; shift 2 ;;
     --look) look=$2; shift 2 ;;
     --focus) focus=$2; shift 2 ;;
+    --colors) colors=$2; shift 2 ;;
     --out) out=$2; shift 2 ;;
     *) print -u2 "unknown option $1"; exit 2 ;;
   esac
@@ -41,7 +43,7 @@ if [[ $look == frosted ]]; then
   backdrop="[src]trim=start=${start}:end=${end},setpts=PTS-STARTPTS,scale=iw*1.5:-2,gblur=sigma=${sigma},crop=$W:$H,eq=brightness=-0.07:saturation=0.9"
 else
   plate=$(mktemp -t backdrop).png
-  swift "$here/render-preset.swift" "$look" "$W" "$H" "$plate" ${(s:,:)focus} >/dev/null
+  swift "$here/render-preset.swift" "$look" "$W" "$H" "$plate" ${(s:,:)focus} ${colors:+$colors} >/dev/null
   inputs+=(-loop 1 -t "$duration" -i "$plate")
   backdrop="[1:v]scale=$W:$H,setpts=PTS-STARTPTS"
 fi

@@ -16,19 +16,22 @@ enum BackdropPresetRenderer {
         _ preset: BackdropPreset,
         width: Int,
         height: Int,
-        focus: (x: Double, y: Double) = (0.5, 0.42)
+        focus: (x: Double, y: Double) = (0.5, 0.42),
+        colors: [String]? = nil
     ) -> CGImage? {
         guard width > 0, height > 0 else { return nil }
         // Rounded so a card nudged a pixel does not repaint the backdrop.
         let fx = (focus.x * 50).rounded() / 50
         let fy = (focus.y * 50).rounded() / 50
-        let key = "\(preset.rawValue)-\(width)x\(height)-\(fx)-\(fy)"
+        let palette = preset.resolvedColors(colors)
+        let key = "\(preset.rawValue)-\(width)x\(height)-\(fx)-\(fy)-\(palette.joined())"
         if let cached = cache.image(for: key) { return cached }
 
         let shader = BackdropPresetShader(
             preset: preset,
             aspect: Double(width) / Double(height),
-            focus: (fx, fy)
+            focus: (fx, fy),
+            colors: palette
         )
         let bytesPerRow = width * 4
         var pixels = [UInt8](repeating: 255, count: bytesPerRow * height)

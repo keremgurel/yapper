@@ -29,7 +29,7 @@ extension EditorSession {
     func setBackdrop(_ color: StudioColor, live: Bool = false) {
         guard color != project.resolvedBackdrop || project.backdropPreset != nil else { return }
         guard live else {
-            Task { await performAppAction(ProjectBackdropInput(color: color.hex, preset: nil)) }
+            Task { await performAppAction(ProjectBackdropInput(color: color.hex, preset: nil, presetColors: nil)) }
             return
         }
         scheduleCompositionCommit { [self] in
@@ -47,8 +47,18 @@ extension EditorSession {
     /// A generated surface behind the speaker instead of a flat colour, which
     /// with Remove background is a background swap. `nil` goes back to the
     /// colour.
+    /// The background swap's preset colours, background first. Empty goes
+    /// back to the preset's own.
+    func setBackdropPresetColors(_ colors: [String]) {
+        LatestActionQueue.shared.request("project.backdrop") { [self] in
+            await performAppAction(ProjectBackdropInput(color: nil, preset: nil, presetColors: colors))
+        }
+    }
+
     func setBackdropPreset(_ preset: BackdropPreset?) {
         guard preset != project.backdropPreset else { return }
-        Task { await performAppAction(ProjectBackdropInput(color: nil, preset: preset?.rawValue ?? "none")) }
+        LatestActionQueue.shared.request("project.backdrop") { [self] in
+            await performAppAction(ProjectBackdropInput(color: nil, preset: preset?.rawValue ?? "none", presetColors: nil))
+        }
     }
 }
