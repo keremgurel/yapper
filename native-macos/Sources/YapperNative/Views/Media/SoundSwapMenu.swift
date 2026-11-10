@@ -3,7 +3,7 @@ import SwiftUI
 /// The list of sounds one already on the timeline can be swapped for.
 ///
 /// Shelved by what each effect is for, the same way the library is, because
-/// nobody hunts eighteen sounds by name. The one it already is sits at the top
+/// nobody hunts nineteen sounds by name. The one it already is sits at the top
 /// with a tick, so the menu says what you have as well as what you could have.
 ///
 /// Used by both the right-click on the timeline and the inspector's Replace
