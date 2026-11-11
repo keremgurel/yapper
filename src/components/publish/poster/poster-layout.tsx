@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 
@@ -73,10 +73,15 @@ export function PosterDialog({
 }) {
   const id = useId();
   const dialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const node = dialog.current;
-    if (open && !node?.open) node?.showModal();
-    if (!open && node?.open) node.close();
+    if (!open || !node) return;
+    node.showModal();
+    // Close before React removes the cover editor so the browser can return
+    // focus to its trigger. Removing an open dialog does not restore focus.
+    return () => {
+      if (node.open) node.close();
+    };
   }, [open]);
   return (
     <dialog
