@@ -11,6 +11,7 @@ final class PosterTikTokReviewModel: ObservableObject {
     @Published var settings = PosterTikTokSettings()
     @Published private(set) var context: PosterTikTokContext?
     @Published private(set) var duration: Double?
+    @Published private(set) var previewURL: URL?
     @Published private(set) var contextError: String?
     @Published private(set) var durationError: String?
 
@@ -54,14 +55,22 @@ final class PosterTikTokReviewModel: ObservableObject {
     func loadCreator() async {
         do {
             let context: PosterTikTokContext = try await PosterHTTP.get("api/publish/tiktok/creator")
-            self.context = context
-            settings.accountId = context.accountId
-            if settings.privacy.isEmpty { settings.privacy = Self.defaultPrivacy(context) }
+            applyCreator(context)
         } catch let failure as PosterHTTPError {
             contextError = PosterErrorCopy.publish(failure.code ?? "tiktok_creator_unavailable")
         } catch {
             contextError = PosterErrorCopy.publish("tiktok_creator_unavailable")
         }
+    }
+
+    func applyCreator(_ context: PosterTikTokContext) {
+        self.context = context
+        contextError = nil
+        if settings.accountId != context.accountId || !privacyOptions.contains(settings.privacy) {
+            settings.privacy = ""
+            settings.consent = false
+        }
+        settings.accountId = context.accountId
     }
 
     /// Reads the length from the local file when there is one, otherwise from
@@ -71,21 +80,16 @@ final class PosterTikTokReviewModel: ObservableObject {
         do {
             if let url = video.previewURL, url.isFileURL {
                 duration = try await AVURLAsset(url: url).load(.duration).seconds
+                previewURL = url
             } else if video.submissionID != nil || video.mediaKey != nil {
                 let preview: PosterVideoPreview = try await PosterHTTP.post("api/publish/preview",
                     body: .compact(["submissionId": video.submissionID, "mediaKey": video.mediaKey]))
                 duration = preview.duration
+                previewURL = URL(string: preview.url)
             }
         } catch {
             durationError = "Couldn't check this video's length for TikTok. Reopen the video to try again."
         }
     }
 
-    /// Everyone once TikTok has approved the app, otherwise Only me; no
-    /// default at all when the account offers neither.
-    nonisolated static func defaultPrivacy(_ context: PosterTikTokContext) -> String {
-        let options = context.creator.privacy_level_options
-        if context.audited && options.contains("PUBLIC_TO_EVERYONE") { return "PUBLIC_TO_EVERYONE" }
-        return options.contains("SELF_ONLY") ? "SELF_ONLY" : ""
-    }
 }

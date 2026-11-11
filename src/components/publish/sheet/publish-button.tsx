@@ -16,7 +16,9 @@ export default function PublishButton({
   done,
   disabled,
   onPublish,
+  label,
 }: {
+  label?: string;
   videos: number;
   platforms: number;
   postedSoFar: number;
@@ -35,10 +37,11 @@ export default function PublishButton({
         <Send aria-hidden />
       )}
       {posting
-        ? `Publishing ${postedSoFar + 1} of ${videos * platforms}…`
+        ? `Publishing ${Math.min(postedSoFar + 1, videos * platforms)} of ${videos * platforms}…`
         : done
           ? "Check publish status"
-          : `Publish ${plural(videos, "video")} to ${plural(platforms, "platform")}`}
+          : (label ??
+            `Publish ${plural(videos, "video")} to ${plural(platforms, "platform")}`)}
     </Button>
   );
 }

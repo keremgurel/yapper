@@ -25,6 +25,11 @@ struct PosterOutcomeList: View {
                     Text(PosterErrorCopy.publish(error)).font(.system(size: 12)).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                if outcome.coverApplied == false {
+                    Text("YouTube didn’t apply the cover. You can add it in YouTube Studio.")
+                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if outcome.status == .draft {
                     Text("Open TikTok, go to your inbox and tap \"Your content from Yapper is ready\" to finish posting.")
                         .font(.system(size: 12)).foregroundStyle(.secondary)

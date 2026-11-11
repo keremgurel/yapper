@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Settings } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -44,13 +44,28 @@ import { useSchedulingAvailable } from "@/components/publish/schedule/use-schedu
 import { useWhen } from "@/components/publish/schedule/use-when";
 import WhenPicker from "@/components/publish/schedule/when-picker";
 import SourceList from "@/components/publish/sheet/source-list";
-import TikTokPostReview, { type TikTokReview } from "./tiktok-post-review";
+import TikTokPostReview, {
+  tiktokAudience,
+  type TikTokReview,
+} from "./tiktok-post-review";
 import type { CrossPostTarget } from "./compose/types";
 
 import YouTubeSettingsFields, {
   INITIAL_YOUTUBE_SETTINGS,
   type YouTubeSettings,
 } from "./youtube-settings";
+
+import { PLATFORMS } from "@/lib/publish/platforms";
+import { PosterDialog, PosterRow, posterField } from "./poster/poster-layout";
+
+type PosterControls = {
+  destinations: ReactNode;
+  fields: ReactNode;
+  blockers: string[];
+  coverNote?: string;
+  overrideFor: (platform: PublishPlatform) => string | undefined;
+  setOverride: (platform: PublishPlatform, caption: string | undefined) => void;
+};
 
 export type { CrossPostTarget } from "./compose/types";
 
@@ -103,7 +118,10 @@ function postSource(
         mediaKey: source.mediaKey,
         contentItemId: source.contentItemId,
         caption: tiktokReview.caption,
-        settings: tiktokReview.settings,
+        settings: {
+          ...tiktokReview.settings,
+          coverTimestampMs: source.coverTimestampMs,
+        },
       },
       idempotencyKey,
     );
@@ -140,7 +158,9 @@ export default function CrossPostSheet({
   disabled = false,
   beforePublish,
   onBusy,
+  poster,
 }: {
+  poster?: PosterControls;
   onBusy?: (busy: boolean) => void;
   embedded?: boolean;
   disabled?: boolean;
@@ -161,6 +181,8 @@ export default function CrossPostSheet({
   const prepared = hasPreparedCaptions(sources);
   const single = sources.length === 1 ? sources[0] : null;
   const [open, setOpen] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsPlatform, setSettingsPlatform] = useState<PublishPlatform>();
   const [selected, setSelected] = useState<Set<PublishPlatform>>(
     () => new Set(initialPlatforms ?? []),
   );
@@ -274,8 +296,10 @@ export default function CrossPostSheet({
     onBusy?.(true);
     setPublishError("");
     try {
-      setOutcomes([]);
-      const finished: SourceOutcome[] = [];
+      const finished = outcomes.filter(
+        (outcome) => outcome.status === "posted" || outcome.status === "draft",
+      );
+      setOutcomes(finished);
       const publishSources = beforePublish ? await beforePublish() : sources;
       if (!publishSources?.length) {
         return;
@@ -285,7 +309,14 @@ export default function CrossPostSheet({
       // parallel and independently through runCrossPost.
       for (const source of publishSources) {
         await runCrossPost(
-          targets,
+          targets.filter(
+            ({ platform }) =>
+              !finished.some(
+                (outcome) =>
+                  outcome.sourceId === source.id &&
+                  outcome.platform === platform,
+              ),
+          ),
           (platform) =>
             postSource(
               source,
@@ -357,6 +388,37 @@ export default function CrossPostSheet({
     outcomes.length > 0 && outcomes.length === sources.length * targets.length;
   const failures = outcomes.filter((outcome) => outcome.status === "failed");
 
+  const settingsTab =
+    settingsPlatform && chosen.includes(settingsPlatform)
+      ? settingsPlatform
+      : chosen[0];
+  const showSettings = (platform?: PublishPlatform) => {
+    if (platform) setSettingsPlatform(platform);
+    setSettingsOpen(true);
+  };
+  const locked = posting || scheduling || scheduled || outcomes.length > 0;
+  const youtubeForm = (
+    <YouTubeSettingsFields
+      value={youtubeSettings}
+      onChange={setYouTubeSettings}
+      disabled={locked}
+    />
+  );
+  const tiktokForm = sources.map((source) => (
+    <TikTokPostReview
+      key={source.id}
+      source={source}
+      compact={embedded}
+      showPreview={!embedded || (settingsOpen && settingsTab === "tiktok")}
+      initialCaption={
+        outgoingCopy(source, "tiktok", editable).body ||
+        outgoingCopy(source, "tiktok", editable).title
+      }
+      disabled={locked}
+      onChange={onTikTokReview}
+    />
+  ));
+
   const content = (
     <>
       {!embedded && (
@@ -372,9 +434,146 @@ export default function CrossPostSheet({
         </SheetHeader>
       )}
 
+      {poster && (
+        <>
+          <fieldset disabled={locked} className="min-w-0">
+            <PosterRow label="Post to">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">{poster.destinations}</div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-label="Posting settings"
+                  title="Posting settings"
+                  onClick={() => showSettings()}
+                  disabled={!chosen.length}
+                  className="shrink-0"
+                >
+                  <Settings aria-hidden />
+                </Button>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                {chosen.includes("youtube") &&
+                  youtubeSettings.selfDeclaredMadeForKids === null && (
+                    <button
+                      type="button"
+                      className="font-medium underline underline-offset-4"
+                      onClick={() => showSettings("youtube")}
+                    >
+                      Choose YouTube audience
+                    </button>
+                  )}
+                {chosen.includes("youtube") && (
+                  <span className="text-muted-foreground">
+                    YouTube ·{" "}
+                    <span className="capitalize">
+                      {youtubeSettings.privacyStatus}
+                    </span>
+                  </span>
+                )}
+                {chosen.includes("tiktok") &&
+                  (tiktokReady ? (
+                    <span className="text-muted-foreground">
+                      TikTok ·{" "}
+                      {tiktokAudience(
+                        single ? tiktokReviews[single.id] : undefined,
+                      )}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="font-medium underline underline-offset-4"
+                      onClick={() => showSettings("tiktok")}
+                    >
+                      Review TikTok audience and posting options
+                    </button>
+                  ))}
+              </div>
+              {chosen.includes("tiktok") &&
+                tiktokReviews[single?.id ?? ""]?.mode !== "inbox" &&
+                poster.coverNote && (
+                  <p className="text-muted-foreground mt-2 text-xs">
+                    {poster.coverNote}
+                  </p>
+                )}
+            </PosterRow>
+            {poster.fields}
+          </fieldset>
+          <PosterDialog
+            open={settingsOpen}
+            onClose={() => setSettingsOpen(false)}
+            title="Posting settings"
+            footer={
+              <Button type="button" onClick={() => setSettingsOpen(false)}>
+                Done
+              </Button>
+            }
+          >
+            <div className="space-y-4">
+              <div
+                className="flex flex-wrap gap-2"
+                role="group"
+                aria-label="Platforms"
+              >
+                {chosen.map((platform) => (
+                  <Button
+                    key={platform}
+                    type="button"
+                    size="sm"
+                    variant={settingsTab === platform ? "secondary" : "outline"}
+                    aria-pressed={settingsTab === platform}
+                    onClick={() => setSettingsPlatform(platform)}
+                  >
+                    {PLATFORMS[platform].label}
+                  </Button>
+                ))}
+              </div>
+              {chosen.map((platform) => (
+                <div key={platform} hidden={settingsTab !== platform}>
+                  <div className="space-y-4">
+                    {platform === "youtube"
+                      ? youtubeForm
+                      : platform === "tiktok"
+                        ? tiktokForm
+                        : null}
+                    <label className="block space-y-2 text-sm">
+                      <span className="font-medium">
+                        {platform === "youtube"
+                          ? "YouTube description"
+                          : `${PLATFORMS[platform].label} caption`}
+                      </span>
+                      <textarea
+                        className={posterField}
+                        value={poster.overrideFor(platform) ?? ""}
+                        rows={3}
+                        placeholder="Uses the shared caption"
+                        disabled={locked}
+                        onChange={(event) =>
+                          poster.setOverride(
+                            platform,
+                            event.target.value || undefined,
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </PosterDialog>
+        </>
+      )}
       <div
-        className={embedded ? "flex flex-col gap-4" : "flex flex-col gap-5 p-4"}
+        className={
+          embedded ? "flex flex-col gap-3 pt-4" : "flex flex-col gap-5 p-4"
+        }
       >
+        {poster && !outcomes.length && poster.blockers.length > 0 && (
+          <p className="text-muted-foreground text-sm">
+            {poster.blockers.join(" ")}
+          </p>
+        )}
         {publishError && (
           <p role="alert" className="text-destructive text-sm">
             {publishError}
@@ -445,48 +644,8 @@ export default function CrossPostSheet({
                 Shorten the YouTube description to 5,000 bytes or fewer.
               </p>
             )}
-            {chosen.includes("youtube") &&
-              (embedded ? (
-                <details>
-                  <summary className="cursor-pointer text-sm">
-                    YouTube settings · {youtubeSettings.privacyStatus}
-                  </summary>
-                  <div className="mt-3">
-                    <YouTubeSettingsFields
-                      value={youtubeSettings}
-                      onChange={setYouTubeSettings}
-                      disabled={
-                        posting ||
-                        scheduling ||
-                        scheduled ||
-                        outcomes.length > 0
-                      }
-                    />
-                  </div>
-                </details>
-              ) : (
-                <YouTubeSettingsFields
-                  value={youtubeSettings}
-                  onChange={setYouTubeSettings}
-                  disabled={
-                    posting || scheduling || scheduled || outcomes.length > 0
-                  }
-                />
-              ))}
-            {chosen.includes("tiktok") &&
-              sources.map((source) => (
-                <TikTokPostReview
-                  key={source.id}
-                  source={source}
-                  compact={embedded}
-                  initialCaption={
-                    outgoingCopy(source, "tiktok", editable).body ||
-                    outgoingCopy(source, "tiktok", editable).title
-                  }
-                  disabled={posting || outcomes.length > 0}
-                  onChange={onTikTokReview}
-                />
-              ))}
+            {!poster && chosen.includes("youtube") && youtubeForm}
+            {!poster && chosen.includes("tiktok") && tiktokForm}
             {chosen.includes("facebook") && (
               <p className="text-muted-foreground text-xs">
                 Facebook Reels will be public on your selected Page. Use
@@ -503,20 +662,6 @@ export default function CrossPostSheet({
               </p>
             )}
 
-            {schedulingAvailable && outcomes.length === 0 && !scheduled && (
-              <WhenPicker
-                mode={when.mode}
-                onMode={when.setMode}
-                value={when.value}
-                onValue={when.setValue}
-                disabled={posting || scheduling}
-                note={
-                  tiktokDraftLater
-                    ? "TikTok gets a draft at that time, to finish in the app."
-                    : undefined
-                }
-              />
-            )}
             {scheduler.savedFor && (
               <ScheduledNotice at={scheduler.savedFor} count={postCount} />
             )}
@@ -530,61 +675,104 @@ export default function CrossPostSheet({
                 Schedule up to 20 posts at a time.
               </p>
             )}
-            {later
-              ? !scheduled && (
-                  <ScheduleButton
-                    at={when.at}
-                    count={postCount}
-                    saving={scheduling}
-                    disabled={
-                      disabled ||
-                      (embedded &&
-                        chosen.length !== initialPlatforms?.length) ||
-                      posting ||
-                      scheduling ||
-                      !youtubeReady ||
-                      !tiktokReady ||
-                      sources.length === 0 ||
-                      chosen.length === 0 ||
-                      postCount > 20 ||
-                      (editable ? !title.trim() : false)
+            <div
+              className={
+                poster
+                  ? "flex flex-wrap items-end justify-between gap-3"
+                  : "flex flex-col gap-4"
+              }
+            >
+              <div className={poster ? "min-w-0" : "w-full"}>
+                {schedulingAvailable && outcomes.length === 0 && !scheduled && (
+                  <WhenPicker
+                    compact={Boolean(poster)}
+                    mode={when.mode}
+                    onMode={when.setMode}
+                    value={when.value}
+                    onValue={when.setValue}
+                    disabled={posting || scheduling}
+                    note={
+                      tiktokDraftLater
+                        ? "TikTok gets a draft at that time, to finish in the app."
+                        : undefined
                     }
-                    onSchedule={schedule}
-                  />
-                )
-              : !scheduled &&
-                (!done ||
-                  failures.length > 0 ||
-                  outcomes.some((outcome) => outcome.status === "pending")) && (
-                  <PublishButton
-                    videos={sources.length}
-                    platforms={
-                      embedded ? (initialPlatforms?.length ?? 0) : chosen.length
-                    }
-                    postedSoFar={outcomes.length}
-                    posting={posting}
-                    done={done}
-                    disabled={
-                      disabled ||
-                      (embedded &&
-                        chosen.length !== initialPlatforms?.length) ||
-                      posting ||
-                      !youtubeReady ||
-                      !tiktokReady ||
-                      scheduling ||
-                      sources.length === 0 ||
-                      chosen.length === 0 ||
-                      (editable ? !title.trim() : false)
-                    }
-                    onPublish={() => void publish()}
                   />
                 )}
-            {onNext && !posting && (done || scheduled) && (
-              <Button onClick={onNext}>Post another video</Button>
-            )}
-            <p className="text-muted-foreground text-center text-xs">
-              For TikTok, review the audience and posting method above.
-            </p>
+              </div>
+              <div
+                className={
+                  poster
+                    ? "ml-auto flex flex-wrap justify-end gap-2"
+                    : "flex flex-col gap-4"
+                }
+              >
+                {later
+                  ? !scheduled && (
+                      <ScheduleButton
+                        at={when.at}
+                        count={postCount}
+                        saving={scheduling}
+                        disabled={
+                          disabled ||
+                          (embedded &&
+                            chosen.length !== initialPlatforms?.length) ||
+                          posting ||
+                          scheduling ||
+                          !youtubeReady ||
+                          !tiktokReady ||
+                          sources.length === 0 ||
+                          chosen.length === 0 ||
+                          postCount > 20 ||
+                          (editable ? !title.trim() : false)
+                        }
+                        onSchedule={schedule}
+                      />
+                    )
+                  : !scheduled &&
+                    (!done ||
+                      failures.length > 0 ||
+                      outcomes.some(
+                        (outcome) => outcome.status === "pending",
+                      )) && (
+                      <PublishButton
+                        videos={sources.length}
+                        platforms={
+                          embedded
+                            ? (initialPlatforms?.length ?? 0)
+                            : chosen.length
+                        }
+                        postedSoFar={outcomes.length}
+                        posting={posting}
+                        done={done}
+                        disabled={
+                          disabled ||
+                          (embedded &&
+                            chosen.length !== initialPlatforms?.length) ||
+                          posting ||
+                          !youtubeReady ||
+                          !tiktokReady ||
+                          scheduling ||
+                          sources.length === 0 ||
+                          chosen.length === 0 ||
+                          (editable ? !title.trim() : false)
+                        }
+                        label={
+                          poster && !posting && !done
+                            ? chosen.length === 1
+                              ? `Publish to ${PLATFORMS[chosen[0]].label}`
+                              : chosen.length
+                                ? `Publish to ${chosen.length} accounts`
+                                : "Publish"
+                            : undefined
+                        }
+                        onPublish={() => void publish()}
+                      />
+                    )}
+                {onNext && !posting && (done || scheduled) && (
+                  <Button onClick={onNext}>Post another video</Button>
+                )}
+              </div>
+            </div>
           </>
         )}
       </div>

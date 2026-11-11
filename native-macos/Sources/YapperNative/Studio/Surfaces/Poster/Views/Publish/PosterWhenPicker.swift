@@ -21,7 +21,10 @@ struct PosterWhenPicker: View {
             } else if model.enabled == true {
                 form
             } else if model.loadFailed {
-                NativeErrorState(message: "Scheduling couldn't be loaded.") { Task { await model.load() } }
+                HStack(spacing: 8) {
+                    Text("Scheduling is unavailable.").font(.system(size: 12)).foregroundStyle(.secondary)
+                    Button("Try again") { Task { await model.load() } }.buttonStyle(EditorGhostButtonStyle(size: .small))
+                }
             }
         }
         .task { if model.enabled == nil { await model.load() } }
@@ -29,14 +32,9 @@ struct PosterWhenPicker: View {
 
     private var form: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Picker("When", selection: $model.later) {
-                Text("Post now").tag(false)
-                Text("Schedule").tag(true)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .disabled(model.saving)
-            .clickableCursor(enabled: !model.saving)
+            Button(model.later ? "Publish now instead" : "Schedule instead") { model.later.toggle() }
+                .buttonStyle(EditorSecondaryButtonStyle())
+                .disabled(model.saving)
             if model.later {
                 DatePicker("Send at", selection: $model.when, in: Date().addingTimeInterval(60)...)
                     .font(.system(size: 13))

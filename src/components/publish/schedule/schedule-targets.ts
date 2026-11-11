@@ -49,7 +49,13 @@ export function scheduleTargets(
             : platform === "instagram" || platform === "facebook"
               ? { caption: copy.body || copy.title || undefined }
               : review?.mode === "direct"
-                ? { caption: review.caption, settings: review.settings }
+                ? {
+                    caption: review.caption,
+                    settings: {
+                      ...review.settings,
+                      coverTimestampMs: source.coverTimestampMs,
+                    },
+                  }
                 : {}),
         },
       };

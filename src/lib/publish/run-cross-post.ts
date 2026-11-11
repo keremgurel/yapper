@@ -10,6 +10,7 @@ export interface CrossPostOutcome {
   status: CrossPostStatus;
   url?: string;
   error?: string;
+  coverApplied?: boolean;
 }
 
 /**
@@ -34,6 +35,9 @@ export async function runCrossPost(
           platform,
           status: result.draft ? "draft" : "posted",
           url: result.url,
+          ...(result.coverApplied === undefined
+            ? {}
+            : { coverApplied: result.coverApplied }),
         };
       } catch (error) {
         outcome = {

@@ -5,6 +5,7 @@ import SwiftUI
 /// or a second at a time with Shift.
 struct PosterFramePickerView: View {
     @ObservedObject var picker: PosterFramePicker
+    var onChooseFrame: () -> Void = {}
     @State private var enteredFrame = ""
     @FocusState private var stripFocused: Bool
 
@@ -21,19 +22,20 @@ struct PosterFramePickerView: View {
             strip.padding(.horizontal, 16)
 
             HStack(spacing: 6) {
-                stepButton("Back 1s", systemImage: "chevron.left.2", enabled: picker.index > 0) { picker.jump(-1) }
-                stepButton("Back 1f", systemImage: "chevron.left", enabled: picker.index > 0) { picker.step(-1) }
-                stepButton("Forward 1f", systemImage: "chevron.right", enabled: picker.index < picker.frameCount - 1) { picker.step(1) }
-                stepButton("Forward 1s", systemImage: "chevron.right.2", enabled: picker.index < picker.frameCount - 1) { picker.jump(1) }
+                stepButton("Back one second", systemImage: "chevron.left.2", enabled: picker.index > 0) { picker.jump(-1) }
+                stepButton("Back one frame", systemImage: "chevron.left", enabled: picker.index > 0) { picker.step(-1) }
+                stepButton("Forward one frame", systemImage: "chevron.right", enabled: picker.index < picker.frameCount - 1) { picker.step(1) }
+                stepButton("Forward one second", systemImage: "chevron.right.2", enabled: picker.index < picker.frameCount - 1) { picker.jump(1) }
                 Spacer()
                 Text("Frame").font(.system(size: 12)).foregroundStyle(.secondary)
                 TextField(picker.ready ? String(picker.index + 1) : "", text: $enteredFrame)
                     .textFieldStyle(.native)
-                    .frame(width: 72)
+                    .frame(width: 52)
                     .multilineTextAlignment(.center)
+                    .accessibilityLabel("Go to frame")
                     .disabled(!picker.ready)
                     .onSubmit {
-                        if let number = Int(enteredFrame) { picker.select(number - 1) }
+                        if let number = Int(enteredFrame) { onChooseFrame(); picker.select(number - 1) }
                         enteredFrame = ""
                     }
                 Text("/ \(picker.frameCount)").font(.system(size: 11).monospacedDigit()).foregroundStyle(.secondary)
@@ -41,13 +43,10 @@ struct PosterFramePickerView: View {
             .padding(16)
 
             Rectangle().fill(Color.studioLine).frame(height: 1)
-            HStack {
-                Text("Drag to find the moment. Step to get it exact.")
-                Spacer()
-                Text("Arrow keys step a frame, Shift steps a second")
-            }
-            .font(.system(size: 11)).foregroundStyle(.secondary)
-            .padding(.horizontal, 16).padding(.vertical, 10)
+            Text("Drag to scrub. Arrow keys step a frame; Shift steps a second.")
+                .font(.system(size: 12)).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 16).padding(.vertical, 10)
 
             if let error = picker.error {
                 Rectangle().fill(Color.studioLine).frame(height: 1)
@@ -103,7 +102,8 @@ struct PosterFramePickerView: View {
             }
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 0).onChanged { value in
-                guard proxy.size.width > 0 else { return }
+                guard proxy.size.width > 0, picker.ready else { return }
+                onChooseFrame()
                 stripFocused = true
                 picker.seek(to: picker.duration * min(1, max(0, value.location.x / proxy.size.width)))
             })
@@ -111,8 +111,10 @@ struct PosterFramePickerView: View {
         .frame(height: 64)
         .focusable()
         .focused($stripFocused)
-        .focusEffectDisabled()
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(stripFocused ? Color.yapperOrange : Color.clear, lineWidth: 1))
         .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in
+            guard picker.ready else { return .ignored }
+            onChooseFrame()
             let direction = press.key == .leftArrow ? -1 : 1
             if press.modifiers.contains(.shift) { picker.jump(Double(direction)) } else { picker.step(direction) }
             return .handled
@@ -121,11 +123,13 @@ struct PosterFramePickerView: View {
     }
 
     private func stepButton(_ label: String, systemImage: String, enabled: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label(label, systemImage: systemImage).font(.system(size: 12).monospacedDigit())
+        Button { onChooseFrame(); action() } label: {
+            Image(systemName: systemImage).font(.system(size: 12, weight: .medium))
         }
         .buttonStyle(EditorGhostButtonStyle(size: .small))
         .disabled(!picker.ready || !enabled)
+        .accessibilityLabel(label)
+        .help(label)
     }
 
     static func clock(_ seconds: Double) -> String {

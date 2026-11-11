@@ -47,6 +47,12 @@ export default function OutcomeList({
                 {publishErrorCopy(outcome.error)}
               </p>
             )}
+            {outcome.coverApplied === false && (
+              <p className="text-muted-foreground mt-1 text-xs">
+                YouTube didn’t apply the cover. You can add it in YouTube
+                Studio.
+              </p>
+            )}
             {outcome.status === "draft" && (
               <p className="text-muted-foreground mt-1 max-w-sm text-xs">
                 Open TikTok → Inbox and tap “Your content from Yapper is ready”

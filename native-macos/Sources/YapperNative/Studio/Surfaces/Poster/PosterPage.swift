@@ -2,13 +2,7 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The Poster: pick a video, prepare it, send it everywhere.
-///
-/// A source strip on top: what you made in Yapper, or what you already
-/// posted on a connected channel. Below it, the grid of that source's videos
-/// or, once one is open, the bench: the videos as a rail, the thumbnail in
-/// the middle, the destinations on the right with the one publish button.
-/// A finished video can be dropped anywhere on the page.
+/// Source selection and composition share the same Studio frame.
 struct PosterPage: View {
     @ObservedObject var session: EditorSession
     @ObservedObject private var library = PosterLibraryStore.shared
@@ -20,48 +14,39 @@ struct PosterPage: View {
     @ObservedObject private var prep = PosterPublishPrep.shared
     @ObservedObject private var commands = StudioWebCommands.shared
     @ObservedObject private var handoff = PosterHandoff.shared
-    @State private var source: PosterSource = .yapper
+    @State private var source: PosterSource = .uploads
     @State private var dropTargeted = false
-    @State private var viewportHeight: CGFloat = 740
 
     var body: some View {
-        GeometryReader { geometry in
         NativePage {
-            NativePageHeader(
-                title: "Poster",
-                description: "Pick a video, choose its thumbnail and captions, and send it to every channel at once."
-            ) {
-                if bench.active != nil {
-                    Button("Post another video") { bench.close() }
-                        .buttonStyle(EditorGhostButtonStyle())
+            VStack(alignment: .leading, spacing: 0) {
+                NativePageHeader(title: "Poster") { PosterStepProgress(composing: currentActive != nil) }
+                VStack(alignment: .leading, spacing: 16) {
+                    PosterBanners(upload: upload, bench: bench, prep: prep, connections: connections)
+                    if currentActive == nil {
+                        Text("Choose a source").font(.nativeSectionTitle)
+                        PosterSourceOptions(selected: source, connected: connections.connected, uploadBusy: upload.busy, onUpload: {
+                            source = .uploads
+                            upload.choose()
+                        }, onChoose: { next in
+                            source = next
+                            Task { await refreshSource(force: false) }
+                        })
+                        if !sourceVideos.isEmpty || source == .yapper {
+                            Divider()
+                            HStack {
+                                Text(sourceLabel).font(.nativeSectionTitle)
+                                Spacer()
+                                if source == .yapper { ProjectStorageSummary(listings: library.projects) }
+                            }
+                        }
+                        if source == .yapper { ManagedMediaNotice(session: session) }
+                    }
+                    content
                 }
-                Button { upload.choose() } label: {
-                    Label(addLabel, systemImage: "square.and.arrow.up")
-                }
-                .buttonStyle(EditorSecondaryButtonStyle())
-                .disabled(upload.busy)
             }
-            VStack(alignment: .leading, spacing: 20) {
-                PosterBanners(upload: upload, bench: bench, prep: prep, connections: connections)
-                if bench.active == nil {
-                    PosterSourceOptions(selected: source, connected: connections.connected, onChoose: { next in
-                        source = next
-                        Task { await refreshSource(force: false) }
-                    })
-                    HStack {
-                        Text(sourceLabel).font(.nativeSectionTitle)
-                        Spacer()
-                        if source == .yapper { ProjectStorageSummary(listings: library.projects) }
-                    }.padding(.top, 8)
-                    if source == .yapper { ManagedMediaNotice(session: session) }
-                } else {
-                    Button("All videos", systemImage: "chevron.left") { bench.close() }
-                        .buttonStyle(EditorGhostButtonStyle(size: .small))
-                }
-                content
-            }
-        }
-        .onChange(of: geometry.size.height, initial: true) { _, height in viewportHeight = height }
+            .frame(maxWidth: 896, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .overlay {
             if dropTargeted {
@@ -86,7 +71,10 @@ struct PosterPage: View {
     @ViewBuilder
     private var content: some View {
         let videos = sourceVideos
-        if case let .platform(platform) = source, channels.failed.contains(platform) {
+        if let active = currentActive {
+            PosterBenchView(video: active, bench: bench, upload: upload, drafts: drafts, connections: connections)
+                .id(active.id)
+        } else if case let .platform(platform) = source, connections.connected.contains(platform), channels.failed.contains(platform) {
             NativeEmptyState(systemImage: "arrow.clockwise", title: "This channel couldn't be loaded",
                              message: "Check the connection and try loading its videos again.") {
                 Button("Try again") { Task { await channels.refresh(platform, force: true) } }
@@ -98,9 +86,6 @@ struct PosterPage: View {
                 Button("Try again") { Task { await library.refresh() } }
                     .buttonStyle(EditorSecondaryButtonStyle(size: .small))
             }
-        } else if let active = currentActive {
-            PosterBenchView(availableHeight: max(320, viewportHeight - 210), video: active, source: source, videos: videos, bench: bench, upload: upload,
-                            drafts: drafts, connections: connections)
         } else {
             PosterVideoGrid(source: source, videos: videos, loading: sourceLoading, connected: sourceConnected,
                             bench: bench, upload: upload, onConnect: connections.connect, onTrashProject: { listing in
@@ -115,16 +100,8 @@ struct PosterPage: View {
     private var sourceLabel: String {
         switch source {
         case .yapper: "Made in Yapper"
-        case .uploads: "Uploads"
-        case let .platform(platform): platform.label
-        }
-    }
-
-    private var addLabel: String {
-        switch upload.phase {
-        case .uploading: "Uploading \(Int(upload.progress * 100))%"
-        case .preparing: "Reading video"
-        default: "Add video"
+        case .uploads: "Ready to post"
+        case let .platform(platform): "Recent \(platform.label) posts"
         }
     }
 
@@ -145,7 +122,7 @@ struct PosterPage: View {
     }
 
     private var sourceConnected: Bool {
-        if case let .platform(platform) = source { return channels.connected(platform) }
+        if case let .platform(platform) = source { return connections.connected.contains(platform) }
         return true
     }
 

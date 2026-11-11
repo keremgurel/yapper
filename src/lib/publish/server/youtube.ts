@@ -15,7 +15,11 @@ import {
   existingPublishResponse,
   publishIdempotencyKey,
 } from "@/lib/publish/idempotency";
-import { setYouTubeThumbnail, uploadYouTubeVideo } from "@/lib/publish/youtube";
+import {
+  setYouTubeThumbnail,
+  uploadYouTubeVideo,
+  waitForYouTubeProcessing,
+} from "@/lib/publish/youtube";
 import { requestBodyErrorResponse } from "@/lib/http/bounded-body";
 import { readYouTubePublishRequest } from "@/lib/publish/request";
 import {
@@ -179,8 +183,10 @@ export async function publishYouTube(
 
   // Custom thumbnail is best-effort: it needs a verified channel, so a failure
   // must not fail the post that already succeeded.
+  let coverApplied = body.thumbnailKey ? false : undefined;
   if (thumbnailKey) {
     try {
+      await waitForYouTubeProcessing(accessToken, result.videoId, workflow);
       const thumb = await getObjectFile(thumbnailKey, {
         maxBytes: 20 * 1024 * 1024,
         signal: workflow.signal,
@@ -197,6 +203,7 @@ export async function publishYouTube(
           },
           workflow,
         );
+        coverApplied = true;
       } finally {
         await thumb.cleanup();
       }
@@ -204,5 +211,5 @@ export async function publishYouTube(
       console.error("[publish] youtube thumbnail failed", err);
     }
   }
-  return Response.json({ jobId, ...result });
+  return Response.json({ jobId, ...result, coverApplied });
 }

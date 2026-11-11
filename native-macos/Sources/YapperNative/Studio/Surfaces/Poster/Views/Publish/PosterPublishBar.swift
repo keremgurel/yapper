@@ -16,7 +16,7 @@ struct PosterPublishBar: View {
     let onNext: () -> Void
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(alignment: .trailing, spacing: 8) {
             if failures > 0 {
                 Text("\(failures) destination\(failures == 1 ? "" : "s") failed. Successful posts were not rolled back.")
                     .font(.system(size: 12, weight: .semibold)).foregroundStyle(Color.studioDanger)
@@ -31,7 +31,6 @@ struct PosterPublishBar: View {
                         if busy { ProgressView().controlSize(.mini) }
                         Text(label)
                     }
-                    .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(EditorPrimaryButtonStyle())
                 .disabled(!canSend || busy)
@@ -44,6 +43,6 @@ struct PosterPublishBar: View {
                 }
             }
         }
-        .nativeCard(padding: 12, radius: 12)
+        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 }

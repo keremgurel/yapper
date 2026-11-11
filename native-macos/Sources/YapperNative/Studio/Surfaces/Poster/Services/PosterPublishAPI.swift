@@ -32,7 +32,7 @@ enum PosterPublishAPI {
             if let tiktok, tiktok.mode == .direct {
                 var body = target.sourceBody
                 body["caption"] = tiktok.caption
-                body["settings"] = settingsBody(tiktok.settings)
+                body["settings"] = settingsBody(tiktok.settings, coverTimestampMs: target.coverTimestampMs)
                 return try await poll("api/publish/tiktok/direct", body: .compact(body), key: key)
             }
             // The inbox endpoint takes no caption: it lands in drafts.
@@ -70,9 +70,11 @@ enum PosterPublishAPI {
     }
 
     /// The Direct Post settings as the TikTok routes read them, now or scheduled.
-    static func settingsBody(_ settings: PosterTikTokSettings) -> [String: Any] {
+    static func settingsBody(_ settings: PosterTikTokSettings, coverTimestampMs: Int? = nil) -> [String: Any] {
         let data = (try? JSONEncoder().encode(settings)) ?? Data()
-        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+        var body = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+        body["coverTimestampMs"] = coverTimestampMs
+        return body
     }
 
     private static func poll(_ path: String, body: [String: Any], key: String) async throws -> PosterPublishResult {
