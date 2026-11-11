@@ -68,7 +68,7 @@ struct PosterPublishGateTests {
         #expect(calendar.component(.hour, from: options[0].date) == 9 && calendar.isDate(options[0].date, inSameDayAs: tuesday.addingTimeInterval(86_400)))
     }
 
-    @Test func tiktokDefaultsToEveryoneOnlyOnceApproved() {
+    @Test @MainActor func tiktokAudienceMustBeChosenAndStayAvailable() {
         func context(audited: Bool, options: [String]) -> PosterTikTokContext {
             PosterTikTokContext(creator: PosterTikTokCreator(
                 creator_nickname: "Kerem", creator_username: "kerem", creator_avatar_url: nil, privacy_level_options: options,
@@ -76,8 +76,14 @@ struct PosterPublishGateTests {
             ), accountId: "a", audited: audited)
         }
         let all = ["PUBLIC_TO_EVERYONE", "FOLLOWER_OF_CREATOR", "SELF_ONLY"]
-        #expect(PosterTikTokReviewModel.defaultPrivacy(context(audited: true, options: all)) == "PUBLIC_TO_EVERYONE")
-        #expect(PosterTikTokReviewModel.defaultPrivacy(context(audited: false, options: all)) == "SELF_ONLY")
-        #expect(PosterTikTokReviewModel.defaultPrivacy(context(audited: true, options: ["FOLLOWER_OF_CREATOR"])).isEmpty)
+        let model = PosterTikTokReviewModel()
+        model.applyCreator(context(audited: true, options: all))
+        #expect(model.settings.privacy.isEmpty)
+        model.settings.privacy = "PUBLIC_TO_EVERYONE"
+        model.applyCreator(context(audited: true, options: all))
+        #expect(model.settings.privacy == "PUBLIC_TO_EVERYONE")
+        model.applyCreator(context(audited: false, options: all))
+        #expect(model.settings.privacy.isEmpty)
+        #expect(model.privacyOptions == ["SELF_ONLY"])
     }
 }

@@ -61,7 +61,7 @@ final class PosterPublishSession: ObservableObject {
         do {
             let result = try await PosterPublishAPI.post(target, to: platform, key: key, tiktok: review, youtube: youtube, accountID: account)
             return PosterOutcome(videoID: target.id, videoTitle: target.title, platform: platform,
-                                 status: result.draft == true ? .draft : .posted, url: result.url.flatMap(URL.init(string:)))
+                                 status: result.draft == true ? .draft : .posted, url: result.url.flatMap(URL.init(string:)), coverApplied: result.coverApplied)
         } catch {
             let code = PosterPublishAPI.code(for: error, platform: platform)
             return PosterOutcome(videoID: target.id, videoTitle: target.title, platform: platform,

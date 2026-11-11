@@ -8,7 +8,7 @@ struct PosterDestinationToggles: View {
     let onToggle: (PublishPlatform) -> Void
     let onConnect: (PublishPlatform) -> Void
 
-    private let columns = [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: PublishPlatform.enabledCases.count)
 
     var body: some View {
         LazyVGrid(columns: columns, spacing: 8) {
@@ -27,6 +27,7 @@ struct PosterDestinationToggles: View {
                 }
             }
         }
+        .frame(maxWidth: 470, alignment: .leading)
     }
 
     private func toggle(_ platform: PublishPlatform) -> some View {

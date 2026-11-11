@@ -154,6 +154,7 @@ export interface CrossPostResult {
   jobId: string;
   url?: string;
   draft?: boolean;
+  coverApplied?: boolean;
 }
 
 async function publishError(response: Response): Promise<Error> {

@@ -20,6 +20,7 @@ export interface CrossPostTarget {
    */
   captions?: CaptionSet;
   thumbnailKey?: string;
+  coverTimestampMs?: number;
   thumbnailPreviewUrl?: string;
   submissionId?: string;
   mediaKey?: string;

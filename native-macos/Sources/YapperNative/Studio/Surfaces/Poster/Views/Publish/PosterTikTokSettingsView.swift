@@ -9,27 +9,29 @@ struct PosterTikTokSettingsView: View {
     let video: PosterVideo
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            PosterDisclosure(title: "TikTok settings", meta: model.mode == .inbox ? "Inbox" : model.audienceLabel) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Picker("Posting method", selection: $model.mode) {
-                        Text("Post to TikTok").tag(PosterTikTokReview.Mode.direct)
-                        Text("Send to TikTok inbox to finish there").tag(PosterTikTokReview.Mode.inbox)
-                    }
-                    .font(.system(size: 13))
-                    .clickableCursor()
-                    if model.mode == .inbox {
-                        note("We'll confirm inbox delivery. Open \"Your content from Yapper is ready\" in TikTok to add the caption and finish posting.")
-                    } else if let context = model.context {
-                        PosterTikTokDirectForm(model: model, context: context)
-                    } else if let error = model.contextError {
-                        note(error)
-                        Button("Reconnect TikTok for Direct Post") { model.reconnect() }
-                            .buttonStyle(EditorGhostButtonStyle(size: .small))
-                    } else {
-                        NativeLoadingState(label: "Loading TikTok posting options")
-                    }
-                }
+        VStack(alignment: .leading, spacing: 12) {
+            if let preview = model.previewURL {
+                PosterPreviewPlayer(url: preview)
+                    .frame(height: 152)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .accessibilityLabel("Video to post to TikTok")
+            }
+            Picker("Posting method", selection: $model.mode) {
+                Text("Post to TikTok").tag(PosterTikTokReview.Mode.direct)
+                Text("Send to TikTok inbox to finish there").tag(PosterTikTokReview.Mode.inbox)
+            }
+            .font(.system(size: 13))
+            .clickableCursor()
+            if model.mode == .inbox {
+                note("We’ll confirm inbox delivery. Open “Your content from Yapper is ready” in TikTok to add the caption and finish posting.")
+            } else if let context = model.context {
+                PosterTikTokDirectForm(model: model, context: context)
+            } else if let error = model.contextError {
+                note(error)
+                Button("Reconnect TikTok for Direct Post") { model.reconnect() }
+                    .buttonStyle(EditorGhostButtonStyle(size: .small))
+            } else {
+                NativeLoadingState(label: "Loading TikTok posting options")
             }
             if let error = model.durationError {
                 warning(error)

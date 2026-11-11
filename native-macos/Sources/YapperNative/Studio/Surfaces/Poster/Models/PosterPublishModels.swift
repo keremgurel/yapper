@@ -6,6 +6,7 @@ struct PosterPublishResult: Codable, Equatable {
     let jobId: String
     let url: String?
     let draft: Bool?
+    var coverApplied: Bool? = nil
 }
 
 /// What happened on one platform for one video.
@@ -18,6 +19,7 @@ struct PosterOutcome: Equatable, Identifiable {
     let status: Status
     var url: URL?
     var error: String?
+    var coverApplied: Bool? = nil
 
     var id: String { "\(videoID):\(platform.rawValue)" }
 

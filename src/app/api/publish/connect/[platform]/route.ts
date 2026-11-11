@@ -34,15 +34,20 @@ export async function GET(req: Request, { params }: Params): Promise<Response> {
     return Response.json({ error: "not_configured" }, { status: 501 });
   }
 
-  const redirectUri = `${new URL(req.url).origin}/api/publish/callback/${p}`;
+  const url = new URL(req.url);
+  const redirectUri = `${url.origin}/api/publish/callback/${p}`;
   const state = randomBytes(16).toString("hex");
   const res = NextResponse.redirect(buildAuthUrl(p, redirectUri, state));
-  res.cookies.set(`publish_state_${p}`, state, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 600,
-    path: "/",
-  });
+  res.cookies.set(
+    `publish_state_${p}`,
+    url.searchParams.get("from") === "poster" ? state + ".poster" : state,
+    {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 600,
+      path: "/",
+    },
+  );
   return res;
 }
