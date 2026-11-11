@@ -46,7 +46,7 @@ export default function SkillsTab({
     <section>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="font-display text-foreground text-[22px] font-semibold tracking-[-0.01em]">
+          <h2 className="font-display text-foreground text-2xl font-normal tracking-[-0.02em]">
             Skills
           </h2>
           <p className="text-muted-foreground mt-1 max-w-[60ch] text-sm">

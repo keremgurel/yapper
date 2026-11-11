@@ -12,10 +12,45 @@ mobile app.
 - Studio page container: `StudioContentFrame`
 - Live specimens and usage guidance: `src/app/style-guide/page.tsx`
 
+## Foundation (November 2026)
+
+The whole product shares one quiet, editorial system. Where an older section
+below disagrees with this one, this one wins.
+
+- **Type**: Inter everywhere, loaded once in `src/app/layout.tsx` with its
+  optical-size axis. Display type is light (300) with tight tracking; text is
+  400; emphasis is 500. 600 is the ceiling, so `font-semibold` resolves to 500
+  and `font-bold` to 600. Hierarchy comes from size, not weight.
+- **Scale**: `.type-display`/`.type-h1` 36–48px, `.type-h2` 28–36px,
+  `.type-h3` 20–24px, body 16px at 1.5, secondary copy 15px, small print 14px.
+  Studio page titles are 24px regular through `PageHeader`.
+- **Colour**: warm neutrals. Eggshell page (`--sg-bg`), white objects
+  (`--sg-surface`), stone wells (`--sg-surface-sunken`) and a deeper stone
+  tray under segmented controls (`--sg-surface-tray`). Text is ink, with
+  `--sg-text-muted` and `--sg-text-faint` for the two quieter steps.
+- **Action colour is ink**: black on light, white on dark (`--sg-accent`).
+  Orange is the brand mark (`--sg-brand`, the mascot and logo) and is never an
+  action, selection or label colour. Status hues keep their meanings.
+- **Edges**: objects are raised with `--sg-shadow-raised` (a half-pixel ring
+  and two soft drops), not a 1px border. Dividers are half-pixel hairlines.
+  `--sg-shadow-panel` and `--sg-shadow-float` are the two higher levels.
+- **Shape**: actions, chips and segmented controls are pills. Cards, panels
+  and media are 16px. Fields and menus are 12px.
+- **Controls**: 36px in bars, 40px by default, 44px for a page's main action.
+  The primary is a solid ink pill; the secondary is a raised white pill.
+  A segmented control is a stone tray with one raised white selection
+  (`.sg-segmented`).
+- **Sections**: a muted sentence-case line above the heading, the heading on
+  the left and the explanation on the right, sharing one top edge. 112px
+  between marketing sections, separated by a hairline.
+- **Motion**: 150ms for state changes, 360ms for layout, standard ease.
+
+The homepage glass tab capsule and its demo screens are kept as they are.
+
 ## Typography
 
-Yapper uses the platform system sans for display and body copy (SF Pro on Apple
-devices, system-ui elsewhere), as defined in `globals.css`.
+Inter is the single family; see Foundation above. `--sg-font-mono` is reserved
+for code, timecodes and tabular figures.
 
 ## Public website direction
 
@@ -151,7 +186,8 @@ the active theme.
 - Uses the correct shared container
 - Uses semantic type classes
 - Uses the shared Button component for standard actions
-- Uses the system sans only, unless showing code or time data
+- Uses Inter only, unless showing code or time data
+- Uses ink for actions and raised hairline surfaces instead of borders
 - Works in light and dark mode
 - Has visible keyboard focus and accessible labels
 - Respects reduced motion

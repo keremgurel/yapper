@@ -1,48 +1,14 @@
 /* Public website. The product workspaces retain their own density and scale. */
 :root {
-  --site-header: 73px;
+  --site-header: 65px;
 }
 .marketing-site {
   min-height: 100vh;
   background: var(--sg-bg);
   color: var(--sg-text);
 }
-.marketing-site .type-display {
-  font-size: clamp(2.5rem, 4.8vw, 4rem);
-  line-height: 1.08;
-  font-weight: 500;
-  letter-spacing: -0.045em;
-  text-wrap: balance;
-}
-.marketing-site .type-h1 {
-  font-size: clamp(2.25rem, 4.4vw, 3.5rem);
-  line-height: 1.1;
-  font-weight: 500;
-  letter-spacing: -0.035em;
-  text-wrap: balance;
-}
-.marketing-site .type-h2 {
-  font-size: clamp(1.75rem, 3.1vw, 2.5rem);
-  line-height: 1.15;
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  text-wrap: balance;
-}
-.marketing-site .type-h3 {
-  font-size: clamp(1.25rem, 2vw, 1.5rem);
-  line-height: 1.25;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-}
 .marketing-site .type-description {
-  font-size: 1rem;
-  line-height: 1.65;
-  max-width: 65ch;
-}
-.marketing-site .type-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  letter-spacing: 0;
+  max-width: 60ch;
 }
 .marketing-site :is(a, button, input, summary):focus-visible,
 .site-header :is(a, button, summary):focus-visible,
@@ -67,24 +33,26 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  background: var(--sg-bg);
+  background: color-mix(in srgb, var(--sg-bg) 88%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   color: var(--sg-text);
-  border-bottom: 1px solid var(--sg-border);
+  border-bottom: var(--sg-hairline) solid var(--sg-border-strong);
 }
 .site-header-row {
   display: flex;
   align-items: center;
-  min-height: 72px;
-  gap: 32px;
+  min-height: 64px;
+  gap: 40px;
 }
 .site-wordmark {
   display: inline-flex;
   gap: 9px;
   align-items: center;
   color: var(--sg-text);
-  font-size: 24px;
-  letter-spacing: -0.04em;
-  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.035em;
+  font-weight: 500;
   text-decoration: none;
   flex-shrink: 0;
 }
@@ -145,13 +113,15 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 12px 10px;
-  color: var(--sg-text-muted);
-  font-size: 14px;
-  font-weight: 500;
+  height: 36px;
+  padding: 0 12px;
+  color: var(--sg-text);
+  font-size: 15px;
+  font-weight: 400;
   background: none;
   border: 0;
-  border-radius: 5px;
+  border-radius: 999px;
+  transition: background-color var(--sg-dur-fast) var(--sg-ease-in-out);
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
@@ -200,8 +170,8 @@
   padding: 32px 0 0;
   /* Same canvas as the header bar it drops from, in both themes. */
   background: var(--sg-bg);
-  border-bottom: 1px solid var(--sg-border);
-  box-shadow: 0 16px 30px -22px rgb(0 0 0 / 0.25);
+  border-bottom: var(--sg-hairline) solid var(--sg-border-strong);
+  box-shadow: 0 16px 30px -24px rgb(0 0 0 / 0.18);
 }
 .site-product-menu {
   display: grid;
@@ -217,8 +187,8 @@
 }
 .site-product-link {
   font-size: 24px;
-  font-weight: 500;
-  letter-spacing: -0.025em;
+  font-weight: 300;
+  letter-spacing: -0.02em;
   text-decoration: none;
   color: var(--sg-text);
 }
@@ -286,10 +256,10 @@
   font-weight: 400;
 }
 .site-footer {
-  border-top: 1px solid var(--sg-border);
+  border-top: var(--sg-hairline) solid var(--sg-border-strong);
   background: var(--sg-bg);
   color: var(--sg-text);
-  padding-top: 56px;
+  padding-top: 72px;
 }
 .site-footer-grid {
   display: grid;
@@ -304,8 +274,10 @@
   color: var(--sg-text-muted);
 }
 .site-footer-heading {
+  color: var(--sg-text-muted);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
+  letter-spacing: 0.01em;
   margin: 4px 0 18px;
 }
 .site-footer ul {
@@ -315,10 +287,11 @@
 }
 .site-footer li {
   margin: 0 0 12px;
-  font-size: 13px;
+  font-size: 14px;
+  letter-spacing: 0.01em;
 }
 .site-footer a:not(.site-wordmark) {
-  color: var(--sg-text-muted);
+  color: var(--sg-text);
   text-decoration: none;
 }
 .site-footer-bottom {
@@ -336,7 +309,7 @@
   gap: 20px;
 }
 .marketing-hero {
-  padding-block: 80px;
+  padding-block: 96px;
 }
 .marketing-hero-grid {
   display: grid;
@@ -353,10 +326,11 @@
   font-weight: 500;
 }
 .marketing-lede {
-  color: var(--sg-text-muted);
-  font-size: 18px;
-  line-height: 1.65;
-  max-width: 56ch;
+  color: var(--sg-text);
+  font-size: 16px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  max-width: 54ch;
   margin-top: 24px;
 }
 .marketing-actions {
@@ -368,28 +342,34 @@
 }
 .marketing-note {
   color: var(--sg-text-muted);
-  font-size: 13px;
-  line-height: 1.6;
-  margin-top: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  margin-top: 16px;
 }
 .marketing-text-link {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 999px;
+  background: var(--sg-surface);
+  box-shadow: var(--sg-shadow-raised);
   color: var(--sg-text);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 400;
   text-decoration: none;
+  transition: background-color var(--sg-dur-fast) var(--sg-ease-in-out);
 }
 .marketing-text-link:hover {
-  text-decoration: underline;
-  text-underline-offset: 4px;
+  background: var(--sg-surface-sunken);
 }
 .marketing-section {
-  padding-block: 80px;
+  padding-block: 112px;
 }
 .marketing-rule {
-  border-top: 1px solid var(--sg-border);
+  border-top: var(--sg-hairline) solid var(--sg-border-strong);
 }
 .marketing-section-intro {
   display: grid;
@@ -908,7 +888,7 @@
 }
 .marketing-hero-copy .type-display {
   font-size: clamp(2.5rem, 5.4vw, 4.4rem);
-  font-weight: 550;
+  font-weight: 500;
   line-height: 1.06;
 }
 .marketing-hero-copy .marketing-product-label {
@@ -1006,7 +986,7 @@
 }
 .studio-screen-heading > span:first-child {
   font-size: 20px;
-  font-weight: 650;
+  font-weight: 500;
   letter-spacing: -0.04em;
 }
 .studio-screen-heading > span:first-child span {
@@ -1096,7 +1076,7 @@
 }
 .studio-panel-heading :is(h2, .demo-heading) {
   font-size: 20px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.02em;
 }
 .studio-panel-heading > span {
@@ -1370,10 +1350,7 @@
 }
 .marketing-hero-grid:has(> .studio-showcase) {
   grid-template-columns: minmax(0, 1fr);
-  gap: 40px;
-}
-.marketing-hero-grid:has(> .studio-showcase) > div:first-child {
-  max-width: 700px;
+  gap: 64px;
 }
 
 .feature-films {
@@ -1424,7 +1401,7 @@
 .feature-film-copy h3 {
   font-size: 23px;
   line-height: 1.3;
-  font-weight: 550;
+  font-weight: 500;
   letter-spacing: -0.025em;
 }
 .feature-film-copy p {
@@ -1508,7 +1485,7 @@
 }
 .feature-edit-heading strong {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
 }
 .feature-edit-heading div > span {
   display: block;
@@ -1536,7 +1513,7 @@
 }
 .feature-edit-stages > div[data-current="true"] {
   color: var(--sg-text);
-  font-weight: 600;
+  font-weight: 500;
 }
 .feature-stage-dot {
   width: 4px;
@@ -1695,7 +1672,7 @@
 .editor-demo-pane-title {
   display: flex;
   justify-content: space-between;
-  font-weight: 600;
+  font-weight: 500;
   margin-bottom: 20px;
 }
 .editor-demo-words {
@@ -1777,7 +1754,7 @@
   width: 100%;
   text-align: center;
   font-size: 17px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.025em;
   color: #fff;
@@ -2079,7 +2056,7 @@
 }
 .idea-demo-capture h2 {
   font-size: 16px;
-  font-weight: 550;
+  font-weight: 500;
   margin-bottom: 22px;
 }
 .idea-demo-library {
@@ -2195,7 +2172,7 @@
 }
 .writing-demo-chirpy strong {
   font-size: 13px;
-  font-weight: 550;
+  font-weight: 500;
 }
 .writing-demo-chirpy > span {
   font-size: 11px;
@@ -2449,7 +2426,7 @@
 }
 .prompter-demo-controls h2 {
   font-size: 22px;
-  font-weight: 550;
+  font-weight: 500;
   letter-spacing: -0.025em;
 }
 .prompter-demo-controls > p {
@@ -2680,7 +2657,7 @@
   align-items: center;
   gap: 9px;
   font-size: 16px;
-  font-weight: 550;
+  font-weight: 500;
   padding-bottom: 19px;
   margin-bottom: 22px;
   border-bottom: 1px solid var(--sg-border);
@@ -2830,7 +2807,7 @@
 }
 .publisher-destination-heading strong {
   font-size: 12px;
-  font-weight: 550;
+  font-weight: 500;
 }
 .publisher-destination-heading > span {
   margin-left: auto;
@@ -2851,7 +2828,7 @@
 .publisher-destination-copy > strong {
   display: block;
   font-size: 12px;
-  font-weight: 550;
+  font-weight: 500;
   margin-bottom: 4px;
 }
 .publisher-destination-copy p {
@@ -2969,14 +2946,14 @@
 }
 .publisher-cover-title > span {
   font-size: 12px;
-  font-weight: 550;
+  font-weight: 500;
   letter-spacing: 0.12em;
 }
 .publisher-cover-title strong {
   display: block;
   font-size: clamp(30px, 3.7vw, 48px);
   line-height: 1.05;
-  font-weight: 650;
+  font-weight: 500;
   letter-spacing: -0.055em;
 }
 .publisher-cover-title small {
@@ -3035,7 +3012,7 @@ button.publisher-remix-glass {
     inset 0 -2px 3px #a0a2aa,
     0 4px 12px rgb(0 0 0 / 0.12);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition:
     transform 220ms,
@@ -3495,7 +3472,7 @@ button.publisher-remix-glass {
   padding: 8px 10px;
 }
 .prompter-demo-frame p {
-  font-weight: 550;
+  font-weight: 500;
   line-height: 1.5;
 }
 @media (pointer: coarse) {
@@ -3604,7 +3581,7 @@ button.publisher-remix-glass {
   color: var(--sg-text);
 }
 .studio-showcase-tabs button[aria-selected="true"] {
-  font-weight: 600;
+  font-weight: 500;
 }
 .studio-showcase-tabs button svg {
   width: 15px;
@@ -3830,7 +3807,7 @@ button.publisher-remix-glass {
   padding: 0 12px;
   font-size: 13px;
   line-height: 28px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0;
   white-space: nowrap;
 }
@@ -4065,7 +4042,7 @@ button.publisher-remix-glass {
 }
 .idea-library-scene .studio-panel-heading :is(h2, .demo-heading) {
   font-size: 18px;
-  font-weight: 550;
+  font-weight: 500;
 }
 .idea-library-desktop {
   overflow-x: auto;
@@ -4159,7 +4136,7 @@ button.publisher-remix-glass {
   color: #fff;
   text-align: center;
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.5;
   text-shadow: 0 2px 6px #000;
 }
@@ -4358,7 +4335,7 @@ button.publisher-remix-glass {
 }
 .training-steps h3 {
   font-size: 18px;
-  font-weight: 550;
+  font-weight: 500;
 }
 .training-steps p {
   font-size: 15px;
@@ -4445,7 +4422,7 @@ button.publisher-remix-glass {
 .train-exercise strong {
   display: block;
   font-size: 18px;
-  font-weight: 550;
+  font-weight: 500;
 }
 .train-exercise > span:first-child > span {
   display: block;
@@ -4481,7 +4458,7 @@ button.publisher-remix-glass {
 }
 .train-guide-link h3 {
   font-size: 18px;
-  font-weight: 550;
+  font-weight: 500;
 }
 .train-guide-link p {
   font-size: 14px;
@@ -4544,7 +4521,7 @@ button.publisher-remix-glass {
 }
 .pricing-free strong {
   font-size: 16px;
-  font-weight: 550;
+  font-weight: 500;
 }
 .pricing-free span {
   display: block;
@@ -4576,7 +4553,7 @@ button.publisher-remix-glass {
 }
 .train-price-heading h2 {
   font-size: 19px;
-  font-weight: 550;
+  font-weight: 500;
 }
 .train-price-heading > span {
   color: var(--sg-text-muted);
@@ -4591,7 +4568,7 @@ button.publisher-remix-glass {
 .train-price-amount strong {
   font-size: 42px;
   line-height: 1.1;
-  font-weight: 550;
+  font-weight: 500;
   letter-spacing: -0.045em;
 }
 .train-price-amount span {
@@ -4653,7 +4630,7 @@ button.publisher-remix-glass {
 }
 .pricing-credit-costs strong {
   flex: none;
-  font-weight: 550;
+  font-weight: 500;
 }
 .pricing-credit-costs span {
   color: var(--sg-text-muted);
@@ -4759,25 +4736,46 @@ button.publisher-remix-glass {
 
 /* Homepage: headline, product tabs, then the selected product's demo. */
 .marketing-home-hero {
-  padding-block: 56px 80px;
+  padding-block: 96px 96px;
 }
 .home-showcase {
   margin-top: 36px;
 }
-/* A product page hero set on the center line, above a full-width demo. */
+/* The page opener: headline and action on the left, the explanation on the
+   right, on one baseline. Stacks in reading order below 900px. */
 .marketing-hero-centered {
-  max-width: 760px;
-  margin-inline: auto;
-  text-align: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 64px;
+  align-items: start;
+  text-align: left;
 }
-.marketing-hero-grid:has(> .studio-showcase) > .marketing-hero-centered {
-  max-width: 760px;
+.marketing-hero-centered > :is(h1, .marketing-actions, .marketing-note) {
+  grid-column: 1;
 }
-.marketing-hero-centered .marketing-lede {
-  margin-inline: auto;
+.marketing-hero-centered > .marketing-lede {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  margin-top: 0;
+  padding-top: 0.6em;
+  font-size: 18px;
+  line-height: 1.5;
+  letter-spacing: 0;
 }
 .marketing-hero-centered .marketing-actions {
-  justify-content: center;
+  margin-top: 28px;
+}
+@media (max-width: 900px) {
+  .marketing-hero-centered {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .marketing-hero-centered > .marketing-lede {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: 20px;
+    padding-top: 0;
+    font-size: 16px;
+  }
 }
 
 /* The homepage product switch uses the same capsule with two wider slots. */
@@ -4787,14 +4785,6 @@ button.publisher-remix-glass {
 }
 .studio-showcase-tabs.product-tabs button {
   font-size: 15px;
-}
-
-/* The public site uses neutral greys for sunken surfaces in light mode. The
-   app's warm cream reads as yellow against the white demo screens. */
-:root:not(.dark)
-  :is(.marketing-site, .site-neutral, .site-header, .site-footer) {
-  --sg-surface-sunken: #f4f4f5;
-  --sg-bg-2: #ececee;
 }
 
 /* Keep all account/navigation controls reachable at narrow phone widths. */
