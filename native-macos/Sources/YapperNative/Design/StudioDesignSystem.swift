@@ -150,6 +150,11 @@ extension Color {
     /// Cyan also survives being drawn on skin, which is the only place this is
     /// ever drawn.
     static let faceIndicator = Color(red: 0.20, green: 0.87, blue: 0.90)
+    /// The "on" and "done" status hue. A state, never an action.
+    static let studioSuccess = adaptive(
+        light: NSColor(hex: 0x2F9E5B),
+        dark: NSColor(hex: 0x4CC27D)
+    )
     /// `--destructive`
     static let studioDanger = Color(red: 0.898, green: 0.282, blue: 0.302)
     /// `--sg-glass-bg`

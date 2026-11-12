@@ -58,10 +58,10 @@ struct MediaSelectionBar: View {
         }
         .padding(.horizontal, 11)
         .padding(.vertical, 8)
-        .background(Color.yapperOrange.opacity(0.13))
+        .background(Color.studioAccent.opacity(0.13))
         .overlay {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(Color.yapperOrange.opacity(0.45), lineWidth: 1)
+                .strokeBorder(Color.studioAccent.opacity(0.45), lineWidth: 1)
         }
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }

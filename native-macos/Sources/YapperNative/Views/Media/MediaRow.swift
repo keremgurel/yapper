@@ -20,11 +20,11 @@ struct MediaRow: View {
             actions
         }
         .padding(9)
-        .background(isSelected ? Color.yapperOrange.opacity(0.16) : Color.raisedBackground)
+        .background(isSelected ? Color.studioAccent.opacity(0.16) : Color.raisedBackground)
         .overlay {
             RoundedRectangle(cornerRadius: 9, style: .continuous)
                 .strokeBorder(
-                    isSelected ? Color.yapperOrange.opacity(0.75) : .clear,
+                    isSelected ? Color.studioAccent.opacity(0.75) : .clear,
                     lineWidth: 1.5
                 )
         }

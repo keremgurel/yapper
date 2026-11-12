@@ -134,7 +134,7 @@ private struct OverlayChip: View {
             .background(selected ? Color.studioSelectedFill : Color.raisedBackground)
             .overlay {
                 RoundedRectangle(cornerRadius: 7)
-                    .stroke(selected ? Color.yapperOrange.opacity(0.8) : Color.studioLine, lineWidth: 1)
+                    .stroke(selected ? Color.studioAccent.opacity(0.8) : Color.studioLine, lineWidth: 1)
             }
             .clipShape(RoundedRectangle(cornerRadius: 7))
         }

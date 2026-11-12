@@ -62,6 +62,32 @@ for anything drawn over video in the editor (playhead, selection, framing and
 snap guides), because ink or white disappears into footage. It is not used for
 buttons or navigation.
 
+Editor sizes and corners come from named steps in `StudioDesignSystem.swift`.
+Text is 10, 11, 12, 13 or 15 points (`studioMicro`, `studioCaption`,
+`studioLabel`, `studioBody`, `studioSectionTitle`), and 10 is only for names
+drawn on timeline cells and badges. Corners are 4, 6, 8, 12 or 16 through
+`StudioRadius` (tag, control, field, panel, card). A view does not set its own
+point size or radius.
+
+Editor icons are drawn, like the rail's. `StudioGlyph` covers the workbench
+tabs, the timeline actions and the track rail on the same 20-point grid and
+1.6-point stroke. SF Symbols remain where a surface has not had its pass yet;
+a new editor control gets a glyph.
+
+Selection is ink on a stone fill, in the tab strip, in lists and on cards. A
+selected row never gets a coloured bar down its edge. Green (`studioSuccess`)
+marks a state that is on.
+
+Inspector controls are 26 points tall. A row puts its control beside the label
+when it fits and under the label when it does not, so a control is never
+shortened to make room. A small set of choices is a segmented track. A visual
+choice such as a text look is a row of previews (`InspectorLookRail`), not a
+menu of names. Pane headers (`WorkbenchPaneHeader`) move their buttons under
+the title in a narrow pane.
+
+Scroll bars are overlays for the whole app (`OverlayScrollers`), so content
+keeps its width when a pane starts to scroll.
+
 ### Product imagery
 
 A product screen is never shown bare. It stands on a **stage**: one of the five

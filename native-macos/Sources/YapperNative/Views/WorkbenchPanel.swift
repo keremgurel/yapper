@@ -2,34 +2,6 @@ import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 
-private enum WorkbenchTab: String, CaseIterable, Identifiable {
-    case media = "Media"
-    case quick = "Quick Edit"
-    case transcript = "Transcript"
-    /// The speaker's own picture: how it sits in the frame, and how it moves.
-    case video = "Video"
-    case audio = "Audio"
-    case text = "Text"
-    case overlays = "Overlays"
-    case captions = "Captions"
-    case filters = "Filters"
-
-    var id: String { rawValue }
-    var icon: String {
-        switch self {
-        case .media: "film.stack"
-        case .quick: "wand.and.stars"
-        case .transcript: "doc.text"
-        case .video: "video"
-        case .audio: "waveform"
-        case .text: "textformat"
-        case .overlays: "rectangle.on.rectangle"
-        case .captions: "captions.bubble"
-        case .filters: "slider.horizontal.3"
-        }
-    }
-}
-
 private enum WorkbenchDockFocus {
     case primary
     case secondary
@@ -131,6 +103,41 @@ struct WorkbenchPanel: View {
         .animation(.easeOut(duration: 0.16), value: session.oneClickEditStage)
     }
 
+    /// Two panes side by side, or one. Only offered when the panel is wide
+    /// enough to hold both.
+    @ViewBuilder
+    private var splitPaneToggle: some View {
+        if workbenchWidth >= Self.splitPaneWidth {
+            let isSplit = secondaryTab != nil
+            Button {
+                if isSplit {
+                    closeSecondaryPane()
+                } else {
+                    withAnimation(.easeOut(duration: 0.18)) {
+                        secondaryPaneDismissed = false
+                        secondaryTab = companionTab(for: selectedTab)
+                    }
+                }
+            } label: {
+                StudioGlyph(.splitPane, size: 16)
+                    .foregroundStyle(isSplit ? Color.primary : Color.studioTextMuted)
+                    .frame(width: 28, height: 28)
+                    .background(
+                        isSplit ? Color.studioSelectedFill : Color.clear,
+                        in: RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
+                    )
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.studioPlain)
+            .help(isSplit ? "Show one pane" : "Show two panes side by side")
+            .accessibilityLabel("Two panes")
+            .accessibilityAddTraits(isSplit ? .isSelected : [])
+            .padding(.horizontal, 10)
+            .frame(maxHeight: .infinity)
+            .background(Color.panelBackground)
+        }
+    }
+
     private var workbenchTabStrip: some View {
         ScrollViewReader { scrollProxy in
             ScrollView(.horizontal, showsIndicators: false) {
@@ -146,20 +153,10 @@ struct WorkbenchPanel: View {
                                 }
                             }
                         } label: {
-                            VStack(spacing: 5) {
-                                Image(systemName: tab.icon)
-                                    .font(.system(size: 14, weight: .semibold))
-                                Text(tab.rawValue)
-                                    .font(.system(size: 11, weight: .semibold))
-                            }
-                            .foregroundStyle(
-                                isTabActive(tab) ? Color.yapperOrange : Color.secondary
-                            )
-                            .frame(width: tab == .quick ? 78 : 64, height: 52)
-                            .contentShape(Rectangle())
+                            WorkbenchTabLabel(tab: tab, isActive: isTabActive(tab))
                         }
                         .buttonStyle(.studioPlain)
-        .clickableCursor()
+                        .help(tab.purpose)
                         .opacity(draggingTab == tab ? 0.58 : 1)
                         .id(tab.id)
                         .highPriorityGesture(tabDragGesture(for: tab))
@@ -168,12 +165,14 @@ struct WorkbenchPanel: View {
                             provider.suggestedName = tab.rawValue
                             return provider
                         } preview: {
-                            Label(tab.rawValue, systemImage: tab.icon)
-                                .font(.studioBodyStrong)
-                                .padding(.horizontal, 12)
-                                .frame(height: 38)
-                                .background(.regularMaterial)
-                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            HStack(spacing: 7) {
+                                StudioGlyph(tab.glyph, size: 16)
+                                Text(tab.rawValue).font(.studioBodyStrong)
+                            }
+                            .padding(.horizontal, 12)
+                            .frame(height: 38)
+                            .background(.regularMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: StudioRadius.field, style: .continuous))
                         }
                         .onDrop(
                             of: [UTType.utf8PlainText.identifier],
@@ -187,7 +186,12 @@ struct WorkbenchPanel: View {
                 }
                 .padding(.horizontal, 8)
             }
+            .safeAreaInset(edge: .trailing, spacing: 0) { splitPaneToggle }
+            .frame(height: WorkbenchTabLabel.height + 8)
             .background(Color.panelBackground)
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(Color.studioLine).frame(height: 1)
+            }
             .onChange(of: selectedTab) { _, tab in
                 withAnimation(.easeOut(duration: 0.18)) {
                     scrollProxy.scrollTo(tab.id, anchor: .center)
@@ -202,51 +206,22 @@ struct WorkbenchPanel: View {
         }
     }
 
+    /// Two panes when there is room, otherwise the one in focus. A pane has
+    /// no title bar of its own: the highlighted tab above and the heading
+    /// inside already say what it is, and a third label said it again.
     @ViewBuilder
     private func workbenchDock(width: CGFloat) -> some View {
-        if let secondaryTab, width >= 720 {
+        if let secondaryTab, width >= Self.splitPaneWidth {
             HSplitView {
-                WorkbenchDockPane(
-                    tab: selectedTab,
-                    focused: dockFocus == .primary,
-                    closeAction: nil
-                ) {
-                    workbenchContent(for: selectedTab)
-                }
-                .frame(minWidth: 300, idealWidth: width * 0.5)
-                .onTapGesture { dockFocus = .primary }
-
-                WorkbenchDockPane(
-                    tab: secondaryTab,
-                    focused: dockFocus == .secondary,
-                    closeAction: closeSecondaryPane
-                ) {
-                    workbenchContent(for: secondaryTab)
-                }
-                .frame(minWidth: 300, idealWidth: width * 0.5)
-                .onTapGesture { dockFocus = .secondary }
+                workbenchContent(for: selectedTab)
+                    .frame(minWidth: 300, idealWidth: width * 0.5, maxHeight: .infinity)
+                    .onTapGesture { dockFocus = .primary }
+                workbenchContent(for: secondaryTab)
+                    .frame(minWidth: 300, idealWidth: width * 0.5, maxHeight: .infinity)
+                    .onTapGesture { dockFocus = .secondary }
             }
-        } else if let secondaryTab {
-            VStack(spacing: 0) {
-                HStack(spacing: 5) {
-                    compactDockButton(selectedTab, focus: .primary)
-                    compactDockButton(secondaryTab, focus: .secondary)
-                    Spacer(minLength: 0)
-                    Button(action: closeSecondaryPane) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 10, weight: .bold))
-                            .frame(width: 27, height: 27)
-                    }
-                    .buttonStyle(.studioPlain)
-        .clickableCursor()
-                    .help("Close secondary pane")
-                }
-                .padding(.horizontal, 10)
-                .frame(height: 38)
-                .background(Color.raisedBackground)
-
-                workbenchContent(for: dockFocus == .secondary ? secondaryTab : selectedTab)
-            }
+        } else if let secondaryTab, dockFocus == .secondary {
+            workbenchContent(for: secondaryTab)
         } else {
             workbenchContent(for: selectedTab)
         }
@@ -282,24 +257,13 @@ struct WorkbenchPanel: View {
         }
     }
 
-    private func compactDockButton(_ tab: WorkbenchTab, focus: WorkbenchDockFocus) -> some View {
-        Button {
-            withAnimation(.easeOut(duration: 0.14)) { dockFocus = focus }
-        } label: {
-            Label(tab.rawValue, systemImage: tab.icon)
-                .font(.studioCaptionStrong)
-                .foregroundStyle(dockFocus == focus ? Color.yapperOrange : Color.secondary)
-                .padding(.horizontal, 9)
-                .frame(height: 28)
-                .background(dockFocus == focus ? Color.studioSelectedFill : Color.clear)
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-        }
-        .buttonStyle(.studioPlain)
-        .clickableCursor()
-    }
-
+    /// The tabs whose panes are on screen: both in a split, otherwise only
+    /// the one in focus.
     private func isTabActive(_ tab: WorkbenchTab) -> Bool {
-        tab == selectedTab || tab == secondaryTab
+        if workbenchWidth >= Self.splitPaneWidth {
+            return tab == selectedTab || tab == secondaryTab
+        }
+        return tab == (dockFocus == .secondary ? secondaryTab ?? selectedTab : selectedTab)
     }
 
     private func tabDragGesture(for tab: WorkbenchTab) -> some Gesture {
@@ -307,7 +271,7 @@ struct WorkbenchPanel: View {
             .onChanged { value in
                 draggingTab = tab
                 withAnimation(.easeOut(duration: 0.1)) {
-                    panelDropTargeted = value.location.y > 54
+                    panelDropTargeted = value.location.y > WorkbenchTabLabel.height + 8
                 }
             }
             .onEnded { value in
@@ -318,7 +282,7 @@ struct WorkbenchPanel: View {
                     }
                 }
 
-                if value.location.y > 54 {
+                if value.location.y > WorkbenchTabLabel.height + 8 {
                     handlePanelDrop(
                         tab.rawValue,
                         at: value.location,
@@ -333,7 +297,7 @@ struct WorkbenchPanel: View {
     private func tabTarget(at x: CGFloat) -> WorkbenchTab? {
         var cursor: CGFloat = 8
         for tab in tabOrder {
-            let width: CGFloat = tab == .quick ? 78 : 64
+            let width = tab.stripWidth
             if x < cursor + width { return tab }
             cursor += width + 2
         }
@@ -465,46 +429,6 @@ private struct WorkbenchDropDelegate: DropDelegate {
     }
 }
 
-private struct WorkbenchDockPane<Content: View>: View {
-    let tab: WorkbenchTab
-    let focused: Bool
-    let closeAction: (() -> Void)?
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                Image(systemName: tab.icon)
-                    .foregroundStyle(focused ? Color.yapperOrange : Color.secondary)
-                Text(tab.rawValue)
-                    .font(.studioCaptionStrong)
-                Spacer()
-                if let closeAction {
-                    Button(action: closeAction) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 10, weight: .bold))
-                            .frame(width: 26, height: 26)
-                    }
-                    .buttonStyle(.studioPlain)
-        .clickableCursor()
-                    .help("Close secondary pane")
-                }
-            }
-            .padding(.horizontal, 11)
-            .frame(height: 36)
-            .background(Color.raisedBackground)
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(Color.studioLine)
-                    .frame(height: 1)
-            }
-
-            content
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-}
-
 private struct WorkbenchDropGuide: View {
     var body: some View {
         HStack(spacing: 8) {
@@ -522,12 +446,12 @@ private struct WorkbenchDropGuide: View {
             Text(title)
                 .font(.studioBodyStrong)
         }
-        .foregroundStyle(Color.yapperOrange)
+        .foregroundStyle(Color.studioAccent)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.yapperOrange.opacity(0.08))
+        .background(Color.studioAccent.opacity(0.08))
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(Color.yapperOrange.opacity(0.65), style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
+                .stroke(Color.studioAccent.opacity(0.65), style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
         )
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
@@ -551,9 +475,9 @@ private struct OneClickEditProgressOverlay: View {
                 HStack(spacing: 10) {
                     Image(systemName: "wand.and.stars")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(Color.yapperOrange)
+                        .foregroundStyle(Color.studioAccent)
                         .frame(width: 32, height: 32)
-                        .background(Color.yapperOrange.opacity(0.14))
+                        .background(Color.studioAccent.opacity(0.14))
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Editing your video")
@@ -570,11 +494,11 @@ private struct OneClickEditProgressOverlay: View {
                             Group {
                                 if item.rawValue < stage.rawValue {
                                     Image(systemName: "checkmark")
-                                        .foregroundStyle(Color.yapperOrange)
+                                        .foregroundStyle(Color.studioAccent)
                                 } else if item == stage {
                                     ProgressView()
                                         .controlSize(.small)
-                                        .tint(Color.yapperOrange)
+                                        .tint(Color.studioAccent)
                                 } else {
                                     Circle()
                                         .fill(Color.secondary.opacity(0.32))
@@ -700,7 +624,7 @@ private struct QuickEditWorkbench: View {
 
             if session.isAIEditing {
                 ProgressView(value: session.aiProgress)
-                    .tint(Color.yapperOrange)
+                    .tint(Color.studioAccent)
                 Text(session.statusMessage)
                     .font(.studioCaption)
                     .foregroundStyle(.secondary)
@@ -726,29 +650,26 @@ private struct TextWorkbench: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Text")
-                            .font(.studioSectionTitle)
-                        Text("Positioned layers that stay attached to the timeline")
-                            .font(.studioCaption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer(minLength: 12)
+                WorkbenchPaneHeader(
+                    title: "Text",
+                    detail: "Titles and hooks placed over the video. They stay where you put them on the timeline."
+                ) {
                     HStack(spacing: 8) {
                         Button {
                             session.addTextLayer()
                         } label: {
                             Label("Text", systemImage: "plus")
                         }
-                        .buttonStyle(EditorSecondaryButtonStyle())
+                        .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+                        .help("Add plain text at the playhead")
 
                         Button {
                             session.addTextLayer(asHook: true)
                         } label: {
                             Label("Hook", systemImage: "wand.and.stars")
                         }
-                        .buttonStyle(EditorPrimaryButtonStyle())
+                        .buttonStyle(EditorPrimaryButtonStyle(size: .small))
+                        .help("Add a top-line hook styled for short-form video")
                     }
                     .disabled(session.project.clips.isEmpty || session.isBusy)
                 }
@@ -825,12 +746,11 @@ private struct TextLayerChip: View {
             .background(selected ? Color.studioSelectedFill : Color.raisedBackground)
             .overlay {
                 RoundedRectangle(cornerRadius: 7)
-                    .stroke(selected ? Color.yapperOrange.opacity(0.8) : Color.studioLine, lineWidth: 1)
+                    .stroke(selected ? Color.studioAccent.opacity(0.8) : Color.studioLine, lineWidth: 1)
             }
             .clipShape(RoundedRectangle(cornerRadius: 7))
         }
         .buttonStyle(.studioPlain)
-        .clickableCursor()
     }
 }
 
@@ -848,12 +768,11 @@ private struct ChoiceButton: View {
                 .background(selected ? Color.studioSelectedFill : Color.studioFaintFill)
                 .overlay {
                     RoundedRectangle(cornerRadius: 6)
-                        .stroke(selected ? Color.yapperOrange.opacity(0.78) : Color.studioLine, lineWidth: 1)
+                        .stroke(selected ? Color.studioAccent.opacity(0.78) : Color.studioLine, lineWidth: 1)
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 6))
         }
         .buttonStyle(.studioPlain)
-        .clickableCursor()
     }
 }
 
@@ -869,11 +788,11 @@ private struct QuickAction: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 9) {
                 if busy {
-                    ProgressView().controlSize(.small).tint(Color.yapperOrange)
+                    ProgressView().controlSize(.small).tint(Color.studioAccent)
                 } else {
                     Image(systemName: icon)
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Color.yapperOrange)
+                        .foregroundStyle(Color.studioAccent)
                 }
                 Text(title)
                     .font(.studioBodyStrong)
@@ -891,7 +810,6 @@ private struct QuickAction: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.studioPlain)
-        .clickableCursor()
         .disabled(disabled || busy)
         .opacity(disabled ? 0.48 : 1)
     }
@@ -1064,7 +982,7 @@ private struct TranscriptWorkbench: View {
             }
 
             if session.isAIEditing {
-                ProgressView(value: session.aiProgress).tint(Color.yapperOrange)
+                ProgressView(value: session.aiProgress).tint(Color.studioAccent)
                 Text(session.statusMessage).font(.studioCaption).foregroundStyle(.secondary)
                 if session.canCancelCurrentOperation,
                    let operation = session.activeOperation?.operation {
@@ -1434,9 +1352,8 @@ private struct FeatureWorkbench: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
-                Image(systemName: tab.icon)
-                    .font(.system(size: 21, weight: .medium))
-                    .foregroundStyle(Color.yapperOrange)
+                StudioGlyph(tab.glyph, size: 22)
+                    .foregroundStyle(Color.primary)
                     .frame(width: 28)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(tab.rawValue)

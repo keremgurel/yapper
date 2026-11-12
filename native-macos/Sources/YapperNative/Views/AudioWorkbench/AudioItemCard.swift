@@ -35,7 +35,7 @@ struct AudioItemCard: View {
             Button(action: preview) {
                 Image(systemName: isPlaying ? "stop.fill" : "play.fill")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(isPlaying ? Color.yapperOrange : Color.secondary)
+                    .foregroundStyle(isPlaying ? Color.studioAccent : Color.secondary)
                     .frame(width: 28, height: 28)
                     .contentShape(Rectangle())
             }
@@ -46,9 +46,9 @@ struct AudioItemCard: View {
             Button(action: add) {
                 Image(systemName: "plus")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(disabled ? Color.secondary : Color.white)
+                    .foregroundStyle(disabled ? Color.secondary : Color.studioAccentForeground)
                     .frame(width: 28, height: 28)
-                    .background(disabled ? Color.studioFaintFill : Color.yapperOrange)
+                    .background(disabled ? Color.studioFaintFill : Color.studioAccent)
                     .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             }
             .buttonStyle(.studioPlain)
@@ -62,7 +62,7 @@ struct AudioItemCard: View {
         .background(Color.raisedBackground)
         .overlay {
             RoundedRectangle(cornerRadius: AudioWorkbenchMetrics.cardRadius, style: .continuous)
-                .stroke(isPlaying ? Color.yapperOrange.opacity(0.5) : Color.studioLine, lineWidth: 1)
+                .stroke(isPlaying ? Color.studioAccent.opacity(0.5) : Color.studioLine, lineWidth: 1)
         }
         .clipShape(RoundedRectangle(cornerRadius: AudioWorkbenchMetrics.cardRadius, style: .continuous))
     }
@@ -75,9 +75,9 @@ struct AudioIconTile: View {
     var body: some View {
         Image(systemName: systemName)
             .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(Color.yapperOrange)
+            .foregroundStyle(Color.primary)
             .frame(width: 30, height: 30)
-            .background(Color.yapperOrange.opacity(0.1))
+            .background(Color.studioFaintFill)
             .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
             .accessibilityHidden(true)
     }

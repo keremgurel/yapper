@@ -67,11 +67,12 @@ struct InspectorSection<Content: View>: View {
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 8, weight: .black))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(Color.studioTextMuted)
+                        .frame(width: 10)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                     Text(title)
-                        .font(.studioCaptionStrong)
+                        .font(.studioLabelStrong)
                         .foregroundStyle(.primary)
                 }
                 .contentShape(Rectangle())
@@ -102,12 +103,12 @@ struct InspectorSection<Content: View>: View {
                 InspectorSwitch(isOn: isEnabled)
             }
         }
-        .frame(height: 30)
+        .frame(height: 32)
     }
 }
 
-/// A small switch in the brand's colour rather than the system accent, so a
-/// panel of them reads as one piece.
+/// A small switch in the action colour rather than the system accent, so a
+/// panel of them reads as one piece: ink when on, a stone well when off.
 struct InspectorSwitch: View {
     @Binding var isOn: Bool
 
@@ -116,18 +117,18 @@ struct InspectorSwitch: View {
             isOn.toggle()
         } label: {
             Capsule(style: .continuous)
-                .fill(isOn ? Color.yapperOrange : Color.studioInputBackground)
+                .fill(isOn ? Color.studioAccent : Color.studioTray)
                 .overlay {
                     Capsule(style: .continuous)
                         .strokeBorder(isOn ? Color.clear : Color.studioLine, lineWidth: 1)
                 }
                 .overlay(alignment: isOn ? .trailing : .leading) {
                     Circle()
-                        .fill(.white)
+                        .fill(isOn ? Color.studioAccentForeground : Color.white)
                         .padding(1.5)
                         .shadow(color: .black.opacity(0.25), radius: 1, y: 0.5)
                 }
-                .frame(width: 26, height: 15)
+                .frame(width: 28, height: 16)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.studioPlain)

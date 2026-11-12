@@ -27,7 +27,7 @@ struct OverlayKeyframeControls: View {
             } label: {
                 Image(systemName: isOnKey ? "diamond.fill" : "diamond")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(isOnKey ? Color.yapperOrange : Color.secondary)
+                    .foregroundStyle(isOnKey ? Color.studioAccent : Color.secondary)
                     .frame(width: 24, height: 22)
                     .contentShape(Rectangle())
             }

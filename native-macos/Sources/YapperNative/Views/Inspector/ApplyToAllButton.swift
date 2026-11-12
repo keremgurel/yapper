@@ -44,7 +44,7 @@ struct InspectorHeaderButtonStyle: ButtonStyle {
             .padding(.horizontal, 6)
             .frame(height: 22)
             .background {
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
                     .fill(Color.studioFaintFill.opacity(hovering || configuration.isPressed ? 1 : 0))
             }
             .contentShape(Rectangle())

@@ -83,11 +83,11 @@ struct MediaWorkbench: View {
     private var dropHighlight: some View {
         if isDropTargeted {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.yapperOrange.opacity(0.09))
+                .fill(Color.studioAccent.opacity(0.09))
                 .overlay {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .strokeBorder(
-                            Color.yapperOrange.opacity(0.7),
+                            Color.studioAccent.opacity(0.7),
                             style: StrokeStyle(lineWidth: 2, dash: [7, 5])
                         )
                 }
@@ -105,7 +105,7 @@ struct MediaEmptyState: View {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "plus.rectangle.on.rectangle")
                     .font(.system(size: 23, weight: .light))
-                    .foregroundStyle(Color.yapperOrange)
+                    .foregroundStyle(Color.studioAccent)
                     .frame(width: 30)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("No media yet")

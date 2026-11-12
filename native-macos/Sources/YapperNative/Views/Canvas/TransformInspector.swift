@@ -67,9 +67,12 @@ struct TransformInspector: View {
             }
         ) {
             if let clip = session.speedClip {
-                InspectorRow("Speed", detail: "Pitch stays the same at any speed") {
-                    InspectorSelect(
-                        options: ClipSpeed.presets.map { .init(value: $0, label: ClipSpeed.label($0)) },
+                // The speeds people actually pick, one click each, with the
+                // field beside them for anything in between. The full list
+                // used to sit in a dropdown, two clicks from every answer.
+                InspectorRow("Speed", detail: "Type any speed from 0.25× to 4×. Pitch stays the same.") {
+                    InspectorSegmentedControl(
+                        options: ClipSpeed.quickPresets.map { .init(value: $0, label: ClipSpeed.label($0)) },
                         selection: clip.resolvedPlaybackRate,
                         onSelect: { rate in Task { await session.setClipSpeed(rate) } }
                     )
@@ -279,7 +282,7 @@ private struct KeyframeControls: View {
             } label: {
                 Image(systemName: isOnKey ? "diamond.fill" : "diamond")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(isOnKey ? Color.yapperOrange : Color.secondary)
+                    .foregroundStyle(isOnKey ? Color.studioAccent : Color.secondary)
                     .frame(width: 24, height: 22)
                     .contentShape(Rectangle())
             }

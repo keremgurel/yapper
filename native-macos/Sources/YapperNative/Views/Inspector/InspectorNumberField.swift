@@ -8,7 +8,7 @@ struct InspectorNumberField: View {
     let value: Double
     let range: ClosedRange<Double>
     var decimals: Int = 0
-    var width: CGFloat = 44
+    var width: CGFloat = 48
     /// Called once the creator commits: Return, or leaving the field.
     let onCommit: (Double) -> Void
 
@@ -19,17 +19,17 @@ struct InspectorNumberField: View {
         TextField(controlLabel, text: $text)
             .accessibilityLabel(controlLabel)
             .textFieldStyle(.plain)
-            .font(.system(size: 11, weight: .semibold))
+            .font(.studioLabelStrong)
             .monospacedDigit()
             .multilineTextAlignment(.center)
             .focused($isFocused)
-            .frame(width: width, height: 22)
+            .frame(width: width, height: InspectorMetrics.controlHeight)
             .background(Color.studioInputBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
                     .strokeBorder(
-                        isFocused ? Color.yapperOrange.opacity(0.8) : Color.clear,
+                        isFocused ? Color.studioAccent.opacity(0.55) : Color.clear,
                         lineWidth: 1
                     )
             }
@@ -78,7 +78,7 @@ struct InspectorSlider: View {
             )
             .accessibilityLabel(controlLabel)
             .controlSize(.small)
-            .tint(Color.yapperOrange)
+            .tint(Color.studioAccent)
             .frame(minWidth: 90, maxWidth: 260)
 
             InspectorNumberField(
