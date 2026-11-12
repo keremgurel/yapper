@@ -5000,3 +5000,115 @@ button.publisher-remix-glass {
   width: 14px;
   height: 14px;
 }
+
+/* Demo interiors on the shared foundation. The scripted scenes keep their
+   content and timing; these rules give every tab the same light headings,
+   hairline objects, stone trays and pill controls as the rest of the site. */
+.studio-showcase-screen :is(.idea-demo-capture, .idea-capture-heading) h2,
+.studio-showcase-screen .prompter-demo-controls h2,
+.studio-showcase-screen .publisher-demo-heading h3,
+.studio-showcase-screen .captions-demo-settings h2 {
+  font-size: clamp(1.25rem, 1.05rem + 0.6vw, 1.625rem);
+  font-weight: 300;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+.studio-screen-heading {
+  border-bottom: var(--sg-hairline) solid var(--sg-border-strong);
+}
+
+/* Objects inside a screen are raised with the hairline recipe, not outlined. */
+.demo-dictation,
+.writing-demo-assistant,
+.writing-demo-you,
+.writing-demo-options button[title="Use this hook"],
+.publisher-destination,
+.feature-edit {
+  border-color: transparent;
+  box-shadow: var(--sg-shadow-raised);
+}
+.demo-dictation,
+.writing-demo-assistant,
+.feature-edit {
+  border-radius: 16px;
+}
+.writing-demo-assistant,
+.feature-edit {
+  box-shadow: var(--sg-shadow-panel);
+}
+.writing-demo-you,
+.writing-demo-options button[title="Use this hook"],
+.publisher-destination {
+  border-radius: 12px;
+  background: var(--sg-surface);
+}
+.publisher-destination-heading {
+  border-bottom: var(--sg-hairline) solid var(--sg-border-strong);
+}
+.editor-demo-timeline {
+  border-color: transparent;
+  border-top: var(--sg-hairline) solid var(--sg-border-strong);
+}
+.editor-demo-caption {
+  font-weight: 500;
+}
+
+/* Teleprompter controls: a stone tray with a raised white selection, and
+   pill actions. */
+.prompter-segments {
+  border: 0;
+  border-radius: 999px;
+  background: var(--sg-surface-tray);
+}
+.prompter-segment-indicator {
+  border-radius: 999px;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.08));
+}
+.prompter-segment-buttons button {
+  border-radius: 999px;
+}
+.prompter-segment-buttons button[aria-pressed="true"] {
+  color: var(--sg-text);
+}
+.prompter-demo-actions button {
+  padding-inline: 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sg-surface);
+  box-shadow: var(--sg-shadow-raised);
+}
+.prompter-demo-actions button:first-child {
+  background: var(--sg-accent);
+  color: var(--sg-accent-fg);
+  box-shadow: none;
+}
+.prompter-demo-actions button:first-child:hover {
+  background: var(--sg-accent-strong);
+}
+.prompter-demo-frame,
+.publisher-cover {
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 var(--sg-hairline) rgb(0 0 0 / 0.2),
+    0 18px 40px -18px rgb(0 0 0 / 0.45);
+}
+
+/* Publishing: the send action is the same ink pill as every primary action,
+   and the cover controls are glass pills. */
+.publisher-send {
+  height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sg-accent);
+  color: var(--sg-accent-fg);
+  box-shadow: none;
+  font-size: 15px;
+  font-weight: 500;
+}
+.publisher-remix-glass {
+  border-radius: 999px;
+  border-color: rgb(255 255 255 / 0.22);
+}
+.publisher-cover-type {
+  border-color: rgb(255 255 255 / 0.22);
+}

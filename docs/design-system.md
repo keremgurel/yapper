@@ -73,6 +73,13 @@ shadow falling down and left (`.studio-showcase-screen`). On the hero the
 screen's foot runs off the bottom of the stage. Stages are 16px, screens 12px.
 Do not add a second light direction, a glow colour, or a border to a screen.
 
+### Demo interiors
+
+The scripted demos inside product screens follow the same rules as real
+screens: light headings, objects raised with the hairline recipe instead of a
+border, stone trays with a raised selection for segmented choices, and pill
+actions with ink for the main one. Scene content and timing are unchanged.
+
 ### Reveal cards
 
 A directory of destinations uses `.reveal-card`: a stone tile with a small
