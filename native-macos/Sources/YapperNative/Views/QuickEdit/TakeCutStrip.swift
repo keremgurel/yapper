@@ -21,7 +21,7 @@ struct TakeCutStrip: View {
                 )
             }
         }
-        .frame(height: 14)
+        .frame(height: 6)
         .accessibilityElement()
         .accessibilityLabel("Kept \(formatTime(summary.keptDuration)) of \(formatTime(summary.sourceDuration))")
     }

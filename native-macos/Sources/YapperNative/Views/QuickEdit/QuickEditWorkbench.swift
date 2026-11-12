@@ -1,49 +1,26 @@
 import SwiftUI
 
-/// The fast path through an edit: 1-Click Edit on top, and under it the three
+/// The fast path through an edit: 1-Click Edit, and under it the three
 /// smaller things people reach for straight after.
 struct QuickEditWorkbench: View {
     @ObservedObject var session: EditorSession
 
     private var hasFootage: Bool { !session.project.clips.isEmpty }
     private var hasTranscript: Bool { session.project.hasTimelineTranscript }
+    private var isBlocked: Bool { !hasFootage || session.isBusy }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 10) {
                 OneClickEditCard(session: session)
-
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("Or do one step yourself")
-                        .font(.studioLabelStrong)
-                        .foregroundStyle(Color.studioTextMuted)
-                        .padding(.bottom, 4)
-                    QuickEditRow(
-                        glyph: .transcript,
-                        title: hasTranscript ? "Transcript" : "Transcribe",
-                        detail: hasTranscript
-                            ? "Listen to the take again and replace the words"
-                            : "Turn what you said into words you can cut by",
-                        actionTitle: hasTranscript ? "Transcribe again" : "Transcribe",
-                        disabled: !hasFootage || session.isBusy
-                    ) { session.startTranscription() }
-                    separator
-                    QuickEditRow(
-                        glyph: .captions,
-                        title: "Captions",
-                        detail: captionDetail,
-                        actionTitle: captionActionTitle,
-                        disabled: !hasFootage || session.isBusy
-                            || !session.appActions.availability(.captionVisibility, in: session).isAvailable
-                    ) { Task { await session.toggleCaptions() } }
-                    separator
-                    QuickEditRow(
-                        glyph: .text,
-                        title: "Text hook",
-                        detail: "A title over the video, starting at the playhead",
-                        actionTitle: "Add hook",
-                        disabled: !hasFootage || session.isBusy
-                    ) { session.addTextLayer(asHook: true) }
+                // One line when the pane is wide, wrapping as it narrows.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 6) { transcribe; captions; hook }
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 6) { transcribe; captions }
+                        hook
+                    }
+                    VStack(alignment: .leading, spacing: 6) { transcribe; captions; hook }
                 }
             }
             .padding(16)
@@ -51,19 +28,44 @@ struct QuickEditWorkbench: View {
         .inspectorPane(maxWidth: 620)
     }
 
-    private var separator: some View {
-        Rectangle().fill(Color.studioLine).frame(height: 1)
+    private var transcribe: some View {
+        QuickEditButton(
+            glyph: .transcript,
+            title: hasTranscript ? "Transcribe again" : "Transcribe",
+            help: hasTranscript
+                ? "Listen to the take again and replace the transcript"
+                : "Turn what you said into words you can cut by",
+            disabled: isBlocked
+        ) { session.startTranscription() }
+    }
+
+    private var captions: some View {
+        QuickEditButton(
+            glyph: .captions,
+            title: captionTitle,
+            help: captionHelp,
+            disabled: isBlocked || !session.appActions.availability(.captionVisibility, in: session).isAvailable
+        ) { Task { await session.toggleCaptions() } }
+    }
+
+    private var hook: some View {
+        QuickEditButton(
+            glyph: .text,
+            title: "Add text hook",
+            help: "Put a title over the video, starting at the playhead",
+            disabled: isBlocked
+        ) { session.addTextLayer(asHook: true) }
     }
 
     /// Hidden captions are still there, so the action offers them back rather
     /// than offering to build them again.
-    private var captionActionTitle: String {
-        if session.captionsVisible { return "Hide" }
-        return session.hasCaptions ? "Show" : "Add captions"
+    private var captionTitle: String {
+        if session.captionsVisible { return "Hide captions" }
+        return session.hasCaptions ? "Show captions" : "Add captions"
     }
 
-    private var captionDetail: String {
-        if session.captionsVisible { return "On. Hiding them keeps every card for later." }
-        return session.hasCaptions ? "Hidden. Your cards are still here." : "Made from the transcript"
+    private var captionHelp: String {
+        if session.captionsVisible { return "Hide the captions. Every card is kept for later." }
+        return session.hasCaptions ? "Bring your caption cards back" : "Make captions from the transcript"
     }
 }
