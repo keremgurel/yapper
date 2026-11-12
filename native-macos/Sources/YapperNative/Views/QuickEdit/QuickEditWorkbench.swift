@@ -13,14 +13,16 @@ struct QuickEditWorkbench: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 OneClickEditCard(session: session)
-                // One line when the pane is wide, wrapping as it narrows.
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 6) { transcribe; captions; hook }
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(spacing: 6) { transcribe; captions }
-                        hook
-                    }
-                    VStack(alignment: .leading, spacing: 6) { transcribe; captions; hook }
+                // Equal tiles: three across under the band when there is
+                // room, fewer as the pane narrows.
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 168), spacing: 8)],
+                    alignment: .leading,
+                    spacing: 8
+                ) {
+                    transcribe
+                    captions
+                    hook
                 }
             }
             .padding(16)
@@ -29,9 +31,10 @@ struct QuickEditWorkbench: View {
     }
 
     private var transcribe: some View {
-        QuickEditButton(
+        QuickEditTile(
             glyph: .transcript,
             title: hasTranscript ? "Transcribe again" : "Transcribe",
+            state: hasTranscript ? "\(session.transcriptFlowCache.words.count) words now" : "No transcript yet",
             help: hasTranscript
                 ? "Listen to the take again and replace the transcript"
                 : "Turn what you said into words you can cut by",
@@ -40,18 +43,20 @@ struct QuickEditWorkbench: View {
     }
 
     private var captions: some View {
-        QuickEditButton(
+        QuickEditTile(
             glyph: .captions,
             title: captionTitle,
+            state: captionState,
             help: captionHelp,
             disabled: isBlocked || !session.appActions.availability(.captionVisibility, in: session).isAvailable
         ) { Task { await session.toggleCaptions() } }
     }
 
     private var hook: some View {
-        QuickEditButton(
+        QuickEditTile(
             glyph: .text,
             title: "Add text hook",
+            state: "At the playhead",
             help: "Put a title over the video, starting at the playhead",
             disabled: isBlocked
         ) { session.addTextLayer(asHook: true) }
@@ -62,6 +67,12 @@ struct QuickEditWorkbench: View {
     private var captionTitle: String {
         if session.captionsVisible { return "Hide captions" }
         return session.hasCaptions ? "Show captions" : "Add captions"
+    }
+
+    private var captionState: String {
+        let cards = session.project.storedCaptions.count
+        if session.captionsVisible { return "\(cards) cards showing" }
+        return session.hasCaptions ? "\(cards) cards hidden" : "None yet"
     }
 
     private var captionHelp: String {
