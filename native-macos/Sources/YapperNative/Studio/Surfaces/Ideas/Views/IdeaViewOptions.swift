@@ -122,7 +122,7 @@ struct IdeaViewOptionsForm: View {
                 .padding(.horizontal, 10)
                 .frame(height: 26)
                 .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(on ? Color.studioSelectedFill : Color.studioFaintFill))
-                .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous).strokeBorder(on ? Color.yapperOrange.opacity(0.6) : Color.clear, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous).strokeBorder(on ? Color.studioAccent.opacity(0.6) : Color.clear, lineWidth: 1))
         }
         .buttonStyle(.studioPlain)
     }

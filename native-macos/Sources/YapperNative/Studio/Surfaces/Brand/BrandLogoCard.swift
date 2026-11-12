@@ -13,7 +13,7 @@ struct BrandLogoCard: View {
             BrandLogoPreview(logo: logo)
                 .overlay(alignment: .topLeading) {
                     if logo.isPrimary {
-                        NativeChip(text: "Primary", tone: .orange).padding(10)
+                        NativeChip(text: "Primary").padding(10)
                     }
                 }
             Rectangle().fill(Color.studioLine).frame(height: 1)

@@ -40,7 +40,7 @@ struct PosterSourceTabs: View {
                 .frame(height: 36)
                 .overlay(alignment: .bottom) {
                     if active {
-                        Capsule().fill(Color.yapperOrange).frame(height: 2).padding(.horizontal, 12)
+                        Capsule().fill(Color.studioAccent).frame(height: 2).padding(.horizontal, 12)
                     }
                 }
         }

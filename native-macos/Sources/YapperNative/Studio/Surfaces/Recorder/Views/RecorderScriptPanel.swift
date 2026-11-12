@@ -127,7 +127,7 @@ private struct RecorderViewChoices: View {
                                 .font(.system(size: 12)).foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 0)
-                        if selected { Image(systemName: "checkmark").foregroundStyle(Color.yapperOrange) }
+                        if selected { Image(systemName: "checkmark").foregroundStyle(Color.studioAccent) }
                     }
                     .padding(.horizontal, 12).padding(.vertical, 9)
                     .background(

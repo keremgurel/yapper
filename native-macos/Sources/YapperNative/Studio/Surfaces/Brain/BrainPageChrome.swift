@@ -68,7 +68,7 @@ struct BrainTabBar: View {
             .padding(.vertical, 10)
             .overlay(alignment: .bottom) {
                 if active {
-                    Capsule().fill(Color.yapperOrange).frame(height: 2).padding(.horizontal, 10)
+                    Capsule().fill(Color.studioAccent).frame(height: 2).padding(.horizontal, 10)
                 }
             }
         }

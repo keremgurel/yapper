@@ -51,7 +51,7 @@ struct PosterPage: View {
         .overlay {
             if dropTargeted {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(Color.yapperOrange, lineWidth: 2)
+                    .strokeBorder(Color.studioAccent, lineWidth: 2)
                     .padding(12)
                     .allowsHitTesting(false)
             }

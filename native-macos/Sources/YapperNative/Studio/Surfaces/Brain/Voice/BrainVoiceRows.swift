@@ -81,10 +81,10 @@ struct BrainVideoTile: View {
                 }
                 Spacer(minLength: 0)
                 ZStack {
-                    Circle().strokeBorder(selected ? Color.yapperOrange : Color.studioLineStrong, lineWidth: 1)
+                    Circle().strokeBorder(selected ? Color.studioAccent : Color.studioLineStrong, lineWidth: 1)
                     if selected {
-                        Circle().fill(Color.yapperOrange)
-                        Image(systemName: "checkmark").font(.system(size: 9, weight: .semibold)).foregroundStyle(.white)
+                        Circle().fill(Color.studioAccent)
+                        Image(systemName: "checkmark").font(.system(size: 9, weight: .semibold)).foregroundStyle(Color.studioAccentForeground)
                     }
                 }
                 .frame(width: 18, height: 18)
@@ -95,7 +95,7 @@ struct BrainVideoTile: View {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(selected ? Color.studioSelectedFill : .clear)
                     .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(selected ? Color.yapperOrange : Color.studioLine))
+                        .strokeBorder(selected ? Color.studioAccent : Color.studioLine))
             )
         }
         .buttonStyle(.studioPlain)

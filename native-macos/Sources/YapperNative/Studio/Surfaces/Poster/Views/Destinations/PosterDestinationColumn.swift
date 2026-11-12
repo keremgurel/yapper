@@ -152,7 +152,7 @@ struct PosterDestinationColumn: View {
                         Button(platform.label) { settingsPlatform = platform }
                             .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                             .accessibilityAddTraits(current == platform ? .isSelected : [])
-                            .foregroundStyle(current == platform ? Color.yapperOrange : Color.primary)
+                            .foregroundStyle(current == platform ? Color.studioAccent : Color.primary)
                     }
                 }
                 Divider()

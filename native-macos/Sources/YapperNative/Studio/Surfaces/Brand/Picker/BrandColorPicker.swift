@@ -62,7 +62,7 @@ struct BrandColorPicker: View {
             ForEach(BrandLimits.suggestions, id: \.self) { preset in
                 Button { apply(preset) } label: {
                     Circle().fill(BrandHex.color(preset))
-                        .overlay(Circle().strokeBorder(preset == hex ? Color.yapperOrange : Color.studioLine, lineWidth: preset == hex ? 2 : 1))
+                        .overlay(Circle().strokeBorder(preset == hex ? Color.studioAccent : Color.studioLine, lineWidth: preset == hex ? 2 : 1))
                         .frame(width: 20, height: 20)
                 }
                 .buttonStyle(.studioPlain)

@@ -42,12 +42,8 @@ struct BrainSkillCard: View {
         }
         .buttonStyle(.studioPlain)
         .overlay(alignment: .topTrailing) {
-            Toggle("", isOn: Binding(get: { skill.enabled }, set: { onToggle($0) }))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                .tint(Color.yapperOrange)
-                .labelsHidden()
-                .clickableCursor()
+            StudioSwitch(isOn: Binding(get: { skill.enabled }, set: { onToggle($0) }))
+                .accessibilityLabel("Use this skill")
                 .help(skill.enabled ? "On: Yapper can use this skill" : "Off: Yapper ignores this skill")
                 .accessibilityLabel("\(skill.enabled ? "Turn off" : "Turn on") \(skill.name)")
                 .padding(.top, 14)

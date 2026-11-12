@@ -16,8 +16,8 @@ struct PosterStepProgress: View {
         HStack(spacing: 5) {
             Text(String(number)).font(.system(size: 10, weight: .semibold))
                 .frame(width: 20, height: 20)
-                .background(current ? Color.yapperOrange : Color.studioInputBackground, in: Circle())
-                .foregroundStyle(current ? Color.black : .secondary)
+                .background(current ? Color.studioAccent : Color.studioInputBackground, in: Circle())
+                .foregroundStyle(current ? Color.studioAccentForeground : Color.studioTextMuted)
             Text(label).font(.system(size: 12, weight: current ? .semibold : .regular))
                 .foregroundStyle(current ? .primary : .secondary)
         }

@@ -88,7 +88,7 @@ struct IdeaCanvasVersionEmpty: View {
     private var placeholder: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 6) {
-                Image(systemName: "sparkles").font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.yapperOrange)
+                Image(systemName: "sparkles").font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.studioAccent)
                 Text("Writing the \(format.noun)… this takes about half a minute.")
                     .font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
                     .nativeShimmer()

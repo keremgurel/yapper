@@ -50,7 +50,7 @@ struct PosterBanners: View {
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 12) {
                 if uploading {
-                    Image(systemName: "icloud.and.arrow.up").foregroundStyle(Color.yapperOrange)
+                    Image(systemName: "icloud.and.arrow.up").foregroundStyle(Color.studioAccent)
                 } else {
                     ProgressView().controlSize(.small)
                 }
@@ -64,7 +64,7 @@ struct PosterBanners: View {
             }
             .padding(.horizontal, 16).padding(.vertical, 12)
             GeometryReader { proxy in
-                Rectangle().fill(Color.yapperOrange)
+                Rectangle().fill(Color.studioAccent)
                     .frame(width: proxy.size.width * (uploading ? upload.progress : 1))
             }
             .frame(height: 3)

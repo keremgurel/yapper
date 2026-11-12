@@ -16,12 +16,12 @@ struct RecorderDevicesPanel: View {
                 NativeField(label: "Microphone") {
                     picker(devices.microphones, selection: capture.micID, empty: "No microphone found") { capture.selectMic($0) }
                 }
-                Toggle(isOn: $showGuides) {
-                    Text("Framing guides").font(.system(size: 13))
+                HStack(spacing: 8) {
+                    Text("Framing guides").font(.studioBody)
+                    Spacer(minLength: 8)
+                    StudioSwitch(isOn: $showGuides)
+                        .accessibilityLabel("Framing guides")
                 }
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .clickableCursor()
                 Text("Space records and pauses, Return finishes, G shows guides, F focuses the frame.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)

@@ -19,12 +19,12 @@ struct AutomationDestinationCard: View {
                 Spacer(minLength: 0)
                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 15))
-                    .foregroundStyle(selected ? Color.yapperOrange : Color.secondary.opacity(0.5))
+                    .foregroundStyle(selected ? Color.studioAccent : Color.secondary.opacity(0.5))
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(shape.fill(selected ? Color.studioSelectedFill : Color.studioInputBackground))
-            .overlay(shape.strokeBorder(selected ? Color.yapperOrange : Color.studioLine, lineWidth: 1))
+            .overlay(shape.strokeBorder(selected ? Color.studioAccent : Color.studioLine, lineWidth: 1))
             .contentShape(shape)
         }
         .buttonStyle(.studioPlain)
@@ -58,12 +58,10 @@ struct AutomationSwitchRow: View {
                 }
             }
             Spacer(minLength: 0)
-            Toggle(title, isOn: $isOn)
-                .toggleStyle(.switch)
-                .labelsHidden()
-                .tint(Color.yapperOrange)
+            StudioSwitch(isOn: $isOn)
+                .accessibilityLabel(title)
                 .disabled(disabled)
-                .clickableCursor(enabled: !disabled)
+                .opacity(disabled ? 0.5 : 1)
         }
     }
 }

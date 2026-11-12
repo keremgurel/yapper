@@ -36,7 +36,7 @@ struct PosterDestinationToggles: View {
             HStack(spacing: 6) {
                 Image(systemName: on ? "checkmark" : platform.symbol)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(on ? Color.yapperOrange : Color.secondary)
+                    .foregroundStyle(on ? Color.studioAccent : Color.secondary)
                 Text(platform.label).font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(on ? Color.primary : Color.secondary)
             }
@@ -44,7 +44,7 @@ struct PosterDestinationToggles: View {
             .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(on ? Color.panelBackground : Color.clear))
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(on ? Color.yapperOrange : Color.studioLine, lineWidth: 1)
+                    .strokeBorder(on ? Color.studioAccent : Color.studioLine, lineWidth: 1)
             )
         }
         .buttonStyle(.studioPlain)

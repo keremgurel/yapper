@@ -59,7 +59,7 @@ struct IdeaBoard: View {
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.studioInputBackground))
         .overlay {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(target == group.id && canDrag ? Color.yapperOrange : Color.clear, lineWidth: 2)
+                .strokeBorder(target == group.id && canDrag ? Color.studioAccent : Color.clear, lineWidth: 2)
         }
         .dropDestination(for: String.self) { ids, _ in
             guard canDrag, let status = group.status, let id = ids.first, let row = rows.first(where: { $0.id == id }) else { return false }

@@ -51,7 +51,7 @@ struct IdeaCanvasFormatTabs: View {
             .padding(.vertical, 11)
             .overlay(alignment: .bottom) {
                 if on {
-                    Capsule().fill(Color.yapperOrange).frame(height: 2).offset(y: 0.5)
+                    Capsule().fill(Color.studioAccent).frame(height: 2).offset(y: 0.5)
                 }
             }
             .contentShape(Rectangle())

@@ -28,7 +28,7 @@ struct BrandLogosSection: View {
             if dropping {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(Color.studioSelectedFill)
-                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.yapperOrange, lineWidth: 1.5))
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.studioAccent, lineWidth: 1.5))
                     .allowsHitTesting(false)
             }
         }

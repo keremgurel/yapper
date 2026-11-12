@@ -37,7 +37,7 @@ struct PosterAttachOriginal: View {
         switch upload.phase {
         case .uploading:
             VStack(alignment: .leading, spacing: 6) {
-                ProgressView(value: upload.progress).tint(Color.yapperOrange)
+                ProgressView(value: upload.progress).tint(Color.studioAccent)
                 Text("Uploading \(Int(upload.progress * 100))%").font(.system(size: 12).monospacedDigit()).foregroundStyle(.secondary)
             }
         case .preparing:

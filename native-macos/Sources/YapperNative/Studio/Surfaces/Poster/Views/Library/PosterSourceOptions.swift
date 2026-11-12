@@ -37,7 +37,7 @@ struct PosterSourceOptions: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: 68)
             .background(RoundedRectangle(cornerRadius: 8).fill(selected || muted ? Color.studioInputBackground : Color.panelBackground))
-            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(selected ? Color.yapperOrange : Color.studioLine))
+            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(selected ? Color.studioAccent : Color.studioLine))
             .contentShape(Rectangle())
         }
         .buttonStyle(.studioPlain)

@@ -169,9 +169,9 @@ struct IdeaCheckMark: View {
     let on: Bool
     var body: some View {
         RoundedRectangle(cornerRadius: 5, style: .continuous)
-            .fill(on ? Color.yapperOrange : Color.clear)
-            .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).strokeBorder(on ? Color.yapperOrange : Color.studioLineStrong, lineWidth: 1))
-            .overlay { if on { Image(systemName: "checkmark").font(.system(size: 10, weight: .semibold)).foregroundStyle(.white) } }
+            .fill(on ? Color.studioAccent : Color.clear)
+            .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).strokeBorder(on ? Color.studioAccent : Color.studioLineStrong, lineWidth: 1))
+            .overlay { if on { Image(systemName: "checkmark").font(.system(size: 10, weight: .semibold)).foregroundStyle(Color.studioAccentForeground) } }
             .frame(width: 16, height: 16)
     }
 }

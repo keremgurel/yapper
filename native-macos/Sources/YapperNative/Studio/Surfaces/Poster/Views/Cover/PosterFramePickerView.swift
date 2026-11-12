@@ -111,7 +111,7 @@ struct PosterFramePickerView: View {
         .frame(height: 64)
         .focusable()
         .focused($stripFocused)
-        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(stripFocused ? Color.yapperOrange : Color.clear, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(stripFocused ? Color.studioAccent : Color.clear, lineWidth: 1))
         .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in
             guard picker.ready else { return .ignored }
             onChooseFrame()

@@ -20,7 +20,7 @@ struct IdeaDraftingIndicator: View {
             HStack(spacing: 6) {
                 Image(systemName: "sparkles")
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Color.yapperOrange)
+                    .foregroundStyle(Color.studioAccent)
                 Text(steps[index] + "…")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)

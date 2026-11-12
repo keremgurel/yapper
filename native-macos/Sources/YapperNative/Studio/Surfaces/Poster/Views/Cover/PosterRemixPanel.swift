@@ -27,7 +27,7 @@ struct PosterRemixPanel: View {
             .background {
                 RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.studioInputBackground)
                     .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(dropping ? Color.yapperOrange : Color.studioLine, lineWidth: dropping ? 1.5 : 1))
+                        .strokeBorder(dropping ? Color.studioAccent : Color.studioLine, lineWidth: dropping ? 1.5 : 1))
             }
             .posterReferenceDrop(isTargeted: $dropping, enabled: !remix.generating, remix: remix)
 
