@@ -169,6 +169,10 @@ struct StudioGlyphShape: Shape {
             p.polyline([(6.6, 7), (10, 3.6), (13.4, 7)])
         case .play:
             p.polyline([(6.4, 4.4), (15.6, 10), (6.4, 15.6)], closed: true)
+        case .check:
+            p.polyline([(4.8, 10.6), (8.4, 14.2), (15.2, 6.2)])
+        case .stop:
+            p.polyline([(5.6, 5.6), (14.4, 5.6), (14.4, 14.4), (5.6, 14.4)], closed: true)
         case .pause:
             p.line(7, 4.8, 7, 15.2)
             p.line(13, 4.8, 13, 15.2)

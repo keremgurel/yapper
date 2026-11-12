@@ -41,15 +41,15 @@ struct AudioLibraryRail: View {
             }
             .foregroundStyle(
                 isSelected
-                    ? Color.yapperOrange
+                    ? Color.primary
                     : count == 0 ? Color.secondary.opacity(0.55) : Color.primary
             )
             .padding(.leading, candidate.isIndented ? 20 : 8)
             .padding(.trailing, 8)
             .frame(height: 27)
             .background {
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(isSelected ? Color.yapperOrange.opacity(0.12) : .clear)
+                RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
+                    .fill(isSelected ? Color.studioSelectedFill : .clear)
             }
             .contentShape(Rectangle())
         }

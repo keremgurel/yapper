@@ -21,7 +21,7 @@ struct BackdropSwatch<Picture: View>: View {
                 .padding(2)
                 .overlay {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(selected ? Color.yapperOrange : Color.clear, lineWidth: 2)
+                        .strokeBorder(selected ? Color.studioAccent : Color.clear, lineWidth: 2)
                 }
         }
         .buttonStyle(.studioPlain)

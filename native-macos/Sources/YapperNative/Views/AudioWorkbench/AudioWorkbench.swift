@@ -46,7 +46,7 @@ struct AudioWorkbench: View {
             Button {
                 ImportPanels.openAudio(for: session)
             } label: {
-                Label("Import audio", systemImage: "square.and.arrow.down")
+                StudioGlyphLabel("Import audio", glyph: .plus, size: 13)
             }
             .buttonStyle(EditorSecondaryButtonStyle())
             .disabled(session.project.clips.isEmpty)

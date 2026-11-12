@@ -87,7 +87,7 @@ struct MentionSuggestionList: View {
             HStack(spacing: 8) {
                 Image(systemName: file.isScene ? "sparkles" : file.isImage ? "photo" : "film")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(isActive ? Color.white : Color.yapperOrange)
+                    .foregroundStyle(isActive ? Color.primary : Color.studioTextMuted)
                     .frame(width: 16)
 
                 Text(file.name)
@@ -103,13 +103,13 @@ struct MentionSuggestionList: View {
                 Text(detail(for: file))
                     .font(.system(size: 10.5))
                     .monospacedDigit()
-                    .foregroundStyle(isActive ? Color.white.opacity(0.75) : .secondary)
+                    .foregroundStyle(Color.studioTextMuted)
                     .lineLimit(1)
             }
             .padding(.horizontal, 8)
             .frame(height: Self.rowHeight)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(isActive ? Color.yapperOrange : Color.clear)
+            .background(isActive ? Color.studioSelectedFill : Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             .contentShape(Rectangle())
         }

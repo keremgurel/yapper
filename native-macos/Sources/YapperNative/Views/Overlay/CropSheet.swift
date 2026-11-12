@@ -79,9 +79,9 @@ struct CropSheet: View {
         HStack(alignment: .center, spacing: 14) {
             Image(systemName: "crop")
                 .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(Color.yapperOrange)
+                .foregroundStyle(Color.primary)
                 .frame(width: 34, height: 34)
-                .background(Color.yapperOrange.opacity(0.12), in: RoundedRectangle(cornerRadius: 9))
+                .background(Color.studioTray, in: RoundedRectangle(cornerRadius: StudioRadius.field))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(request.name)
