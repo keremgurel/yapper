@@ -58,12 +58,20 @@ shadow falling down and left (`.studio-showcase-screen`). On the hero the
 screen's foot runs off the bottom of the stage. Stages are 16px, screens 12px.
 Do not add a second light direction, a glow colour, or a border to a screen.
 
+### Reveal cards
+
+A directory of destinations uses `.reveal-card`: a stone tile with a small
+ringed tag, a light centred title and up to three lines of copy. Hover or
+keyboard focus fades in the destination's stage backdrop, turns the copy white
+and shows a white arrow button in the top-right corner. The features index is
+the reference. Reduced motion keeps the state change and drops the movement.
+
 ### Navigation icons
 
 Studio's rail uses its own glyph set in
-`src/components/studio-shell/studio-nav-icon.tsx`: a 20px grid, a 1.5px rounded
-stroke and soft geometric forms. Idle rows are muted; the current row is ink on
-a stone pill. Add a destination by drawing a glyph in the same grid, not by
+`src/components/studio-shell/studio-nav-icon.tsx`: a 20px grid, a 1.6px rounded
+stroke and soft geometric forms. Rows are 32px on a 36px pitch with medium
+labels. Idle rows are muted; the current row is ink on a stone pill. Add a destination by drawing a glyph in the same grid, not by
 importing a stock icon.
 
 ## Typography

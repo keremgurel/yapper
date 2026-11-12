@@ -546,27 +546,141 @@
   display: grid;
   grid-template-columns: 1fr 2fr;
   gap: 64px;
-  padding-block: 40px;
-  border-top: 1px solid var(--sg-border);
+  padding-block: 56px;
+  border-top: var(--sg-hairline) solid var(--sg-border-strong);
   scroll-margin-top: 100px;
 }
 .marketing-feature-list {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 32px;
+  gap: 12px;
 }
-.marketing-feature-list a {
-  display: block;
+
+/* Reveal card: a quiet stone tile at rest. Hover or focus brings up its stage
+   backdrop, turns the copy white and shows where the card leads. */
+.reveal-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 320px;
+  padding: 24px;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 16px;
+  background: var(--sg-surface-sunken);
+  box-shadow: var(--sg-shadow-inset);
   color: var(--sg-text);
   text-decoration: none;
+  transition: color var(--sg-dur-slow) var(--sg-ease-in-out);
 }
-.marketing-feature-list a:hover h3 {
-  text-decoration: underline;
-  text-underline-offset: 4px;
+.reveal-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: #12162a;
+  background-image:
+    linear-gradient(rgb(0 0 0 / 0), rgb(0 0 0 / 0.3)), var(--reveal-image);
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transform: scale(1.06);
+  transition:
+    opacity var(--sg-dur-slow) var(--sg-ease-in-out),
+    transform 900ms var(--sg-ease-out);
 }
-.marketing-feature-list .type-description {
-  margin-top: 10px;
+.reveal-card[data-palette="ideas"] {
+  --reveal-image: url("/images/grainient/ideas.webp");
+}
+.reveal-card[data-palette="script"] {
+  --reveal-image: url("/images/grainient/script.webp");
+}
+.reveal-card[data-palette="record"] {
+  --reveal-image: url("/images/grainient/record.webp");
+}
+.reveal-card[data-palette="edit"] {
+  --reveal-image: url("/images/grainient/edit.webp");
+}
+.reveal-card[data-palette="publish"] {
+  --reveal-image: url("/images/grainient/publish.webp");
+}
+.reveal-card-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--sg-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  transition: color var(--sg-dur-slow) var(--sg-ease-in-out);
+}
+.reveal-card-tag::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+.reveal-card-title {
+  margin-block: auto;
+  padding-block: 32px;
+  font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+  font-weight: 300;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  text-align: center;
+  text-wrap: balance;
+}
+.reveal-card-copy {
   font-size: 15px;
+  line-height: 1.47;
+  letter-spacing: 0.01em;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.reveal-card-arrow {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #fff;
+  color: #000;
+  opacity: 0;
+  transform: translate(-4px, 4px) scale(0.9);
+  transition:
+    opacity var(--sg-dur-base) var(--sg-ease-in-out),
+    transform var(--sg-dur-base) var(--sg-ease-out);
+}
+.reveal-card:is(:hover, :focus-visible) {
+  color: #fff;
+}
+.reveal-card:is(:hover, :focus-visible)::before {
+  opacity: 1;
+  transform: none;
+}
+.reveal-card:is(:hover, :focus-visible) .reveal-card-tag {
+  color: rgb(255 255 255 / 0.8);
+}
+.reveal-card:is(:hover, :focus-visible) .reveal-card-arrow {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-card,
+  .reveal-card::before,
+  .reveal-card-tag,
+  .reveal-card-arrow {
+    transition: none;
+  }
+  .reveal-card::before {
+    transform: none;
+  }
 }
 .marketing-benefits {
   display: grid;

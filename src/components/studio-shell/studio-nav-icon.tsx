@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { StudioIcon } from "@/data/studio-nav";
 
 /**
- * Studio's own navigation glyphs. One 20px grid, one 1.5px rounded stroke, and
+ * Studio's own navigation glyphs. One 20px grid, one 1.6px rounded stroke, and
  * soft geometric forms, so the rail reads as a single family instead of a
  * handful of stock icons. Each glyph is drawn in `currentColor`.
  */
@@ -110,7 +110,7 @@ export default function StudioNavIcon({
       height="20"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.5"
+      strokeWidth="1.6"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
