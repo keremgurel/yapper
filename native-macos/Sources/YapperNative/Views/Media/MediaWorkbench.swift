@@ -11,6 +11,11 @@ struct MediaWorkbench: View {
     /// True while a Finder drag is over the panel, so the whole thing lights up
     /// rather than one row of it.
     @State private var isDropTargeted = false
+    /// The part of each file chosen so far. Kept after its strip is closed, so
+    /// the choice is still there when the strip comes back.
+    @State private var trims: [UUID: MediaTrimRange] = [:]
+    /// The one file whose trim strip is open.
+    @State private var trimmingID: UUID?
 
     private var canOverlay: Bool { !session.project.clips.isEmpty }
 
@@ -68,15 +73,29 @@ struct MediaWorkbench: View {
                     MediaRow(
                         session: session,
                         media: media,
-                        thumbnail: session.thumbnailsByMedia[media.id]?.first,
+                        thumbnails: session.thumbnailsByMedia[media.id] ?? [],
+                        waveform: session.waveformByMedia[media.id] ?? [],
                         waveformProgress: session.waveformProgressByMedia[media.id],
                         isSelected: session.isMediaSelected(media.id),
                         canOverlay: canOverlay,
+                        trim: trimBinding(for: media),
+                        isTrimming: trimmingID == media.id,
+                        onToggleTrim: { trimmingID = trimmingID == media.id ? nil : media.id },
                         onClick: { session.clickMedia(media.id, modifier: $0) }
                     )
                 }
             }
         }
+    }
+
+    /// Only media with a length of its own can be trimmed: a picture or a
+    /// generated visual has no start and end to move.
+    private func trimBinding(for media: ProjectMedia) -> Binding<MediaTrimRange>? {
+        guard !media.isImage, !media.isScene, media.duration > 0 else { return nil }
+        return Binding(
+            get: { trims[media.id] ?? MediaTrimRange(duration: media.duration) },
+            set: { trims[media.id] = $0 }
+        )
     }
 
     @ViewBuilder

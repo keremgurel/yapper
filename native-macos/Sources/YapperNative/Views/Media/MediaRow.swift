@@ -10,21 +10,41 @@ struct MediaRow: View {
     /// a waveform finishing on one file does not re-run the body of every other.
     let session: EditorSession
     let media: ProjectMedia
-    let thumbnail: CGImage?
+    /// Frames along the file. The first is the row's picture; all of them
+    /// make the trim strip.
+    let thumbnails: [CGImage]
+    let waveform: [Float]
     let waveformProgress: Double?
     let isSelected: Bool
     let canOverlay: Bool
+    /// The part of the file chosen so far. Bound only while the row can trim.
+    let trim: Binding<MediaTrimRange>?
+    let isTrimming: Bool
+    let onToggleTrim: () -> Void
     let onClick: (MediaSelection.Modifier) -> Void
+    /// The moment under a trim handle while it is dragged, shown as the row's
+    /// picture so the cut point can be seen.
+    @State private var scrubTime: Double?
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 12) {
-                summary
-                actions
+        VStack(alignment: .leading, spacing: 10) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    summary
+                    actions
+                }
+                VStack(alignment: .leading, spacing: 10) {
+                    summary
+                    actions
+                }
             }
-            VStack(alignment: .leading, spacing: 10) {
-                summary
-                actions
+            if isTrimming, let trim {
+                MediaTrimPanel(
+                    thumbnails: thumbnails,
+                    waveform: waveform,
+                    range: trim,
+                    onScrub: { scrubTime = $0 }
+                )
             }
         }
         .padding(10)
@@ -54,12 +74,32 @@ struct MediaRow: View {
 
     private var summary: some View {
         HStack(spacing: 12) {
-            MediaRowPreview(thumbnail: thumbnail)
+            MediaRowPreview(thumbnail: frame)
             MediaRowDetails(media: media, waveformProgress: waveformProgress)
         }
     }
 
     private var actions: some View {
-        MediaRowActions(session: session, media: media, canOverlay: canOverlay)
+        MediaRowActions(
+            session: session,
+            media: media,
+            canOverlay: canOverlay,
+            range: chosenRange,
+            isTrimming: trim == nil ? nil : isTrimming,
+            onToggleTrim: onToggleTrim
+        )
+    }
+
+    /// The trimmed part, or nil while the whole file is still chosen.
+    private var chosenRange: MediaTrimRange? {
+        guard let range = trim?.wrappedValue, !range.isFull else { return nil }
+        return range
+    }
+
+    /// The frame nearest the handle being dragged, else the first one.
+    private var frame: CGImage? {
+        guard let scrubTime, media.duration > 0, thumbnails.count > 1 else { return thumbnails.first }
+        let index = Int(scrubTime / media.duration * Double(thumbnails.count))
+        return thumbnails[min(thumbnails.count - 1, max(0, index))]
     }
 }
