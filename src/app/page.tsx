@@ -33,7 +33,7 @@ export default function HomePage() {
               <p className="marketing-lede">
                 Ideas that sound like you. A teleprompter that keeps you
                 natural. One click to cut the retakes. Post to your channels
-                from one place—and get back to creating.
+                from one place, and get back to creating.
               </p>
               <div className="marketing-actions">
                 <StudioCtaButton size="lg" />
