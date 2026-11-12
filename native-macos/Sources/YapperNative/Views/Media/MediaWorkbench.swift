@@ -14,15 +14,26 @@ struct MediaWorkbench: View {
     /// The part of each file chosen so far. Kept after its strip is closed, so
     /// the choice is still there when the strip comes back.
     @State private var trims: [UUID: MediaTrimRange] = [:]
-    /// The one file whose trim strip is open.
-    @State private var trimmingID: UUID?
+    /// Whether the list is narrowed to the files not on the timeline yet.
+    @State private var showsOnlyUnplaced = false
+
+    /// The one file picked, whose trim strip is open. Picking several is for
+    /// acting on them together, so no strip shows then.
+    private var trimmingID: UUID? {
+        session.mediaSelection.count == 1 ? session.mediaSelection.ids.first : nil
+    }
+
+    private var usage: [UUID: MediaUsage] {
+        MediaUsage.byMedia(clips: session.project.clips, overlays: session.overlays)
+    }
 
     private var canOverlay: Bool { !session.project.clips.isEmpty }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             header
-            if !session.mediaSelection.isEmpty {
+            // One file's actions are on its own row. The bar is for several.
+            if session.mediaSelection.count > 1 {
                 MediaSelectionBar(session: session)
             }
             if session.project.media.isEmpty {
@@ -53,7 +64,7 @@ struct MediaWorkbench: View {
     private var header: some View {
         WorkbenchPaneHeader(
             title: "Media",
-            detail: "Every file in this project. Drop more in from Finder."
+            detail: "Click a file to trim it before adding. Drop more in from Finder."
         ) {
             Button {
                 ImportPanels.openMedia(for: session)
@@ -67,22 +78,38 @@ struct MediaWorkbench: View {
     }
 
     private var list: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 8) {
-                ForEach(session.project.media) { media in
-                    MediaRow(
-                        session: session,
-                        media: media,
-                        thumbnails: session.thumbnailsByMedia[media.id] ?? [],
-                        waveform: session.waveformByMedia[media.id] ?? [],
-                        waveformProgress: session.waveformProgressByMedia[media.id],
-                        isSelected: session.isMediaSelected(media.id),
-                        canOverlay: canOverlay,
-                        trim: trimBinding(for: media),
-                        isTrimming: trimmingID == media.id,
-                        onToggleTrim: { trimmingID = trimmingID == media.id ? nil : media.id },
-                        onClick: { session.clickMedia(media.id, modifier: $0) }
-                    )
+        let usage = usage
+        let all = session.project.media
+        let unplaced = all.filter { usage[$0.id]?.isPlaced != true }
+        let shown = showsOnlyUnplaced ? unplaced : all
+        return VStack(alignment: .leading, spacing: 10) {
+            // Only once the question exists: some placed, some not.
+            if !unplaced.isEmpty, unplaced.count < all.count {
+                InspectorSegmentedControl(
+                    options: [
+                        .init(value: false, label: "All \(all.count)"),
+                        .init(value: true, label: "Not placed \(unplaced.count)"),
+                    ],
+                    selection: showsOnlyUnplaced
+                ) { showsOnlyUnplaced = $0 }
+            }
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 8) {
+                    ForEach(shown) { media in
+                        MediaRow(
+                            session: session,
+                            media: media,
+                            thumbnails: session.thumbnailsByMedia[media.id] ?? [],
+                            waveform: session.waveformByMedia[media.id] ?? [],
+                            waveformProgress: session.waveformProgressByMedia[media.id],
+                            isSelected: session.isMediaSelected(media.id),
+                            canOverlay: canOverlay,
+                            trim: trimBinding(for: media),
+                            isTrimming: trimmingID == media.id,
+                            usage: usage[media.id] ?? .none,
+                            onClick: { session.clickMedia(media.id, modifier: $0) }
+                        )
+                    }
                 }
             }
         }

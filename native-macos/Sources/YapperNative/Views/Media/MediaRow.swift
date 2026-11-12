@@ -19,8 +19,9 @@ struct MediaRow: View {
     let canOverlay: Bool
     /// The part of the file chosen so far. Bound only while the row can trim.
     let trim: Binding<MediaTrimRange>?
+    /// True while this is the one file picked, which is when its strip shows.
     let isTrimming: Bool
-    let onToggleTrim: () -> Void
+    let usage: MediaUsage
     let onClick: (MediaSelection.Modifier) -> Void
     /// The moment under a trim handle while it is dragged, shown as the row's
     /// picture so the cut point can be seen.
@@ -42,6 +43,7 @@ struct MediaRow: View {
                 MediaTrimPanel(
                     thumbnails: thumbnails,
                     waveform: waveform,
+                    usedParts: usage.parts,
                     range: trim,
                     onScrub: { scrubTime = $0 }
                 )
@@ -74,8 +76,11 @@ struct MediaRow: View {
 
     private var summary: some View {
         HStack(spacing: 12) {
-            MediaRowPreview(thumbnail: frame)
-            MediaRowDetails(media: media, waveformProgress: waveformProgress)
+            MediaRowPreview(
+                thumbnail: frame,
+                duration: media.isImage || media.isScene ? nil : media.duration
+            )
+            MediaRowDetails(media: media, waveformProgress: waveformProgress, usage: usage)
         }
     }
 
@@ -84,9 +89,7 @@ struct MediaRow: View {
             session: session,
             media: media,
             canOverlay: canOverlay,
-            range: chosenRange,
-            isTrimming: trim == nil ? nil : isTrimming,
-            onToggleTrim: onToggleTrim
+            range: chosenRange
         )
     }
 

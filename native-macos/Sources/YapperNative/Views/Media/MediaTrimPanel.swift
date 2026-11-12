@@ -5,12 +5,17 @@ import SwiftUI
 struct MediaTrimPanel: View {
     let thumbnails: [CGImage]
     let waveform: [Float]
+    /// The parts of the file already on the timeline.
+    var usedParts: [MediaUsage.Part] = []
     @Binding var range: MediaTrimRange
     let onScrub: (Double?) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             MediaTrimStrip(thumbnails: thumbnails, waveform: waveform, range: $range, onScrub: onScrub)
+            if !usedParts.isEmpty {
+                MediaUsedLane(parts: usedParts, duration: range.duration)
+            }
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 8) {
                     times
@@ -61,8 +66,9 @@ struct MediaTrimPanel: View {
     }
 
     private var summary: String {
-        range.isFull
+        if !range.isFull { return "\(MediaTrimTime.length(range.length)) will be added" }
+        return usedParts.isEmpty
             ? "Drag either end to add only part of this file"
-            : "\(MediaTrimTime.length(range.length)) will be added"
+            : "Drag either end to add part of it. The line underneath marks what is already placed."
     }
 }

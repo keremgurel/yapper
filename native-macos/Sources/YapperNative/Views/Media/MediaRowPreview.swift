@@ -1,8 +1,11 @@
 import SwiftUI
 
-/// The first frame of a file, or a spinner until there is one.
+/// A frame of a file, or a spinner until there is one, with its length in
+/// the corner the way a video is shown everywhere else.
 struct MediaRowPreview: View {
     let thumbnail: CGImage?
+    /// Nil for a picture, which has no length.
+    var duration: Double?
 
     var body: some View {
         Group {
@@ -19,6 +22,17 @@ struct MediaRowPreview: View {
         // A file with a transparent background still needs a tile to sit on.
         .background(Color.studioTray)
         .clipped()
+        .overlay(alignment: .bottomTrailing) {
+            if let duration {
+                Text(formatTime(duration))
+                    .font(.studioTimecodeMicro)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .background(Color.black.opacity(0.62), in: RoundedRectangle(cornerRadius: StudioRadius.tag))
+                    .padding(4)
+            }
+        }
         .clipShape(RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous))
     }
 }

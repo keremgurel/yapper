@@ -1,56 +1,27 @@
 import SwiftUI
 
-/// The two places a file can go, the trim toggle, and the menu with
-/// everything else.
+/// The two places a file can go, and the menu with everything else.
 struct MediaRowActions: View {
     let session: EditorSession
     let media: ProjectMedia
     let canOverlay: Bool
     /// The part to add, when the file has been trimmed. Nil adds all of it.
     let range: MediaTrimRange?
-    /// Nil for a file with nothing to trim, such as a picture.
-    let isTrimming: Bool?
-    let onToggleTrim: () -> Void
 
     private var part: String { range == nil ? "" : "selection " }
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 6) {
-                trimButton
                 addButtons(main: "Add \(part)to main track", overlay: "Add \(part)as overlay")
                 moreMenu
             }
             .fixedSize()
             HStack(spacing: 6) {
-                trimButton
                 addButtons(main: "Main track", overlay: "Overlay")
                 moreMenu
             }
             .fixedSize()
-            // The narrowest pane: where a file goes on one line, what else can
-            // be done to it on the next.
-            VStack(alignment: .leading, spacing: 6) {
-                addButtons(main: "Main track", overlay: "Overlay")
-                HStack(spacing: 6) {
-                    trimButton
-                    moreMenu
-                }
-            }
-            .fixedSize()
-        }
-    }
-
-    @ViewBuilder
-    private var trimButton: some View {
-        if let isTrimming {
-            Button(action: onToggleTrim) {
-                StudioGlyphLabel(isTrimming ? "Hide trim" : "Trim", glyph: .split, size: 13)
-            }
-            .buttonStyle(EditorGhostButtonStyle(size: .small))
-            .help(isTrimming
-                ? "Close the trim strip. The part you chose is kept."
-                : "Choose the part of this file to add, before it goes on the timeline")
         }
     }
 
