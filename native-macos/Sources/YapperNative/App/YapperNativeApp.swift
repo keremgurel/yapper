@@ -64,6 +64,10 @@ struct YapperNativeApp: App {
             AppShellView(session: session)
                 .frame(minWidth: 1_100, minHeight: 700)
                 .preferredColorScheme(theme.colorScheme)
+                // System controls (sliders, progress bars, pop-up menus) take
+                // the app's ink rather than the Mac's accent colour, so they
+                // match the controls drawn by hand.
+                .tint(Color.studioAccent)
                 .onOpenURL { url in
                     // A project double-clicked in Finder, a video, image or
                     // sound opened with Yapper, or the sign-in ticket.
