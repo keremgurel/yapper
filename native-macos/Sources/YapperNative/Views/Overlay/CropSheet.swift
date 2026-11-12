@@ -77,16 +77,11 @@ struct CropSheet: View {
 
     private var header: some View {
         HStack(alignment: .center, spacing: 14) {
-            Image(systemName: "crop")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(Color.primary)
-                .frame(width: 34, height: 34)
-                .background(Color.studioTray, in: RoundedRectangle(cornerRadius: StudioRadius.field))
-
             VStack(alignment: .leading, spacing: 3) {
                 Text(request.name)
-                    .font(.system(size: 17, weight: .bold))
-                Text(targetID == nil ? "All portions · replaces crop animation" : "This portion only · other portions stay unchanged")
+                    .font(.studioSectionTitle)
+                    .lineLimit(2)
+                Text(targetID == nil ? "Every portion gets this crop, replacing any crop animation." : "Only this portion changes. The others keep their crop.")
                     .font(.studioCaption)
                     .foregroundStyle(.secondary)
             }
@@ -94,11 +89,11 @@ struct CropSheet: View {
             Spacer(minLength: 12)
 
             Text(readout)
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .monospacedDigit()
-                .padding(.horizontal, 11)
-                .padding(.vertical, 7)
-                .background(Color.primary.opacity(0.07), in: Capsule())
+                .font(.studioTimecode)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.studioTray, in: Capsule())
+                .help("How much of the picture's width and height is kept")
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 15)
@@ -106,27 +101,17 @@ struct CropSheet: View {
 
     private var controls: some View {
         HStack(spacing: 14) {
-            Text("Aspect")
-                .font(.studioCaption)
-                .foregroundStyle(.secondary)
+            rowLabel("Shape")
 
-            Picker("Aspect", selection: $aspect) {
-                ForEach(CropAspect.allCases) { option in
-                    Text(option.title).tag(option)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 430)
-            .onChange(of: aspect) { _, newValue in
-                apply(newValue)
+            InspectorSegmentedControl(
+                options: CropAspect.allCases.map { .init(value: $0, label: $0.title) },
+                selection: aspect
+            ) { chosen in
+                aspect = chosen
+                apply(chosen)
             }
 
             Spacer(minLength: 12)
-
-            Label("Drag inside to reposition", systemImage: "arrow.up.and.down.and.arrow.left.and.right")
-                .font(.studioCaption)
-                .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 11)
@@ -139,25 +124,37 @@ struct CropSheet: View {
                 aspect = .free
                 session.applyCrop(.full, to: activeRequest)
             }
-            .buttonStyle(EditorSecondaryButtonStyle())
+            .buttonStyle(EditorSecondaryButtonStyle(size: .small))
             .disabled(crop.isFull)
+            .help("Show the whole picture again")
 
-            Label("Edges and corners resize", systemImage: "rectangle.dashed")
+            Text("Drag inside the box to move it. Drag an edge or corner to resize it.")
                 .font(.studioCaption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.studioTextMuted)
 
             Spacer(minLength: 0)
 
             Button("Done") { session.endCropping() }
-                .buttonStyle(EditorPrimaryButtonStyle())
+                .buttonStyle(EditorPrimaryButtonStyle(size: .small))
                 .keyboardShortcut(.defaultAction)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
     }
 
+    /// One column for the three row labels, so their controls start on the
+    /// same edge.
+    private static let labelWidth: CGFloat = 64
+
+    private func rowLabel(_ title: String) -> some View {
+        Text(title)
+            .font(.studioCaption)
+            .foregroundStyle(Color.studioTextMuted)
+            .frame(width: Self.labelWidth, alignment: .leading)
+    }
+
     private var readout: String {
-        "W \(Int((crop.width * 100).rounded()))%  ·  H \(Int((crop.height * 100).rounded()))%"
+        "\(Int((crop.width * 100).rounded()))% wide · \(Int((crop.height * 100).rounded()))% tall"
     }
 
     private var fractionRatio: Double? {
@@ -194,8 +191,8 @@ struct CropSheet: View {
 
     private var scopeControls: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 12) {
-                Text("Edit").font(.studioCaption).foregroundStyle(.secondary)
+            HStack(spacing: 14) {
+                rowLabel("Applies to")
                 Picker("Overlay portion", selection: $targetID) {
                     ForEach(Array(portions.enumerated()), id: \.element.id) { index, portion in
                         Text("Portion \(index + 1) · \(formatTime(portion.timelineStart)) · \(String(format: "%.1fs", portion.duration))")
@@ -206,7 +203,7 @@ struct CropSheet: View {
                     }
                 }
                 .labelsHidden()
-                .frame(maxWidth: 340)
+                .fixedSize()
                 .onChange(of: targetID) { _, _ in
                     aspect = .free
                     if let target {
@@ -230,16 +227,18 @@ struct CropSheet: View {
                 }
             }
             if let target, supportsCropKeys {
-                HStack(spacing: 10) {
+                HStack(spacing: 14) {
                     Text(String(format: "%.2fs", localTime))
-                        .font(.studioCaption).monospacedDigit().frame(width: 52, alignment: .leading)
+                        .font(.studioTimecode)
+                        .foregroundStyle(Color.studioTextMuted)
+                        .frame(width: Self.labelWidth, alignment: .leading)
                     Slider(value: $localTime, in: 0...max(0.001, target.duration))
                         .accessibilityLabel("Time within this overlay portion")
                         .onChange(of: localTime) { _, time in
                             crop = OverlayKeyTrack.crop(of: target, at: time)
                             session.seekToTimelineTime(target.timelineStart + time)
                         }
-                    Text(OverlayKeyTrack.isKeyed(target) ? "Crop edits add a key here" : "Add a key to animate, then scrub and crop")
+                    Text(OverlayKeyTrack.isKeyed(target) ? "Cropping here adds a keyframe" : "Add a keyframe to animate the crop, then scrub and crop")
                         .font(.studioCaption).foregroundStyle(.secondary)
                 }
             }
