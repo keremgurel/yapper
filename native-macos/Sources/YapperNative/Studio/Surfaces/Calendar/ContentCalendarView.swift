@@ -52,7 +52,7 @@ struct ContentCalendarView: View {
                 .padding(.top, 8)
             } else {
                 Text("Drag a planned post to another day to reschedule it. Outlined badges are posts already live on your channels.")
-                    .font(.system(size: 12))
+                    .font(.studioLabel)
                     .foregroundStyle(.secondary)
                     .padding(.top, 12)
             }

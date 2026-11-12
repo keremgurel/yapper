@@ -19,7 +19,7 @@ struct PosterRemixPanel: View {
         VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 0) {
                 attachments.padding(12)
-                NativeTextArea(text: prompt, placeholder: "Describe the thumbnail", font: .system(size: 13), minHeight: 44, chrome: false)
+                NativeTextArea(text: prompt, placeholder: "Describe the thumbnail", font: .studioBody, minHeight: 44, chrome: false)
                     .disabled(remix.generating)
                     .padding(.horizontal, 12)
                 footer.padding(12)
@@ -32,7 +32,7 @@ struct PosterRemixPanel: View {
             .posterReferenceDrop(isTargeted: $dropping, enabled: !remix.generating, remix: remix)
 
             if let error = remix.referenceError ?? remix.error {
-                Text(error).font(.system(size: 12)).foregroundStyle(NativeChip.Tone.yellow.color)
+                Text(error).font(.studioLabel).foregroundStyle(NativeChip.Tone.yellow.color)
             }
         }
     }
@@ -73,7 +73,7 @@ struct PosterRemixPanel: View {
                     .disabled(remix.generating)
             }
             Spacer()
-            Text("12 credits").font(.system(size: 11)).foregroundStyle(.secondary)
+            Text("12 credits").font(.studioCaption).foregroundStyle(.secondary)
             Button(action: onGenerate) {
                 HStack(spacing: 6) {
                     if remix.generating { ProgressView().controlSize(.mini) } else { Image(systemName: "sparkles") }

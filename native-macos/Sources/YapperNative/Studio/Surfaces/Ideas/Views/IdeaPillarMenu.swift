@@ -14,7 +14,7 @@ struct IdeaPillarMenu: View {
                 if let name = row.pillar, !name.isEmpty {
                     NativeChip(text: name, tone: IdeaPillarTone.tone(for: name), dot: true)
                 } else {
-                    Text("Add pillar").font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text("Add pillar").font(.studioLabel).foregroundStyle(.secondary)
                 }
                 Image(systemName: "chevron.down").font(.system(size: 9, weight: .medium)).foregroundStyle(.secondary)
             }
@@ -33,7 +33,7 @@ struct IdeaPillarMenu: View {
                     option("No pillar", selected: false) { changes.change(row.id, to: nil) }
                 }
                 if pillars.pillars.isEmpty {
-                    Text("Add pillars in Brain first.").font(.system(size: 12)).foregroundStyle(.secondary).padding(8)
+                    Text("Add pillars in Brain first.").font(.studioLabel).foregroundStyle(.secondary).padding(8)
                 }
             }
             .padding(4)
@@ -49,9 +49,9 @@ struct IdeaPillarMenu: View {
         } label: {
             HStack(spacing: 8) {
                 Circle().fill(IdeaPillarTone.tone(for: name).color).frame(width: 6, height: 6)
-                Text(name).font(.system(size: 13, weight: .medium)).lineLimit(1)
+                Text(name).font(.studioBodyStrong).lineLimit(1)
                 Spacer(minLength: 12)
-                if selected { Image(systemName: "checkmark").font(.system(size: 11, weight: .semibold)) }
+                if selected { Image(systemName: "checkmark").font(.studioCaptionStrong) }
             }
             .padding(.horizontal, 8).padding(.vertical, 6)
             .contentShape(Rectangle())

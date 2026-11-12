@@ -31,8 +31,8 @@ struct IdeaBoard: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 if let status = group.status { Circle().fill(status.tone.color).frame(width: 6, height: 6) }
-                Text(group.label).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
-                Text("\(group.items.count)").font(.system(size: 12).monospacedDigit()).foregroundStyle(.secondary)
+                Text(group.label).font(.studioLabelStrong).foregroundStyle(.secondary)
+                Text("\(group.items.count)").font(.studioLabel.monospacedDigit()).foregroundStyle(.secondary)
             }
             .padding(.horizontal, 6).padding(.top, 4)
 
@@ -50,7 +50,7 @@ struct IdeaBoard: View {
             }
             if group.items.isEmpty {
                 Text(canDrag ? "Nothing here. Drag a card here to move it." : "Nothing here")
-                    .font(.system(size: 12)).foregroundStyle(.secondary)
+                    .font(.studioLabel).foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity).padding(.vertical, 20)
             }
         }
@@ -91,7 +91,7 @@ struct IdeaBoardCard: View {
         Button(action: onOpen) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(row.title.isEmpty ? "Untitled" : row.title)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.studioBodyStrong)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                 if row.pillar != nil || !row.formats.isEmpty {
@@ -102,7 +102,7 @@ struct IdeaBoardCard: View {
                 }
                 if let meter = IdeaScriptMeter.label(row.script) {
                     Label("~\(meter)", systemImage: "doc.text")
-                        .font(.system(size: 11).monospacedDigit())
+                        .font(.studioCaption.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
             }

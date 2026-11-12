@@ -17,7 +17,7 @@ struct PosterHashtagEditor: View {
                             Text("#\(tag)")
                             Image(systemName: "xmark").font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary)
                         }
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.studioLabelStrong)
                         .padding(.horizontal, 8).padding(.vertical, 3)
                         .background(Capsule().fill(Color.studioFaintFill))
                     }
@@ -26,7 +26,7 @@ struct PosterHashtagEditor: View {
                 }
                 TextField("Add hashtag", text: $typing)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 12))
+                    .font(.studioLabel)
                     .frame(width: 110)
                     .onSubmit(commit)
                     .onChange(of: typing) { _, value in
@@ -34,7 +34,7 @@ struct PosterHashtagEditor: View {
                     }
             }
             Text("\(tags.count) \(tags.count == 1 ? "hashtag" : "hashtags"). \(min) to \(max) suits this platform.")
-                .font(.system(size: 11)).foregroundStyle(.secondary)
+                .font(.studioCaption).foregroundStyle(.secondary)
         }
     }
 

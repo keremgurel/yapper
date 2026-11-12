@@ -33,7 +33,7 @@ struct PosterBanners: View {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
                     Text(active.platform == nil ? "Preparing your latest edit. You can write captions now." : "Preparing the video for posting. You can write captions now.")
-                        .font(.system(size: 13)).foregroundStyle(.secondary)
+                        .font(.studioBody).foregroundStyle(.secondary)
                 }
             }
             if let warning = prep.warning { self.warning(warning) }
@@ -56,9 +56,9 @@ struct PosterBanners: View {
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(uploading ? "Uploading the final export, \(Int(upload.progress * 100))%" : "Reading the video for captions")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.studioBodyStrong)
                     Text(uploading ? "The preview is ready. You can write captions while it uploads." : "The transcript grounds every platform draft.")
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                        .font(.studioLabel).foregroundStyle(.secondary)
                 }
                 Spacer()
             }
@@ -75,7 +75,7 @@ struct PosterBanners: View {
     }
 
     private func warning(_ text: String) -> some View {
-        Text(text).font(.system(size: 13)).foregroundStyle(NativeChip.Tone.yellow.color)
+        Text(text).font(.studioBody).foregroundStyle(NativeChip.Tone.yellow.color)
             .fixedSize(horizontal: false, vertical: true)
     }
 }

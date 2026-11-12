@@ -65,7 +65,7 @@ struct PosterDestinationColumn: View {
                     HStack(spacing: 12) {
                         if chosen.contains(.youtube) {
                             Text("YouTube · \(session.youtube.visibility.label)")
-                                .font(.system(size: 12)).foregroundStyle(.secondary)
+                                .font(.studioLabel).foregroundStyle(.secondary)
                         }
                         if chosen.contains(.youtube), session.youtube.madeForKids == nil {
                             Button("Choose YouTube audience") { openSettings(.youtube) }
@@ -74,7 +74,7 @@ struct PosterDestinationColumn: View {
                         if chosen.contains(.tiktok) {
                             if tiktok.review(caption: captions.caption(for: .tiktok).rendered).ready {
                                 Text("TikTok · \(tiktok.mode == .inbox ? "Inbox draft" : tiktok.audienceLabel)")
-                                    .font(.system(size: 12)).foregroundStyle(.secondary)
+                                    .font(.studioLabel).foregroundStyle(.secondary)
                             } else {
                                 Button("Review TikTok audience and posting options") { openSettings(.tiktok) }
                                     .buttonStyle(EditorGhostButtonStyle(size: .small))
@@ -87,7 +87,7 @@ struct PosterDestinationColumn: View {
                              : cover.hasHeadline || cover.source != .frame
                              ? "TikTok uses the selected video frame without custom cover art or text."
                              : "TikTok uses the selected video frame.")
-                            .font(.system(size: 12)).foregroundStyle(.secondary)
+                            .font(.studioLabel).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -107,7 +107,7 @@ struct PosterDestinationColumn: View {
             }
             if gate.youtubeDescriptionTooLong {
                 Text("Shorten the YouTube description to 5,000 bytes or fewer.")
-                    .font(.system(size: 12)).foregroundStyle(Color.studioDanger).padding(.top, 12)
+                    .font(.studioLabel).foregroundStyle(Color.studioDanger).padding(.top, 12)
             }
             PosterOutcomeList(outcomes: session.outcomes)
                 .padding(.top, session.outcomes.isEmpty ? 0 : 12)
@@ -165,7 +165,7 @@ struct PosterDestinationColumn: View {
                                 .font(.nativeSectionTitle)
                             NativeTextArea(text: Binding(get: { drafts.override(current, for: video) }, set: {
                                 drafts.setOverride($0, for: current, video: video)
-                            }), placeholder: "Uses the shared caption", font: .system(size: 13), minHeight: 72)
+                            }), placeholder: "Uses the shared caption", font: .studioBody, minHeight: 72)
                                 .accessibilityLabel(current == .youtube ? "YouTube description" : "\(current.label) caption")
                         }
                     }

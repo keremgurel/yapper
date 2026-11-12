@@ -19,10 +19,10 @@ struct IdeaDraftingIndicator: View {
             let index = min(Int(timeline.date.timeIntervalSince(started) / 3.5), steps.count - 1)
             HStack(spacing: 6) {
                 Image(systemName: "sparkles")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.studioMicro)
                     .foregroundStyle(Color.studioAccent)
                 Text(steps[index] + "…")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.studioCaptionStrong)
                     .foregroundStyle(.secondary)
                     .nativeShimmer()
                     .contentTransition(.opacity)

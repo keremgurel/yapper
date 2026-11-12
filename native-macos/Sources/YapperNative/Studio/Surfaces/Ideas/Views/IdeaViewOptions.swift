@@ -14,7 +14,7 @@ struct IdeaViewOptionsButton: View {
     var body: some View {
         Button { open.toggle() } label: {
             Label(model.state == .failed ? "View options · Unsaved" : "View options", systemImage: "slider.horizontal.3")
-                .font(.system(size: 12, weight: .medium))
+                .font(.studioLabelStrong)
         }
         .buttonStyle(EditorGhostButtonStyle(size: .small))
         .popover(isPresented: $open, arrowEdge: .bottom) {
@@ -89,14 +89,14 @@ struct IdeaViewOptionsForm: View {
         if model.state == .failed {
             HStack(spacing: 8) {
                 Text("Your view changes couldn't be saved. Your edits are kept here.")
-                    .font(.system(size: 12)).foregroundStyle(Color.studioDanger)
+                    .font(.studioLabel).foregroundStyle(Color.studioDanger)
                 Button("Retry") { Task { await model.flush() } }.buttonStyle(EditorGhostButtonStyle(size: .mini))
             }
         } else if model.state == .saving {
-            Text("Saving view…").font(.system(size: 12)).foregroundStyle(.secondary)
+            Text("Saving view…").font(.studioLabel).foregroundStyle(.secondary)
         }
         if model.deleteFailed {
-            Text("This view couldn't be deleted. Try again.").font(.system(size: 12)).foregroundStyle(Color.studioDanger)
+            Text("This view couldn't be deleted. Try again.").font(.studioLabel).foregroundStyle(Color.studioDanger)
         }
     }
 
@@ -117,7 +117,7 @@ struct IdeaViewOptionsForm: View {
     private func toggle(_ label: String, on: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(label)
-                .font(.system(size: 12, weight: .medium))
+                .font(.studioLabelStrong)
                 .foregroundStyle(on ? Color.primary : Color.secondary)
                 .padding(.horizontal, 10)
                 .frame(height: 26)
@@ -142,16 +142,16 @@ struct IdeaColumnPicker: View {
                 let on = model.visibleColumns.contains(column)
                 Button { model.toggleColumn(column) } label: {
                     HStack {
-                        Text(column.pickerLabel).font(.system(size: 13)).foregroundStyle(on ? Color.primary : Color.secondary)
+                        Text(column.pickerLabel).font(.studioBody).foregroundStyle(on ? Color.primary : Color.secondary)
                         Spacer()
-                        Image(systemName: on ? "eye" : "eye.slash").font(.system(size: 12)).foregroundStyle(.secondary)
+                        Image(systemName: on ? "eye" : "eye.slash").font(.studioLabel).foregroundStyle(.secondary)
                     }
                     .padding(.horizontal, 6).padding(.vertical, 5)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.studioPlain)
             }
-            Text("Title is always shown.").font(.system(size: 11)).foregroundStyle(.secondary).padding(.horizontal, 6).padding(.top, 4)
+            Text("Title is always shown.").font(.studioCaption).foregroundStyle(.secondary).padding(.horizontal, 6).padding(.top, 4)
         }
     }
 }

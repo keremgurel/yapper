@@ -46,9 +46,9 @@ struct BrainVideoPicker: View {
     private var grid: some View {
         if let videos = picker.videos {
             if let error = picker.listError {
-                Text(error).font(.system(size: 13)).foregroundStyle(.secondary)
+                Text(error).font(.studioBody).foregroundStyle(.secondary)
             } else if videos.isEmpty {
-                Text("No videos on this channel yet.").font(.system(size: 13)).foregroundStyle(.secondary)
+                Text("No videos on this channel yet.").font(.studioBody).foregroundStyle(.secondary)
             } else {
                 LazyVGrid(columns: columns, spacing: 8) {
                     ForEach(videos) { video in
@@ -76,7 +76,7 @@ struct BrainVideoPicker: View {
                 BrainInlineError(message: "\(failure.title.isEmpty ? "Untitled" : failure.title): \(BrainVoiceFormat.failure(failure.code))")
             }
             HStack(spacing: 12) {
-                Text(summary).font(.system(size: 13)).foregroundStyle(.secondary)
+                Text(summary).font(.studioBody).foregroundStyle(.secondary)
                 Spacer()
                 Button(picker.busy ? "Listening…" : "Transcribe and learn") {
                     Task { await onFinished(await picker.run { BrainVoiceStore.shared.add($0) }) }
@@ -90,7 +90,7 @@ struct BrainVideoPicker: View {
     private func progressLine(_ text: String) -> some View {
         HStack(spacing: 8) {
             ProgressView().controlSize(.small)
-            Text(text).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1)
+            Text(text).font(.studioBody).foregroundStyle(.secondary).lineLimit(1)
         }
     }
 

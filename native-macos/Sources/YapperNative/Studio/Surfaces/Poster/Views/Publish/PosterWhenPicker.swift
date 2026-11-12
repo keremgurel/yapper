@@ -14,7 +14,7 @@ struct PosterWhenPicker: View {
             if model.saved {
                 VStack(alignment: .leading, spacing: 6) {
                     Label("Scheduled for \(PosterQuickTimes.label(model.when))", systemImage: "checkmark")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.studioBodyStrong)
                     Button("Change the time or cancel it in Calendar", action: onCalendar)
                         .buttonStyle(EditorGhostButtonStyle(size: .small))
                 }
@@ -22,7 +22,7 @@ struct PosterWhenPicker: View {
                 form
             } else if model.loadFailed {
                 HStack(spacing: 8) {
-                    Text("Scheduling is unavailable.").font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text("Scheduling is unavailable.").font(.studioLabel).foregroundStyle(.secondary)
                     Button("Try again") { Task { await model.load() } }.buttonStyle(EditorGhostButtonStyle(size: .small))
                 }
             }
@@ -37,7 +37,7 @@ struct PosterWhenPicker: View {
                 .disabled(model.saving)
             if model.later {
                 DatePicker("Send at", selection: $model.when, in: Date().addingTimeInterval(60)...)
-                    .font(.system(size: 13))
+                    .font(.studioBody)
                     .disabled(model.saving)
                     .clickableCursor(enabled: !model.saving)
                 HStack(spacing: 6) {
@@ -47,13 +47,13 @@ struct PosterWhenPicker: View {
                             .disabled(model.saving)
                     }
                 }
-                Text("Your time zone: \(model.timezone).").font(.system(size: 12)).foregroundStyle(.secondary)
+                Text("Your time zone: \(model.timezone).").font(.studioLabel).foregroundStyle(.secondary)
                 if tiktokInbox {
-                    Text("TikTok gets a draft at that time, to finish in the app.").font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text("TikTok gets a draft at that time, to finish in the app.").font(.studioLabel).foregroundStyle(.secondary)
                 }
             }
             if let error = model.error {
-                Text(error).font(.system(size: 12)).foregroundStyle(Color.studioDanger)
+                Text(error).font(.studioLabel).foregroundStyle(Color.studioDanger)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

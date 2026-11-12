@@ -19,7 +19,7 @@ struct BrandLogosSection: View {
         } content: {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Add light, dark, icon, or wordmark versions. Mark the one Chirpy should reach for first. Drop a file anywhere here to add it.")
-                    .font(.system(size: 13)).foregroundStyle(.secondary)
+                    .font(.studioBody).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 content
             }
@@ -47,7 +47,7 @@ struct BrandLogosSection: View {
         if store.kit == nil {
             if store.loadFailed {
                 Text("Your logos will appear when the brand kit loads.")
-                    .font(.system(size: 13)).foregroundStyle(.secondary)
+                    .font(.studioBody).foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .nativeWell(padding: 20)
             } else {
@@ -79,8 +79,8 @@ struct BrandLogosSection: View {
                     .foregroundStyle(.secondary)
                     .frame(width: 44, height: 44)
                     .background(Circle().fill(Color.panelBackground))
-                Text("Drop a logo here").font(.system(size: 13, weight: .semibold))
-                Text("PNG, JPG, WebP, or SVG, up to 5 MB").font(.system(size: 12)).foregroundStyle(.secondary)
+                Text("Drop a logo here").font(.studioBodyStrong)
+                Text("PNG, JPG, WebP, or SVG, up to 5 MB").font(.studioLabel).foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 36)

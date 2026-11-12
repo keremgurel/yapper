@@ -28,7 +28,7 @@ struct PosterVideoGrid: View {
             )
         } else if videos.isEmpty {
             Text("Upload a video or pick a platform to reuse one of your posts.")
-                .font(.system(size: 13)).foregroundStyle(.secondary)
+                .font(.studioBody).foregroundStyle(.secondary)
         } else {
             LazyVStack(alignment: .leading, spacing: 0) {
                 Divider()
@@ -59,7 +59,7 @@ struct PosterConnectTile: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Bring over your \(platform.label) videos").font(.nativeSectionTitle)
                     Text("Connect your account to reuse posts and publish new ones.")
-                        .font(.system(size: 13)).foregroundStyle(.secondary)
+                        .font(.studioBody).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Button("Connect \(platform.label)", action: onConnect).buttonStyle(EditorSecondaryButtonStyle())

@@ -29,8 +29,8 @@ struct PosterSourceOptions: View {
                         action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(muted ? .secondary : .primary)
-                Text(detail).font(.system(size: 12)).foregroundStyle(.secondary)
+                Text(title).font(.studioBodyStrong).foregroundStyle(muted ? .secondary : .primary)
+                Text(detail).font(.studioLabel).foregroundStyle(.secondary)
             }
             .lineLimit(1)
             .padding(.horizontal, 12)

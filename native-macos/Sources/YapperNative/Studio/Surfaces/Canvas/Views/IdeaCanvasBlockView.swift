@@ -79,7 +79,7 @@ struct IdeaCanvasBlockView: View {
     }
 
     private func iconButton(_ symbol: String, help: String, disabled: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) { Image(systemName: symbol).font(.system(size: 11, weight: .semibold)) }
+        Button(action: action) { Image(systemName: symbol).font(.studioCaptionStrong) }
             .buttonStyle(EditorGhostButtonStyle(size: .mini))
             .foregroundStyle(.secondary)
             .disabled(disabled)

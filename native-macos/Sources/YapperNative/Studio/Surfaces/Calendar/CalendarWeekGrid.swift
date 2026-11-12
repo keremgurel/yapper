@@ -17,7 +17,7 @@ struct CalendarWeekGrid: View {
                 VStack(spacing: 0) {
                     VStack(spacing: 2) {
                         Text(day.formatted(.dateTime.weekday(.abbreviated)))
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.studioCaptionStrong)
                             .foregroundStyle(.secondary)
                         Text(day.formatted(.dateTime.day()))
                             .font(.system(size: 13, weight: isToday ? .semibold : .regular).monospacedDigit())

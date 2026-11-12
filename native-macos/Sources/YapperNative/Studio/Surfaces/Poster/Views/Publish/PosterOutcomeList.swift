@@ -19,30 +19,30 @@ struct PosterOutcomeList: View {
     private func row(_ outcome: PosterOutcome) -> some View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(outcome.videoTitle).font(.system(size: 13, weight: .medium)).lineLimit(1)
-                Text(outcome.platform.label).font(.system(size: 12)).foregroundStyle(.secondary)
+                Text(outcome.videoTitle).font(.studioBodyStrong).lineLimit(1)
+                Text(outcome.platform.label).font(.studioLabel).foregroundStyle(.secondary)
                 if let error = outcome.error {
-                    Text(PosterErrorCopy.publish(error)).font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text(PosterErrorCopy.publish(error)).font(.studioLabel).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if outcome.coverApplied == false {
                     Text("YouTube didn’t apply the cover. You can add it in YouTube Studio.")
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                        .font(.studioLabel).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if outcome.status == .draft {
                     Text("Open TikTok, go to your inbox and tap \"Your content from Yapper is ready\" to finish posting.")
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                        .font(.studioLabel).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
             Spacer()
             if let url = outcome.url {
                 Link(destination: url) { Label("Posted", systemImage: "arrow.up.right") }
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.studioLabelStrong)
                     .clickableCursor()
             } else {
-                Text(outcome.label).font(.system(size: 12, weight: .semibold))
+                Text(outcome.label).font(.studioLabelStrong)
                     .foregroundStyle(outcome.status == .failed ? Color.studioDanger
                                      : outcome.status == .pending ? Color.secondary : NativeChip.Tone.green.color)
             }

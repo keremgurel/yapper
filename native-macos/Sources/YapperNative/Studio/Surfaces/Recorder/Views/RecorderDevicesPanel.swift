@@ -23,7 +23,7 @@ struct RecorderDevicesPanel: View {
                         .accessibilityLabel("Framing guides")
                 }
                 Text("Space records and pauses, Return finishes, G shows guides, F focuses the frame.")
-                    .font(.system(size: 11))
+                    .font(.studioCaption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -36,7 +36,7 @@ struct RecorderDevicesPanel: View {
         _ list: [RecorderDevice], selection: String?, empty: String, choose: @escaping @Sendable @MainActor (String) -> Void
     ) -> some View {
         if list.isEmpty {
-            Text(empty).font(.system(size: 13)).foregroundStyle(.secondary)
+            Text(empty).font(.studioBody).foregroundStyle(.secondary)
         } else {
             let fallback = list[0].id
             Picker("", selection: Binding(get: { selection ?? fallback }, set: { choose($0) })) {

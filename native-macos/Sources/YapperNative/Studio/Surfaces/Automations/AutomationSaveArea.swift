@@ -53,7 +53,7 @@ struct AutomationSaveArea: View {
                     : "Saved. This automation is paused.",
                 systemImage: "checkmark"
             )
-            .font(.system(size: 13))
+            .font(.studioBody)
         }
         if let error = editor.error {
             VStack(alignment: .leading, spacing: 8) {

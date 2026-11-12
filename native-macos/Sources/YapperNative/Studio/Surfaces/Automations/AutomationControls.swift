@@ -12,9 +12,9 @@ struct AutomationDestinationCard: View {
         Button(action: onToggle) {
             HStack(alignment: .top, spacing: 10) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(destination.label).font(.system(size: 13, weight: .semibold))
-                    Text(accountLabel).font(.system(size: 12)).foregroundStyle(.secondary)
-                    Text(destination.delivery).font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text(destination.label).font(.studioBodyStrong)
+                    Text(accountLabel).font(.studioLabel).foregroundStyle(.secondary)
+                    Text(destination.delivery).font(.studioLabel).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
@@ -45,14 +45,14 @@ struct AutomationSwitchRow: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 if let systemImage {
                     Image(systemName: systemImage)
-                        .font(.system(size: 12))
+                        .font(.studioLabel)
                         .foregroundStyle(.secondary)
                         .frame(width: 16)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.system(size: 13, weight: .semibold))
+                    Text(title).font(.studioBodyStrong)
                     if let detail {
-                        Text(detail).font(.system(size: 12)).foregroundStyle(.secondary)
+                        Text(detail).font(.studioLabel).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }

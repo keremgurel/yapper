@@ -25,7 +25,7 @@ struct IdeaCanvasTitleBar: View {
         if let item = store.item {
             HStack(spacing: 8) {
                 Button(action: actions.back) {
-                    Image(systemName: "chevron.left").font(.system(size: 13, weight: .medium))
+                    Image(systemName: "chevron.left").font(.studioBodyStrong)
                 }
                 .buttonStyle(EditorGhostButtonStyle(size: .small))
                 .help("Back to Ideas")
@@ -36,7 +36,7 @@ struct IdeaCanvasTitleBar: View {
                     set: { store.update(IdeaCanvasPatch(title: $0)) }
                 ))
                 .textFieldStyle(.plain)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.studioSectionTitle)
                 .frame(minWidth: 120, maxWidth: .infinity)
 
                 IdeaCanvasSaveIndicator(autosave: store.autosave)
@@ -70,7 +70,7 @@ struct IdeaCanvasTitleBar: View {
                     Image(systemName: maximized
                           ? "arrow.down.right.and.arrow.up.left"
                           : "arrow.up.left.and.arrow.down.right")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.studioLabelStrong)
                 }
                 .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                 .help(maximized ? "Back to Studio (Esc)" : "Give the canvas the window")

@@ -14,7 +14,7 @@ struct IdeaCanvasPhoneSheet: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Send to phone").font(.nativeSectionTitle)
                 Text("Opens this script in the teleprompter on your phone.")
-                    .font(.system(size: 13)).foregroundStyle(.secondary)
+                    .font(.studioBody).foregroundStyle(.secondary)
             }
             content.frame(maxWidth: .infinity)
             HStack {
@@ -37,7 +37,7 @@ struct IdeaCanvasPhoneSheet: View {
                     // Always on white: a QR needs its light modules light.
                     .background(RoundedRectangle(cornerRadius: 8).fill(Color.white))
                 Text("Scan with your phone camera. Expires in \(handoff.secondsLeft)s.")
-                    .font(.system(size: 12)).foregroundStyle(.secondary)
+                    .font(.studioLabel).foregroundStyle(.secondary)
             }
         default:
             VStack(spacing: 6) {
@@ -52,9 +52,9 @@ struct IdeaCanvasPhoneSheet: View {
                 .disabled(handoff.phase == .minting)
                 if handoff.phase == .failed {
                     Text("Couldn't save the latest script or create a code. Try again.")
-                        .font(.system(size: 12)).foregroundStyle(Color.studioDanger)
+                        .font(.studioLabel).foregroundStyle(Color.studioDanger)
                 } else if handoff.phase == .expired {
-                    Text("That code expired.").font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text("That code expired.").font(.studioLabel).foregroundStyle(.secondary)
                 }
             }
         }

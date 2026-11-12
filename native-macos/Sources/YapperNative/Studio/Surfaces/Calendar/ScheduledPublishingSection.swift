@@ -50,7 +50,7 @@ struct ScheduledPublishingSection: View {
 
     private func message(_ text: String, danger: Bool = false) -> some View {
         Text(text)
-            .font(.system(size: 13))
+            .font(.studioBody)
             .foregroundStyle(danger ? Color.studioDanger : Color.secondary)
             .fixedSize(horizontal: false, vertical: true)
     }

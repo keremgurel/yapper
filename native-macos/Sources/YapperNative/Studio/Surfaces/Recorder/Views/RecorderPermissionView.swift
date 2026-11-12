@@ -32,7 +32,7 @@ struct RecorderPartialAccessNote: View {
     var body: some View {
         if let missing {
             HStack(spacing: 10) {
-                Text(missing.text).font(.system(size: 12)).foregroundStyle(.secondary)
+                Text(missing.text).font(.studioLabel).foregroundStyle(.secondary)
                 Spacer(minLength: 0)
                 Button("Open settings") { permissions.openSettings(for: missing.media) }
                     .buttonStyle(EditorGhostButtonStyle(size: .small))

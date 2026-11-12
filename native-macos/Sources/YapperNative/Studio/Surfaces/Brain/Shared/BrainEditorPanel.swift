@@ -16,7 +16,7 @@ struct BrainEditorPanel<Side: View, Main: View>: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.system(size: 18, weight: .semibold))
                 if let description {
-                    Text(description).font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text(description).font(.studioLabel).foregroundStyle(.secondary)
                 }
             }
         } content: {

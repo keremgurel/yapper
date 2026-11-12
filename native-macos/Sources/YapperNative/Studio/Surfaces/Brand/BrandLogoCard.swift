@@ -19,12 +19,12 @@ struct BrandLogoCard: View {
             Rectangle().fill(Color.studioLine).frame(height: 1)
             HStack(spacing: 6) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(logo.name).font(.system(size: 13, weight: .semibold)).lineLimit(1).truncationMode(.middle)
-                    Text(logo.sizeLabel).font(.system(size: 11)).foregroundStyle(.secondary)
+                    Text(logo.name).font(.studioBodyStrong).lineLimit(1).truncationMode(.middle)
+                    Text(logo.sizeLabel).font(.studioCaption).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 4)
                 if !logo.isPrimary {
-                    Button(action: onPrimary) { Image(systemName: "star").font(.system(size: 12)) }
+                    Button(action: onPrimary) { Image(systemName: "star").font(.studioLabel) }
                         .buttonStyle(EditorGhostButtonStyle(size: .small))
                         .help("Make primary")
                         .accessibilityLabel("Make \(logo.name) primary")

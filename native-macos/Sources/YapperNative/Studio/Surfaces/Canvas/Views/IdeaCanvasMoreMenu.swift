@@ -26,7 +26,7 @@ struct IdeaCanvasMoreMenu: View {
             width: 230
         ) {
             Image(systemName: "ellipsis")
-                .font(.system(size: 13, weight: .medium))
+                .font(.studioBodyStrong)
                 .frame(width: 30, height: 30)
                 .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.raisedBackground))
                 .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Color.studioLine, lineWidth: 1))

@@ -42,7 +42,7 @@ private struct CalendarPostedPill: View {
             HStack(spacing: 4) {
                 CalendarPlatformStack(group: group)
                 Text(group.title.isEmpty ? "Untitled" : group.title)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.studioCaptionStrong)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text(HomeNumber.compact(group.views))
@@ -76,7 +76,7 @@ private struct CalendarPostedCard: View {
                 .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
             VStack(alignment: .leading, spacing: 4) {
                 Text(group.title.isEmpty ? "Untitled" : group.title)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.studioCaptionStrong)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 4) {

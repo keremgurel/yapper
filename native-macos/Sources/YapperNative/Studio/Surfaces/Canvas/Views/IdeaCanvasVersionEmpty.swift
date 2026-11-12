@@ -45,7 +45,7 @@ struct IdeaCanvasVersionEmpty: View {
             Text("No \(format.noun) yet").font(.system(size: 18, weight: .semibold))
             if sources.count > 1 {
                 HStack(spacing: 10) {
-                    Text("Write it from").font(.system(size: 13)).foregroundStyle(.secondary)
+                    Text("Write it from").font(.studioBody).foregroundStyle(.secondary)
                     NativeSegmented(
                         options: sources.map { .init(value: $0, label: $0.label) },
                         selection: Binding(get: { chosen ?? .short }, set: { from = $0 })
@@ -53,7 +53,7 @@ struct IdeaCanvasVersionEmpty: View {
                 }
             } else if let chosen {
                 Text("Written from the \(chosen.label.lowercased()) version.")
-                    .font(.system(size: 13)).foregroundStyle(.secondary)
+                    .font(.studioBody).foregroundStyle(.secondary)
             }
             VStack(alignment: .leading, spacing: 7) {
                 reads("Uses its \(chosen?.openerLabel.lowercased() ?? "hook"), script and key points")
@@ -68,7 +68,7 @@ struct IdeaCanvasVersionEmpty: View {
             .buttonStyle(EditorPrimaryButtonStyle(size: .small))
             .disabled(chosen == nil)
             if let error {
-                Text(error).font(.system(size: 12)).foregroundStyle(NativeChip.Tone.yellow.color)
+                Text(error).font(.studioLabel).foregroundStyle(NativeChip.Tone.yellow.color)
             }
         }
         .padding(28)
@@ -80,7 +80,7 @@ struct IdeaCanvasVersionEmpty: View {
     private func reads(_ text: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Circle().fill(Color.secondary.opacity(0.5)).frame(width: 4, height: 4).offset(y: -2)
-            Text(text).font(.system(size: 13)).foregroundStyle(.secondary)
+            Text(text).font(.studioBody).foregroundStyle(.secondary)
         }
     }
 
@@ -88,9 +88,9 @@ struct IdeaCanvasVersionEmpty: View {
     private var placeholder: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 6) {
-                Image(systemName: "sparkles").font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.studioAccent)
+                Image(systemName: "sparkles").font(.studioCaptionStrong).foregroundStyle(Color.studioAccent)
                 Text("Writing the \(format.noun)… this takes about half a minute.")
-                    .font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+                    .font(.studioLabelStrong).foregroundStyle(.secondary)
                     .nativeShimmer()
             }
             RoundedRectangle(cornerRadius: 6).fill(Color.studioFaintFill).frame(width: 420, height: 26).nativeShimmer()

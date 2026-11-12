@@ -48,7 +48,7 @@ struct CalendarDayCell: View {
     @ViewBuilder
     private var dateMark: some View {
         let number = Text(day.formatted(.dateTime.day()))
-            .font(.system(size: 11, weight: .semibold).monospacedDigit())
+            .font(.studioCaptionStrong.monospacedDigit())
         if isToday {
             number
                 .foregroundStyle(Color.studioAccentForeground)
@@ -65,7 +65,7 @@ struct CalendarDayCell: View {
     @ViewBuilder
     private var moreLink: some View {
         let label = Text("+\(items.count - shown.count) more")
-            .font(.system(size: 11, weight: .medium))
+            .font(.studioCaptionStrong)
             .foregroundStyle(.secondary)
             .padding(.horizontal, 4)
         if let onShowMore {

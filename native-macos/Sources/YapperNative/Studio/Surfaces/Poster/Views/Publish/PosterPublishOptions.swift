@@ -17,7 +17,7 @@ struct PosterPublishOptions: View {
             if chosen.contains(.youtube) {
                 if youtubeDescriptionTooLong {
                     Text("Shorten the YouTube description to 5,000 bytes or fewer.")
-                        .font(.system(size: 12, weight: .medium)).foregroundStyle(Color.studioDanger)
+                        .font(.studioLabelStrong).foregroundStyle(Color.studioDanger)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 PosterYouTubeSettingsView(settings: $session.youtube)

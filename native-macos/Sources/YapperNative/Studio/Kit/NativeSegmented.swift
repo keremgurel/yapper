@@ -21,7 +21,7 @@ struct NativeSegmented<Value: Hashable>: View {
                 Button { withAnimation(.snappy(duration: 0.15)) { selection = option.value } } label: {
                     HStack(spacing: 6) {
                         if let dot = option.dot { Circle().fill(dot).frame(width: 6, height: 6) }
-                        Text(option.label).font(.system(size: 12, weight: .medium))
+                        Text(option.label).font(.studioLabelStrong)
                     }
                     .foregroundStyle(on ? Color.primary : Color.secondary)
                     .padding(.horizontal, 11)

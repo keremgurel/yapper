@@ -40,7 +40,7 @@ struct IdeaCanvasFormatTabs: View {
                     .font(.system(size: 13, weight: on ? .semibold : .medium))
                 if format == lead {
                     Text("Lead")
-                        .font(.system(size: 10.5, weight: .semibold))
+                        .font(.studioCaptionStrong)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 6).padding(.vertical, 1)
                         .background(Capsule().fill(Color.studioFaintFill))
