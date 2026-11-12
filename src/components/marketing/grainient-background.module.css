@@ -1,6 +1,7 @@
-/* Static React Bits Grainient renders: no canvas, shader, or animation at runtime. */
+/* Stage backdrops rendered by scripts/generate-backdrops.py. Static images:
+   no canvas, shader, or animation at runtime. */
 .background {
-  background-color: #263451;
+  background-color: #12162a;
   background-image: var(--grainient-image);
   background-size: cover;
   background-position: center;

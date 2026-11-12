@@ -45,7 +45,26 @@ below disagrees with this one, this one wins.
   between marketing sections, separated by a hairline.
 - **Motion**: 150ms for state changes, 360ms for layout, standard ease.
 
-The homepage glass tab capsule and its demo screens are kept as they are.
+The homepage glass tab capsule is kept as it is.
+
+### Product imagery
+
+A product screen is never shown bare. It stands on a **stage**: one of the five
+stage backdrops in `public/images/grainient` (diagonal light streaks, a shaft
+of light from the top right, film grain), rendered by
+`scripts/generate-backdrops.py`. The screen is lit from the same corner: a
+bright top edge, a fine rim, a soft ray across its top-right corner and a long
+shadow falling down and left (`.studio-showcase-screen`). On the hero the
+screen's foot runs off the bottom of the stage. Stages are 16px, screens 12px.
+Do not add a second light direction, a glow colour, or a border to a screen.
+
+### Navigation icons
+
+Studio's rail uses its own glyph set in
+`src/components/studio-shell/studio-nav-icon.tsx`: a 20px grid, a 1.5px rounded
+stroke and soft geometric forms. Idle rows are muted; the current row is ink on
+a stone pill. Add a destination by drawing a glyph in the same grid, not by
+importing a stock icon.
 
 ## Typography
 

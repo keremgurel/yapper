@@ -1,13 +1,19 @@
-# Static Grainient backgrounds
+# Stage backdrops
 
-These WebP files are static renders of [React Bits Grainient](https://reactbits.dev/backgrounds/grainient), using the existing adaptation in `speaking-practice/src/components/vocabulary/grainient.tsx`. The adjacent license covers the source artwork renderer. No renderer, canvas, animation loop or WebGL dependency ships with these assets.
+Five original backdrops, one per Studio stage: soft diagonal light streaks, a
+shaft of light from the top-right corner and fine film grain. They sit behind
+product demonstrations on the public site and the sign-in carousel.
 
-| Workflow | Palette                                    |
-| -------- | ------------------------------------------ |
-| Ideas    | `#142b50`, `#365cb0`, `#739ce1`, `#b5ccf3` |
-| Script   | `#291c45`, `#654287`, `#bc649a`, `#f6b69a` |
-| Record   | `#103e44`, `#267b86`, `#6db7bf`, `#b5ded0` |
-| Edit     | `#342044`, `#8b4165`, `#d48276`, `#f6c99a` |
-| Publish  | `#202e58`, `#4853a0`, `#8d91d5`, `#c5bde9` |
+They are rendered by `scripts/generate-backdrops.py` (numpy and Pillow) and
+committed as static WebP. Nothing is drawn at runtime. To change a palette,
+edit `PALETTES` in the script and run it again; the output is deterministic.
 
-Render settings: `speed=0`, `flow=1.2`, `angle=140`, `grainAmount=0.085`, `grainAnimated=false`, `interactive=false`, `clickSwirl=false`, `intro=false`, `dpr=1`. Other parameters use the component defaults. Portrait images are 720×960; wide images are 1280×800. Backgrounds remain still; only auth slide changes crossfade.
+| Stage   | Base      | Colours                                    |
+| ------- | --------- | ------------------------------------------ |
+| Ideas   | `#0b1730` | `#1f4fa8`, `#5f9bf0`, `#bcd9ff`, `#2a3f86` |
+| Script  | `#1a0f2c` | `#6a2f7a`, `#c2588f`, `#f0a9b4`, `#3a2466` |
+| Record  | `#041a20` | `#0f6f73`, `#3fb5a4`, `#c8efe0`, `#16465c` |
+| Edit    | `#1c0e16` | `#e2573a`, `#f3a27c`, `#8a2f5a`, `#f6d2bd` |
+| Publish | `#120f2e` | `#4a3fc0`, `#8f7cf2`, `#d8ccff`, `#2a2a7a` |
+
+Portrait images are 960×1200; wide images are 2000×1125.
