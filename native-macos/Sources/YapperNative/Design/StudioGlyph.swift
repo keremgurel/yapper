@@ -16,6 +16,9 @@ enum StudioGlyphKind: Hashable {
     case eye, eyeOff, speakerMuted, speakerLow, speakerMid, speakerHigh, more
     // Pane chrome
     case close, splitPane
+    // Editor bars
+    case projects, chevronRight, chevronDown, layoutStandard, layoutTallPreview
+    case note, plus, minus, export, play, pause, fullScreen, exitFullScreen, aspect
 }
 
 /// Drawn in the current foreground style, so a control colours its glyph and

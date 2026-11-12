@@ -14,10 +14,18 @@ enum EditorLayoutMode: String, CaseIterable, Identifiable {
         }
     }
 
-    var icon: String {
+    var glyph: StudioGlyphKind {
         switch self {
-        case .standard: "rectangle.split.2x1"
-        case .tallPreview: "rectangle.portrait.on.rectangle.portrait"
+        case .standard: .layoutStandard
+        case .tallPreview: .layoutTallPreview
+        }
+    }
+
+    /// What choosing it does, for the tooltip.
+    var purpose: String {
+        switch self {
+        case .standard: "Standard layout: the timeline runs the full width under the tools and the preview"
+        case .tallPreview: "Tall preview: the preview takes the full height, best for vertical video"
         }
     }
 

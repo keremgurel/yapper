@@ -135,6 +135,57 @@ struct StudioGlyphShape: Shape {
         case .splitPane:
             p.rounded(3, 4.4, 14, 11.2, 2.4)
             p.line(10, 4.4, 10, 15.6)
+
+        case .projects:
+            p.rounded(3.5, 3.5, 5.4, 5.4, 1.6)
+            p.rounded(11.1, 3.5, 5.4, 5.4, 1.6)
+            p.rounded(3.5, 11.1, 5.4, 5.4, 1.6)
+            p.rounded(11.1, 11.1, 5.4, 5.4, 1.6)
+        case .chevronRight:
+            p.polyline([(7.6, 5.2), (12.4, 10), (7.6, 14.8)])
+        case .chevronDown:
+            p.polyline([(5.2, 7.6), (10, 12.4), (14.8, 7.6)])
+        case .layoutStandard:
+            // Tools and preview side by side, the timeline across the bottom.
+            p.rounded(3, 3.6, 14, 12.8, 2.4)
+            p.line(3, 11, 17, 11)
+            p.line(10, 3.6, 10, 11)
+        case .layoutTallPreview:
+            // The preview the full height of the window on the right.
+            p.rounded(3, 3.6, 14, 12.8, 2.4)
+            p.line(11.4, 3.6, 11.4, 16.4)
+            p.line(3, 10.4, 11.4, 10.4)
+        case .note:
+            p.circle(6.6, 14.2, 2.2)
+            p.circle(14, 12.6, 2.2)
+            p.polyline([(8.8, 14.2), (8.8, 5.2), (16.2, 3.8), (16.2, 12.6)])
+        case .plus, .minus:
+            p.line(4.6, 10, 15.4, 10)
+            if kind == .plus { p.line(10, 4.6, 10, 15.4) }
+        case .export:
+            // Out of the tray and up.
+            p.polyline([(3.8, 11.6), (3.8, 14.6), (5.6, 16.4), (14.4, 16.4), (16.2, 14.6), (16.2, 11.6)])
+            p.line(10, 12.4, 10, 3.6)
+            p.polyline([(6.6, 7), (10, 3.6), (13.4, 7)])
+        case .play:
+            p.polyline([(6.4, 4.4), (15.6, 10), (6.4, 15.6)], closed: true)
+        case .pause:
+            p.line(7, 4.8, 7, 15.2)
+            p.line(13, 4.8, 13, 15.2)
+        case .fullScreen:
+            p.polyline([(11.6, 3.8), (16.2, 3.8), (16.2, 8.4)])
+            p.line(16.2, 3.8, 11.4, 8.6)
+            p.polyline([(8.4, 16.2), (3.8, 16.2), (3.8, 11.6)])
+            p.line(3.8, 16.2, 8.6, 11.4)
+        case .exitFullScreen:
+            p.polyline([(11.6, 4), (11.6, 8.4), (16, 8.4)])
+            p.line(11.6, 8.4, 16.2, 3.8)
+            p.polyline([(8.4, 16), (8.4, 11.6), (4, 11.6)])
+            p.line(8.4, 11.6, 3.8, 16.2)
+        case .aspect:
+            p.rounded(3, 5, 14, 10, 2.2)
+            p.polyline([(6, 9.4), (6, 8), (7.4, 8)])
+            p.polyline([(14, 10.6), (14, 12), (12.6, 12)])
         }
     }
 }

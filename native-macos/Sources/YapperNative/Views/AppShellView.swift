@@ -75,6 +75,10 @@ struct AppShellView: View {
             studioShell
             if isSignedIn {
                 FloatingAssistant(session: session, conversation: chirpyThreads.current ?? session.conversation)
+                    // In the editor the bottom of the window is the transport
+                    // bar. Chirpy rests above it instead of on top of the
+                    // frame-ratio menu.
+                    .padding(.bottom, destination == .editor ? TransportBarMetrics.height : 0)
             }
             StudioEditorHandoffView(session: session, signedIn: auth.isSignedIn == true) {
                 navigate(.editor)
@@ -416,73 +420,57 @@ private struct StudioTopBar: View {
                 Button {
                     session.showProjectsHome()
                 } label: {
-                    Label("Projects", systemImage: "square.grid.2x2")
-                        .font(.system(size: 12, weight: .semibold))
+                    StudioGlyphLabel("Projects", glyph: .projects, size: 14)
+                        .font(.studioLabelStrong)
                 }
                 .buttonStyle(.studioPlain)
-                .clickableCursor()
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.studioTextMuted)
                 .help("All projects")
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .semibold))
+                StudioGlyph(.chevronRight, size: 11)
                     .foregroundStyle(.tertiary)
                 Button {
                     ProjectPanels.renameProject(for: session)
                 } label: {
+                    // The whole name while there is room for it. It gives way
+                    // before the buttons do, and only then from the middle,
+                    // where a file name has the least to say.
                     Text(session.project.name)
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(.studioSectionTitle)
                         .lineLimit(1)
-                        .frame(maxWidth: 260, alignment: .leading)
+                        .truncationMode(.middle)
                 }
                 .buttonStyle(.studioPlain)
-                .clickableCursor()
-                .help("Rename project")
+                .help("Rename \(session.project.name)")
                 .disabled(session.projectNavigation.currentPackage == nil)
             } else {
                 Text(destination.title)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .font(.studioSectionTitle)
                     .contentTransition(.interpolate)
             }
 
             Spacer()
 
             if destination == .editor {
-                HStack(spacing: 2) {
-                    ForEach(EditorLayoutMode.allCases) { mode in
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.22)) {
-                                layoutModeRaw = mode.rawValue
-                            }
-                        } label: {
-                            Image(systemName: mode.icon)
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(layoutMode == mode ? Color.yapperOrange : Color.secondary)
-                                .frame(width: 27, height: 25)
-                                .background(layoutMode == mode ? Color.yapperOrange.opacity(0.12) : Color.clear)
-                                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-                        }
-                        .buttonStyle(.studioPlain)
-        .clickableCursor()
-                        .help(mode.title)
+                EditorLayoutPicker(mode: layoutMode) { mode in
+                    withAnimation(.easeInOut(duration: 0.22)) {
+                        layoutModeRaw = mode.rawValue
                     }
-                }
-                .padding(2)
-                .background(Color.studioFaintFill)
-                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .stroke(Color.studioLine, lineWidth: 1)
                 }
 
                 if session.isBusy {
                     ProgressView().controlSize(.small)
                 }
                 ManagedMediaNotice(session: session)
+                // The last thing the editor did. Whole when there is room; it
+                // is the first thing in the bar to shorten, and the tooltip
+                // always has all of it.
                 Text(session.statusMessage)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .font(.studioCaption)
+                    .foregroundStyle(Color.studioTextMuted)
                     .lineLimit(1)
-                    .frame(maxWidth: 150, alignment: .trailing)
+                    .truncationMode(.middle)
+                    .layoutPriority(-1)
+                    .help(session.statusMessage)
                 if session.canCancelCurrentOperation,
                    let operation = session.activeOperation?.operation {
                     Button(operation.cancelLabel) { session.cancelCurrentOperation() }
@@ -491,8 +479,7 @@ private struct StudioTopBar: View {
                 Button {
                     onNavigate(.audio)
                 } label: {
-                    Label("Audio library", systemImage: "music.note.list")
-                        .fixedSize()
+                    StudioGlyphLabel("Audio library", glyph: .note)
                 }
                 .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                 .help("Browse music and sound effects, import audio, and set default volumes")
@@ -500,16 +487,20 @@ private struct StudioTopBar: View {
                 Button {
                     ImportPanels.openMedia(for: session)
                 } label: {
-                    Label("Import", systemImage: "plus")
+                    StudioGlyphLabel("Import", glyph: .plus)
                 }
                 .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                 .disabled(session.isBusy)
+                .help("Add video, pictures or sound to this project")
                 Button {
                     ImportPanels.saveExport(for: session)
                 } label: {
-                    Label("Export", systemImage: "square.and.arrow.up")
+                    StudioGlyphLabel("Export", glyph: .export)
                 }
-                .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+                // The one thing the editor exists to end in, so the one ink
+                // button in its bar.
+                .buttonStyle(EditorPrimaryButtonStyle(size: .small))
+                .help("Save the finished video")
                 .disabled(session.project.clips.isEmpty || session.isBusy)
 
             }
