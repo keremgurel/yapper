@@ -597,6 +597,18 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Radix locks page scroll while a menu, select, popover or dialog is open,
+ * and pads the body by the scrollbar's width to make up for the bar it just
+ * hid. The gutter is already reserved on <html> above, so that padding is a
+ * second correction: the whole page jumped sideways every time something
+ * opened. Outside a layer and one element more specific than the injected
+ * rule, so it wins against that rule's own !important. */
+html body[data-scroll-locked] {
+  --removed-body-scroll-bar-size: 0px !important;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
