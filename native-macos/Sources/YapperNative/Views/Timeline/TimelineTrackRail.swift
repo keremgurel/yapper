@@ -54,7 +54,7 @@ struct TimelineTrackRail: View {
 
             Spacer(minLength: 0)
         }
-        .background(Color.panelBackground.opacity(0.72))
+        .background(Color.panelBackground)
     }
 
     private var overlayTracks: [Int] {
@@ -160,15 +160,15 @@ private struct TrackRailRow<Controls: View>: View {
     }
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 2) {
             Image(systemName: glyph)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 12))
                 .foregroundStyle(.tertiary)
-                .frame(width: 16)
+                .frame(width: 18)
             controls
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 6)
+        .padding(.horizontal, 8)
         .frame(maxWidth: .infinity, minHeight: height, alignment: .leading)
         .background(background)
         .overlay(alignment: .bottom) {
@@ -198,9 +198,9 @@ private struct TrackVolumeMenu: View {
             isOpen.toggle()
         } label: {
             Image(systemName: icon)
-                .font(.system(size: 10.5, weight: .semibold))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(tint)
-                .frame(width: 16, height: 18)
+                .frame(width: 20, height: 22)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.studioPlain)
@@ -242,9 +242,10 @@ private struct TrackVolumeMenu: View {
 
     private var tint: Color {
         // Anything but untouched is worth seeing at a glance: a track quietly
-        // sitting at 30% is the reason a video sounds wrong.
-        if isMuted || abs(volume - AudioLevel.unity) > 0.005 { return Color.yapperOrange }
-        return isHovering ? Color.primary.opacity(0.85) : .secondary
+        // sitting at 30% is the reason a video sounds wrong. Full ink against
+        // a rail of muted glyphs, with the glyph itself saying which way.
+        if isMuted || abs(volume - AudioLevel.unity) > 0.005 { return .primary }
+        return isHovering ? .primary : Color.studioTextMuted
     }
 }
 
@@ -259,9 +260,9 @@ private struct TrackControlButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: 10.5, weight: .semibold))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(tint)
-                .frame(width: 16, height: 18)
+                .frame(width: 20, height: 22)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.studioPlain)
@@ -273,9 +274,10 @@ private struct TrackControlButton: View {
 
     private var tint: Color {
         // Off is the state worth seeing at a glance: a hidden track is the
-        // reason something is missing from the picture.
-        if !isOn { return Color.yapperOrange }
-        return isHovering ? Color.primary.opacity(0.85) : .secondary
+        // reason something is missing from the picture. Full ink and a struck
+        // glyph against a rail of muted ones.
+        if !isOn { return .primary }
+        return isHovering ? .primary : Color.studioTextMuted
     }
 }
 
@@ -294,9 +296,9 @@ private struct TrackOverflowMenu<Content: View>: View {
             content
         } label: {
             Image(systemName: "ellipsis")
-                .font(.system(size: 10.5, weight: .semibold))
-                .foregroundStyle(isHovering ? Color.primary.opacity(0.85) : .secondary)
-                .frame(width: 16, height: 18)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(isHovering ? Color.primary : Color.studioTextMuted)
+                .frame(width: 20, height: 22)
                 .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)

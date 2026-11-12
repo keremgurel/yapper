@@ -26,6 +26,30 @@ extension Font {
     static let studioBodyStrong = Font.system(size: 13, weight: .medium)
     static let studioCaption = Font.system(size: 11)
     static let studioCaptionStrong = Font.system(size: 11, weight: .medium)
+    /// 12pt, the step between a caption and body text: control labels and
+    /// field values in the editor's panels.
+    static let studioLabel = Font.system(size: 12)
+    static let studioLabelStrong = Font.system(size: 12, weight: .medium)
+    /// 10pt, the floor. Names drawn on a timeline cell and badges only.
+    static let studioMicro = Font.system(size: 10, weight: .medium)
+    /// Times and other figures that have to hold their width as they change.
+    static let studioTimecode = Font.system(size: 11, weight: .medium, design: .monospaced)
+    static let studioTimecodeMicro = Font.system(size: 10, weight: .medium, design: .monospaced)
+}
+
+/// The corner steps. Buttons, chips and segmented controls are pills and do
+/// not use these; everything with a corner picks one of the four.
+enum StudioRadius {
+    /// A name tag or badge sitting inside a `control`-radius cell.
+    static let tag: CGFloat = 4
+    /// Timeline cells, badges and icon buttons.
+    static let control: CGFloat = 6
+    /// Fields, wells and menu rows.
+    static let field: CGFloat = 8
+    /// Panels inside a pane, popovers.
+    static let panel: CGFloat = 12
+    /// Cards and media.
+    static let card: CGFloat = 16
 }
 
 /// The surface ramp, taken value for value from the web design system's
