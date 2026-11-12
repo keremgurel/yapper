@@ -279,7 +279,7 @@ private struct StudioSidebar: View {
                 YapperMark(size: 27)
                 if expanded {
                     Text("Yapper Studio")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(.system(size: 15, weight: .semibold))
                         .lineLimit(1)
                         .transition(.opacity.combined(with: .offset(x: -4)))
                 }
@@ -295,10 +295,11 @@ private struct StudioSidebar: View {
                     ForEach(visibleGroups, id: \.0) { group, items in
                         if !group.isEmpty, expanded {
                             Text(group)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(Color.secondary.opacity(0.8))
+                                .font(.system(size: 12, weight: .regular))
+                                .foregroundStyle(Color.studioTextMuted)
                                 .padding(.top, 14)
-                                .padding(.horizontal, 12)
+                                .padding(.bottom, 2)
+                                .padding(.horizontal, 10)
                                 .transition(.opacity)
                         } else if !group.isEmpty {
                             Spacer().frame(height: 10)
@@ -309,23 +310,20 @@ private struct StudioSidebar: View {
                                 onNavigate(item)
                             } label: {
                                 HStack(spacing: 10) {
-                                    StudioIcon(
-                                        symbol: item.systemImage,
-                                        selected: destination == item,
-                                        size: 28
-                                    )
+                                    StudioNavGlyph(destination: item, size: 18)
+                                        .frame(width: 22, height: 22)
                                     if expanded {
                                         Text(item.title)
-                                            .font(.system(size: 13, weight: .semibold))
+                                            .font(.system(size: 13, weight: .medium))
                                             .lineLimit(1)
                                     }
                                     Spacer(minLength: 0)
                                 }
                                 .foregroundStyle(
-                                    destination == item ? Color.primary : Color.secondary
+                                    destination == item ? Color.primary : Color.studioTextMuted
                                 )
-                                .padding(.horizontal, expanded ? 8 : 10)
-                                .frame(height: 40)
+                                .padding(.horizontal, expanded ? 9 : 14)
+                                .frame(height: 32)
                                 .contentShape(Rectangle())
                                 .background {
                                     if destination == item {
@@ -335,13 +333,6 @@ private struct StudioSidebar: View {
                                                 id: "sidebar-selection",
                                                 in: selectionNamespace
                                             )
-                                        HStack {
-                                            RoundedRectangle(cornerRadius: 2)
-                                                .fill(Color.yapperOrange)
-                                                .frame(width: 3, height: 17)
-                                            Spacer()
-                                        }
-                                        .padding(.leading, 2)
                                     }
                                 }
                             }
@@ -358,13 +349,17 @@ private struct StudioSidebar: View {
             Rectangle().fill(Color.studioLine).frame(height: 1)
             HStack(spacing: 10) {
                 Circle()
-                    .fill(Color(red: 0.78, green: 0.20, blue: 0.08))
-                    .overlay(Text(auth.accountInitial).font(.system(size: 12, weight: .bold)).foregroundStyle(.white))
+                    .fill(Color.studioAccent)
+                    .overlay(
+                        Text(auth.accountInitial)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Color.studioAccentForeground)
+                    )
                     .frame(width: 30, height: 30)
                 if expanded {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(auth.accountName)
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(size: 12, weight: .medium))
                             .lineLimit(1)
                         Text(auth.account?.email ?? "Account")
                             .font(.system(size: 10))

@@ -47,6 +47,21 @@ below disagrees with this one, this one wins.
 
 The homepage glass tab capsule is kept as it is.
 
+### Native Mac app
+
+The Mac app follows the same foundation through
+`native-macos/Sources/YapperNative/Design`. `StudioDesignSystem.swift` carries
+the web's surface, line, text and accent values one for one; the system face
+stands in for Inter with the same weights (light titles, regular text, medium
+emphasis). Buttons are the same ink and raised white pills, segmented controls
+are a stone tray with a raised selection, and the rail draws the same glyph
+family from `StudioNavGlyph.swift`.
+
+One deliberate difference: orange (`yapperOrange`) remains the working colour
+for anything drawn over video in the editor (playhead, selection, framing and
+snap guides), because ink or white disappears into footage. It is not used for
+buttons or navigation.
+
 ### Product imagery
 
 A product screen is never shown bare. It stands on a **stage**: one of the five

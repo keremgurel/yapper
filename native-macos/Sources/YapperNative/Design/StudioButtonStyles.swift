@@ -1,60 +1,38 @@
 import SwiftUI
 
-/// The brand's primary button: the accent metal face from the web design
-/// system, with the same spring press.
+/// The primary button: a solid ink pill, matching the web's default variant.
+/// Black on light, white on dark.
 struct EditorPrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
-    @Environment(\.colorScheme) private var colorScheme
     var size: StudioControlSize = .regular
-
-    private var isDark: Bool { colorScheme == .dark }
 
     func makeBody(configuration: Configuration) -> some View {
         let pressed = configuration.isPressed && isEnabled
-        let shape = RoundedRectangle(cornerRadius: size.cornerRadius, style: .continuous)
-        let textShadow = StudioMetal.accentTextShadow(dark: isDark)
-
         return configuration.label
             // A button says all of its label or it is not a button: "Crop..."
             // and "Match..." were labels cut down by the row around them.
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
             .font(size.font)
-            .foregroundStyle(StudioMetal.accentForeground(dark: isDark))
-            .shadow(color: textShadow.color, radius: 1, y: textShadow.y)
-            .padding(.horizontal, size.horizontalPadding)
+            .foregroundStyle(Color.studioAccentForeground)
+            .padding(.horizontal, size.horizontalPadding + 2)
             .frame(height: size.height)
-            .background {
-                shape
-                    .fill(StudioMetal.accentFace(dark: isDark))
-                    .overlay {
-                        shape.fill(StudioMetal.accentInnerShadow(dark: isDark, pressed: pressed))
-                    }
-                    .overlay {
-                        shape.strokeBorder(
-                            StudioMetal.accentBezel(dark: isDark),
-                            lineWidth: size.bezelWidth
-                        )
-                    }
-            }
-            .clipShape(shape)
-            .brightness(pressed ? -0.02 : 0)
-            .accentCastShadow(dark: isDark, pressed: pressed, visible: isEnabled)
-            .scaleEffect(pressed ? 0.97 : 1)
-            .opacity(isEnabled ? 1 : 0.5)
-            .animation(.spring(response: 0.4, dampingFraction: 0.55), value: pressed)
+            .background { Capsule(style: .continuous).fill(Color.studioAccent) }
+            .clipShape(Capsule(style: .continuous))
+            .opacity(isEnabled ? (pressed ? 0.86 : 1) : 0.4)
+            .animation(.easeInOut(duration: 0.15), value: pressed)
             .clickableCursor(enabled: isEnabled)
     }
 }
 
-/// The outline button: a plain surface with a hairline border, matching the
-/// web's `outline` variant.
+/// The secondary button: a raised white pill with a hairline ring and a soft
+/// drop, matching the web's `outline` variant.
 struct EditorSecondaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     var size: StudioControlSize = .regular
 
     func makeBody(configuration: Configuration) -> some View {
-        let shape = RoundedRectangle(cornerRadius: size.cornerRadius, style: .continuous)
+        let shape = Capsule(style: .continuous)
         return configuration.label
             // A button says all of its label or it is not a button: "Crop..."
             // and "Match..." were labels cut down by the row around them.
@@ -62,20 +40,19 @@ struct EditorSecondaryButtonStyle: ButtonStyle {
             .fixedSize(horizontal: true, vertical: false)
             .font(size.font)
             .foregroundStyle(.primary)
-            .padding(.horizontal, size.horizontalPadding)
+            .padding(.horizontal, size.horizontalPadding + 2)
             .frame(height: size.height)
             .background {
                 shape
                     .fill(Color.raisedBackground)
                     .overlay { shape.fill(Color.studioFaintFill.opacity(configuration.isPressed ? 1 : 0)) }
-                    .overlay { shape.strokeBorder(Color.studioLine, lineWidth: 1) }
+                    .overlay { shape.strokeBorder(Color.studioLineStrong, lineWidth: 0.5) }
             }
             .clipShape(shape)
-            .shadow(color: .black.opacity(0.06), radius: 1, y: 1)
-            .scaleEffect(configuration.isPressed && isEnabled ? 0.98 : 1)
-            .opacity(isEnabled ? 1 : 0.5)
+            .shadow(color: .black.opacity(0.05), radius: 2, y: 1)
+            .opacity(isEnabled ? 1 : 0.4)
             .clickableCursor(enabled: isEnabled)
-            .animation(.spring(response: 0.35, dampingFraction: 0.6), value: configuration.isPressed)
+            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 
@@ -86,7 +63,7 @@ struct EditorGhostButtonStyle: ButtonStyle {
     var size: StudioControlSize = .small
 
     func makeBody(configuration: Configuration) -> some View {
-        let shape = RoundedRectangle(cornerRadius: size.cornerRadius, style: .continuous)
+        let shape = Capsule(style: .continuous)
         return configuration.label
             // A button says all of its label or it is not a button: "Crop..."
             // and "Match..." were labels cut down by the row around them.
@@ -135,23 +112,6 @@ struct EditorDestructiveButtonStyle: ButtonStyle {
             .opacity(isEnabled ? 1 : 0.5)
             .clickableCursor(enabled: isEnabled)
             .animation(.spring(response: 0.35, dampingFraction: 0.6), value: configuration.isPressed)
-    }
-}
-
-private extension View {
-    /// The accent button's cast shadow, applied as the stack of layers the web
-    /// token describes. Disabled buttons sit flat: an unusable control should
-    /// not look like it is floating off the surface.
-    @ViewBuilder
-    func accentCastShadow(dark: Bool, pressed: Bool, visible: Bool) -> some View {
-        if visible {
-            StudioMetal.accentDropShadow(dark: dark, pressed: pressed)
-                .reduce(AnyView(self)) { view, layer in
-                    AnyView(view.shadow(color: layer.color, radius: layer.radius, y: layer.y))
-                }
-        } else {
-            self
-        }
     }
 }
 

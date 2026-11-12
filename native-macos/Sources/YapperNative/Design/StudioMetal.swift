@@ -167,9 +167,9 @@ enum StudioControlSize {
 
     var font: Font {
         switch self {
-        case .regular: .system(size: 13, weight: .semibold)
-        case .small: .system(size: 11.5, weight: .semibold)
-        case .mini: .system(size: 11, weight: .semibold)
+        case .regular: .system(size: 13, weight: .medium)
+        case .small: .system(size: 11.5, weight: .medium)
+        case .mini: .system(size: 11, weight: .medium)
         }
     }
 }
