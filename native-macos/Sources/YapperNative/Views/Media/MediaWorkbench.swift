@@ -46,24 +46,24 @@ struct MediaWorkbench: View {
     }
 
     private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Media")
-                    .font(.system(size: 15, weight: .bold))
-                Text("Drop files here")
-                    .font(.studioBody)
-                    .foregroundStyle(.secondary)
+        WorkbenchPaneHeader(
+            title: "Media",
+            detail: "Every file in this project. Drop more in from Finder."
+        ) {
+            Button {
+                ImportPanels.openMedia(for: session)
+            } label: {
+                StudioGlyphLabel("Import", glyph: .plus, size: 13)
             }
-            Spacer()
-            Button("Import") { ImportPanels.openMedia(for: session) }
-                .buttonStyle(EditorSecondaryButtonStyle())
-                .disabled(session.isBusy)
+            .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+            .disabled(session.isBusy)
+            .help("Choose videos, pictures or audio to add to this project")
         }
     }
 
     private var list: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 10) {
+            LazyVStack(alignment: .leading, spacing: 8) {
                 ForEach(session.project.media) { media in
                     MediaRow(
                         session: session,
@@ -82,57 +82,15 @@ struct MediaWorkbench: View {
     @ViewBuilder
     private var dropHighlight: some View {
         if isDropTargeted {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                 .fill(Color.studioAccent.opacity(0.09))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                         .strokeBorder(
                             Color.studioAccent.opacity(0.7),
                             style: StrokeStyle(lineWidth: 2, dash: [7, 5])
                         )
                 }
         }
-    }
-
-}
-
-/// What the panel says before anything has been imported.
-struct MediaEmptyState: View {
-    @ObservedObject var session: EditorSession
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "plus.rectangle.on.rectangle")
-                    .font(.system(size: 23, weight: .light))
-                    .foregroundStyle(Color.studioAccent)
-                    .frame(width: 30)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("No media yet")
-                        .font(.studioBodyStrong)
-                    Text("Drag videos or images in from Finder, or import them. They stay local on this Mac.")
-                        .font(.studioCaption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-
-            Button {
-                ImportPanels.openMedia(for: session)
-            } label: {
-                Label("Import media", systemImage: "square.and.arrow.down")
-            }
-            .buttonStyle(EditorPrimaryButtonStyle())
-            .disabled(session.isBusy)
-        }
-        .padding(16)
-        .frame(maxWidth: 440, alignment: .leading)
-        .background(Color.raisedBackground)
-        .overlay(
-            RoundedRectangle(cornerRadius: 9)
-                .stroke(Color.studioLine, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 9))
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

@@ -16,53 +16,65 @@ struct MediaSelectionBar: View {
     }
 
     var body: some View {
-        HStack(spacing: 10) {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                picking
+                Spacer(minLength: 12)
+                acting
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                picking
+                acting
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            Color.studioTray,
+            in: RoundedRectangle(cornerRadius: StudioRadius.field, style: .continuous)
+        )
+    }
+
+    /// How many are picked, and the two ways to change that.
+    private var picking: some View {
+        HStack(spacing: 8) {
             Text("\(count) selected")
-                .font(.studioBodyStrong)
+                .font(.studioLabelStrong)
+                .monospacedDigit()
 
-            Button { session.selectAllMedia() } label: {
-                AdaptiveControlLabel(title: "Select all", systemImage: "checkmark.circle")
-            }
+            Button("Select all") { session.selectAllMedia() }
                 .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
-                .help("Select all media")
+                .help("Select every file in this project")
 
-            Button { session.clearMediaSelection() } label: {
-                AdaptiveControlLabel(title: "Deselect", systemImage: "xmark.circle")
-            }
+            Button("Deselect") { session.clearMediaSelection() }
                 .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
-                .help("Clear the media selection")
+                .help("Clear the selection")
+        }
+        .fixedSize()
+    }
 
-            Spacer(minLength: 8)
-
+    /// What happens to the picked files.
+    private var acting: some View {
+        HStack(spacing: 8) {
             if placeableCount > 0 {
                 Button {
                     Task { await session.appendSelectedMediaToTimeline() }
                 } label: {
-                    AdaptiveControlLabel(
-                        title: "Add to main track",
-                        systemImage: "rectangle.stack.badge.plus",
-                        compactTitle: "Add"
-                    )
+                    StudioGlyphLabel("Add to main track", glyph: .plus, size: 12)
                 }
                 .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
-                .help("Add the selected media to the main track")
+                .help("Add the selected files to the end of the main track")
             }
 
             Button(role: .destructive) {
                 Task { await session.deleteSelectedMedia() }
             } label: {
-                AdaptiveControlLabel(title: "Remove", systemImage: "trash")
+                StudioGlyphLabel("Remove", glyph: .delete, size: 12)
             }
             .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
-            .help("Remove \(count) from this project · the source files are kept")
+            .help("Remove \(count) from this project. The source files are kept.")
         }
-        .padding(.horizontal, 11)
-        .padding(.vertical, 8)
-        .background(Color.studioAccent.opacity(0.13))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(Color.studioAccent.opacity(0.45), lineWidth: 1)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .fixedSize()
     }
 }
