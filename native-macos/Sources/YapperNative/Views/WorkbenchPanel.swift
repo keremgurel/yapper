@@ -473,16 +473,16 @@ private struct OneClickEditProgressOverlay: View {
 
             VStack(alignment: .leading, spacing: 18) {
                 HStack(spacing: 10) {
-                    Image(systemName: "wand.and.stars")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(Color.studioAccent)
+                    StudioGlyph(.quickEdit, size: 17)
                         .frame(width: 32, height: 32)
-                        .background(Color.studioAccent.opacity(0.14))
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .background(
+                            Color.studioTray,
+                            in: RoundedRectangle(cornerRadius: StudioRadius.field, style: .continuous)
+                        )
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Editing your video")
                             .font(.studioBodyStrong)
-                        Text("Building a clean, continuous native timeline")
+                        Text("You can keep working. Undo brings everything back.")
                             .font(.studioCaption)
                             .foregroundStyle(.secondary)
                     }
@@ -493,7 +493,7 @@ private struct OneClickEditProgressOverlay: View {
                         HStack(spacing: 10) {
                             Group {
                                 if item.rawValue < stage.rawValue {
-                                    Image(systemName: "checkmark")
+                                    StudioGlyph(.check, size: 12)
                                         .foregroundStyle(Color.studioAccent)
                                 } else if item == stage {
                                     ProgressView()
@@ -555,90 +555,15 @@ private struct ShimmeringStatusText: View {
                 .foregroundStyle(
                     LinearGradient(
                         colors: [
-                            Color.secondary.opacity(0.72),
-                            Color.cyan,
-                            Color.secondary.opacity(0.72),
+                            Color.studioTextMuted,
+                            Color.primary,
+                            Color.studioTextMuted,
                         ],
                         startPoint: UnitPoint(x: phase * 2 - 1, y: 0.5),
                         endPoint: UnitPoint(x: phase * 2, y: 0.5)
                     )
                 )
         }
-    }
-}
-
-private struct QuickEditWorkbench: View {
-    @ObservedObject var session: EditorSession
-
-    /// Hidden captions are still there, so the action offers them back rather
-    /// than offering to build them again.
-    private var captionActionTitle: String {
-        if session.captionsVisible { return "Hide Captions" }
-        return session.hasCaptions ? "Show Captions" : "Add Captions"
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Quick Edit")
-                .font(.system(size: 15, weight: .bold))
-            Text("Choose an edit to remove pauses, tighten your take, or add captions. Your original media is kept.")
-                .font(.studioCaption)
-                .foregroundStyle(.secondary)
-
-            LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: 10) {
-                QuickAction(
-                    title: session.project.hasTimelineTranscript ? "Transcribe Again" : "Transcribe",
-                    detail: "Accurate timed words",
-                    icon: "doc.text",
-                    busy: session.isBusy
-                ) {
-                    session.startTranscription()
-                }
-                QuickAction(
-                    title: session.isAIEditing ? "Editing…" : "1-Click Edit + Captions",
-                    detail: "Retakes, pauses + captions",
-                    icon: "wand.and.stars",
-                    busy: session.isBusy
-                ) {
-                    Task { await session.runOneClickEdit() }
-                }
-                QuickAction(
-                    title: captionActionTitle,
-                    detail: session.captionsVisible
-                        ? "Keeps every card for later"
-                        : (session.hasCaptions ? "Bring back your cards" : "Generate from transcript"),
-                    icon: "captions.bubble",
-                    busy: session.isBusy,
-                    disabled: !session.appActions.availability(.captionVisibility, in: session).isAvailable
-                ) {
-                    Task { await session.toggleCaptions() }
-                }
-                QuickAction(
-                    title: "Text Hook",
-                    detail: "Add at the playhead",
-                    icon: "textformat",
-                    disabled: session.project.clips.isEmpty
-                ) { session.addTextLayer(asHook: true) }
-            }
-            .disabled(session.project.clips.isEmpty || session.isBusy)
-
-            if session.isAIEditing {
-                ProgressView(value: session.aiProgress)
-                    .tint(Color.studioAccent)
-                Text(session.statusMessage)
-                    .font(.studioCaption)
-                    .foregroundStyle(.secondary)
-                if session.canCancelCurrentOperation,
-                   let operation = session.activeOperation?.operation {
-                    Button(operation.cancelLabel) { session.cancelCurrentOperation() }
-                        .buttonStyle(EditorSecondaryButtonStyle(size: .small))
-                }
-            }
-
-            Spacer()
-        }
-        .padding(16)
-        .inspectorPane(maxWidth: 620)
     }
 }
 
@@ -773,45 +698,6 @@ private struct ChoiceButton: View {
                 .clipShape(RoundedRectangle(cornerRadius: 6))
         }
         .buttonStyle(.studioPlain)
-    }
-}
-
-private struct QuickAction: View {
-    let title: String
-    let detail: String
-    let icon: String
-    var busy = false
-    var disabled = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 9) {
-                if busy {
-                    ProgressView().controlSize(.small).tint(Color.studioAccent)
-                } else {
-                    Image(systemName: icon)
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Color.studioAccent)
-                }
-                Text(title)
-                    .font(.studioBodyStrong)
-                Text(detail)
-                    .font(.studioCaption)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: 290, minHeight: 78, alignment: .leading)
-            .padding(12)
-            .background(Color.raisedBackground)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.studioLine, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-        }
-        .buttonStyle(.studioPlain)
-        .disabled(disabled || busy)
-        .opacity(disabled ? 0.48 : 1)
     }
 }
 

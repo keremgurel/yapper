@@ -21,7 +21,7 @@ enum OneClickEditStage: Int, CaseIterable, Sendable {
         switch self {
         case .preparing: "Preparing your video"
         case .transcribing: "Transcribing your audio"
-        case .removingRetakes: "Removing mistakes & retakes"
+        case .removingRetakes: "Removing mistakes and retakes"
         case .cuttingPauses: "Cutting pauses"
         case .trimmingSilence: "Trimming silence"
         case .addingCaptions: "Adding captions"
