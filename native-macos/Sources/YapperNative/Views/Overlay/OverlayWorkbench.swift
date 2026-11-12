@@ -119,7 +119,9 @@ private struct OverlayChip: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(name)
                         .font(.studioBodyStrong)
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                        .multilineTextAlignment(.leading)
                         .help(name)
                     Text("\(formatTime(overlay.timelineStart)) · \(String(format: "%.1fs", overlay.duration))")
                         .font(.studioCaption)
@@ -127,9 +129,10 @@ private struct OverlayChip: View {
                 }
             }
             .padding(.horizontal, 9)
-            // As wide as the name needs, up to a point, so short names are
-            // not padded out and most long ones are not cut.
-            .frame(minWidth: 150, maxWidth: 300, minHeight: 52, maxHeight: 52, alignment: .leading)
+            // As wide as the name needs, up to the width of the narrowest
+            // pane, so a card is never cut off by the pane's own edge.
+            .frame(minWidth: 150, maxWidth: 224, minHeight: 52, alignment: .leading)
+            .padding(.vertical, 6)
             .fixedSize(horizontal: true, vertical: false)
             .background(selected ? Color.studioSelectedFill : Color.raisedBackground)
             .overlay {

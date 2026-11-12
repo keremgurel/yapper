@@ -22,11 +22,13 @@ struct AudioItemCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.studioBodyStrong)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(detail)
                     .font(.studioCaption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .foregroundStyle(Color.studioTextMuted)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .help("\(title): \(detail)")
 

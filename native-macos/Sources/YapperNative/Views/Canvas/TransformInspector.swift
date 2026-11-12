@@ -177,7 +177,7 @@ struct TransformInspector: View {
                 detail: session.isFramingKeyed ? "This shot moves" : "Mark where a move starts, then change the scale later on"
             ) {
                 KeyframeControls(session: session, clock: clock)
-                Button("Animate framing…") { session.pausePlayback(); showsFramingAnimation = true }
+                Button("Animate framing") { session.pausePlayback(); showsFramingAnimation = true }
                     .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
                     .sheet(isPresented: $showsFramingAnimation) {
                         VideoAnimationSheet(session: session, playhead: session.currentTime)

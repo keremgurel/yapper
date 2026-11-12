@@ -83,6 +83,11 @@ struct InspectorRow<Content: View>: View {
                     .font(.studioCaption)
                     .foregroundStyle(Color.studioTextMuted)
                     .fixedSize(horizontal: false, vertical: true)
+                    // A hint wraps under its control. Without an ideal width
+                    // of its own, a long hint asked for one long line and
+                    // pushed its row into the stacked layout while the rows
+                    // around it stayed side by side.
+                    .frame(idealWidth: 120, alignment: .leading)
             }
         }
     }

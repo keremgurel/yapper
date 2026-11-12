@@ -34,22 +34,18 @@ struct AudioWorkbench: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 16) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Audio")
-                    .font(.studioSectionTitle)
-                Text("Music and sound effects for your timeline")
-                    .font(.studioCaption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 8)
+        WorkbenchPaneHeader(
+            title: "Audio",
+            detail: "Music and sound effects for your timeline"
+        ) {
             Button {
                 ImportPanels.openAudio(for: session)
             } label: {
                 StudioGlyphLabel("Import audio", glyph: .plus, size: 13)
             }
-            .buttonStyle(EditorSecondaryButtonStyle())
+            .buttonStyle(EditorSecondaryButtonStyle(size: .small))
             .disabled(session.project.clips.isEmpty)
+            .help("Choose a music or sound file to add to this project")
         }
     }
 }

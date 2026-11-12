@@ -11,43 +11,18 @@ struct SelectedAudioLayerEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                AudioIconTile(systemName: layer.builtInID == nil ? "waveform" : "sparkles")
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(layer.name)
-                        .font(.studioBodyStrong)
-                        .lineLimit(1)
-                    Text("Starts at \(formatTimePrecise(layer.timelineStart)) · \(AudioLength.short(layer.duration)) long")
-                        .font(.studioCaption)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
+            // On one line when there is room. In a narrow pane the two
+            // actions move under the name rather than squeezing it.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    identity.fixedSize()
+                    Spacer(minLength: 8)
+                    actions
                 }
-
-                Spacer(minLength: 8)
-
-                // Changing your mind about which click it is should not mean
-                // finding the moment again: see EditorSession+SoundSwap.
-                Menu {
-                    SoundSwapMenu(session: session, layer: layer)
-                } label: {
-                    Label("Replace", systemImage: "arrow.2.squarepath")
-                        .font(.studioCaptionStrong)
+                VStack(alignment: .leading, spacing: 8) {
+                    identity
+                    actions
                 }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                .help("Swap this for another sound, keeping its place")
-
-                Button(role: .destructive) {
-                    Task { await session.deleteSelectedAudioLayer() }
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.system(size: 12, weight: .semibold))
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(EditorGhostButtonStyle(size: .mini))
-                .accessibilityLabel("Delete \(layer.name)")
-                .help("Delete this sound")
             }
 
             HStack(spacing: 10) {
@@ -70,5 +45,48 @@ struct SelectedAudioLayerEditor: View {
                 .stroke(Color.studioLineStrong, lineWidth: 1)
         }
         .clipShape(RoundedRectangle(cornerRadius: AudioWorkbenchMetrics.cardRadius, style: .continuous))
+    }
+
+    /// What the sound is and where it sits.
+    private var identity: some View {
+        HStack(spacing: 10) {
+            AudioIconTile(systemName: layer.builtInID == nil ? "waveform" : "sparkles")
+            VStack(alignment: .leading, spacing: 2) {
+                Text(layer.name)
+                    .font(.studioBodyStrong)
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+                    .help(layer.name)
+                Text("Starts at \(formatTimePrecise(layer.timelineStart)) · \(AudioLength.short(layer.duration)) long")
+                    .font(.studioCaption)
+                    .foregroundStyle(Color.studioTextMuted)
+                    .monospacedDigit()
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var actions: some View {
+        HStack(spacing: 6) {
+            // Changing your mind about which click it is should not mean
+            // finding the moment again: see EditorSession+SoundSwap.
+            Menu("Replace") {
+                SoundSwapMenu(session: session, layer: layer)
+            }
+            .menuStyle(.borderlessButton)
+            .font(.studioLabelStrong)
+            .fixedSize()
+            .help("Swap this for another sound, keeping its place")
+
+            Button(role: .destructive) {
+                Task { await session.deleteSelectedAudioLayer() }
+            } label: {
+                StudioGlyph(.delete, size: 15).frame(width: 28, height: 28)
+            }
+            .buttonStyle(EditorGhostButtonStyle(size: .mini))
+            .accessibilityLabel("Delete \(layer.name)")
+            .help("Delete this sound")
+        }
+        .fixedSize()
     }
 }

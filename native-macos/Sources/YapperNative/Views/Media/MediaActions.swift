@@ -29,7 +29,7 @@ struct MediaActions: View {
         Button {
             session.beginCropping(mediaID: media.id)
         } label: {
-            Label("Crop…", systemImage: "crop")
+            Label("Crop", systemImage: "crop")
         }
         .disabled(!session.canCrop(mediaID: media.id))
 

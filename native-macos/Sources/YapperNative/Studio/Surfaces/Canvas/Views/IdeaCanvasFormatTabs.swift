@@ -60,7 +60,7 @@ struct IdeaCanvasFormatTabs: View {
         .clickableCursor()
         .contextMenu {
             if exists && format != lead {
-                Button("Delete the \(format.noun)…", role: .destructive) { onDelete(format) }
+                Button("Delete the \(format.noun)", role: .destructive) { onDelete(format) }
             }
         }
         .accessibilityAddTraits(on ? .isSelected : [])

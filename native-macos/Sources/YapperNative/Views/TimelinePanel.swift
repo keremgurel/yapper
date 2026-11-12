@@ -1256,7 +1256,7 @@ private struct TimelineOverlayItem: View {
             Button {
                 session.beginCropping(overlayID: overlay.id)
             } label: {
-                Label("Crop…", systemImage: "crop")
+                Label("Crop", systemImage: "crop")
             }
             Button {
                 session.setOverlayHidden(overlay, hidden: overlay.isVisible)

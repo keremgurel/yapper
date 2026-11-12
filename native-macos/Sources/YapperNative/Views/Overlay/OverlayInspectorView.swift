@@ -214,17 +214,21 @@ struct OverlayInspectorView: View {
             }
 
             InspectorRow("Crop", detail: cropReadout) {
-                Button("Crop…") { session.beginCropping(overlayID: overlay.id) }
+                Button("Crop") { session.beginCropping(overlayID: overlay.id) }
                     .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
-                Button("Zoom into area…") { session.pausePlayback(); showsZoom = true }
+                    .help("Open the crop editor and trim the edges of this overlay")
+                Button("Zoom into area") { session.pausePlayback(); showsZoom = true }
                     .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                    .help("Pick a part of the picture for the overlay to zoom in on")
                 if media?.isImage == true {
-                    Button("Mask area…") { session.pausePlayback(); showsMask = true }
+                    Button("Mask area") { session.pausePlayback(); showsMask = true }
                         .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                        .help("Cover part of the picture, then reveal it on cue")
                 }
                 if !shown.resolvedCrop.isFull {
                     Button("Reset") { session.setOverlayCrop(overlay, crop: .full) }
                         .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                        .help("Show the whole picture again")
                 }
             }
         }

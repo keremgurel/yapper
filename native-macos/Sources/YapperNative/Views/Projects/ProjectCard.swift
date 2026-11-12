@@ -51,7 +51,7 @@ struct ProjectCard: View {
         .clickableCursor()
         .contextMenu {
             Button("Open") { onOpen() }
-            Button("Rename…") { onRename() }
+            Button("Rename") { onRename() }
             Button("Duplicate") { onDuplicate() }
             Divider()
             Button("Show in Finder") { onReveal() }
