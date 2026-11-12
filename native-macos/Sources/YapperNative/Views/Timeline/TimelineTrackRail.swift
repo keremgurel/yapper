@@ -31,7 +31,7 @@ struct TimelineTrackRail: View {
             Color.panelBackground.frame(height: TimelineRowLayout.rulerHeight)
 
             if layout.hasText {
-                TrackRailRow(glyph: "textformat", height: TimelineRowLayout.textRowHeight)
+                TrackRailRow(glyph: .text, height: TimelineRowLayout.textRowHeight)
             }
 
             // Highest lane first: the rail reads the way the lanes composite.
@@ -49,7 +49,7 @@ struct TimelineTrackRail: View {
             // beside the tracks it labels. Sounds stack when they overlap: see
             // AudioTracks.
             ForEach(0 ..< layout.audioTrackCount, id: \.self) { _ in
-                TrackRailRow(glyph: "waveform", height: TimelineRowLayout.audioRowHeight)
+                TrackRailRow(glyph: .audio, height: TimelineRowLayout.audioRowHeight)
             }
 
             Spacer(minLength: 0)
@@ -66,11 +66,11 @@ struct TimelineTrackRail: View {
         let hidden = session.isOverlayTrackHidden(track)
         let isEmpty = OverlayTracks.on(track, in: session.overlays).isEmpty
         return TrackRailRow(
-            glyph: "photo.on.rectangle",
+            glyph: .overlays,
             height: TimelineRowLayout.overlayRowHeight
         ) {
             TrackControlButton(
-                icon: hidden ? "eye.slash" : "eye",
+                icon: hidden ? .eyeOff : .eye,
                 help: hidden ? "Show overlay lane \(track + 1)" : "Hide overlay lane \(track + 1)",
                 isOn: !hidden
             ) {
@@ -92,11 +92,11 @@ struct TimelineTrackRail: View {
 
     private var captionRow: some View {
         TrackRailRow(
-            glyph: "captions.bubble",
+            glyph: .captions,
             height: TimelineRowLayout.captionRowHeight
         ) {
             TrackControlButton(
-                icon: session.captionsVisible ? "eye" : "eye.slash",
+                icon: session.captionsVisible ? .eye : .eyeOff,
                 help: session.captionsVisible ? "Hide the captions" : "Show the captions",
                 isOn: session.captionsVisible
             ) {
@@ -108,12 +108,12 @@ struct TimelineTrackRail: View {
 
     private var videoRow: some View {
         TrackRailRow(
-            glyph: "film",
+            glyph: .media,
             height: TimelineRowLayout.videoRowHeight,
             background: Color.studioFaintFill.opacity(0.55)
         ) {
             TrackControlButton(
-                icon: session.project.isVideoTrackHidden ? "eye.slash" : "eye",
+                icon: session.project.isVideoTrackHidden ? .eyeOff : .eye,
                 help: session.project.isVideoTrackHidden ? "Show the video" : "Hide the video",
                 isOn: !session.project.isVideoTrackHidden
             ) {
@@ -142,13 +142,13 @@ struct TimelineTrackRail: View {
 /// Fixed height and a hairline underneath, so the rail reads as a column of
 /// equals rather than a stack of differently sized cards.
 private struct TrackRailRow<Controls: View>: View {
-    let glyph: String
+    let glyph: StudioGlyphKind
     let height: Double
     var background: Color = .clear
     @ViewBuilder var controls: Controls
 
     init(
-        glyph: String,
+        glyph: StudioGlyphKind,
         height: Double,
         background: Color = .clear,
         @ViewBuilder controls: () -> Controls = { EmptyView() }
@@ -161,8 +161,7 @@ private struct TrackRailRow<Controls: View>: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            Image(systemName: glyph)
-                .font(.system(size: 12))
+            StudioGlyph(glyph, size: 15)
                 .foregroundStyle(.tertiary)
                 .frame(width: 18)
             controls
@@ -197,8 +196,7 @@ private struct TrackVolumeMenu: View {
         Button {
             isOpen.toggle()
         } label: {
-            Image(systemName: icon)
-                .font(.system(size: 12, weight: .medium))
+            StudioGlyph(icon, size: 15)
                 .foregroundStyle(tint)
                 .frame(width: 20, height: 22)
                 .contentShape(Rectangle())
@@ -230,13 +228,13 @@ private struct TrackVolumeMenu: View {
         }
     }
 
-    private var icon: String {
-        if isMuted { return "speaker.slash" }
+    private var icon: StudioGlyphKind {
+        if isMuted { return .speakerMuted }
         return switch AudioLevel.percent(volume) {
-        case 0: "speaker.slash"
-        case ..<60: "speaker.fill"
-        case ..<110: "speaker.wave.2"
-        default: "speaker.wave.3"
+        case 0: .speakerMuted
+        case ..<60: .speakerLow
+        case ..<110: .speakerMid
+        default: .speakerHigh
         }
     }
 
@@ -250,7 +248,7 @@ private struct TrackVolumeMenu: View {
 }
 
 private struct TrackControlButton: View {
-    let icon: String
+    let icon: StudioGlyphKind
     let help: String
     var isOn = true
     let action: () -> Void
@@ -259,8 +257,7 @@ private struct TrackControlButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 12, weight: .medium))
+            StudioGlyph(icon, size: 15)
                 .foregroundStyle(tint)
                 .frame(width: 20, height: 22)
                 .contentShape(Rectangle())
@@ -295,8 +292,7 @@ private struct TrackOverflowMenu<Content: View>: View {
         Menu {
             content
         } label: {
-            Image(systemName: "ellipsis")
-                .font(.system(size: 12, weight: .medium))
+            StudioGlyph.image(.more, size: 15)
                 .foregroundStyle(isHovering ? Color.primary : Color.studioTextMuted)
                 .frame(width: 20, height: 22)
                 .contentShape(Rectangle())

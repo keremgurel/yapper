@@ -9,7 +9,7 @@ import SwiftUI
 /// in the tooltip rather than on the face.
 struct TimelineActionButton: View {
     let title: String
-    let systemImage: String
+    let glyph: StudioGlyphKind
     let shortcut: String
     let help: String
     var showsTitle = true
@@ -24,11 +24,8 @@ struct TimelineActionButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 5) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 12, weight: .medium))
-                    .frame(width: 16)
-                    .accessibilityHidden(true)
+            HStack(spacing: 6) {
+                StudioGlyph(glyph, size: 16)
                 if showsTitle {
                     Text(title)
                         .font(.studioLabelStrong)

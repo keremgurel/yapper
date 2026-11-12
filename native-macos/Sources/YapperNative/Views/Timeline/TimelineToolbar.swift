@@ -54,10 +54,7 @@ struct TimelineToolbar: View {
         HStack(spacing: 2) {
             TimelineActionButton(
                 title: "Snap",
-                // Two edges meeting on a line. There is no magnet in SF
-                // Symbols: the name this used to pass drew nothing, which left
-                // an empty tile whenever the toolbar fell back to icons.
-                systemImage: "arrow.right.and.line.vertical.and.arrow.left",
+                glyph: .snap,
                 shortcut: "hold Option to bypass",
                 help: "Snap to the playhead, edges, seconds, and audio transients",
                 showsTitle: showsTitles,
@@ -69,7 +66,7 @@ struct TimelineToolbar: View {
             divider.padding(.horizontal, 6)
             TimelineActionButton(
                 title: "Split",
-                systemImage: "scissors",
+                glyph: .split,
                 shortcut: "S",
                 help: "Split the selected item at the playhead",
                 showsTitle: showsTitles
@@ -79,7 +76,7 @@ struct TimelineToolbar: View {
             .disabled(session.project.clips.isEmpty)
             TimelineActionButton(
                 title: "Trim start",
-                systemImage: "arrow.right.to.line",
+                glyph: .trimStart,
                 shortcut: "[",
                 help: "Pull the selected item's left edge to the playhead",
                 showsTitle: showsTitles
@@ -89,7 +86,7 @@ struct TimelineToolbar: View {
             .disabled(!session.hasPlayheadCommandTarget)
             TimelineActionButton(
                 title: "Trim end",
-                systemImage: "arrow.left.to.line",
+                glyph: .trimEnd,
                 shortcut: "]",
                 help: "Pull the selected item's right edge to the playhead",
                 showsTitle: showsTitles
@@ -99,7 +96,7 @@ struct TimelineToolbar: View {
             .disabled(!session.hasPlayheadCommandTarget)
             TimelineActionButton(
                 title: "Delete",
-                systemImage: "trash",
+                glyph: .delete,
                 shortcut: "⌫",
                 help: "Delete the selected timeline items",
                 showsTitle: showsTitles
@@ -109,7 +106,7 @@ struct TimelineToolbar: View {
             .disabled(!session.hasTimelineSelection)
             TimelineActionButton(
                 title: "Auto-trim",
-                systemImage: "waveform",
+                glyph: .autoTrim,
                 shortcut: "⇧⌘T",
                 help: "Remove silent gaps in the selected clips, or everywhere when nothing is selected",
                 showsTitle: showsTitles

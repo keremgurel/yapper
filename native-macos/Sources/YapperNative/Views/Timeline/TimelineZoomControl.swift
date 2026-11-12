@@ -10,15 +10,14 @@ struct TimelineZoomControl: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: "minus.magnifyingglass")
+            StudioGlyph(.zoomOut, size: 15)
             Slider(value: zoom, in: TimelineZoomGeometry.scaleRange)
                 .frame(width: 120)
                 .controlSize(.mini)
                 .help("Pinch or ⌘-scroll over the timeline to zoom")
                 .accessibilityLabel("Timeline zoom")
-            Image(systemName: "plus.magnifyingglass")
+            StudioGlyph(.zoomIn, size: 15)
         }
-        .font(.system(size: 12, weight: .medium))
         .foregroundStyle(Color.studioTextMuted)
         .fixedSize()
     }

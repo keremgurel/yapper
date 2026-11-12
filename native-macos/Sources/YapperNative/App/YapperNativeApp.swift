@@ -45,6 +45,7 @@ struct YapperNativeApp: App {
     @AppStorage("studioColorScheme") private var themeRaw = StudioTheme.dark.rawValue
 
     init() {
+        OverlayScrollers.enforce()
         let session = EditorSession()
         _session = StateObject(wrappedValue: session)
         appDelegate.session = session
