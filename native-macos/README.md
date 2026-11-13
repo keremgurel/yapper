@@ -30,6 +30,31 @@ The result is `dist/Yapper Studio Native.app`. The native editor uses one
 continuous composition for playback; it never pause/plays separate video
 elements at clip boundaries.
 
+## Install
+
+```bash
+./scripts/install-app.sh
+```
+
+This replaces `/Applications/Yapper Studio Native.app` with the packaged build.
+If the installed app is open, the script quits it the way Cmd-Q does (so a
+running export can finish or cancel and clean up), swaps the bundle, and opens
+the new one. The old bundle is kept in a `/Applications/.yapper-update-*`
+folder only during the swap. The script removes that folder when it finishes,
+and puts the old app back if the new one fails verification. Do not kill the
+app or move bundles by hand: a killed export leaves its scratch folder in the
+temp directory until the next launch sweeps it a day later.
+
+## Temporary files
+
+An export writes nothing outside its destination except one
+`yapper-export-snapshot-<UUID>` folder in the temp directory. It holds APFS
+clones of the sources and the intermediate render of a two-pass export, and it
+is removed when the export finishes, fails or is cancelled. A process that dies
+mid-export leaves its folder behind; at launch the app removes any such folder
+older than a day, skipping folders whose `.in-use` lock another running export
+still holds.
+
 ## Shared app actions
 
 Chirpy now sends the current project, selection, saved reveal events, and recent

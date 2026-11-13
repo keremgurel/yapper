@@ -14,6 +14,7 @@ final class YapperNativeAppDelegate: NSObject, NSApplicationDelegate {
         // launches behave like the packaged application.
         NativeAnalytics.shared.start()
         Task.detached(priority: .utility) { await PosterProjectRender.shared.removeStaleRenders() }
+        Task.detached(priority: .utility) { StaleExportScratchSweeper.sweep() }
         NSApp.setActivationPolicy(.regular)
         DispatchQueue.main.async {
             NSApp.activate(ignoringOtherApps: true)

@@ -10,21 +10,34 @@ typealias ExportSourceCopying = (URL, URL) async throws -> Void
 /// SD-card remount or same-path replacement change the footage underneath a
 /// render already in progress. This snapshot rewrites only required sources to
 /// unique temporary files and owns them until delivery finishes.
+///
+/// The folder is also where the export keeps its intermediate renders, so a
+/// single removal takes everything with it. While the snapshot is alive it
+/// holds an `ExportScratchLock`, which tells the launch sweep in
+/// `StaleExportScratchSweeper` to leave the folder alone.
 final class ExportSourceSnapshot: @unchecked Sendable {
-    private static let directoryPrefix = "yapper-export-snapshot-"
-    private static let staleAge: TimeInterval = 24 * 60 * 60
+    static let directoryPrefix = "yapper-export-snapshot-"
 
     let project: EditorProject
-    private let directory: URL
+    let directory: URL
+    private let inUse: ExportScratchLock
     private let cleanupLock = NSLock()
     private var cleaned = false
 
-    private init(project: EditorProject, directory: URL) {
+    private init(project: EditorProject, directory: URL, inUse: ExportScratchLock) {
         self.project = project
         self.directory = directory
+        self.inUse = inUse
     }
 
     deinit { discard() }
+
+    /// A fresh path inside the snapshot folder for an intermediate render.
+    /// It goes when the folder does, along with any partial file AVFoundation
+    /// writes beside it.
+    func scratchURL(prefix: String, pathExtension: String) -> URL {
+        directory.appending(path: "\(prefix)\(UUID().uuidString).\(pathExtension)")
+    }
 
     func discard() {
         let shouldRemove = cleanupLock.withLock {
@@ -32,7 +45,9 @@ final class ExportSourceSnapshot: @unchecked Sendable {
             cleaned = true
             return true
         }
-        if shouldRemove { try? FileManager.default.removeItem(at: directory) }
+        guard shouldRemove else { return }
+        try? FileManager.default.removeItem(at: directory)
+        inUse.release()
     }
 
     static func create(
@@ -42,7 +57,6 @@ final class ExportSourceSnapshot: @unchecked Sendable {
             try await copyFile(from: source, to: destination)
         }
     ) async throws -> ExportSourceSnapshot {
-        await purgeStaleSnapshots(in: root)
         try Task.checkCancellation()
         let directory = root.appending(
             path: directoryPrefix + UUID().uuidString,
@@ -54,6 +68,7 @@ final class ExportSourceSnapshot: @unchecked Sendable {
         )
 
         do {
+            let inUse = try ExportScratchLock.hold(in: directory)
             var result = project
             let requiredMedia = MediaAvailability.requiredMediaIDs(in: project)
             let requiredAudio = (project.audioLayers ?? []).filter {
@@ -143,7 +158,7 @@ final class ExportSourceSnapshot: @unchecked Sendable {
                 }
                 result.audioLayers = layers
             }
-            return ExportSourceSnapshot(project: result, directory: directory)
+            return ExportSourceSnapshot(project: result, directory: directory, inUse: inUse)
         } catch {
             try? FileManager.default.removeItem(at: directory)
             throw error
@@ -158,31 +173,6 @@ final class ExportSourceSnapshot: @unchecked Sendable {
 
     private static func sourceKey(_ url: URL) -> String {
         url.resolvingSymlinksInPath().standardizedFileURL.path
-    }
-
-    private static func purgeStaleSnapshots(in root: URL, now: Date = Date()) async {
-        let work = Task.detached(priority: .utility) {
-            let keys: Set<URLResourceKey> = [.isDirectoryKey, .contentModificationDateKey]
-            guard let entries = try? FileManager.default.contentsOfDirectory(
-                at: root,
-                includingPropertiesForKeys: Array(keys),
-                options: [.skipsHiddenFiles]
-            ) else { return }
-            for entry in entries where entry.lastPathComponent.hasPrefix(directoryPrefix) {
-                try Task.checkCancellation()
-                guard let values = try? entry.resourceValues(forKeys: keys),
-                      values.isDirectory == true,
-                      let modified = values.contentModificationDate,
-                      now.timeIntervalSince(modified) >= staleAge
-                else { continue }
-                try? FileManager.default.removeItem(at: entry)
-            }
-        }
-        await withTaskCancellationHandler {
-            _ = await work.result
-        } onCancel: {
-            work.cancel()
-        }
     }
 
     private static func validate(
