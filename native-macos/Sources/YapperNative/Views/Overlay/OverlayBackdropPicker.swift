@@ -134,7 +134,7 @@ struct OverlayBackdropPicker: View {
         ZStack {
             Color.studioInputBackground
             Image(systemName: symbol)
-                .font(.system(size: 12, weight: .medium))
+                .font(.studioLabelStrong)
                 .foregroundStyle(.secondary)
         }
     }

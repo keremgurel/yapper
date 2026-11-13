@@ -28,7 +28,7 @@ struct AudioLibraryRail: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: candidate.icon)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.studioCaptionStrong)
                     .frame(width: 15)
                 Text(candidate.title)
                     .font(candidate.isHeading ? .studioCaptionStrong : .studioBody)

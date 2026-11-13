@@ -98,7 +98,7 @@ struct ProjectsHomeView: View {
             Text("No projects yet")
                 .font(.system(size: 14, weight: .semibold))
             Text("Make one, or drop a video here and it becomes a project named after the file.")
-                .font(.system(size: 12))
+                .font(.studioLabel)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 360)

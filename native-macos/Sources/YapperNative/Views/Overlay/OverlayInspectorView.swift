@@ -262,7 +262,7 @@ struct OverlayInspectorView: View {
             commit { $0.rotation = turned == 0 ? nil : turned }
         } label: {
             Image(systemName: icon)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.studioCaptionStrong)
                 .frame(width: 24, height: 22)
                 .contentShape(Rectangle())
         }

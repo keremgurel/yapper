@@ -6,7 +6,7 @@ struct ProjectStorageSummary: View {
 
     var body: some View {
         Text("\(ProjectDiskUsage.label(bytes)) in local projects and previews")
-            .font(.system(size: 12)).foregroundStyle(.secondary)
+            .font(.studioLabel).foregroundStyle(.secondary)
             .help("Includes source footage and generated previews. APFS copies may share disk space. Move projects to Trash to remove them; empty Trash to reclaim their space.")
             .task(id: listings) {
                 let snapshot = listings
@@ -25,7 +25,7 @@ struct ManagedMediaNotice: View {
         if let status = session.managedMediaStatus {
             HStack(spacing: 8) {
                 Image(systemName: session.managedMediaTask != nil ? "arrow.down.doc" : "exclamationmark.triangle")
-                Text(status).font(.system(size: 12)).lineLimit(2).frame(maxWidth: 280, alignment: .leading).help(status)
+                Text(status).font(.studioLabel).lineLimit(2).frame(maxWidth: 280, alignment: .leading).help(status)
                 if session.managedMediaTask == nil, session.managedMediaError != nil {
                     Button("Retry") { session.retryManagedMedia() }.buttonStyle(EditorGhostButtonStyle(size: .small))
                 }

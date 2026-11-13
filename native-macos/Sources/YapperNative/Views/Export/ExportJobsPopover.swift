@@ -15,7 +15,7 @@ struct ExportJobsPopover: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text("Exports")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.studioLabelStrong)
                     .foregroundStyle(.secondary)
                 Spacer()
                 if center.jobs.contains(where: { !$0.state.isRunning }) {
