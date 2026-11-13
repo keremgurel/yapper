@@ -82,10 +82,11 @@ async function onCheckoutCompleted(
     // Checkout grants only the small, once-per-account trial allowance.
     // Paid credits are tied to invoices, never to opening/completing checkout.
     // Only Studio plans carry a trial. Train Plus has none and no credits.
-    if (
-      session.payment_status === "no_payment_required" &&
-      planByKey(session.metadata?.plan)?.trial
-    ) {
+    // Stripe also reports "paid" when it processes a $0 trial invoice.
+    const freeCheckout =
+      session.payment_status === "no_payment_required" ||
+      (session.payment_status === "paid" && session.amount_total === 0);
+    if (freeCheckout && planByKey(session.metadata?.plan)?.trial) {
       const subscriptionId =
         typeof session.subscription === "string"
           ? session.subscription
