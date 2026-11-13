@@ -148,7 +148,11 @@ enum ExportService {
     ) async throws {
         let intermediateURL = FileManager.default.temporaryDirectory
             .appending(path: "yapper-composited-\(UUID().uuidString).mp4")
-        defer { try? FileManager.default.removeItem(at: intermediateURL) }
+        StagedExportLedger.shared.record(intermediateURL)
+        defer {
+            try? FileManager.default.removeItem(at: intermediateURL)
+            StagedExportLedger.shared.forget(intermediateURL)
+        }
 
         guard let firstPass = built.videoComposition else {
             throw NativeEditorError.exportFailed("The composed video pass was unavailable.")

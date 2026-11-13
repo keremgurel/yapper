@@ -21,7 +21,6 @@ struct ExportJob: Identifiable, Equatable, Sendable {
     let kind: Kind
     let projectID: UUID
     let projectName: String
-    let package: ProjectPackage?
     let destination: URL
     let startedAt: Date
     var state: ExportJobState
