@@ -1618,8 +1618,11 @@ final class EditorSession: ObservableObject {
         let original = rollbackState.project
         aiProgress = 0
         oneClickEditStage = .preparing
+        oneClickLatency = EditLatencyLog.Run("one-click")
         errorMessage = nil
         defer {
+            oneClickLatency?.mark("finished")
+            oneClickLatency = nil
             oneClickEditStage = nil
         }
 
@@ -2120,7 +2123,13 @@ final class EditorSession: ObservableObject {
         releaseEditCommitSlot()
     }
 
+    /// The stopwatch for the 1-Click Edit in flight, if there is one.
+    private var oneClickLatency: EditLatencyLog.Run?
+
     private func setOneClickEditStage(_ stage: OneClickEditStage) {
+        // One line per step in the latency log, so a slow run says which step
+        // was slow: `log stream --predicate 'category == "latency"'`.
+        oneClickLatency?.mark("reached \(stage.title)")
         oneClickEditStage = stage
         aiProgress = Double(stage.rawValue) / Double(max(1, OneClickEditStage.allCases.count - 1))
         statusMessage = stage.title

@@ -1,4 +1,5 @@
 import { withProductAnalytics } from "@/lib/analytics/server";
+import { after } from "next/server";
 import {
   readOwnedAudioDuration,
   transcriptionUnits,
@@ -45,6 +46,27 @@ import {
   mapTranscriptionWork,
   type SpeechRange,
 } from "@/lib/transcription/coverage";
+
+/**
+ * How many of a take's main pieces are transcribed at once. A ten-minute take
+ * is seven pieces; at the old limit of six the seventh waited for a whole
+ * second wave. Sixteen covers a twenty-minute take in one wave and still
+ * bounds an hour-long one.
+ */
+const MAIN_PASS_CONCURRENCY = 16;
+
+/**
+ * Runs clean-up once the response has been sent. Outside a request scope
+ * (a unit test calling the handler directly) there is no "after", so the work
+ * starts straight away without being waited for.
+ */
+function afterResponse(task: () => Promise<void>) {
+  try {
+    after(task);
+  } catch {
+    void task();
+  }
+}
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -357,6 +379,7 @@ async function trackedPOST(req: Request): Promise<Response> {
           duration: chunk.duration,
         };
       },
+      MAIN_PASS_CONCURRENCY,
     );
     // The last chunk reaching the end says nothing about earlier chunks.
     // Validate each decoded duration before merging; otherwise a truncated
@@ -483,7 +506,7 @@ async function trackedPOST(req: Request): Promise<Response> {
             ...chunk,
             duration: (await probeChunk(chunk)).duration,
           }),
-          4,
+          MAIN_PASS_CONCURRENCY,
         )
       : [
           {
@@ -702,7 +725,9 @@ async function trackedPOST(req: Request): Promise<Response> {
           { status: 413 },
         );
       }
-      await discard();
+      // Deleted after the response has gone: with a hundred stored pieces the
+      // deletes were up to two seconds of a creator waiting on nothing.
+      afterResponse(discard);
       return Response.json({
         words,
         coverageChecked: speech !== undefined,
