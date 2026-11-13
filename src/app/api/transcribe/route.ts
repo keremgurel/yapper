@@ -50,10 +50,11 @@ import {
 /**
  * How many of a take's main pieces are transcribed at once. A ten-minute take
  * is seven pieces; at the old limit of six the seventh waited for a whole
- * second wave. Sixteen covers a twenty-minute take in one wave and still
- * bounds an hour-long one.
+ * second wave. Eight covers that take in one wave. Kept low on purpose: the
+ * transcriber's own limit on parallel requests has not been measured, and a
+ * refused request fails the whole take.
  */
-const MAIN_PASS_CONCURRENCY = 16;
+const MAIN_PASS_CONCURRENCY = 8;
 
 /**
  * Runs clean-up once the response has been sent. Outside a request scope
