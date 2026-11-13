@@ -160,7 +160,11 @@ enum ExportService {
     ) async throws {
         // Removed as soon as the second pass is done, to give its space back
         // early. Anything AVFoundation leaves beside it goes with the folder.
-        defer { try? FileManager.default.removeItem(at: intermediateURL) }
+        StagedExportLedger.shared.record(intermediateURL)
+        defer {
+            try? FileManager.default.removeItem(at: intermediateURL)
+            StagedExportLedger.shared.forget(intermediateURL)
+        }
 
         guard let firstPass = built.videoComposition else {
             throw NativeEditorError.exportFailed("The composed video pass was unavailable.")
