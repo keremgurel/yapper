@@ -25,7 +25,7 @@
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--sg-text-muted);
 }
 .card > p {
@@ -62,7 +62,7 @@
 .frame p {
   font-size: clamp(18px, 2vw, 24px);
   line-height: 1.2;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.03em;
 }
 .play {

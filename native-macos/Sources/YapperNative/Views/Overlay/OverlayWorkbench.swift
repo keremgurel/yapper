@@ -45,7 +45,7 @@ struct OverlayWorkbench: View {
 
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Label("No overlays yet", systemImage: "rectangle.on.rectangle")
+            Label { Text("No overlays yet") } icon: { StudioGlyph(.overlays, size: 30) }
                 .font(.studioBodyStrong)
             Text("Import an image or a clip in Media, then add it as an overlay, or ask Chirpy where your files belong and let him place them against the transcript.")
                 .font(.studioCaption)
@@ -119,7 +119,9 @@ private struct OverlayChip: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(name)
                         .font(.studioBodyStrong)
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                        .multilineTextAlignment(.leading)
                         .help(name)
                     Text("\(formatTime(overlay.timelineStart)) · \(String(format: "%.1fs", overlay.duration))")
                         .font(.studioCaption)
@@ -127,14 +129,15 @@ private struct OverlayChip: View {
                 }
             }
             .padding(.horizontal, 9)
-            // As wide as the name needs, up to a point, so short names are
-            // not padded out and most long ones are not cut.
-            .frame(minWidth: 150, maxWidth: 300, minHeight: 52, maxHeight: 52, alignment: .leading)
+            // As wide as the name needs, up to the width of the narrowest
+            // pane, so a card is never cut off by the pane's own edge.
+            .frame(minWidth: 150, maxWidth: 224, minHeight: 52, alignment: .leading)
+            .padding(.vertical, 6)
             .fixedSize(horizontal: true, vertical: false)
             .background(selected ? Color.studioSelectedFill : Color.raisedBackground)
             .overlay {
                 RoundedRectangle(cornerRadius: 7)
-                    .stroke(selected ? Color.yapperOrange.opacity(0.8) : Color.studioLine, lineWidth: 1)
+                    .stroke(selected ? Color.studioAccent.opacity(0.8) : Color.studioLine, lineWidth: 1)
             }
             .clipShape(RoundedRectangle(cornerRadius: 7))
         }

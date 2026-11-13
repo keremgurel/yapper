@@ -38,7 +38,7 @@ struct NativePageHeader<Actions: View>: View {
                     .foregroundStyle(.primary)
                 if let description {
                     Text(description)
-                        .font(.system(size: 13))
+                        .font(.studioBody)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: 560, alignment: .leading)
                         .fixedSize(horizontal: false, vertical: true)
@@ -61,7 +61,7 @@ extension Font {
     /// 22pt semibold, the web's page title.
     static let nativePageTitle = Font.system(size: 22, weight: .semibold)
     /// 17pt semibold, a card or section title.
-    static let nativeSectionTitle = Font.system(size: 15, weight: .semibold)
+    static let nativeSectionTitle = Font.studioSectionTitle
     /// 13pt medium, a field label in sentence case.
-    static let nativeLabel = Font.system(size: 12, weight: .medium)
+    static let nativeLabel = Font.studioLabelStrong
 }

@@ -13,7 +13,7 @@ struct PosterFramePickerView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
                 Text(Self.clock(picker.time)).font(.system(size: 17, weight: .medium).monospacedDigit())
-                Text("/ \(Self.clock(picker.duration))").font(.system(size: 11).monospacedDigit()).foregroundStyle(.secondary)
+                Text("/ \(Self.clock(picker.duration))").font(.studioCaption.monospacedDigit()).foregroundStyle(.secondary)
                 Spacer()
                 status
             }
@@ -27,7 +27,7 @@ struct PosterFramePickerView: View {
                 stepButton("Forward one frame", systemImage: "chevron.right", enabled: picker.index < picker.frameCount - 1) { picker.step(1) }
                 stepButton("Forward one second", systemImage: "chevron.right.2", enabled: picker.index < picker.frameCount - 1) { picker.jump(1) }
                 Spacer()
-                Text("Frame").font(.system(size: 12)).foregroundStyle(.secondary)
+                Text("Frame").font(.studioLabel).foregroundStyle(.secondary)
                 TextField(picker.ready ? String(picker.index + 1) : "", text: $enteredFrame)
                     .textFieldStyle(.native)
                     .frame(width: 52)
@@ -38,20 +38,20 @@ struct PosterFramePickerView: View {
                         if let number = Int(enteredFrame) { onChooseFrame(); picker.select(number - 1) }
                         enteredFrame = ""
                     }
-                Text("/ \(picker.frameCount)").font(.system(size: 11).monospacedDigit()).foregroundStyle(.secondary)
+                Text("/ \(picker.frameCount)").font(.studioCaption.monospacedDigit()).foregroundStyle(.secondary)
             }
             .padding(16)
 
             Rectangle().fill(Color.studioLine).frame(height: 1)
             Text("Drag to scrub. Arrow keys step a frame; Shift steps a second.")
-                .font(.system(size: 12)).foregroundStyle(.secondary)
+                .font(.studioLabel).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 16).padding(.vertical, 10)
 
             if let error = picker.error {
                 Rectangle().fill(Color.studioLine).frame(height: 1)
                 HStack {
-                    Text(error).font(.system(size: 12)).foregroundStyle(NativeChip.Tone.yellow.color)
+                    Text(error).font(.studioLabel).foregroundStyle(NativeChip.Tone.yellow.color)
                     Spacer()
                     Button("Retry") { picker.retry() }.buttonStyle(EditorGhostButtonStyle(size: .small))
                 }
@@ -75,7 +75,7 @@ struct PosterFramePickerView: View {
                 Text("Frame selected")
             }
         }
-        .font(.system(size: 11)).foregroundStyle(.secondary)
+        .font(.studioCaption).foregroundStyle(.secondary)
     }
 
     private var strip: some View {
@@ -111,7 +111,7 @@ struct PosterFramePickerView: View {
         .frame(height: 64)
         .focusable()
         .focused($stripFocused)
-        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(stripFocused ? Color.yapperOrange : Color.clear, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(stripFocused ? Color.studioAccent : Color.clear, lineWidth: 1))
         .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in
             guard picker.ready else { return .ignored }
             onChooseFrame()
@@ -124,7 +124,7 @@ struct PosterFramePickerView: View {
 
     private func stepButton(_ label: String, systemImage: String, enabled: Bool, action: @escaping () -> Void) -> some View {
         Button { onChooseFrame(); action() } label: {
-            Image(systemName: systemImage).font(.system(size: 12, weight: .medium))
+            Image(systemName: systemImage).font(.studioLabelStrong)
         }
         .buttonStyle(EditorGhostButtonStyle(size: .small))
         .disabled(!picker.ready || !enabled)

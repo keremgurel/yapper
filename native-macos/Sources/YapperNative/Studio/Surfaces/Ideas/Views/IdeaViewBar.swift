@@ -58,7 +58,7 @@ struct IdeaViewBar: View {
 
     private func notice(_ text: String, danger: Bool = false, retry: @escaping () -> Void) -> some View {
         HStack(spacing: 8) {
-            Text(text).font(.system(size: 12, weight: .medium))
+            Text(text).font(.studioLabelStrong)
                 .foregroundStyle(danger ? Color.studioDanger : NativeChip.Tone.yellow.color)
             Button("Try again", action: retry).buttonStyle(EditorGhostButtonStyle(size: .mini))
         }

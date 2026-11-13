@@ -20,7 +20,7 @@ struct PosterTikTokSettingsView: View {
                 Text("Post to TikTok").tag(PosterTikTokReview.Mode.direct)
                 Text("Send to TikTok inbox to finish there").tag(PosterTikTokReview.Mode.inbox)
             }
-            .font(.system(size: 13))
+            .font(.studioBody)
             .clickableCursor()
             if model.mode == .inbox {
                 note("We’ll confirm inbox delivery. Open “Your content from Yapper is ready” in TikTok to add the caption and finish posting.")
@@ -53,11 +53,11 @@ struct PosterTikTokSettingsView: View {
     }
 
     private func note(_ text: String) -> some View {
-        Text(text).font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        Text(text).font(.studioLabel).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
     }
 
     private func warning(_ text: String) -> some View {
-        Text(text).font(.system(size: 12)).foregroundStyle(NativeChip.Tone.yellow.color).fixedSize(horizontal: false, vertical: true)
+        Text(text).font(.studioLabel).foregroundStyle(NativeChip.Tone.yellow.color).fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -68,7 +68,7 @@ private struct PosterTikTokDirectForm: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Posting as \(context.creator.creator_nickname) (@\(context.creator.creator_username))").font(.system(size: 13))
+            Text("Posting as \(context.creator.creator_nickname) (@\(context.creator.creator_username))").font(.studioBody)
             if !context.audited {
                 note("TikTok's review is pending. Test posts must use Only me and a private TikTok account. Public posting opens after approval.")
             }
@@ -78,7 +78,7 @@ private struct PosterTikTokDirectForm: View {
                     Text(PosterTikTokSettings.privacyLabels[option] ?? option).tag(option)
                 }
             }
-            .font(.system(size: 13))
+            .font(.studioBody)
             .clickableCursor()
             check("Allow comments", $model.settings.allowComment, blocked: context.creator.comment_disabled)
             check("Allow Duet", $model.settings.allowDuet, blocked: context.creator.duet_disabled)
@@ -88,7 +88,7 @@ private struct PosterTikTokDirectForm: View {
             check("Label this video as AI-generated", $model.settings.aiGenerated, blocked: false)
             if model.tooLong {
                 Text("This video is too long. This account supports up to \(Int(context.creator.max_video_post_duration_sec)) seconds.")
-                    .font(.system(size: 12)).foregroundStyle(Color.studioDanger)
+                    .font(.studioLabel).foregroundStyle(Color.studioDanger)
             }
             note("Processing may take a few minutes before the post appears on your profile.")
         }
@@ -110,13 +110,13 @@ private struct PosterTikTokDirectForm: View {
     private func check(_ label: String, _ value: Binding<Bool>, blocked: Bool) -> some View {
         Toggle(blocked ? "\(label) (turned off in TikTok)" : label, isOn: value)
             .toggleStyle(.checkbox)
-            .font(.system(size: 13))
+            .font(.studioBody)
             .disabled(blocked)
             .clickableCursor(enabled: !blocked)
     }
 
     private func note(_ text: String) -> some View {
-        Text(text).font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        Text(text).font(.studioLabel).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -129,7 +129,7 @@ private struct PosterTikTokConsent: View {
         VStack(alignment: .leading, spacing: 6) {
             Toggle(consentText, isOn: $model.settings.consent)
                 .toggleStyle(.checkbox)
-                .font(.system(size: 13))
+                .font(.studioBody)
                 .fixedSize(horizontal: false, vertical: true)
                 .clickableCursor()
             HStack(spacing: 12) {
@@ -138,7 +138,7 @@ private struct PosterTikTokConsent: View {
                 }
                 Link("Music Usage Confirmation", destination: URL(string: "https://www.tiktok.com/legal/page/global/music-usage-confirmation/en")!)
             }
-            .font(.system(size: 12))
+            .font(.studioLabel)
             .clickableCursor()
         }
     }

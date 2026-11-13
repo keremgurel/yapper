@@ -26,7 +26,7 @@ struct HomeUpNextSection: View {
     private var content: some View {
         if failed {
             HStack(spacing: 12) {
-                Text("Your ideas didn’t load.").font(.system(size: 13)).foregroundStyle(.secondary)
+                Text("Your ideas didn’t load.").font(.studioBody).foregroundStyle(.secondary)
                 Button("Try again", action: onRetry).buttonStyle(EditorSecondaryButtonStyle(size: .small))
             }
             .padding(.vertical, 4)
@@ -61,7 +61,7 @@ struct HomeUpNextSection: View {
     @ViewBuilder
     private func row(_ item: IdeaItem) -> some View {
         Text(item.displayTitle)
-            .font(.system(size: 13, weight: .medium))
+            .font(.studioBodyStrong)
             .lineLimit(1)
             .frame(maxWidth: .infinity, alignment: .leading)
         if shaping.contains(item.id) {
@@ -69,7 +69,7 @@ struct HomeUpNextSection: View {
                 ProgressView().controlSize(.mini)
                 Text("Writing a script…")
             }
-            .font(.system(size: 12))
+            .font(.studioLabel)
             .foregroundStyle(.secondary)
         } else if HomeRanking.isDated(item), let date = item.scheduledFor.flatMap(IdeaDates.parse) {
             Text(date.formatted(.dateTime.month(.abbreviated).day()))

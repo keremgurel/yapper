@@ -13,7 +13,7 @@ struct PosterAttachOriginal: View {
         let sending = mine && upload.busy
         VStack(alignment: .leading, spacing: 14) {
             Text("Choose the original file for this \(platform) post. Your title and caption stay in place. The file also appears in Uploads.")
-                .font(.system(size: 13)).foregroundStyle(.secondary)
+                .font(.studioBody).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Button { upload.attach(to: video) } label: {
                 HStack(spacing: 6) {
@@ -24,7 +24,7 @@ struct PosterAttachOriginal: View {
             .buttonStyle(EditorPrimaryButtonStyle())
             .disabled(upload.busy)
             Text("Use a video file you own, such as an MP4 or MOV. Yapper does not download this post from \(platform).")
-                .font(.system(size: 12)).foregroundStyle(.secondary)
+                .font(.studioLabel).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             if mine { status }
         }
@@ -37,14 +37,14 @@ struct PosterAttachOriginal: View {
         switch upload.phase {
         case .uploading:
             VStack(alignment: .leading, spacing: 6) {
-                ProgressView(value: upload.progress).tint(Color.yapperOrange)
-                Text("Uploading \(Int(upload.progress * 100))%").font(.system(size: 12).monospacedDigit()).foregroundStyle(.secondary)
+                ProgressView(value: upload.progress).tint(Color.studioAccent)
+                Text("Uploading \(Int(upload.progress * 100))%").font(.studioLabel.monospacedDigit()).foregroundStyle(.secondary)
             }
         case .preparing:
-            Text("Reading the video").font(.system(size: 12)).foregroundStyle(.secondary)
+            Text("Reading the video").font(.studioLabel).foregroundStyle(.secondary)
         case .failed:
             Text(PosterErrorCopy.upload(upload.errorCode ?? "failed"))
-                .font(.system(size: 12)).foregroundStyle(NativeChip.Tone.yellow.color)
+                .font(.studioLabel).foregroundStyle(NativeChip.Tone.yellow.color)
                 .fixedSize(horizontal: false, vertical: true)
         case .idle:
             EmptyView()

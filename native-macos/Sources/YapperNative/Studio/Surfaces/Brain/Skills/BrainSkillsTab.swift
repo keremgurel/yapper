@@ -17,7 +17,7 @@ struct BrainSkillsTab: View {
             HStack(alignment: .bottom, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Skills").font(.nativeSectionTitle)
-                    Text(subtitle).font(.system(size: 13)).foregroundStyle(.secondary)
+                    Text(subtitle).font(.studioBody).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
                 Button(action: onDiscover) { Label("Discover", systemImage: "magnifyingglass") }
@@ -63,7 +63,7 @@ struct BrainSkillsTab: View {
                 NativeLoadingState(label: "Loading Skills…")
             } else {
                 Text("Your Skills will appear after they load successfully.")
-                    .font(.system(size: 13)).foregroundStyle(.secondary)
+                    .font(.studioBody).foregroundStyle(.secondary)
             }
         }
     }

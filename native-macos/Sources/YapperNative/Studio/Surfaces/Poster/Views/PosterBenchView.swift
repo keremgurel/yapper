@@ -25,10 +25,10 @@ struct PosterBenchView: View {
                     .frame(width: 34, height: 56)
                     .clipShape(RoundedRectangle(cornerRadius: 5))
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(video.title).font(.system(size: 13, weight: .semibold)).lineLimit(2)
+                        Text(video.title).font(.studioBodyStrong).lineLimit(2)
                             .help(video.title)
                         Text(video.platform.map { "From \($0.label)" } ?? "From your library")
-                            .font(.system(size: 12)).foregroundStyle(.secondary)
+                            .font(.studioLabel).foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 4)
                     Button("Edit cover") { editingCover = true }

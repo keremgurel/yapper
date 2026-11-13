@@ -19,14 +19,12 @@ struct PosterTextOverlayPanel: View {
                     draft.showHeadline = !draft.headline.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 }), placeholder: "Write a short hook…", font: .system(size: 14), minHeight: 60)
                 .accessibilityLabel("Cover text")
-                InspectorRow("Look") {
-                    InspectorSelect(options: TextTemplate.all.map { .init(value: $0.id, label: $0.name) },
-                                    selection: TextTemplate.all.first { $0.matches(editor.appearance) }?.id ?? "",
-                                    onSelect: { id in
-                        if let template = TextTemplate.all.first(where: { $0.id == id }) {
-                            draft.textStyle.appearance = template.applied(to: draft.textStyle.appearance)
-                        }
-                    })
+                InspectorRow("Look", alignment: .top) {
+                    InspectorLookRail(
+                        templates: TextTemplate.all,
+                        selection: TextTemplate.all.first { $0.matches(editor.appearance) }?.id,
+                        onSelect: { draft.textStyle.appearance = $0.applied(to: draft.textStyle.appearance) }
+                    )
                 }
                 InspectorRow("Font") {
                     InspectorSegmentedControl(

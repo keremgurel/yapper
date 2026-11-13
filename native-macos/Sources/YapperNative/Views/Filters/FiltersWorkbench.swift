@@ -94,9 +94,10 @@ private struct FilterTile: View {
                 .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
                 .overlay(alignment: .topTrailing) {
                     if selected {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Color.white, Color.yapperOrange)
+                        StudioGlyph(.check, size: 11)
+                            .foregroundStyle(Color.studioAccentForeground)
+                            .frame(width: 18, height: 18)
+                            .background(Color.studioAccent, in: Circle())
                             .padding(6)
                     }
                 }
@@ -114,7 +115,7 @@ private struct FilterTile: View {
             .overlay {
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
                     .stroke(
-                        selected ? Color.yapperOrange.opacity(0.85) : Color.studioLine,
+                        selected ? Color.studioAccent.opacity(0.85) : Color.studioLine,
                         lineWidth: 1
                     )
             }

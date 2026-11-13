@@ -10,7 +10,7 @@ struct PreviewZoomControl: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            stepButton("minus", to: zoom.stepped(by: -PreviewZoom.step))
+            stepButton(.minus, to: zoom.stepped(by: -PreviewZoom.step))
                 .disabled(zoom.isMinimum)
                 .help("Smaller, for reaching handles outside the frame")
 
@@ -18,36 +18,30 @@ struct PreviewZoomControl: View {
                 zoom = .fit
             } label: {
                 Text("\(zoom.percent)%")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.studioLabelStrong)
                     .monospacedDigit()
-                    .frame(width: 40, height: 24)
+                    .frame(width: 44, height: 24)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.studioPlain)
             .disabled(zoom.isFit)
             .help("Fit the preview to the panel")
 
-            stepButton("plus", to: zoom.stepped(by: PreviewZoom.step))
+            stepButton(.plus, to: zoom.stepped(by: PreviewZoom.step))
                 .disabled(zoom.isMaximum)
                 .help("Larger, up to \(Int(PreviewZoom.maximumScale * 100))%, for looking at detail. Scroll to move around.")
         }
         .padding(.horizontal, 2)
-        .frame(height: 28)
-        .background(Color.studioFaintFill)
-        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .stroke(Color.studioLine, lineWidth: 1)
-        }
+        .frame(height: StudioBarButtonStyle.height)
+        .background(Color.studioFaintFill, in: Capsule(style: .continuous))
     }
 
-    private func stepButton(_ symbol: String, to next: PreviewZoom) -> some View {
+    private func stepButton(_ glyph: StudioGlyphKind, to next: PreviewZoom) -> some View {
         Button {
             zoom = next
         } label: {
-            Image(systemName: symbol)
-                .font(.system(size: 9, weight: .bold))
-                .frame(width: 22, height: 24)
+            StudioGlyph(glyph, size: 11)
+                .frame(width: 24, height: 24)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.studioPlain)

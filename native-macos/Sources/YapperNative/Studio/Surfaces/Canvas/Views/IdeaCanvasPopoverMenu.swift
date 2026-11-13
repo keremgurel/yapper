@@ -59,9 +59,9 @@ private struct IdeaCanvasMenuRow: View {
                 }
                 Text(option.title).lineLimit(1)
                 Spacer(minLength: 8)
-                if option.checked { Image(systemName: "checkmark").font(.system(size: 11, weight: .semibold)) }
+                if option.checked { Image(systemName: "checkmark").font(.studioCaptionStrong) }
             }
-            .font(.system(size: 13, weight: .medium))
+            .font(.studioBodyStrong)
             .padding(.horizontal, 8)
             .frame(height: 28)
             .background(

@@ -15,7 +15,7 @@ struct PosterFramePlayer: View {
             if let error {
                 VStack(spacing: 8) {
                     Image(systemName: "video.slash")
-                    Text(error).font(.system(size: 12)).multilineTextAlignment(.center)
+                    Text(error).font(.studioLabel).multilineTextAlignment(.center)
                 }.foregroundStyle(.white.opacity(0.7)).padding(20)
             } else if let player {
                 NativeVideoPlayer(player: player)

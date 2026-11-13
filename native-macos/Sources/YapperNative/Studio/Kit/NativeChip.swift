@@ -25,7 +25,7 @@ struct NativeChip: View {
     var body: some View {
         HStack(spacing: 5) {
             if dot { Circle().fill(tone.color).frame(width: 6, height: 6) }
-            Text(text).font(.system(size: 11, weight: .semibold)).lineLimit(1)
+            Text(text).font(.studioCaptionStrong).lineLimit(1)
         }
         .foregroundStyle(dot || tone == .neutral ? Color.primary.opacity(0.78) : tone.color)
         .padding(.horizontal, 8).padding(.vertical, 3)

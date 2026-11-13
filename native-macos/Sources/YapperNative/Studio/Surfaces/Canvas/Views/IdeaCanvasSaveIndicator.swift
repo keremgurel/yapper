@@ -18,6 +18,6 @@ struct IdeaCanvasSaveIndicator: View {
     }
 
     private func label(_ text: String, color: Color) -> some View {
-        Text(text).font(.system(size: 12, weight: .medium)).foregroundStyle(color).fixedSize()
+        Text(text).font(.studioLabelStrong).foregroundStyle(color).fixedSize()
     }
 }

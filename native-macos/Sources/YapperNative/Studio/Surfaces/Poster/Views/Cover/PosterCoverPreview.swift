@@ -19,7 +19,7 @@ struct PosterCoverPreview: View {
                 if let rendered {
                     Image(decorative: rendered, scale: 1).resizable().scaledToFit()
                 } else if !compact {
-                    Text("Pick a frame").font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text("Pick a frame").font(.studioLabel).foregroundStyle(.secondary)
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: compact ? 5 : 9))

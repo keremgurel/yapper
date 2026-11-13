@@ -15,7 +15,7 @@ let package = Package(
             name: "YapperNative",
             dependencies: [.product(name: "PostHog", package: "posthog-ios")],
             path: "Sources/YapperNative",
-            resources: [.copy("Resources/SoundEffects"), .copy("Resources/SceneIcons")],
+            resources: [.copy("Resources/SoundEffects"), .copy("Resources/SceneIcons"), .copy("Resources/Backdrops")],
             swiftSettings: [
                 .unsafeFlags(["-Xfrontend", "-strict-concurrency=minimal"]),
             ]

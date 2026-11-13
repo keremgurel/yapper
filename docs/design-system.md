@@ -12,10 +12,120 @@ mobile app.
 - Studio page container: `StudioContentFrame`
 - Live specimens and usage guidance: `src/app/style-guide/page.tsx`
 
+## Foundation (November 2026)
+
+The whole product shares one quiet, editorial system. Where an older section
+below disagrees with this one, this one wins.
+
+- **Type**: Inter everywhere, loaded once in `src/app/layout.tsx` with its
+  optical-size axis. Display type is light (300) with tight tracking; text is
+  400; emphasis is 500. 600 is the ceiling, so `font-semibold` resolves to 500
+  and `font-bold` to 600. Hierarchy comes from size, not weight.
+- **Scale**: `.type-display`/`.type-h1` 36–48px, `.type-h2` 28–36px,
+  `.type-h3` 20–24px, body 16px at 1.5, secondary copy 15px, small print 14px.
+  Studio page titles are 24px regular through `PageHeader`.
+- **Colour**: warm neutrals. Eggshell page (`--sg-bg`), white objects
+  (`--sg-surface`), stone wells (`--sg-surface-sunken`) and a deeper stone
+  tray under segmented controls (`--sg-surface-tray`). Text is ink, with
+  `--sg-text-muted` and `--sg-text-faint` for the two quieter steps.
+- **Action colour is ink**: black on light, white on dark (`--sg-accent`).
+  Orange is the brand mark (`--sg-brand`, the mascot and logo) and is never an
+  action, selection or label colour. Status hues keep their meanings.
+- **Edges**: objects are raised with `--sg-shadow-raised` (a half-pixel ring
+  and two soft drops), not a 1px border. Dividers are half-pixel hairlines.
+  `--sg-shadow-panel` and `--sg-shadow-float` are the two higher levels.
+- **Shape**: actions, chips and segmented controls are pills. Cards, panels
+  and media are 16px. Fields and menus are 12px.
+- **Controls**: 36px in bars, 40px by default, 44px for a page's main action.
+  The primary is a solid ink pill; the secondary is a raised white pill.
+  A segmented control is a stone tray with one raised white selection
+  (`.sg-segmented`).
+- **Sections**: a muted sentence-case line above the heading, the heading on
+  the left and the explanation on the right, sharing one top edge. 112px
+  between marketing sections, separated by a hairline.
+- **Motion**: 150ms for state changes, 360ms for layout, standard ease.
+
+The homepage glass tab capsule is kept as it is.
+
+### Native Mac app
+
+The Mac app follows the same foundation through
+`native-macos/Sources/YapperNative/Design`. `StudioDesignSystem.swift` carries
+the web's surface, line, text and accent values one for one; the system face
+stands in for Inter with the same weights (light titles, regular text, medium
+emphasis). Buttons are the same ink and raised white pills, segmented controls
+are a stone tray with a raised selection, and the rail draws the same glyph
+family from `StudioNavGlyph.swift`.
+
+One deliberate difference: orange (`yapperOrange`) remains the working colour
+for anything drawn over video in the editor (playhead, selection, framing and
+snap guides), because ink or white disappears into footage. It is not used for
+buttons or navigation.
+
+Editor sizes and corners come from named steps in `StudioDesignSystem.swift`.
+Text is 10, 11, 12, 13 or 15 points (`studioMicro`, `studioCaption`,
+`studioLabel`, `studioBody`, `studioSectionTitle`), and 10 is only for names
+drawn on timeline cells and badges. Corners are 4, 6, 8, 12 or 16 through
+`StudioRadius` (tag, control, field, panel, card). A view does not set its own
+point size or radius.
+
+Editor icons are drawn, like the rail's. `StudioGlyph` covers the workbench
+tabs, the timeline actions and the track rail on the same 20-point grid and
+1.6-point stroke. SF Symbols remain where a surface has not had its pass yet;
+a new editor control gets a glyph.
+
+Selection is ink on a stone fill, in the tab strip, in lists and on cards. A
+selected row never gets a coloured bar down its edge. Green (`studioSuccess`)
+marks a state that is on.
+
+Inspector controls are 26 points tall. A row puts its control beside the label
+when it fits and under the label when it does not, so a control is never
+shortened to make room. A small set of choices is a segmented track. A visual
+choice such as a text look is a row of previews (`InspectorLookRail`), not a
+menu of names. Pane headers (`WorkbenchPaneHeader`) move their buttons under
+the title in a narrow pane.
+
+Scroll bars are overlays for the whole app (`OverlayScrollers`), so content
+keeps its width when a pane starts to scroll.
+
+### Product imagery
+
+A product screen is never shown bare. It stands on a **stage**: one of the five
+stage backdrops in `public/images/grainient` (diagonal light streaks, a shaft
+of light from the top right, film grain), rendered by
+`scripts/generate-backdrops.py`. The screen is lit from the same corner: a
+bright top edge, a fine rim, a soft ray across its top-right corner and a long
+shadow falling down and left (`.studio-showcase-screen`). On the hero the
+screen's foot runs off the bottom of the stage. Stages are 16px, screens 12px.
+Do not add a second light direction, a glow colour, or a border to a screen.
+
+### Demo interiors
+
+The scripted demos inside product screens follow the same rules as real
+screens: light headings, objects raised with the hairline recipe instead of a
+border, stone trays with a raised selection for segmented choices, and pill
+actions with ink for the main one. Scene content and timing are unchanged.
+
+### Reveal cards
+
+A directory of destinations uses `.reveal-card`: a stone tile with a small
+ringed tag, a light centred title and up to three lines of copy. Hover or
+keyboard focus fades in the destination's stage backdrop, turns the copy white
+and shows a white arrow button in the top-right corner. The features index is
+the reference. Reduced motion keeps the state change and drops the movement.
+
+### Navigation icons
+
+Studio's rail uses its own glyph set in
+`src/components/studio-shell/studio-nav-icon.tsx`: a 20px grid, a 1.6px rounded
+stroke and soft geometric forms. Rows are 32px on a 36px pitch with medium
+labels. Idle rows are muted; the current row is ink on a stone pill. Add a destination by drawing a glyph in the same grid, not by
+importing a stock icon.
+
 ## Typography
 
-Yapper uses the platform system sans for display and body copy (SF Pro on Apple
-devices, system-ui elsewhere), as defined in `globals.css`.
+Inter is the single family; see Foundation above. `--sg-font-mono` is reserved
+for code, timecodes and tabular figures.
 
 ## Public website direction
 
@@ -151,7 +261,8 @@ the active theme.
 - Uses the correct shared container
 - Uses semantic type classes
 - Uses the shared Button component for standard actions
-- Uses the system sans only, unless showing code or time data
+- Uses Inter only, unless showing code or time data
+- Uses ink for actions and raised hairline surfaces instead of borders
 - Works in light and dark mode
 - Has visible keyboard focus and accessible labels
 - Respects reduced motion

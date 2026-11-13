@@ -6,7 +6,7 @@ struct NativeLoadingState: View {
     var body: some View {
         HStack(spacing: 8) {
             ProgressView().controlSize(.small)
-            Text(label).font(.system(size: 13)).foregroundStyle(.secondary)
+            Text(label).font(.studioBody).foregroundStyle(.secondary)
         }
         .padding(.vertical, 24)
     }
@@ -18,7 +18,7 @@ struct NativeErrorState: View {
     var retry: (() -> Void)?
     var body: some View {
         HStack(spacing: 12) {
-            Text(message).font(.system(size: 13)).foregroundStyle(Color.studioDanger)
+            Text(message).font(.studioBody).foregroundStyle(Color.studioDanger)
             Spacer(minLength: 0)
             if let retry {
                 Button("Try again", action: retry).buttonStyle(EditorSecondaryButtonStyle(size: .small))
@@ -43,9 +43,9 @@ struct NativeEmptyState<Action: View>: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 40, height: 40)
                 .background(Circle().fill(Color.studioInputBackground))
-            Text(title).font(.system(size: 13, weight: .semibold))
+            Text(title).font(.studioBodyStrong)
             if let message {
-                Text(message).font(.system(size: 12)).foregroundStyle(.secondary)
+                Text(message).font(.studioLabel).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center).frame(maxWidth: 360)
             }
             action()

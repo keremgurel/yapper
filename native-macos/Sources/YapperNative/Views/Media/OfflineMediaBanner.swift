@@ -38,7 +38,7 @@ struct OfflineMediaBanner: View {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Button(first.policy == .builtInAudio ? "Built-in audio unavailable" : "Locate \(first.name)…") {
+                Button(first.policy == .builtInAudio ? "Built-in audio unavailable" : "Locate \(first.name)") {
                     if let media = first.media {
                         RelinkPanel.locate(media, for: session)
                     } else if let layer = first.audioLayer {

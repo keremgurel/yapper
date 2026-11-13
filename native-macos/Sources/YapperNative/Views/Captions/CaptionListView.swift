@@ -117,7 +117,7 @@ struct CaptionListView: View {
             Text("\(number)")
                 .font(.studioCaption)
                 .monospacedDigit()
-                .foregroundStyle(isSelected ? Color.yapperOrange : .secondary)
+                .foregroundStyle(isSelected ? Color.studioAccent : .secondary)
                 // Wide enough for a three figure card and never wrapped: at
                 // twenty points the hundredth caption broke across two lines
                 // and took the row's height with it.
@@ -198,13 +198,12 @@ struct CaptionListView: View {
         }
         .padding(.horizontal, 8)
         .frame(height: 28)
-        .background(isSelected ? Color.yapperOrange.opacity(0.12) : Color.clear)
-        // A bar in the gutter marks the selected line without boxing every row.
-        .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(isSelected ? Color.yapperOrange : Color.clear)
-                .frame(width: 2)
-        }
+        // The selected line sits on a quiet stone fill. No coloured bar down
+        // the gutter: the design system rules those out everywhere.
+        .background(
+            isSelected ? Color.studioSelectedFill : Color.clear,
+            in: RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
+        )
         // Anywhere in the row that is not the text, the number or the bin still
         // selects the card and seeks to it, so the whole row is a target.
         .contentShape(Rectangle())
@@ -289,14 +288,14 @@ private struct CaptionInsertionHandle: View {
     var body: some View {
         ZStack {
             Rectangle()
-                .fill(isHovered ? Color.yapperOrange.opacity(0.75) : Color.clear)
+                .fill(isHovered ? Color.studioAccent.opacity(0.75) : Color.clear)
                 .frame(height: 1)
             Image(systemName: "plus.circle.fill")
                 .font(.system(size: 13, weight: .semibold))
                 .symbolRenderingMode(.palette)
                 .foregroundStyle(
-                    isHovered ? Color.white : Color.clear,
-                    isHovered ? Color.yapperOrange : Color.clear
+                    isHovered ? Color.studioAccentForeground : Color.clear,
+                    isHovered ? Color.studioAccent : Color.clear
                 )
                 .background {
                     Circle()

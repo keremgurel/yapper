@@ -44,7 +44,7 @@ struct RecorderScriptPanel: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title).font(.system(size: 14, weight: .semibold)).lineLimit(2)
                         Text(script.itemID == nil ? "This script is used for your local take." : "Recording uses this idea’s script. Your take stays on this Mac.")
-                            .font(.system(size: 12)).foregroundStyle(.secondary)
+                            .font(.studioLabel).foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 8)
                     Button("Change") { picking = true }.buttonStyle(EditorSecondaryButtonStyle(size: .small))
@@ -53,7 +53,7 @@ struct RecorderScriptPanel: View {
             } else if !pasting {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Record straight to camera, or put your script on screen.")
-                        .font(.system(size: 13)).foregroundStyle(.secondary)
+                        .font(.studioBody).foregroundStyle(.secondary)
                     chooseButtons
                 }
             }
@@ -86,7 +86,7 @@ struct RecorderScriptPanel: View {
         DisclosureGroup {
             ScrollView {
                 Text(script.promptText.isEmpty ? "The teleprompter is off for this take." : script.promptText)
-                    .font(.system(size: 13))
+                    .font(.studioBody)
                     .foregroundStyle(.secondary)
                     .lineSpacing(3)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -96,7 +96,7 @@ struct RecorderScriptPanel: View {
             .nativeWell(padding: 12)
             .padding(.top, 8)
         } label: {
-            Text("Preview your prompt").font(.system(size: 13, weight: .medium))
+            Text("Preview your prompt").font(.studioBodyStrong)
         }
     }
 
@@ -122,12 +122,12 @@ private struct RecorderViewChoices: View {
                 Button { script.view = view } label: {
                     HStack(spacing: 10) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(view.label).font(.system(size: 13, weight: .semibold))
+                            Text(view.label).font(.studioBodyStrong)
                             Text(enabled ? view.detail : "Nothing written for this yet")
-                                .font(.system(size: 12)).foregroundStyle(.secondary)
+                                .font(.studioLabel).foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 0)
-                        if selected { Image(systemName: "checkmark").foregroundStyle(Color.yapperOrange) }
+                        if selected { Image(systemName: "checkmark").foregroundStyle(Color.studioAccent) }
                     }
                     .padding(.horizontal, 12).padding(.vertical, 9)
                     .background(

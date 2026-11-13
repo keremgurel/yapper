@@ -32,25 +32,25 @@ struct InspectorColorWell: View {
             }
 
             Text(color.hex)
-                .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-                .foregroundStyle(.secondary)
+                .font(.studioTimecode)
+                .foregroundStyle(Color.studioTextMuted)
         }
     }
 
     private var swatch: some View {
-        RoundedRectangle(cornerRadius: 5, style: .continuous)
+        RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
             .fill(color.swiftUIColor)
             .background {
                 // Under a translucent colour, so "20% white" does not read as
                 // "nearly the panel".
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
                     .fill(CheckerboardPattern.shading)
             }
             .overlay {
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
                     .strokeBorder(Color.studioLineStrong, lineWidth: 1)
             }
-            .frame(width: 34, height: 22)
+            .frame(width: 38, height: InspectorMetrics.controlHeight)
     }
 }
 
@@ -76,8 +76,8 @@ private struct InspectorColorPicker: View {
             if supportsOpacity {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Opacity")
-                        .font(.system(size: 10.5, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .font(.studioCaptionStrong)
+                        .foregroundStyle(Color.studioTextMuted)
                     HStack(spacing: 8) {
                         Slider(
                             value: Binding(
@@ -88,7 +88,7 @@ private struct InspectorColorPicker: View {
                         )
                         .accessibilityLabel("Color opacity")
                         .controlSize(.small)
-                        .tint(Color.yapperOrange)
+                        .tint(Color.studioAccent)
                         InspectorNumberField(
                             value: color.opacity * 100,
                             range: 0 ... 100,
@@ -102,11 +102,11 @@ private struct InspectorColorPicker: View {
             HStack(spacing: 8) {
                 TextField("Hex", text: $hex)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
-                    .frame(width: 84, height: 22)
+                    .font(.studioTimecode)
+                    .frame(width: 84, height: InspectorMetrics.controlHeight)
                     .padding(.horizontal, 6)
                     .background(Color.studioInputBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous))
                     .onSubmit(commitHex)
 
                 ColorPicker(
@@ -144,7 +144,7 @@ private struct InspectorColorPicker: View {
                 .overlay {
                     if isSelected {
                         Circle()
-                            .strokeBorder(Color.yapperOrange, lineWidth: 2)
+                            .strokeBorder(Color.studioAccent, lineWidth: 2)
                             .padding(-3)
                     }
                 }

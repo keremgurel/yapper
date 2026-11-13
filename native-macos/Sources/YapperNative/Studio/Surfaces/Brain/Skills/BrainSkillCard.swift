@@ -22,7 +22,7 @@ struct BrainSkillCard: View {
                     .lineLimit(1)
                     .padding(.trailing, 44)
                 Text(skill.whenToUse.isEmpty ? "No \u{201C}when to use it\u{201D} yet, so Yapper can't tell when to pick it." : skill.whenToUse)
-                    .font(.system(size: 12.5))
+                    .font(.studioBody)
                     .foregroundStyle(skill.whenToUse.isEmpty ? .tertiary : .secondary)
                     .lineLimit(2, reservesSpace: true)
                     .multilineTextAlignment(.leading)
@@ -32,7 +32,7 @@ struct BrainSkillCard: View {
                 HStack(spacing: 8) {
                     BrainSkillScope(skill: skill)
                     Spacer(minLength: 8)
-                    Text(origin).font(.system(size: 11.5)).foregroundStyle(.tertiary).lineLimit(1)
+                    Text(origin).font(.studioLabel).foregroundStyle(.tertiary).lineLimit(1)
                     Color.clear.frame(width: 24, height: 20)
                 }
             }
@@ -42,12 +42,8 @@ struct BrainSkillCard: View {
         }
         .buttonStyle(.studioPlain)
         .overlay(alignment: .topTrailing) {
-            Toggle("", isOn: Binding(get: { skill.enabled }, set: { onToggle($0) }))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                .tint(Color.yapperOrange)
-                .labelsHidden()
-                .clickableCursor()
+            StudioSwitch(isOn: Binding(get: { skill.enabled }, set: { onToggle($0) }))
+                .accessibilityLabel("Use this skill")
                 .help(skill.enabled ? "On: Yapper can use this skill" : "Off: Yapper ignores this skill")
                 .accessibilityLabel("\(skill.enabled ? "Turn off" : "Turn on") \(skill.name)")
                 .padding(.top, 14)
@@ -93,7 +89,7 @@ struct BrainSkillCard: View {
                 if removing {
                     ProgressView().controlSize(.mini)
                 } else {
-                    Image(systemName: "ellipsis").font(.system(size: 13, weight: .semibold))
+                    Image(systemName: "ellipsis").font(.studioBodyStrong)
                 }
             }
             .foregroundStyle(.secondary)
@@ -128,7 +124,7 @@ struct BrainSkillScope: View {
             }
             Text(surfaces).foregroundStyle(.secondary)
         }
-        .font(.system(size: 11.5, weight: .medium))
+        .font(.studioLabelStrong)
         .lineLimit(1)
     }
 

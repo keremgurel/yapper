@@ -11,7 +11,7 @@ struct BrainKnowledgeTab: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Knowledge").font(.nativeSectionTitle)
                     Text("Research, stories, examples, and rules Yapper pulls in when they matter.")
-                        .font(.system(size: 13)).foregroundStyle(.secondary)
+                        .font(.studioBody).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
                 Button(action: onAdd) { Label("Add knowledge", systemImage: "plus") }
@@ -28,7 +28,7 @@ struct BrainKnowledgeTab: View {
                     NativeLoadingState(label: "Loading Knowledge…")
                 } else {
                     Text("Your Knowledge will appear after it loads successfully.")
-                        .font(.system(size: 13)).foregroundStyle(.secondary).padding(.vertical, 12)
+                        .font(.studioBody).foregroundStyle(.secondary).padding(.vertical, 12)
                 }
             }
             .nativeCard(padding: 16)
@@ -72,7 +72,7 @@ struct BrainBlockList: View {
                     }
                     if rows.isEmpty {
                         Text("Nothing matches that.")
-                            .font(.system(size: 13)).foregroundStyle(.secondary)
+                            .font(.studioBody).foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(16)
                     }

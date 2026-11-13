@@ -78,7 +78,7 @@ struct ProjectsHomeView: View {
             Button {
                 ProjectPanels.openProject(for: session)
             } label: {
-                Label("Open…", systemImage: "folder")
+                Label("Open project", systemImage: "folder")
             }
             .buttonStyle(EditorSecondaryButtonStyle(size: .small))
             Button {

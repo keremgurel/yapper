@@ -34,7 +34,7 @@ struct CalendarDayCell: View {
         .background(inMonth ? Color.clear : Color.studioFaintFill)
         .overlay {
             if targeted {
-                Rectangle().strokeBorder(Color.yapperOrange, lineWidth: 2)
+                Rectangle().strokeBorder(Color.studioAccent, lineWidth: 2)
             }
         }
         .contentShape(Rectangle())
@@ -48,12 +48,12 @@ struct CalendarDayCell: View {
     @ViewBuilder
     private var dateMark: some View {
         let number = Text(day.formatted(.dateTime.day()))
-            .font(.system(size: 11, weight: .semibold).monospacedDigit())
+            .font(.studioCaptionStrong.monospacedDigit())
         if isToday {
             number
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.studioAccentForeground)
                 .frame(width: 20, height: 20)
-                .background(Circle().fill(Color.yapperOrange))
+                .background(Circle().fill(Color.studioAccent))
                 .accessibilityLabel("Today, \(day.formatted(date: .complete, time: .omitted))")
         } else {
             number
@@ -65,7 +65,7 @@ struct CalendarDayCell: View {
     @ViewBuilder
     private var moreLink: some View {
         let label = Text("+\(items.count - shown.count) more")
-            .font(.system(size: 11, weight: .medium))
+            .font(.studioCaptionStrong)
             .foregroundStyle(.secondary)
             .padding(.horizontal, 4)
         if let onShowMore {

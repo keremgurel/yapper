@@ -30,6 +30,6 @@ struct PosterYouTubeSettingsView: View {
             Toggle("This content includes realistic altered or synthetic media.", isOn: $settings.syntheticMedia)
                 .toggleStyle(.checkbox)
         }
-        .font(.system(size: 13))
+        .font(.studioBody)
     }
 }

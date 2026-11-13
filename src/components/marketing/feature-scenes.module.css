@@ -21,7 +21,7 @@
   font-size: 12px;
 }
 .header strong {
-  font-weight: 550;
+  font-weight: 500;
 }
 .header > span {
   margin-left: auto;
@@ -65,7 +65,7 @@
   margin-bottom: 8px;
 }
 .assistantTitle strong {
-  font-weight: 550;
+  font-weight: 500;
 }
 .assistantTitle > span {
   margin-left: auto;
@@ -162,7 +162,7 @@
 }
 .post strong {
   font-size: 14px;
-  font-weight: 550;
+  font-weight: 500;
 }
 .post p {
   margin-top: 5px;
@@ -200,7 +200,7 @@
   background: var(--sg-text);
   color: var(--sg-bg);
   font-size: 12px;
-  font-weight: 550;
+  font-weight: 500;
 }
 @media (max-width: 400px) {
   .document {

@@ -49,7 +49,7 @@ struct TimelineDropInsertionLine: View {
                 .shadow(color: tint.opacity(0.6), radius: 4)
                 .overlay(alignment: .leading) {
                     Text(label)
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.studioMicro)
                         .foregroundStyle(.white)
                         .padding(.horizontal, 6)
                         .frame(height: 15)
@@ -128,10 +128,10 @@ struct TimelineDropGhost: View {
     }
 
     private var ghost: some View {
-        RoundedRectangle(cornerRadius: 6, style: .continuous)
+        RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
             .fill(tint.opacity(0.16))
             .overlay {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
                     .strokeBorder(tint, style: StrokeStyle(lineWidth: 1.5, dash: [5, 3]))
             }
     }

@@ -10,7 +10,7 @@ struct BrandColorsSection: View {
         NativeSection(title: "Colors", meta: store.kit.map { "\($0.colors.count) of \(BrandLimits.maxColors)" }, card: true) {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Click a color to change it. Drag one onto another to swap their roles. Chirpy checks contrast and picks readable combinations on its own.")
-                    .font(.system(size: 13)).foregroundStyle(.secondary)
+                    .font(.studioBody).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 content
             }
@@ -33,7 +33,7 @@ struct BrandColorsSection: View {
             }
         } else if store.loadFailed {
             Text("Your colors will appear when the brand kit loads.")
-                .font(.system(size: 13)).foregroundStyle(.secondary)
+                .font(.studioBody).foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .nativeWell(padding: 20)
         } else {
@@ -62,9 +62,9 @@ struct BrandColorsSection: View {
     private var starter: some View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Start with safe defaults").font(.system(size: 13, weight: .semibold))
+                Text("Start with safe defaults").font(.studioBodyStrong)
                 Text("Orange primary, ink secondary, white background, and a yellow accent. Change any of them after.")
-                    .font(.system(size: 12)).foregroundStyle(.secondary)
+                    .font(.studioLabel).foregroundStyle(.secondary)
             }
             HStack(spacing: 4) {
                 ForEach(BrandLimits.starterColors, id: \.self) { hex in

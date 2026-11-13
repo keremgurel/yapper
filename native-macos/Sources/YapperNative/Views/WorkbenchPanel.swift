@@ -2,34 +2,6 @@ import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 
-private enum WorkbenchTab: String, CaseIterable, Identifiable {
-    case media = "Media"
-    case quick = "Quick Edit"
-    case transcript = "Transcript"
-    /// The speaker's own picture: how it sits in the frame, and how it moves.
-    case video = "Video"
-    case audio = "Audio"
-    case text = "Text"
-    case overlays = "Overlays"
-    case captions = "Captions"
-    case filters = "Filters"
-
-    var id: String { rawValue }
-    var icon: String {
-        switch self {
-        case .media: "film.stack"
-        case .quick: "wand.and.stars"
-        case .transcript: "doc.text"
-        case .video: "video"
-        case .audio: "waveform"
-        case .text: "textformat"
-        case .overlays: "rectangle.on.rectangle"
-        case .captions: "captions.bubble"
-        case .filters: "slider.horizontal.3"
-        }
-    }
-}
-
 private enum WorkbenchDockFocus {
     case primary
     case secondary
@@ -131,6 +103,41 @@ struct WorkbenchPanel: View {
         .animation(.easeOut(duration: 0.16), value: session.oneClickEditStage)
     }
 
+    /// Two panes side by side, or one. Only offered when the panel is wide
+    /// enough to hold both.
+    @ViewBuilder
+    private var splitPaneToggle: some View {
+        if workbenchWidth >= Self.splitPaneWidth {
+            let isSplit = secondaryTab != nil
+            Button {
+                if isSplit {
+                    closeSecondaryPane()
+                } else {
+                    withAnimation(.easeOut(duration: 0.18)) {
+                        secondaryPaneDismissed = false
+                        secondaryTab = companionTab(for: selectedTab)
+                    }
+                }
+            } label: {
+                StudioGlyph(.splitPane, size: 16)
+                    .foregroundStyle(isSplit ? Color.primary : Color.studioTextMuted)
+                    .frame(width: 28, height: 28)
+                    .background(
+                        isSplit ? Color.studioSelectedFill : Color.clear,
+                        in: RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
+                    )
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.studioPlain)
+            .help(isSplit ? "Show one pane" : "Show two panes side by side")
+            .accessibilityLabel("Two panes")
+            .accessibilityAddTraits(isSplit ? .isSelected : [])
+            .padding(.horizontal, 10)
+            .frame(maxHeight: .infinity)
+            .background(Color.panelBackground)
+        }
+    }
+
     private var workbenchTabStrip: some View {
         ScrollViewReader { scrollProxy in
             ScrollView(.horizontal, showsIndicators: false) {
@@ -146,20 +153,10 @@ struct WorkbenchPanel: View {
                                 }
                             }
                         } label: {
-                            VStack(spacing: 5) {
-                                Image(systemName: tab.icon)
-                                    .font(.system(size: 14, weight: .semibold))
-                                Text(tab.rawValue)
-                                    .font(.system(size: 11, weight: .semibold))
-                            }
-                            .foregroundStyle(
-                                isTabActive(tab) ? Color.yapperOrange : Color.secondary
-                            )
-                            .frame(width: tab == .quick ? 78 : 64, height: 52)
-                            .contentShape(Rectangle())
+                            WorkbenchTabLabel(tab: tab, isActive: isTabActive(tab))
                         }
                         .buttonStyle(.studioPlain)
-        .clickableCursor()
+                        .help(tab.purpose)
                         .opacity(draggingTab == tab ? 0.58 : 1)
                         .id(tab.id)
                         .highPriorityGesture(tabDragGesture(for: tab))
@@ -168,12 +165,14 @@ struct WorkbenchPanel: View {
                             provider.suggestedName = tab.rawValue
                             return provider
                         } preview: {
-                            Label(tab.rawValue, systemImage: tab.icon)
-                                .font(.studioBodyStrong)
-                                .padding(.horizontal, 12)
-                                .frame(height: 38)
-                                .background(.regularMaterial)
-                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            HStack(spacing: 7) {
+                                StudioGlyph(tab.glyph, size: 16)
+                                Text(tab.rawValue).font(.studioBodyStrong)
+                            }
+                            .padding(.horizontal, 12)
+                            .frame(height: 38)
+                            .background(.regularMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: StudioRadius.field, style: .continuous))
                         }
                         .onDrop(
                             of: [UTType.utf8PlainText.identifier],
@@ -187,7 +186,12 @@ struct WorkbenchPanel: View {
                 }
                 .padding(.horizontal, 8)
             }
+            .safeAreaInset(edge: .trailing, spacing: 0) { splitPaneToggle }
+            .frame(height: WorkbenchTabLabel.height + 8)
             .background(Color.panelBackground)
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(Color.studioLine).frame(height: 1)
+            }
             .onChange(of: selectedTab) { _, tab in
                 withAnimation(.easeOut(duration: 0.18)) {
                     scrollProxy.scrollTo(tab.id, anchor: .center)
@@ -202,51 +206,22 @@ struct WorkbenchPanel: View {
         }
     }
 
+    /// Two panes when there is room, otherwise the one in focus. A pane has
+    /// no title bar of its own: the highlighted tab above and the heading
+    /// inside already say what it is, and a third label said it again.
     @ViewBuilder
     private func workbenchDock(width: CGFloat) -> some View {
-        if let secondaryTab, width >= 720 {
+        if let secondaryTab, width >= Self.splitPaneWidth {
             HSplitView {
-                WorkbenchDockPane(
-                    tab: selectedTab,
-                    focused: dockFocus == .primary,
-                    closeAction: nil
-                ) {
-                    workbenchContent(for: selectedTab)
-                }
-                .frame(minWidth: 300, idealWidth: width * 0.5)
-                .onTapGesture { dockFocus = .primary }
-
-                WorkbenchDockPane(
-                    tab: secondaryTab,
-                    focused: dockFocus == .secondary,
-                    closeAction: closeSecondaryPane
-                ) {
-                    workbenchContent(for: secondaryTab)
-                }
-                .frame(minWidth: 300, idealWidth: width * 0.5)
-                .onTapGesture { dockFocus = .secondary }
+                workbenchContent(for: selectedTab)
+                    .frame(minWidth: 300, idealWidth: width * 0.5, maxHeight: .infinity)
+                    .onTapGesture { dockFocus = .primary }
+                workbenchContent(for: secondaryTab)
+                    .frame(minWidth: 300, idealWidth: width * 0.5, maxHeight: .infinity)
+                    .onTapGesture { dockFocus = .secondary }
             }
-        } else if let secondaryTab {
-            VStack(spacing: 0) {
-                HStack(spacing: 5) {
-                    compactDockButton(selectedTab, focus: .primary)
-                    compactDockButton(secondaryTab, focus: .secondary)
-                    Spacer(minLength: 0)
-                    Button(action: closeSecondaryPane) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 10, weight: .bold))
-                            .frame(width: 27, height: 27)
-                    }
-                    .buttonStyle(.studioPlain)
-        .clickableCursor()
-                    .help("Close secondary pane")
-                }
-                .padding(.horizontal, 10)
-                .frame(height: 38)
-                .background(Color.raisedBackground)
-
-                workbenchContent(for: dockFocus == .secondary ? secondaryTab : selectedTab)
-            }
+        } else if let secondaryTab, dockFocus == .secondary {
+            workbenchContent(for: secondaryTab)
         } else {
             workbenchContent(for: selectedTab)
         }
@@ -282,24 +257,13 @@ struct WorkbenchPanel: View {
         }
     }
 
-    private func compactDockButton(_ tab: WorkbenchTab, focus: WorkbenchDockFocus) -> some View {
-        Button {
-            withAnimation(.easeOut(duration: 0.14)) { dockFocus = focus }
-        } label: {
-            Label(tab.rawValue, systemImage: tab.icon)
-                .font(.studioCaptionStrong)
-                .foregroundStyle(dockFocus == focus ? Color.yapperOrange : Color.secondary)
-                .padding(.horizontal, 9)
-                .frame(height: 28)
-                .background(dockFocus == focus ? Color.studioSelectedFill : Color.clear)
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-        }
-        .buttonStyle(.studioPlain)
-        .clickableCursor()
-    }
-
+    /// The tabs whose panes are on screen: both in a split, otherwise only
+    /// the one in focus.
     private func isTabActive(_ tab: WorkbenchTab) -> Bool {
-        tab == selectedTab || tab == secondaryTab
+        if workbenchWidth >= Self.splitPaneWidth {
+            return tab == selectedTab || tab == secondaryTab
+        }
+        return tab == (dockFocus == .secondary ? secondaryTab ?? selectedTab : selectedTab)
     }
 
     private func tabDragGesture(for tab: WorkbenchTab) -> some Gesture {
@@ -307,7 +271,7 @@ struct WorkbenchPanel: View {
             .onChanged { value in
                 draggingTab = tab
                 withAnimation(.easeOut(duration: 0.1)) {
-                    panelDropTargeted = value.location.y > 54
+                    panelDropTargeted = value.location.y > WorkbenchTabLabel.height + 8
                 }
             }
             .onEnded { value in
@@ -318,7 +282,7 @@ struct WorkbenchPanel: View {
                     }
                 }
 
-                if value.location.y > 54 {
+                if value.location.y > WorkbenchTabLabel.height + 8 {
                     handlePanelDrop(
                         tab.rawValue,
                         at: value.location,
@@ -333,7 +297,7 @@ struct WorkbenchPanel: View {
     private func tabTarget(at x: CGFloat) -> WorkbenchTab? {
         var cursor: CGFloat = 8
         for tab in tabOrder {
-            let width: CGFloat = tab == .quick ? 78 : 64
+            let width = tab.stripWidth
             if x < cursor + width { return tab }
             cursor += width + 2
         }
@@ -465,46 +429,6 @@ private struct WorkbenchDropDelegate: DropDelegate {
     }
 }
 
-private struct WorkbenchDockPane<Content: View>: View {
-    let tab: WorkbenchTab
-    let focused: Bool
-    let closeAction: (() -> Void)?
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                Image(systemName: tab.icon)
-                    .foregroundStyle(focused ? Color.yapperOrange : Color.secondary)
-                Text(tab.rawValue)
-                    .font(.studioCaptionStrong)
-                Spacer()
-                if let closeAction {
-                    Button(action: closeAction) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 10, weight: .bold))
-                            .frame(width: 26, height: 26)
-                    }
-                    .buttonStyle(.studioPlain)
-        .clickableCursor()
-                    .help("Close secondary pane")
-                }
-            }
-            .padding(.horizontal, 11)
-            .frame(height: 36)
-            .background(Color.raisedBackground)
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(Color.studioLine)
-                    .frame(height: 1)
-            }
-
-            content
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-}
-
 private struct WorkbenchDropGuide: View {
     var body: some View {
         HStack(spacing: 8) {
@@ -522,12 +446,12 @@ private struct WorkbenchDropGuide: View {
             Text(title)
                 .font(.studioBodyStrong)
         }
-        .foregroundStyle(Color.yapperOrange)
+        .foregroundStyle(Color.studioAccent)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.yapperOrange.opacity(0.08))
+        .background(Color.studioAccent.opacity(0.08))
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(Color.yapperOrange.opacity(0.65), style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
+                .stroke(Color.studioAccent.opacity(0.65), style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
         )
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
@@ -549,16 +473,16 @@ private struct OneClickEditProgressOverlay: View {
 
             VStack(alignment: .leading, spacing: 18) {
                 HStack(spacing: 10) {
-                    Image(systemName: "wand.and.stars")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(Color.yapperOrange)
+                    StudioGlyph(.quickEdit, size: 17)
                         .frame(width: 32, height: 32)
-                        .background(Color.yapperOrange.opacity(0.14))
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .background(
+                            Color.studioTray,
+                            in: RoundedRectangle(cornerRadius: StudioRadius.field, style: .continuous)
+                        )
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Editing your video")
                             .font(.studioBodyStrong)
-                        Text("Building a clean, continuous native timeline")
+                        Text("You can keep working. Undo brings everything back.")
                             .font(.studioCaption)
                             .foregroundStyle(.secondary)
                     }
@@ -569,12 +493,12 @@ private struct OneClickEditProgressOverlay: View {
                         HStack(spacing: 10) {
                             Group {
                                 if item.rawValue < stage.rawValue {
-                                    Image(systemName: "checkmark")
-                                        .foregroundStyle(Color.yapperOrange)
+                                    StudioGlyph(.check, size: 12)
+                                        .foregroundStyle(Color.studioAccent)
                                 } else if item == stage {
                                     ProgressView()
                                         .controlSize(.small)
-                                        .tint(Color.yapperOrange)
+                                        .tint(Color.studioAccent)
                                 } else {
                                     Circle()
                                         .fill(Color.secondary.opacity(0.32))
@@ -631,90 +555,15 @@ private struct ShimmeringStatusText: View {
                 .foregroundStyle(
                     LinearGradient(
                         colors: [
-                            Color.secondary.opacity(0.72),
-                            Color.cyan,
-                            Color.secondary.opacity(0.72),
+                            Color.studioTextMuted,
+                            Color.primary,
+                            Color.studioTextMuted,
                         ],
                         startPoint: UnitPoint(x: phase * 2 - 1, y: 0.5),
                         endPoint: UnitPoint(x: phase * 2, y: 0.5)
                     )
                 )
         }
-    }
-}
-
-private struct QuickEditWorkbench: View {
-    @ObservedObject var session: EditorSession
-
-    /// Hidden captions are still there, so the action offers them back rather
-    /// than offering to build them again.
-    private var captionActionTitle: String {
-        if session.captionsVisible { return "Hide Captions" }
-        return session.hasCaptions ? "Show Captions" : "Add Captions"
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Quick Edit")
-                .font(.system(size: 15, weight: .bold))
-            Text("Choose an edit to remove pauses, tighten your take, or add captions. Your original media is kept.")
-                .font(.studioCaption)
-                .foregroundStyle(.secondary)
-
-            LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: 10) {
-                QuickAction(
-                    title: session.project.hasTimelineTranscript ? "Transcribe Again" : "Transcribe",
-                    detail: "Accurate timed words",
-                    icon: "doc.text",
-                    busy: session.isBusy
-                ) {
-                    session.startTranscription()
-                }
-                QuickAction(
-                    title: session.isAIEditing ? "Editing…" : "1-Click Edit + Captions",
-                    detail: "Retakes, pauses + captions",
-                    icon: "wand.and.stars",
-                    busy: session.isBusy
-                ) {
-                    Task { await session.runOneClickEdit() }
-                }
-                QuickAction(
-                    title: captionActionTitle,
-                    detail: session.captionsVisible
-                        ? "Keeps every card for later"
-                        : (session.hasCaptions ? "Bring back your cards" : "Generate from transcript"),
-                    icon: "captions.bubble",
-                    busy: session.isBusy,
-                    disabled: !session.appActions.availability(.captionVisibility, in: session).isAvailable
-                ) {
-                    Task { await session.toggleCaptions() }
-                }
-                QuickAction(
-                    title: "Text Hook",
-                    detail: "Add at the playhead",
-                    icon: "textformat",
-                    disabled: session.project.clips.isEmpty
-                ) { session.addTextLayer(asHook: true) }
-            }
-            .disabled(session.project.clips.isEmpty || session.isBusy)
-
-            if session.isAIEditing {
-                ProgressView(value: session.aiProgress)
-                    .tint(Color.yapperOrange)
-                Text(session.statusMessage)
-                    .font(.studioCaption)
-                    .foregroundStyle(.secondary)
-                if session.canCancelCurrentOperation,
-                   let operation = session.activeOperation?.operation {
-                    Button(operation.cancelLabel) { session.cancelCurrentOperation() }
-                        .buttonStyle(EditorSecondaryButtonStyle(size: .small))
-                }
-            }
-
-            Spacer()
-        }
-        .padding(16)
-        .inspectorPane(maxWidth: 620)
     }
 }
 
@@ -726,29 +575,26 @@ private struct TextWorkbench: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Text")
-                            .font(.studioSectionTitle)
-                        Text("Positioned layers that stay attached to the timeline")
-                            .font(.studioCaption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer(minLength: 12)
+                WorkbenchPaneHeader(
+                    title: "Text",
+                    detail: "Titles and hooks placed over the video. They stay where you put them on the timeline."
+                ) {
                     HStack(spacing: 8) {
                         Button {
                             session.addTextLayer()
                         } label: {
                             Label("Text", systemImage: "plus")
                         }
-                        .buttonStyle(EditorSecondaryButtonStyle())
+                        .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+                        .help("Add plain text at the playhead")
 
                         Button {
                             session.addTextLayer(asHook: true)
                         } label: {
                             Label("Hook", systemImage: "wand.and.stars")
                         }
-                        .buttonStyle(EditorPrimaryButtonStyle())
+                        .buttonStyle(EditorPrimaryButtonStyle(size: .small))
+                        .help("Add a top-line hook styled for short-form video")
                     }
                     .disabled(session.project.clips.isEmpty || session.isBusy)
                 }
@@ -825,12 +671,11 @@ private struct TextLayerChip: View {
             .background(selected ? Color.studioSelectedFill : Color.raisedBackground)
             .overlay {
                 RoundedRectangle(cornerRadius: 7)
-                    .stroke(selected ? Color.yapperOrange.opacity(0.8) : Color.studioLine, lineWidth: 1)
+                    .stroke(selected ? Color.studioAccent.opacity(0.8) : Color.studioLine, lineWidth: 1)
             }
             .clipShape(RoundedRectangle(cornerRadius: 7))
         }
         .buttonStyle(.studioPlain)
-        .clickableCursor()
     }
 }
 
@@ -848,584 +693,12 @@ private struct ChoiceButton: View {
                 .background(selected ? Color.studioSelectedFill : Color.studioFaintFill)
                 .overlay {
                     RoundedRectangle(cornerRadius: 6)
-                        .stroke(selected ? Color.yapperOrange.opacity(0.78) : Color.studioLine, lineWidth: 1)
+                        .stroke(selected ? Color.studioAccent.opacity(0.78) : Color.studioLine, lineWidth: 1)
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 6))
         }
         .buttonStyle(.studioPlain)
-        .clickableCursor()
     }
-}
-
-private struct QuickAction: View {
-    let title: String
-    let detail: String
-    let icon: String
-    var busy = false
-    var disabled = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 9) {
-                if busy {
-                    ProgressView().controlSize(.small).tint(Color.yapperOrange)
-                } else {
-                    Image(systemName: icon)
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Color.yapperOrange)
-                }
-                Text(title)
-                    .font(.studioBodyStrong)
-                Text(detail)
-                    .font(.studioCaption)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: 290, minHeight: 78, alignment: .leading)
-            .padding(12)
-            .background(Color.raisedBackground)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.studioLine, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-        }
-        .buttonStyle(.studioPlain)
-        .clickableCursor()
-        .disabled(disabled || busy)
-        .opacity(disabled ? 0.48 : 1)
-    }
-}
-
-/// The spoken words, to read and to edit by.
-///
-/// The transcript does not chase the playhead. The word being spoken is marked
-/// where it is, and the scroller belongs entirely to whoever is holding it:
-/// scrolling back to find a line while the video plays was a fight with an
-/// animation that kept pulling the page somewhere else.
-private struct TranscriptWorkbench: View {
-    private static let selectionCoordinateSpace = "transcriptSelectionCanvas"
-    /// How finely the transcript answers a resize. A step under a word wide
-    /// costs at most a word of slack at the right edge, which is a ragged edge
-    /// among ragged edges, and it buys a divider that moves without stuttering.
-    private static let wrapStep = 16.0
-
-    @ObservedObject var session: EditorSession
-    /// The spoken word is taken from the cursor, which only publishes when the
-    /// playhead crosses into the next word. Deriving it from the raw time here
-    /// re-laid-out every token on every frame of playback.
-    @ObservedObject var cursor: PlaybackCursor
-    /// A completed timeline seek, published separately so normal playback does
-    /// not make the transcript chase the playhead.
-    @ObservedObject var seekReveal: TimelineSeekRevealState
-    @State private var selection = TranscriptWordSelection()
-    @State private var isApplyingSelection = false
-    /// Where the flow sits inside the marquee's space, and how wide it is. Two
-    /// numbers for the whole transcript, in place of a reader behind every word.
-    @State private var flowOrigin: CGPoint = .zero
-    @State private var flowWidth: Double = 480
-    /// Word positions, worked out once when a marquee starts rather than on
-    /// every frame of the drag.
-    @State private var marqueeWordFrames: [UUID: CGRect] = [:]
-    @State private var marqueeStart: CGPoint?
-    @State private var marqueeCurrent: CGPoint?
-    @State private var marqueeBaseWordIDs: Set<UUID> = []
-    @State private var marqueeMode: TranscriptWordSelection.MarqueeMode = .replace
-
-    private var words: [TranscriptWord] { session.transcriptFlowCache.words }
-    private var selectedWords: [TranscriptWord] {
-        words.filter { selection.wordIDs.contains($0.id) }
-    }
-    private var selectedKeptWords: [TranscriptWord] {
-        selectedWords.filter { session.project.isWordKept($0) }
-    }
-    private var selectedDeletedWords: [TranscriptWord] {
-        selectedWords.filter { !session.project.isWordKept($0) }
-    }
-    /// Both come from the session's cache, which rebuilds them only when the
-    /// transcript or the cuts change.
-    private var flowTokens: [TranscriptFlowToken] { session.transcriptFlowCache.tokens }
-
-    /// Both come from the cache: measured once per transcript, wrapped once per
-    /// width, rather than on every body of this panel. A drag anywhere in the
-    /// editor re-lays out this pane, and it was paying for a full pass over
-    /// every token each time.
-    private var tokenWidths: [Double] { session.transcriptFlowCache.tokenWidths }
-
-    private var transcriptLines: [TranscriptLine] {
-        session.transcriptFlowCache.lines(forWidth: flowWidth)
-    }
-
-    /// What a line says, for a reader who is being read to.
-    private func lineText(_ line: TranscriptLine) -> String {
-        let tokens = flowTokens
-        return line.tokens.compactMap { index -> String? in
-            guard index < tokens.count else { return nil }
-            switch tokens[index] {
-            case let .word(word): return word.text
-            case .pause: return nil
-            }
-        }.joined(separator: " ")
-    }
-
-
-    @ViewBuilder
-    private func tokenView(at index: Int, playbackWordID: UUID?) -> some View {
-        if index < flowTokens.count {
-            switch flowTokens[index] {
-            case let .word(word):
-                transcriptWordToken(word, playbackWordID: playbackWordID)
-            case let .pause(pause):
-                transcriptPauseToken(pause)
-            }
-        }
-    }
-
-    private func activateToken(at index: Int) {
-        guard flowTokens.indices.contains(index) else { return }
-        switch flowTokens[index] {
-        case let .word(word):
-            select(
-                word,
-                kept: session.transcriptFlowCache.keptWordIDs.contains(word.id)
-            )
-        case let .pause(pause):
-            activatePause(pause)
-        }
-    }
-
-    /// Where every word sits, for a marquee to test against. Worked out from
-    /// the same arithmetic that wrapped them, so it needs no views at all and
-    /// knows about the words that are scrolled out of sight too.
-    private func wordFrameTable() -> [UUID: CGRect] {
-        let widths = tokenWidths
-        let lines = transcriptLines
-        var frames: [UUID: CGRect] = [:]
-        for (index, token) in flowTokens.enumerated() {
-            guard case let .word(word) = token else { continue }
-            guard let frame = TranscriptLineBreaker.frame(
-                ofToken: index,
-                in: lines,
-                widths: widths,
-                lineHeight: TranscriptFlow.lineHeight,
-                lineSpacing: TranscriptFlow.lineSpacing
-            ) else { continue }
-            frames[word.id] = frame.offsetBy(dx: flowOrigin.x, dy: flowOrigin.y)
-        }
-        return frames
-    }
-
-    var body: some View {
-        let playbackWordID = cursor.transcriptWordID
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Transcript").font(.studioSectionTitle)
-                    Text(words.isEmpty ? "Transcribe to edit by words" : "\(words.count) timed words")
-                        .font(.studioCaption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                if !words.isEmpty {
-                    Menu {
-                        Button {
-                            session.copyTranscript(keptOnly: false)
-                        } label: {
-                            Label("Copy full transcript", systemImage: "doc.on.doc")
-                        }
-                        Button {
-                            session.copyTranscript(keptOnly: true)
-                        } label: {
-                            Label("Copy kept transcript", systemImage: "scissors")
-                        }
-                    } label: {
-                        AdaptiveControlLabel(title: "Copy", systemImage: "doc.on.doc")
-                    }
-                    .menuStyle(.borderlessButton)
-                    .help("Copy the complete transcript or only words kept in the edit")
-                }
-                Button {
-                    session.startTranscription()
-                } label: {
-                    AdaptiveControlLabel(
-                        title: words.isEmpty ? "Transcribe" : "Transcribe Again",
-                        systemImage: "waveform"
-                    )
-                }
-                .buttonStyle(EditorSecondaryButtonStyle())
-                .disabled(session.isBusy || session.project.clips.isEmpty)
-                .help(words.isEmpty ? "Transcribe the timeline" : "Transcribe the timeline again")
-            }
-
-            if !words.isEmpty {
-                Text("Click to seek  ·  drag a box to multi-select  ·  Shift/⌘ adds  ·  click a […] pause to remove or restore it")
-                    .font(.studioCaption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if session.isAIEditing {
-                ProgressView(value: session.aiProgress).tint(Color.yapperOrange)
-                Text(session.statusMessage).font(.studioCaption).foregroundStyle(.secondary)
-                if session.canCancelCurrentOperation,
-                   let operation = session.activeOperation?.operation {
-                    Button(operation.cancelLabel) { session.cancelCurrentOperation() }
-                        .buttonStyle(EditorSecondaryButtonStyle(size: .small))
-                }
-            }
-
-            if words.isEmpty {
-                ContentUnavailableView(
-                    "No transcript yet",
-                    systemImage: "doc.text.magnifyingglass",
-                    description: Text("Transcribe your take to edit by words and generate captions. Your existing timeline is kept.")
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                // Measured here rather than reported up from a preference. The
-                // wrapping is arithmetic over this width, so it has to be the
-                // width the panel has now: read from a layer behind the
-                // scroller, the transcript went on wrapping to the width the
-                // panel used to have and left the rest of the pane empty.
-                GeometryReader { geometry in
-                    ScrollViewReader { scrollProxy in
-                        ZStack(alignment: .bottom) {
-                            ScrollView {
-                                // Rows, not a flow. The wrapping is worked out from
-                                // token widths before any view exists, which lets
-                                // the rows be lazy: a transcript of any length only
-                                // builds the lines you can see. The hand belongs to
-                                // the whole thing, so it is one cursor region here
-                                // rather than one per word.
-                                LazyVStack(alignment: .leading, spacing: TranscriptFlow.lineSpacing) {
-                                    ForEach(transcriptLines) { line in
-                                        HStack(spacing: TranscriptFlow.tokenSpacing) {
-                                            ForEach(line.tokens, id: \.self) { index in
-                                                tokenView(at: index, playbackWordID: playbackWordID)
-                                                    .frame(
-                                                        width: tokenWidths[index],
-                                                        alignment: .leading
-                                                    )
-                                            }
-                                        }
-                                        .frame(height: TranscriptFlow.lineHeight, alignment: .leading)
-                                        .contentShape(Rectangle())
-                                        // One hit target per visible line, then
-                                        // arithmetic decides which token was under
-                                        // the pointer. The old version made every
-                                        // word a Button. Despite combining the row
-                                        // for accessibility, SwiftUI still built a
-                                        // focus responder, help attachment, action
-                                        // and gesture for every word. A real 2,214
-                                        // word project spent most of a scroll walk
-                                        // maintaining that invisible control tree.
-                                        .simultaneousGesture(
-                                            SpatialTapGesture().onEnded { value in
-                                                guard let index = TranscriptLineBreaker.token(
-                                                    atX: value.location.x,
-                                                    in: line,
-                                                    widths: tokenWidths
-                                                ) else { return }
-                                                activateToken(at: index)
-                                            }
-                                        )
-                                        // A transcript is read by line. Ignoring
-                                        // the decorative token children also keeps
-                                        // assistive tools from rebuilding them as
-                                        // separate elements while the page moves.
-                                        .accessibilityElement(children: .ignore)
-                                        .accessibilityLabel(lineText(line))
-                                        .id(line.id)
-                                    }
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background {
-                                    GeometryReader { geometry in
-                                        Color.clear.preference(
-                                            key: TranscriptFlowOriginKey.self,
-                                            value: geometry.frame(in: .named(Self.selectionCoordinateSpace)).origin
-                                        )
-                                    }
-                                }
-                                .cursor(.pointingHand)
-                                .padding(.bottom, selection.wordIDs.isEmpty ? 0 : 58)
-                            }
-
-                            if let marqueeRectangle {
-                                Rectangle()
-                                    .fill(Color.cyan.opacity(0.12))
-                                    .overlay {
-                                        Rectangle()
-                                            .stroke(Color.cyan.opacity(0.9), lineWidth: 1)
-                                    }
-                                    .frame(width: marqueeRectangle.width, height: marqueeRectangle.height)
-                                    .position(x: marqueeRectangle.midX, y: marqueeRectangle.midY)
-                                    .allowsHitTesting(false)
-                            }
-
-                            if !selection.wordIDs.isEmpty {
-                                selectionBar
-                            }
-                        }
-                        .coordinateSpace(name: Self.selectionCoordinateSpace)
-                        .onPreferenceChange(TranscriptFlowOriginKey.self) { origin in
-                            flowOrigin = origin
-                        }
-                        .onChange(of: geometry.size.width, initial: true) { _, width in
-                            // A floor, so a transient zero during a layout pass can
-                            // never wrap the transcript one word to a line.
-                            guard width > 80 else { return }
-                            // Held in steps, not to the point. Dragging the divider
-                            // walks the width through every value between the two
-                            // ends, and re-wrapping a few hundred words on each of
-                            // them is what made the drag stutter. In steps, most
-                            // frames of a drag change nothing here at all, and the
-                            // ones that do are a wrap the eye was expecting anyway.
-                            let stepped = (width / Self.wrapStep).rounded(.down) * Self.wrapStep
-                            guard stepped != flowWidth else { return }
-                            flowWidth = stepped
-                        }
-                        .onChange(of: seekReveal.request) { _, request in
-                            guard
-                                let request,
-                                let wordID = session.transcriptFlowCache.nearestWordID(
-                                    to: request.timelineTime
-                                ),
-                                let lineID = session.transcriptFlowCache.lineID(
-                                    forWordID: wordID,
-                                    width: flowWidth
-                                )
-                            else { return }
-                            // A direct jump, not an animation and not a clock
-                            // follower: one lazy row is materialised once.
-                            scrollProxy.scrollTo(lineID, anchor: .center)
-                        }
-                        .highPriorityGesture(marqueeGesture)
-                    }
-                }
-            }
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-
-    private var selectionBar: some View {
-        HStack(spacing: 6) {
-            Text("\(selection.wordIDs.count) selected")
-                .font(.studioCaptionStrong)
-                .padding(.horizontal, 6)
-
-            if !selectedDeletedWords.isEmpty {
-                Button {
-                    applyRestore()
-                } label: {
-                    Label("Restore \(selectedDeletedWords.count)", systemImage: "arrow.uturn.backward")
-                }
-                .buttonStyle(TranscriptActionButtonStyle(tint: .green))
-            }
-
-            if !selectedKeptWords.isEmpty {
-                Button {
-                    applyDelete()
-                } label: {
-                    Label("Delete \(selectedKeptWords.count)", systemImage: "trash")
-                }
-                .buttonStyle(TranscriptActionButtonStyle(tint: .red))
-            }
-
-            Button("Clear") {
-                selection.clear()
-            }
-            .buttonStyle(TranscriptActionButtonStyle(tint: .secondary))
-        }
-        .disabled(isApplyingSelection)
-        .padding(6)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .stroke(Color.studioLine, lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.24), radius: 12, y: 4)
-        .padding(.bottom, 10)
-    }
-
-    private var marqueeRectangle: CGRect? {
-        guard let marqueeStart, let marqueeCurrent else { return nil }
-        return Self.rectangle(from: marqueeStart, to: marqueeCurrent)
-    }
-
-    private func transcriptWordToken(_ word: TranscriptWord, playbackWordID: UUID?) -> some View {
-        let kept = session.transcriptFlowCache.keptWordIDs.contains(word.id)
-        let active = playbackWordID == word.id
-        return Text(word.text)
-            .font(.system(size: 14, weight: active ? .bold : kept ? .medium : .regular))
-            .foregroundStyle(wordForeground(wordID: word.id, kept: kept))
-            .strikethrough(!kept, color: selection.wordIDs.contains(word.id) ? Color.white : Color.secondary)
-            .underline(active && !selection.wordIDs.contains(word.id), color: Color.cyan)
-            .padding(.horizontal, 3)
-            .padding(.vertical, 3)
-            .background(wordBackground(wordID: word.id, kept: kept, active: active))
-            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-            .accessibilityHidden(true)
-            .id(word.id)
-    }
-
-    private func transcriptPauseToken(_ pause: TranscriptPause) -> some View {
-        let kept = session.project.isSourceRangeKept(
-            mediaID: pause.mediaID,
-            start: pause.start,
-            end: pause.end
-        )
-        return Text(pause.label)
-            .font(.system(size: 10, weight: .bold, design: .monospaced))
-            .foregroundStyle(kept ? Color.secondary : Color.secondary.opacity(0.42))
-            .strikethrough(!kept, color: Color.secondary.opacity(0.55))
-            .padding(.horizontal, 5)
-            .padding(.vertical, 3)
-            .background(kept ? Color.primary.opacity(0.07) : Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                    .stroke(kept ? Color.studioLine : Color.clear, lineWidth: 1)
-            }
-            .accessibilityHidden(true)
-    }
-
-    private func activatePause(_ pause: TranscriptPause) {
-        let kept = session.project.isSourceRangeKept(
-            mediaID: pause.mediaID,
-            start: pause.start,
-            end: pause.end
-        )
-        selection.clear()
-        Task {
-            if kept {
-                await session.deleteTranscriptPause(
-                    mediaID: pause.mediaID,
-                    start: pause.start,
-                    end: pause.end
-                )
-            } else {
-                await session.restoreTranscriptPause(
-                    mediaID: pause.mediaID,
-                    start: pause.start,
-                    end: pause.end
-                )
-            }
-        }
-    }
-
-    private var marqueeGesture: some Gesture {
-        DragGesture(minimumDistance: 4, coordinateSpace: .named(Self.selectionCoordinateSpace))
-            .onChanged { value in
-                if marqueeStart == nil {
-                    marqueeStart = value.startLocation
-                    marqueeWordFrames = wordFrameTable()
-                    marqueeBaseWordIDs = selection.wordIDs
-                    let modifiers = NSApp.currentEvent?.modifierFlags ?? []
-                    if modifiers.contains(.command) || modifiers.contains(.control) {
-                        marqueeMode = .toggle
-                    } else if modifiers.contains(.shift) {
-                        marqueeMode = .add
-                    } else {
-                        marqueeMode = .replace
-                    }
-                }
-                marqueeCurrent = value.location
-                guard let marqueeRectangle else { return }
-                selection.selectMarquee(
-                    marqueeRectangle,
-                    wordFrames: marqueeWordFrames,
-                    orderedWordIDs: words.map(\.id),
-                    baseWordIDs: marqueeBaseWordIDs,
-                    mode: marqueeMode
-                )
-            }
-            .onEnded { _ in
-                marqueeStart = nil
-                marqueeCurrent = nil
-                marqueeBaseWordIDs.removeAll()
-                marqueeWordFrames.removeAll()
-                marqueeMode = .replace
-            }
-    }
-
-    private static func rectangle(from start: CGPoint, to end: CGPoint) -> CGRect {
-        CGRect(
-            x: min(start.x, end.x),
-            y: min(start.y, end.y),
-            width: abs(end.x - start.x),
-            height: abs(end.y - start.y)
-        )
-    }
-
-    private func select(_ word: TranscriptWord, kept: Bool) {
-        let modifiers = NSApp.currentEvent?.modifierFlags ?? []
-        selection.select(
-            word.id,
-            orderedWordIDs: words.map(\.id),
-            extendingRange: modifiers.contains(.shift),
-            toggling: modifiers.contains(.command) || modifiers.contains(.control)
-        )
-        if kept && !modifiers.contains(.shift) && !modifiers.contains(.command) && !modifiers.contains(.control) {
-            session.seekToTranscriptWord(word)
-        }
-    }
-
-    private func applyDelete() {
-        let words = selectedKeptWords
-        guard !words.isEmpty else { return }
-        isApplyingSelection = true
-        Task {
-            await session.deleteTranscriptWords(words)
-            selection.clear()
-            isApplyingSelection = false
-        }
-    }
-
-    private func applyRestore() {
-        let words = selectedDeletedWords
-        guard !words.isEmpty else { return }
-        isApplyingSelection = true
-        Task {
-            await session.restoreTranscriptWords(words)
-            selection.clear()
-            isApplyingSelection = false
-        }
-    }
-
-    private func wordForeground(wordID: UUID, kept: Bool) -> Color {
-        if selection.wordIDs.contains(wordID) { return .white }
-        return kept ? .primary : .secondary.opacity(0.58)
-    }
-
-    private func wordBackground(wordID: UUID, kept: Bool, active: Bool) -> Color {
-        if selection.wordIDs.contains(wordID) {
-            return kept ? Color.red.opacity(0.72) : Color.green.opacity(0.68)
-        }
-        if active { return Color.cyan.opacity(0.20) }
-        return Color.clear
-    }
-}
-
-private struct TranscriptActionButtonStyle: ButtonStyle {
-    let tint: Color
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.studioCaptionStrong)
-            .foregroundStyle(tint == .secondary ? Color.primary : Color.white)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(tint.opacity(tint == .secondary ? 0.12 : configuration.isPressed ? 0.66 : 0.82))
-            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-            .contentShape(Rectangle())
-    }
-}
-
-private func formatTranscriptTime(_ seconds: Double) -> String {
-    let safe = max(0, seconds)
-    return String(format: "%d:%05.2f", Int(safe) / 60, safe.truncatingRemainder(dividingBy: 60))
 }
 
 private struct FeatureWorkbench: View {
@@ -1434,9 +707,8 @@ private struct FeatureWorkbench: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
-                Image(systemName: tab.icon)
-                    .font(.system(size: 21, weight: .medium))
-                    .foregroundStyle(Color.yapperOrange)
+                StudioGlyph(tab.glyph, size: 22)
+                    .foregroundStyle(Color.primary)
                     .frame(width: 28)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(tab.rawValue)

@@ -21,7 +21,7 @@ enum OneClickEditStage: Int, CaseIterable, Sendable {
         switch self {
         case .preparing: "Preparing your video"
         case .transcribing: "Transcribing your audio"
-        case .removingRetakes: "Removing mistakes & retakes"
+        case .removingRetakes: "Removing mistakes and retakes"
         case .cuttingPauses: "Cutting pauses"
         case .trimmingSilence: "Trimming silence"
         case .addingCaptions: "Adding captions"
@@ -1182,7 +1182,9 @@ final class EditorSession: ObservableObject {
     /// How long a picture holds on the timeline when it is first added.
     static let imageClipDefaultDuration: Double = 4
 
-    func appendMediaToTimeline(_ mediaID: UUID) async {
+    /// - Parameter range: the part of the file to add. Left out, the whole
+    ///   file goes on.
+    func appendMediaToTimeline(_ mediaID: UUID, range: MediaTrimRange? = nil) async {
         guard let media = project.media.first(where: { $0.id == mediaID }) else { return }
         guard !media.isScene else {
             setStatus("Use Add as overlay for generated visuals.")
@@ -1193,10 +1195,13 @@ final class EditorSession: ObservableObject {
             // hold an image overlay gets and is trimmed from there like any
             // other clip.
             let length = media.isImage ? Self.imageClipDefaultDuration : media.duration
+            // A still has nothing to trim, so a range only applies to media
+            // with a length of its own.
+            let trimmed = media.isImage ? nil : range
             project.clips.append(TimelineClip(
                 mediaID: media.id,
-                sourceStart: 0,
-                sourceEnd: length
+                sourceStart: trimmed?.start ?? 0,
+                sourceEnd: min(length, trimmed?.end ?? length)
             ))
             selectedClipID = project.clips.last?.id
             return true
@@ -1244,8 +1249,16 @@ final class EditorSession: ObservableObject {
         guard success else { return }
     }
 
-    func addOverlay(_ mediaID: UUID) async {
-        await performAppAction(OverlayAddInput(mediaID: mediaID, at: .playhead, duration: nil, until: nil, sourceStart: nil))
+    /// - Parameter range: the part of the file to lay over the video. Left
+    ///   out, the overlay starts at the top of the file with its usual length.
+    func addOverlay(_ mediaID: UUID, range: MediaTrimRange? = nil) async {
+        await performAppAction(OverlayAddInput(
+            mediaID: mediaID,
+            at: .playhead,
+            duration: range?.length,
+            until: nil,
+            sourceStart: range?.start
+        ))
     }
 
     /// An overlay sized to its media before it ever reaches the frame: media

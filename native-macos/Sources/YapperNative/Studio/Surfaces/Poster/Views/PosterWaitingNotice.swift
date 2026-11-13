@@ -15,11 +15,11 @@ struct PosterWaitingNotice: View {
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(name) is still waiting to be posted.")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.studioBodyStrong)
                 Text(waiting.kind == "upload"
                      ? "Poster keeps one video at a time. Post or schedule it, or discard it to add the new one."
                      : "Poster keeps one video at a time. Post or schedule it first, then add the new one.")
-                    .font(.system(size: 12))
+                    .font(.studioLabel)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }

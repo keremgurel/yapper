@@ -35,7 +35,7 @@ struct VolumeFader: View {
                     .padding(.horizontal, handle / 2)
 
                 Capsule()
-                    .fill(Color.yapperOrange)
+                    .fill(Color.studioAccent)
                     .frame(width: max(trackHeight, travel * fraction), height: trackHeight)
                     .offset(x: handle / 2)
 
@@ -76,7 +76,7 @@ struct VolumeFader: View {
         .focusEffectDisabled()
         .overlay {
             Capsule()
-                .strokeBorder(Color.yapperOrange.opacity(focused ? 0.7 : 0), lineWidth: 1.5)
+                .strokeBorder(Color.studioAccent.opacity(focused ? 0.7 : 0), lineWidth: 1.5)
                 .padding(-2)
         }
         .onMoveCommand { direction in

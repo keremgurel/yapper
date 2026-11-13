@@ -60,7 +60,7 @@ private struct RecorderIdeaRow: View {
         Button(action: action) {
             HStack(spacing: 10) {
                 Text(summary.title.isEmpty ? "Untitled idea" : summary.title)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.studioBodyStrong)
                     .lineLimit(1)
                 Spacer(minLength: 8)
                 if summary.hasScript { NativeChip(text: "Script", tone: .neutral) }

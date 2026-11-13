@@ -11,10 +11,10 @@ struct IdeaFilterBar: View {
     var body: some View {
         HStack(spacing: 10) {
             HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass").font(.system(size: 12)).foregroundStyle(.secondary)
-                TextField("Search", text: $query).textFieldStyle(.plain).font(.system(size: 13))
+                Image(systemName: "magnifyingglass").font(.studioLabel).foregroundStyle(.secondary)
+                TextField("Search", text: $query).textFieldStyle(.plain).font(.studioBody)
                 if !query.isEmpty {
-                    Button { query = "" } label: { Image(systemName: "xmark").font(.system(size: 11)) }
+                    Button { query = "" } label: { Image(systemName: "xmark").font(.studioCaption) }
                         .buttonStyle(.studioPlain)
                         .foregroundStyle(.secondary)
                         .help("Clear search")
@@ -33,7 +33,7 @@ struct IdeaFilterBar: View {
                         Button(name) { pillar = name }
                     }
                 } label: {
-                    Text(pillar ?? "All pillars").font(.system(size: 12, weight: .medium))
+                    Text(pillar ?? "All pillars").font(.studioLabelStrong)
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
@@ -44,7 +44,7 @@ struct IdeaFilterBar: View {
             }
             Spacer(minLength: 0)
             if let resultLabel {
-                Text(resultLabel).font(.system(size: 12).monospacedDigit()).foregroundStyle(.secondary)
+                Text(resultLabel).font(.studioLabel.monospacedDigit()).foregroundStyle(.secondary)
             }
         }
         .padding(.bottom, 12)

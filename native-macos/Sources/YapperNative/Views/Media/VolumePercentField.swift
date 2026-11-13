@@ -49,7 +49,7 @@ struct VolumePercentField: View {
         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .stroke(focused ? Color.yapperOrange.opacity(0.7) : Color.studioLine, lineWidth: 1)
+                .stroke(focused ? Color.studioAccent.opacity(0.7) : Color.studioLine, lineWidth: 1)
         }
         .help("Type a level, in percent. 100 is how it was recorded.")
     }

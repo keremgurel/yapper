@@ -32,7 +32,7 @@ struct PosterCoverStudio: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Cover preview").font(.nativeSectionTitle)
                     PosterCoverPreview(draft: draft)
-                    Text("9:16 · 1080 × 1920").font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text("9:16 · 1080 × 1920").font(.studioLabel).foregroundStyle(.secondary)
                 }
                 .frame(width: 188)
                 VStack(alignment: .leading, spacing: 12) {
@@ -88,7 +88,7 @@ struct PosterCoverStudio: View {
                 VStack(alignment: .leading, spacing: 8) { frameActions }
             }
             if let uploadError {
-                Text(uploadError).font(.system(size: 12)).foregroundStyle(Color.studioDanger)
+                Text(uploadError).font(.studioLabel).foregroundStyle(Color.studioDanger)
             }
         }
     }

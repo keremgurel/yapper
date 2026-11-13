@@ -25,14 +25,14 @@ struct IdeaCell: View {
             if let kind = row.ideaType.flatMap(IdeaKind.init(rawValue:)) { quiet(kind.label) } else { empty }
         case .transcript:
             if let state = IdeaReferenceState.label(row.transcriptStatus) {
-                Text(state.text).font(.system(size: 13)).lineLimit(1)
+                Text(state.text).font(.studioBody).lineLimit(1)
                     .foregroundStyle(state.caution ? NativeChip.Tone.yellow.color : Color.secondary)
             } else { empty }
         case .status:
             IdeaStatusMenu(status: row.pipelineStatus, onChange: onStatus)
         case .script:
             if row.hasScript {
-                Image(systemName: "doc.text").font(.system(size: 13)).foregroundStyle(.secondary).accessibilityLabel("Has a script")
+                Image(systemName: "doc.text").font(.studioBody).foregroundStyle(.secondary).accessibilityLabel("Has a script")
             } else { empty }
         case .added:
             quiet(IdeaDates.stamp(row.createdAt)).monospacedDigit()
@@ -44,11 +44,11 @@ struct IdeaCell: View {
     }
 
     private var empty: some View {
-        Image(systemName: "minus").font(.system(size: 11)).foregroundStyle(Color.secondary.opacity(0.4))
+        Image(systemName: "minus").font(.studioCaption).foregroundStyle(Color.secondary.opacity(0.4))
     }
 
     private func quiet(_ text: String) -> some View {
-        Text(text).font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1)
+        Text(text).font(.studioBody).foregroundStyle(.secondary).lineLimit(1)
     }
 }
 
@@ -59,22 +59,22 @@ struct IdeaTitleCell: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Text(row.displayTitle).font(.system(size: 13, weight: .medium)).lineLimit(1)
+            Text(row.displayTitle).font(.studioBodyStrong).lineLimit(1)
             if let url = row.sourceUrl {
                 if let platform = LinkPlatform(url: url) {
                     PlatformGlyph(platform: platform, size: 13).accessibilityLabel("From \(platform.name)")
                 } else {
-                    Image(systemName: "link").font(.system(size: 11)).foregroundStyle(.secondary).accessibilityLabel("Has a reference")
+                    Image(systemName: "link").font(.studioCaption).foregroundStyle(.secondary).accessibilityLabel("Has a reference")
                 }
             }
             if capture.working.contains(row.id) {
                 IdeaDraftingIndicator(fromLink: row.sourceUrl != nil)
             } else if capture.analysisFailed.contains(row.id) {
-                Text("First draft failed").font(.system(size: 11)).foregroundStyle(Color.studioDanger)
+                Text("First draft failed").font(.studioCaption).foregroundStyle(Color.studioDanger)
                 Button("Retry") { capture.retry(row.id) }.buttonStyle(EditorGhostButtonStyle(size: .mini))
             }
             Spacer(minLength: 4)
-            Image(systemName: "arrow.up.right").font(.system(size: 11)).foregroundStyle(Color.secondary.opacity(0.5))
+            Image(systemName: "arrow.up.right").font(.studioCaption).foregroundStyle(Color.secondary.opacity(0.5))
         }
     }
 }
@@ -97,7 +97,7 @@ struct IdeaVersionList: View {
                 .help(format.id == lead ? "\(format.label), where this idea started" : format.label)
             }
         }
-        .font(.system(size: 12, weight: .medium))
+        .font(.studioLabelStrong)
         .lineLimit(1)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(written.map(\.label).joined(separator: ", "))
@@ -127,12 +127,12 @@ struct IdeaRowActions: View {
         if row.submissionId != nil {
             HStack(spacing: 2) {
                 Button { StudioWebCommands.shared.openEditor(StudioEditorRequest(itemID: UUID(uuidString: row.id))) } label: {
-                    Image(systemName: "film").font(.system(size: 13))
+                    Image(systemName: "film").font(.studioBody)
                 }
                 .buttonStyle(EditorGhostButtonStyle(size: .mini))
                 .help("Open in the editor")
                 Button { StudioWebCommands.shared.openPoster(itemID: row.id) } label: {
-                    Image(systemName: "paperplane").font(.system(size: 13))
+                    Image(systemName: "paperplane").font(.studioBody)
                 }
                 .buttonStyle(EditorGhostButtonStyle(size: .mini))
                 .help("Post to a platform")

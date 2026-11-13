@@ -72,19 +72,19 @@ struct IdeaTable: View {
                         Image(systemName: sort.ascending ? "chevron.up" : "chevron.down").font(.system(size: 9, weight: .semibold))
                     }
                 }
-                .font(.system(size: 12, weight: .semibold))
+                .font(.studioLabelStrong)
                 .foregroundStyle(sort.key == key ? Color.primary : Color.secondary)
             }
             .buttonStyle(.studioPlain)
         } else {
-            Text(column.label).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+            Text(column.label).font(.studioLabelStrong).foregroundStyle(.secondary)
         }
     }
 
     private func sectionHeader(_ group: IdeaGroup) -> some View {
         HStack(spacing: 8) {
-            Text(group.label).font(.system(size: 12, weight: .semibold))
-            Text("\(group.items.count)").font(.system(size: 12).monospacedDigit())
+            Text(group.label).font(.studioLabelStrong)
+            Text("\(group.items.count)").font(.studioLabel.monospacedDigit())
             Spacer()
         }
         .foregroundStyle(.secondary)

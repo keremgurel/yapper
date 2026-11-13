@@ -17,13 +17,13 @@ struct CalendarWeekGrid: View {
                 VStack(spacing: 0) {
                     VStack(spacing: 2) {
                         Text(day.formatted(.dateTime.weekday(.abbreviated)))
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.studioCaptionStrong)
                             .foregroundStyle(.secondary)
                         Text(day.formatted(.dateTime.day()))
                             .font(.system(size: 13, weight: isToday ? .semibold : .regular).monospacedDigit())
-                            .foregroundStyle(isToday ? Color.white : Color.primary)
+                            .foregroundStyle(isToday ? Color.studioAccentForeground : Color.primary)
                             .frame(minWidth: 22, minHeight: 22)
-                            .background { if isToday { Circle().fill(Color.yapperOrange) } }
+                            .background { if isToday { Circle().fill(Color.studioAccent) } }
                     }
                     .padding(.vertical, 8)
                     .frame(maxWidth: .infinity)

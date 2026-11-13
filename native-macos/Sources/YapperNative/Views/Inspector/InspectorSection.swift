@@ -67,11 +67,12 @@ struct InspectorSection<Content: View>: View {
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 8, weight: .black))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(Color.studioTextMuted)
+                        .frame(width: 10)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                     Text(title)
-                        .font(.studioCaptionStrong)
+                        .font(.studioLabelStrong)
                         .foregroundStyle(.primary)
                 }
                 .contentShape(Rectangle())
@@ -99,39 +100,9 @@ struct InspectorSection<Content: View>: View {
             }
 
             if let isEnabled {
-                InspectorSwitch(isOn: isEnabled)
+                StudioSwitch(isOn: isEnabled)
             }
         }
-        .frame(height: 30)
-    }
-}
-
-/// A small switch in the brand's colour rather than the system accent, so a
-/// panel of them reads as one piece.
-struct InspectorSwitch: View {
-    @Binding var isOn: Bool
-
-    var body: some View {
-        Button {
-            isOn.toggle()
-        } label: {
-            Capsule(style: .continuous)
-                .fill(isOn ? Color.yapperOrange : Color.studioInputBackground)
-                .overlay {
-                    Capsule(style: .continuous)
-                        .strokeBorder(isOn ? Color.clear : Color.studioLine, lineWidth: 1)
-                }
-                .overlay(alignment: isOn ? .trailing : .leading) {
-                    Circle()
-                        .fill(.white)
-                        .padding(1.5)
-                        .shadow(color: .black.opacity(0.25), radius: 1, y: 0.5)
-                }
-                .frame(width: 26, height: 15)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.studioPlain)
-        .clickableCursor()
-        .animation(.easeOut(duration: 0.12), value: isOn)
+        .frame(height: 32)
     }
 }

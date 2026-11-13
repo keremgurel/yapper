@@ -20,11 +20,11 @@ struct BrainBlockRow: View {
                 reorderControls
                 Button(action: onToggle) {
                     HStack(spacing: 10) {
-                        Image(systemName: block.kind.symbol).font(.system(size: 13)).foregroundStyle(.secondary).frame(width: 16)
+                        Image(systemName: block.kind.symbol).font(.studioBody).foregroundStyle(.secondary).frame(width: 16)
                         Text(block.title.isEmpty ? "Untitled" : block.title)
                             .font(.system(size: 14, weight: .medium)).lineLimit(1).layoutPriority(1)
                         Text(block.digest.isEmpty ? block.shapeDescription : block.digest)
-                            .font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1)
+                            .font(.studioBody).foregroundStyle(.secondary).lineLimit(1)
                         Spacer(minLength: 0)
                     }
                     .padding(.vertical, 10)

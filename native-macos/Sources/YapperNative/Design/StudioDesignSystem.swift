@@ -14,61 +14,91 @@ enum StudioTheme: String, CaseIterable {
     }
 }
 
+/// The type ramp, matching the web's: light display type, regular text and
+/// medium emphasis. Hierarchy comes from size, not weight. The system face
+/// stands in for the web's Inter; the two share proportions closely enough
+/// that the apps read as one product.
 extension Font {
-    static let studioEyebrow = Font.system(size: 11, weight: .bold, design: .monospaced)
-    static let studioTitle = Font.system(size: 34, weight: .black, design: .rounded)
-    static let studioSectionTitle = Font.system(size: 15, weight: .bold)
+    static let studioEyebrow = Font.system(size: 12, weight: .regular)
+    static let studioTitle = Font.system(size: 28, weight: .light)
+    static let studioSectionTitle = Font.system(size: 15, weight: .medium)
     static let studioBody = Font.system(size: 13)
-    static let studioBodyStrong = Font.system(size: 13, weight: .semibold)
+    static let studioBodyStrong = Font.system(size: 13, weight: .medium)
     static let studioCaption = Font.system(size: 11)
-    static let studioCaptionStrong = Font.system(size: 11, weight: .semibold)
+    static let studioCaptionStrong = Font.system(size: 11, weight: .medium)
+    /// 12pt, the step between a caption and body text: control labels and
+    /// field values in the editor's panels.
+    static let studioLabel = Font.system(size: 12)
+    static let studioLabelStrong = Font.system(size: 12, weight: .medium)
+    /// 10pt, the floor. Names drawn on a timeline cell and badges only.
+    static let studioMicro = Font.system(size: 10, weight: .medium)
+    /// Times and other figures that have to hold their width as they change.
+    static let studioTimecode = Font.system(size: 11, weight: .medium, design: .monospaced)
+    static let studioTimecodeMicro = Font.system(size: 10, weight: .medium, design: .monospaced)
+}
+
+/// The corner steps. Buttons, chips and segmented controls are pills and do
+/// not use these; everything with a corner picks one of the four.
+enum StudioRadius {
+    /// A name tag or badge sitting inside a `control`-radius cell.
+    static let tag: CGFloat = 4
+    /// Timeline cells, badges and icon buttons.
+    static let control: CGFloat = 6
+    /// Fields, wells and menu rows.
+    static let field: CGFloat = 8
+    /// Panels inside a pane, popovers.
+    static let panel: CGFloat = 12
+    /// Cards and media.
+    static let card: CGFloat = 16
 }
 
 /// The surface ramp, taken value for value from the web design system's
 /// semantic tokens in `src/app/globals.css`, so the two apps look like one
-/// product. Light is a neutral gray, dark sits on true black with graphite
-/// panels; when the web's tokens change, these change with them.
+/// product. Light is a warm eggshell with white objects and stone wells, dark
+/// sits on true black with warm graphite panels; when the web's tokens change,
+/// these change with them.
 extension Color {
     /// `--sg-bg`
     static let editorBackground = adaptive(
-        light: NSColor(hex: 0xFAFAFA),
+        light: NSColor(hex: 0xFDFCFC),
         dark: NSColor(hex: 0x000000)
     )
     /// `--sg-surface` — the panels that carry text
     static let panelBackground = adaptive(
         light: NSColor(hex: 0xFFFFFF),
-        dark: NSColor(hex: 0x171719)
+        dark: NSColor(hex: 0x171614)
     )
     /// `--sg-surface-raised`
     static let raisedBackground = adaptive(
         light: NSColor(hex: 0xFFFFFF),
-        dark: NSColor(hex: 0x222225)
+        dark: NSColor(hex: 0x21201D)
     )
-    /// `--sg-bg-2`
+    /// `--sidebar`: the page's own eggshell, so chrome and content are one
+    /// sheet divided by a hairline.
     static let sidebarBackground = adaptive(
-        light: NSColor(hex: 0xF0F0F2),
-        dark: NSColor(hex: 0x111113)
+        light: NSColor(hex: 0xFDFCFC),
+        dark: NSColor(hex: 0x0C0B0A)
     )
     /// `--sg-surface-sunken` — wells, inputs, segmented tracks
     static let studioInputBackground = adaptive(
-        light: NSColor(hex: 0xF2F2F4),
-        dark: NSColor(hex: 0x111113)
+        light: NSColor(hex: 0xF5F3F1),
+        dark: NSColor(hex: 0x12110F)
     )
     /// `--sg-border`
     static let studioLine = adaptive(
-        light: NSColor(red: 27 / 255, green: 24 / 255, blue: 28 / 255, alpha: 0.10),
+        light: NSColor.black.withAlphaComponent(0.08),
         dark: NSColor.white.withAlphaComponent(0.09)
     )
     /// `--sg-border-strong`
     static let studioLineStrong = adaptive(
-        light: NSColor(red: 27 / 255, green: 24 / 255, blue: 28 / 255, alpha: 0.18),
+        light: NSColor.black.withAlphaComponent(0.14),
         dark: NSColor.white.withAlphaComponent(0.16)
     )
     /// The selected segment inside a control: lifted off the sunken track it
     /// sits in, rather than coloured. See `InspectorSegmentedControl`.
     static let studioRaisedChip = adaptive(
         light: NSColor.white,
-        dark: NSColor(hex: 0x2A2A2E)
+        dark: NSColor(hex: 0x2A2826)
     )
     static let studioFaintFill = adaptive(
         light: NSColor.black.withAlphaComponent(0.045),
@@ -88,6 +118,31 @@ extension Color {
         light: NSColor.white.withAlphaComponent(0.30),
         dark: NSColor.white.withAlphaComponent(0.17)
     )
+    /// `--sg-accent`: the action colour. Ink on light, white on dark. Primary
+    /// buttons and the current navigation row use it.
+    static let studioAccent = adaptive(
+        light: NSColor(hex: 0x000000),
+        dark: NSColor(hex: 0xFFFFFF)
+    )
+    /// `--sg-accent-fg`
+    static let studioAccentForeground = adaptive(
+        light: NSColor(hex: 0xFFFFFF),
+        dark: NSColor(hex: 0x000000)
+    )
+    /// `--sg-text-muted`
+    static let studioTextMuted = adaptive(
+        light: NSColor(hex: 0x777169),
+        dark: NSColor(hex: 0xA59F97)
+    )
+    /// `--sg-surface-tray`: the stone tray under a segmented control.
+    static let studioTray = adaptive(
+        light: NSColor(hex: 0xEBE8E4),
+        dark: NSColor(hex: 0x0C0B0A)
+    )
+    /// The brand mark's orange. In the editor it is also the working colour
+    /// for things drawn over video (playhead, selection and framing boxes),
+    /// where ink or white would vanish into the picture. It is not the action
+    /// colour: buttons and navigation use `studioAccent`.
     static let yapperOrange = Color(red: 1, green: 0.48, blue: 0.13)
     /// The brackets around the face the retouch is reading. Deliberately not
     /// `yapperOrange`: the framing box is orange and sits a few points away, and
@@ -95,22 +150,27 @@ extension Color {
     /// Cyan also survives being drawn on skin, which is the only place this is
     /// ever drawn.
     static let faceIndicator = Color(red: 0.20, green: 0.87, blue: 0.90)
+    /// The "on" and "done" status hue. A state, never an action.
+    static let studioSuccess = adaptive(
+        light: NSColor(hex: 0x2F9E5B),
+        dark: NSColor(hex: 0x4CC27D)
+    )
     /// `--destructive`
     static let studioDanger = Color(red: 0.898, green: 0.282, blue: 0.302)
     /// `--sg-glass-bg`
     static let studioGlassFill = adaptive(
-        light: NSColor.white.withAlphaComponent(0.62),
-        dark: NSColor.white.withAlphaComponent(0.05)
+        light: NSColor.white.withAlphaComponent(0.66),
+        dark: NSColor(hex: 0x21201D).withAlphaComponent(0.72)
     )
     /// `--sg-glass-border`
     static let studioGlassBorder = adaptive(
-        light: NSColor.white.withAlphaComponent(0.90),
-        dark: NSColor.white.withAlphaComponent(0.14)
+        light: NSColor.black.withAlphaComponent(0.06),
+        dark: NSColor.white.withAlphaComponent(0.10)
     )
     /// `--sg-glass-highlight`, the lit top edge of a glass panel
     static let studioGlassHighlight = adaptive(
         light: NSColor.white.withAlphaComponent(0.95),
-        dark: NSColor.white.withAlphaComponent(0.60)
+        dark: NSColor.white.withAlphaComponent(0.40)
     )
 
     private static func adaptive(light: NSColor, dark: NSColor) -> Color {

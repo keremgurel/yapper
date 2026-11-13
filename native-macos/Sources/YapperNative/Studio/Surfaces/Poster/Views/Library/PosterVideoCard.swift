@@ -20,13 +20,13 @@ struct PosterVideoCard: View {
                     .clipShape(RoundedRectangle(cornerRadius: 4))
                     .overlay { if importing { ProgressView().controlSize(.mini) } }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(video.title).font(.system(size: 13, weight: .semibold))
+                    Text(video.title).font(.studioBodyStrong)
                         .lineLimit(2).multilineTextAlignment(.leading)
                     if case .project = video.origin { meta }
                 }
                 Spacer(minLength: 8)
                 Text(video.needsOriginal ? "Attach original" : "Use video")
-                    .font(.system(size: 12)).foregroundStyle(.secondary)
+                    .font(.studioLabel).foregroundStyle(.secondary)
             }
             .padding(.vertical, 8)
             .padding(.trailing, canRemove ? 40 : 0)
@@ -39,7 +39,7 @@ struct PosterVideoCard: View {
         .overlay(alignment: .trailing) {
             if canRemove {
                 Button { confirmRemoval = true } label: {
-                    Image(systemName: "xmark").font(.system(size: 13, weight: .semibold))
+                    Image(systemName: "xmark").font(.studioBodyStrong)
                         .foregroundStyle(Color.studioDanger).frame(width: 32, height: 32)
                         .background(Circle().fill(Color.panelBackground))
                 }.buttonStyle(.studioPlain).disabled(removing).help("Remove upload")
@@ -85,21 +85,21 @@ struct PosterVideoCard: View {
                 Text("Latest edit · \(Int(listing.summary.duration))s")
                 if let status = sync.status[listing.summary.id] { Text(status) }
                 else if sync.errors[listing.summary.id] != nil { Text("Preview needs attention").foregroundStyle(NativeChip.Tone.yellow.color) }
-            }.font(.system(size: 12)).foregroundStyle(.secondary)
+            }.font(.studioLabel).foregroundStyle(.secondary)
         case .file:
-            Text("Uploading…").font(.system(size: 12)).foregroundStyle(.secondary)
+            Text("Uploading…").font(.studioLabel).foregroundStyle(.secondary)
         case let .yapper(_, _, status, scheduledFor, _):
             HStack(spacing: 8) {
-                Text(PosterFormat.scheduled(scheduledFor)).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+                Text(PosterFormat.scheduled(scheduledFor)).font(.studioCaption).foregroundStyle(.secondary).lineLimit(1)
                 Spacer(minLength: 0)
                 NativeChip(text: status.capitalized, tone: PosterFormat.statusTone(status))
             }
         case let .platform(_, _, _, _, views, publishedAt, _, _, _):
             HStack(spacing: 8) {
-                Text(PosterFormat.day(publishedAt)).font(.system(size: 11)).foregroundStyle(.secondary)
+                Text(PosterFormat.day(publishedAt)).font(.studioCaption).foregroundStyle(.secondary)
                 Spacer(minLength: 0)
                 Label(PosterFormat.views(views), systemImage: "eye")
-                    .font(.system(size: 11).monospacedDigit())
+                    .font(.studioCaption.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
         }
