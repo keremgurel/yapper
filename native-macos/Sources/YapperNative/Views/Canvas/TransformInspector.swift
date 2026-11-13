@@ -242,7 +242,7 @@ struct TransformInspector: View {
             session.turnFraming(by: degrees)
         } label: {
             Image(systemName: icon)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.studioCaptionStrong)
                 .frame(width: 24, height: 22)
                 .contentShape(Rectangle())
         }
@@ -281,7 +281,7 @@ private struct KeyframeControls: View {
                 session.toggleFramingKey()
             } label: {
                 Image(systemName: isOnKey ? "diamond.fill" : "diamond")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.studioCaptionStrong)
                     .foregroundStyle(isOnKey ? Color.studioAccent : Color.secondary)
                     .frame(width: 24, height: 22)
                     .contentShape(Rectangle())

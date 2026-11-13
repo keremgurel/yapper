@@ -17,10 +17,10 @@ struct ExportJobRow: View {
             HStack(alignment: .top, spacing: 8) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(job.projectName)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.studioBodyStrong)
                         .lineLimit(1)
                     Text(job.kind == .poster ? "Export and post" : job.destination.lastPathComponent)
-                        .font(.system(size: 11))
+                        .font(.studioCaption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -34,7 +34,7 @@ struct ExportJobRow: View {
             }
 
             Text(ExportJobCopy.status(job))
-                .font(.system(size: 11, weight: .medium))
+                .font(.studioCaptionStrong)
                 .monospacedDigit()
                 .foregroundStyle(isFailed ? Color.studioDanger : Color.secondary)
                 .lineLimit(3)
@@ -56,8 +56,7 @@ struct ExportJobRow: View {
             Button {
                 center.dismiss(job.id)
             } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .bold))
+                StudioGlyph(.close, size: 12)
             }
             .buttonStyle(EditorGhostButtonStyle(size: .mini))
             .help("Remove from the list")

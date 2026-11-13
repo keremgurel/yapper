@@ -137,7 +137,7 @@ struct InspectorSegmentedControl<Value: Hashable>: View {
         } label: {
             HStack(spacing: 4) {
                 if let systemImage = option.systemImage {
-                    Image(systemName: systemImage).font(.system(size: 10, weight: .medium))
+                    Image(systemName: systemImage).font(.studioMicro)
                 }
                 if !option.label.isEmpty {
                     Text(option.label)
