@@ -23,14 +23,14 @@ struct PosterPublishOptions: View {
                 PosterYouTubeSettingsView(settings: $session.youtube)
             }
             if chosen.contains(.tiktok) {
-                PosterTikTokSettingsView(model: tiktok, video: video)
+                PosterTikTokSettingsView(model: tiktok)
             }
             if showsWhen {
                 PosterWhenPicker(model: schedule, tiktokInbox: chosen.contains(.tiktok) && tiktok.mode == .inbox) {
                     StudioNavigation.shared.goTo(.calendar)
                 }
             }
-            PosterOutcomeList(outcomes: session.outcomes)
+            PosterOutcomeList(rows: session.rows)
         }
     }
 }

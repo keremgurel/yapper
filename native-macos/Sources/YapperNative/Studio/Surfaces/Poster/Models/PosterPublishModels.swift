@@ -2,11 +2,21 @@ import Foundation
 
 /// What every publish route resolves to. `url` when the post is live and
 /// linkable; `draft` when it landed in the platform's inbox to finish there.
+/// `profileUrl` is the account's page, sent when TikTok has posted the video
+/// but not yet said where it lives.
 struct PosterPublishResult: Codable, Equatable {
     let jobId: String
     let url: String?
     let draft: Bool?
     var coverApplied: Bool? = nil
+    var profileUrl: String? = nil
+    /// The video is live and its cover is still to be set (YouTube, deferred).
+    var coverPending: Bool? = nil
+}
+
+/// `/api/publish/youtube/cover`: whether YouTube took the deferred cover.
+struct PosterCoverResult: Codable, Equatable {
+    let coverApplied: Bool
 }
 
 /// What happened on one platform for one video.
@@ -20,14 +30,18 @@ struct PosterOutcome: Equatable, Identifiable {
     var url: URL?
     var error: String?
     var coverApplied: Bool? = nil
+    /// The account's page, for a post that is live without a link of its own.
+    var profileURL: URL? = nil
+    /// Live, with its cover still being set.
+    var coverPending = false
 
     var id: String { "\(videoID):\(platform.rawValue)" }
 
     var label: String {
         switch status {
         case .posted: "Posted"
-        case .draft: "Delivered to TikTok inbox"
-        case .pending: "Awaiting confirmation"
+        case .draft: "In your inbox"
+        case .pending: "Confirming"
         case .failed: "Failed"
         case .scheduled: "Scheduled"
         }

@@ -11,7 +11,8 @@ struct PosterPublishBar: View {
     let failures: Int
     /// Destinations to finish before the button opens, by name.
     let waiting: [String]
-    let tiktokChosen: Bool
+    /// True when the posting declaration above is all that is left to check.
+    let needsConsent: Bool
     let onSend: () -> Void
     let onNext: () -> Void
 
@@ -37,8 +38,8 @@ struct PosterPublishBar: View {
                 if !busy && !waiting.isEmpty {
                     Text("Finish \(waiting.formatted(.list(type: .and))) above to publish.")
                         .font(.studioLabel).foregroundStyle(.secondary)
-                } else if tiktokChosen {
-                    Text("For TikTok, review the audience and posting method above.")
+                } else if !busy && needsConsent {
+                    Text("Check the box above to publish.")
                         .font(.studioLabel).foregroundStyle(.secondary)
                 }
             }

@@ -22,6 +22,20 @@ Direct Post uses `video.publish` and `PULL_FROM_URL` on the verified `ypr.app` d
 
 Until audit approval, the server permits only `SELF_ONLY` Direct Post, and TikTok requires the test account to be private. Do not set `TIKTOK_DIRECT_POST_AUDITED=1` merely because the dashboard's Direct Post switch is on.
 
+#### Poster defaults and consent (2026-11-12)
+
+Poster now fills in the TikTok settings instead of leaving them blank. The audience starts on the widest option the account allows: Everyone on a public account once the app is audited, Only me before that. Comments, Duet and Stitch start on unless the account has them turned off. Commercial disclosure and the AI label still start off.
+
+The posting consent moved out of the settings dialog. It is one checkbox beside the publish button, unchecked until the creator ticks it, and it clears if branded content is switched on, because the terms it covers change. The settings dialog no longer repeats the video, which is already on the Poster page. The Mac app matches.
+
+This departs from TikTok's Content Sharing Guidelines, which say the privacy level should have no default and that no interaction should be checked by default. Kerem asked for the defaults on 2026-11-12 after the blank form blocked his own post. The recording scripts in `platform-review-recordings/` still describe the blank form, so before another review recording either the scripts change or the defaults come back off. The server still checks every setting and still refuses a post without consent.
+
+When TikTok reports a post complete before it has a public post ID, the publish answer carries the creator's profile address so the posted state can link somewhere. It is never stored as the post's own address.
+
+### YouTube cover
+
+A Poster publish asks the YouTube route to defer the cover (`deferCover`). The route answers as soon as the upload lands, and the client then calls `/api/publish/youtube/cover` with the same idempotency key to wait for processing and set the thumbnail. That wait is capped at a minute and used to hold the whole post. Scheduled posts and older clients do not send the flag and still set the cover in one request.
+
 ### Facebook
 
 Each user connects through Facebook OAuth, grants Page access, then explicitly selects their own Page. No Page is selected automatically. The browser receives Page IDs/names only; user and Page tokens stay encrypted server-side. The selection endpoint rechecks Page authorization, and publishing refuses a Page changed since the user reviewed it.

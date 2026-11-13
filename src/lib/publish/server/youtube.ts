@@ -15,11 +15,8 @@ import {
   existingPublishResponse,
   publishIdempotencyKey,
 } from "@/lib/publish/idempotency";
-import {
-  setYouTubeThumbnail,
-  uploadYouTubeVideo,
-  waitForYouTubeProcessing,
-} from "@/lib/publish/youtube";
+import { uploadYouTubeVideo } from "@/lib/publish/youtube";
+import { applyYouTubeThumbnail } from "@/lib/publish/server/youtube-cover";
 import { requestBodyErrorResponse } from "@/lib/http/bounded-body";
 import { readYouTubePublishRequest } from "@/lib/publish/request";
 import {
@@ -183,33 +180,24 @@ export async function publishYouTube(
 
   // Custom thumbnail is best-effort: it needs a verified channel, so a failure
   // must not fail the post that already succeeded.
-  let coverApplied = body.thumbnailKey ? false : undefined;
-  if (thumbnailKey) {
-    try {
-      await waitForYouTubeProcessing(accessToken, result.videoId, workflow);
-      const thumb = await getObjectFile(thumbnailKey, {
-        maxBytes: 20 * 1024 * 1024,
-        signal: workflow.signal,
-      });
-      const mime = thumbnailKey.endsWith(".png") ? "image/png" : "image/jpeg";
-      try {
-        await setYouTubeThumbnail(
-          {
-            accessToken,
-            videoId: result.videoId,
-            filePath: thumb.filePath,
-            byteLength: thumb.byteLength,
-            mimeType: mime,
-          },
-          workflow,
-        );
-        coverApplied = true;
-      } finally {
-        await thumb.cleanup();
-      }
-    } catch (err) {
-      console.error("[publish] youtube thumbnail failed", err);
-    }
+  if (!thumbnailKey) {
+    return Response.json({
+      jobId,
+      ...result,
+      coverApplied: body.thumbnailKey ? false : undefined,
+    });
   }
+  // YouTube only takes a thumbnail once it has processed the video, which can
+  // be a minute after the video is already live. A caller that asks to defer
+  // gets its answer now and sets the cover through the cover route.
+  if (body.deferCover) {
+    return Response.json({ jobId, ...result, coverPending: true });
+  }
+  const coverApplied = await applyYouTubeThumbnail(
+    accessToken,
+    result.videoId,
+    thumbnailKey,
+    workflow,
+  );
   return Response.json({ jobId, ...result, coverApplied });
 }

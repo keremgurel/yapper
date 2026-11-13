@@ -20,6 +20,10 @@ enum PosterPublishAPI {
             body["title"] = copy.title
             body["description"] = copy.body.isEmpty ? nil : copy.body
             body["thumbnailKey"] = target.thumbnailKey
+            // The post answers once the video is up; `applyCover` sets the
+            // cover afterwards instead of holding the post while YouTube
+            // processes.
+            body["deferCover"] = target.thumbnailKey == nil ? nil : true
             body.merge(youtube.body) { _, chosen in chosen }
             return try await PosterHTTP.post("api/publish/youtube", body: .compact(body), headers: headers)
         case .instagram:
@@ -38,6 +42,15 @@ enum PosterPublishAPI {
             // The inbox endpoint takes no caption: it lands in drafts.
             return try await poll("api/publish/tiktok", body: .compact(target.sourceBody), key: key)
         }
+    }
+
+    /// Sets the cover on a YouTube video whose publish deferred it. The key
+    /// is the one the upload used, which is how the server knows which video.
+    /// A lost connection counts as not applied.
+    static func applyCover(thumbnailKey: String, key: String) async -> Bool {
+        let result: PosterCoverResult? = try? await PosterHTTP.post(
+            "api/publish/youtube/cover", body: ["thumbnailKey": thumbnailKey], headers: ["Idempotency-Key": key])
+        return result?.coverApplied == true
     }
 
     /// The route's code for a thrown publish error, in the shape the copy reads.
@@ -78,13 +91,15 @@ enum PosterPublishAPI {
     }
 
     private static func poll(_ path: String, body: [String: Any], key: String) async throws -> PosterPublishResult {
-        for attempt in 0..<24 {
+        for attempt in 0..<PosterPublishPolling.attempts {
             do {
                 return try await PosterHTTP.post(path, body: body, headers: ["Idempotency-Key": key])
             } catch let error as PosterHTTPError {
                 let pending = error.code == "publish_state_pending" || error.code == "publish_in_progress"
                 guard error.reconcilable, pending else { throw error }
-                if attempt < 23 { try await Task.sleep(for: .seconds(5)) }
+                if attempt < PosterPublishPolling.attempts - 1 {
+                    try await Task.sleep(for: PosterPublishPolling.wait(afterPending: attempt))
+                }
             }
         }
         throw PosterHTTPError(status: 202, code: "publish_in_progress", reason: nil, detail: nil, reconcilable: true,
