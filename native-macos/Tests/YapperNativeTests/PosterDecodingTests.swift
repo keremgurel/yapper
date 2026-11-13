@@ -105,7 +105,10 @@ struct PosterDecodingTests {
         let live: PosterPublishResult = try decode(#"{"jobId":"job_1","url":"https://youtube.com/shorts/abc"}"#)
         #expect(live.url == "https://youtube.com/shorts/abc")
         let draft: PosterPublishResult = try decode(#"{"jobId":"job_2","draft":true}"#)
-        #expect(draft.draft == true)
+        #expect(draft.draft == true && draft.profileUrl == nil)
+        // TikTok can finish a post before it says where the post lives.
+        let unlinked: PosterPublishResult = try decode(#"{"jobId":"job_3","draft":false,"profileUrl":"https://www.tiktok.com/@kerem"}"#)
+        #expect(unlinked.url == nil && unlinked.profileUrl == "https://www.tiktok.com/@kerem")
     }
 
     @Test func tiktokReviewInputs() throws {

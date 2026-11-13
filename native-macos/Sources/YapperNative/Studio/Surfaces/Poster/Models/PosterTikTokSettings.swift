@@ -8,7 +8,11 @@ struct PosterTikTokSettings: Codable, Equatable {
     var allowStitch = false
     var discloseCommercial = false
     var ownBrand = false
-    var brandedContent = false
+    /// Branded content adds TikTok's Branded Content Policy to the posting
+    /// declaration, so a tick given for the shorter terms does not carry over.
+    var brandedContent = false {
+        didSet { if brandedContent != oldValue { consent = false } }
+    }
     var aiGenerated = false
     var consent = false
     var accountId = ""
@@ -33,6 +37,14 @@ struct PosterTikTokSettings: Codable, Equatable {
         if !duration.isFinite || duration <= 0 || duration > creator.max_video_post_duration_sec { return "duration_check_failed" }
         if accountId.isEmpty { return "account_required" }
         return nil
+    }
+
+    /// The same check with the posting declaration set aside, so the page can
+    /// tell "these settings need a fix" from "only the box is left to check".
+    func problemBesidesConsent(creator: PosterTikTokCreator, duration: Double, audited: Bool) -> String? {
+        var agreed = self
+        agreed.consent = true
+        return agreed.problem(creator: creator, duration: duration, audited: audited)
     }
 }
 

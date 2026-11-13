@@ -1,9 +1,10 @@
 import SwiftUI
 
 /// Everywhere this video is going and everything it needs to get there: the
-/// destinations, the caption writer, one card per destination, the YouTube
-/// and TikTok settings, and the one button that prepares the video and sends
-/// it to every chosen destination. There is no second review step.
+/// destinations, the caption writer, the YouTube and TikTok settings behind
+/// the gear, the posting declaration, and the one button that prepares the
+/// video and sends it to every chosen destination. There is no second review
+/// step, and nothing a press needs is hidden in the settings sheet.
 struct PosterDestinationColumn: View {
     @ObservedObject private var projectPreparation = PosterProjectSync.shared
     let video: PosterVideo
@@ -39,7 +40,8 @@ struct PosterDestinationColumn: View {
             remaining: remaining, readiness: readiness.filter { remaining.contains($0.platform) },
             publishable: connections.publishable, videoReady: video.readyToPublish,
             youtube: session.youtube, youtubeDescription: captions.caption(for: .youtube).rendered,
-            tiktokReady: tiktok.review(caption: captions.caption(for: .tiktok).rendered).ready
+            tiktokReady: tiktok.review(caption: captions.caption(for: .tiktok).rendered).ready,
+            tiktokAwaitingConsent: tiktok.awaitsConsentOnly
         )
         let busy = session.posting || prep.preparing || schedule.saving
         let later = schedule.later && schedule.enabled == true && !retrying
@@ -72,11 +74,14 @@ struct PosterDestinationColumn: View {
                                 .buttonStyle(EditorGhostButtonStyle(size: .small))
                         }
                         if chosen.contains(.tiktok) {
-                            if tiktok.review(caption: captions.caption(for: .tiktok).rendered).ready {
+                            switch tiktok.standing {
+                            case .set:
                                 Text("TikTok · \(tiktok.mode == .inbox ? "Inbox draft" : tiktok.audienceLabel)")
                                     .font(.studioLabel).foregroundStyle(.secondary)
-                            } else {
-                                Button("Review TikTok audience and posting options") { openSettings(.tiktok) }
+                            case .checking:
+                                Text("Checking TikTok…").font(.studioLabel).foregroundStyle(.secondary)
+                            case .needsReview:
+                                Button("Review TikTok settings") { openSettings(.tiktok) }
                                     .buttonStyle(EditorGhostButtonStyle(size: .small))
                             }
                         }
@@ -109,8 +114,13 @@ struct PosterDestinationColumn: View {
                 Text("Shorten the YouTube description to 5,000 bytes or fewer.")
                     .font(.studioLabel).foregroundStyle(Color.studioDanger).padding(.top, 12)
             }
-            PosterOutcomeList(outcomes: session.outcomes)
-                .padding(.top, session.outcomes.isEmpty ? 0 : 12)
+            PosterOutcomeList(rows: session.rows)
+                .padding(.top, session.rows.isEmpty ? 0 : 12)
+            if remaining.contains(.tiktok), tiktok.mode == .direct, tiktok.context != nil {
+                PosterPostingDeclaration(agreed: $tiktok.settings.consent, brandedContent: tiktok.settings.brandedContent)
+                    .disabled(busy || finished || retrying)
+                    .padding(.top, 12)
+            }
             HStack(alignment: .top, spacing: 16) {
                 if schedule.saved || (!chosen.isEmpty && !finished && !retrying) {
                     PosterWhenPicker(model: schedule, tiktokInbox: chosen.contains(.tiktok) && tiktok.mode == .inbox) {
@@ -121,8 +131,8 @@ struct PosterDestinationColumn: View {
                     label: label(remaining: remaining, later: later, retrying: retrying),
                     busy: busy, canSend: gate.canSend, finished: finished,
                     failures: chosen.filter { drafts.outcome(video, $0)?.status == .failed }.count,
-                    waiting: video.readyToPublish ? gate.waiting.map(\.label) : [],
-                    tiktokChosen: false,
+                    waiting: video.readyToPublish ? gate.finishing.map(\.label) : [],
+                    needsConsent: video.readyToPublish && gate.needsConsentOnly,
                     onSend: { send(to: remaining, captions: captions, cover: cover, later: later) },
                     onNext: next
                 )
@@ -131,6 +141,11 @@ struct PosterDestinationColumn: View {
         }
         .onChange(of: busy, initial: true) { _, value in locked = value }
         .task { if schedule.enabled == nil { await schedule.load() } }
+        // TikTok's posting options and the video's length load as soon as
+        // TikTok is chosen, so the defaults are in place without the sheet.
+        .task(id: chosen.contains(.tiktok) ? PosterTikTokReviewModel.durationSource(for: video) : nil) {
+            if chosen.contains(.tiktok) { await tiktok.load(for: video) }
+        }
         .sheet(isPresented: $showSettings) {
             platformSettings(chosen)
         }
@@ -159,7 +174,7 @@ struct PosterDestinationColumn: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
                         if current == .youtube { PosterYouTubeSettingsView(settings: $session.youtube) }
-                        if current == .tiktok { PosterTikTokSettingsView(model: tiktok, video: video) }
+                        if current == .tiktok { PosterTikTokSettingsView(model: tiktok) }
                         if let current {
                             Text(current == .youtube ? "YouTube description" : "\(current.label) caption")
                                 .font(.nativeSectionTitle)
@@ -187,7 +202,7 @@ struct PosterDestinationColumn: View {
     private func label(remaining: [PublishPlatform], later: Bool, retrying: Bool) -> String {
         if prep.preparing || !video.readyToPublish { return preparationLabel }
         if schedule.saving { return "Scheduling…" }
-        if session.posting { return "Publishing \(min(session.outcomes.count + 1, remaining.count)) of \(remaining.count)…" }
+        if session.posting { return "Publishing…" }
         if later {
             let when = PosterQuickTimes.label(schedule.when)
             return remaining.count == 1 ? "Schedule for \(when)" : "Schedule \(remaining.count) posts for \(when)"
@@ -207,7 +222,7 @@ struct PosterDestinationColumn: View {
     /// One press: prepare the video, then send it everywhere still to go, or
     /// save it to send later.
     private func send(to remaining: [PublishPlatform], captions: PosterCaptionSet, cover: PosterCoverDraft, later: Bool) {
-        guard session.begin() else { return }
+        guard session.begin(sending: later ? [] : remaining) else { return }
         Task {
             defer { session.end() }
             guard let target = await prep.prepare(video, cover: cover, captions: captions, destinations: Set(remaining)) else { return }

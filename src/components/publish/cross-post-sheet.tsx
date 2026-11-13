@@ -12,13 +12,6 @@ import {
 } from "@/components/ui/sheet";
 import { useConnections } from "@/hooks/use-connections";
 import type { PublishPlatform } from "@/lib/db/schema";
-import {
-  crossPostToInstagram,
-  crossPostToFacebook,
-  crossPostToTikTokDirect,
-  crossPostToTikTok,
-  crossPostToYouTube,
-} from "@/lib/publish/client";
 import { connectedInOrder } from "@/lib/publish/connected-order";
 import { crossPostTargets } from "@/lib/publish/cross-post-plan";
 import { runCrossPost } from "@/lib/publish/run-cross-post";
@@ -27,13 +20,14 @@ import PreparedCaptions from "@/components/publish/captions/prepared-captions";
 import {
   hasPreparedCaptions,
   outgoingCopy,
-  type CopyOverride,
 } from "@/components/publish/outgoing-copy";
 import DestinationGrid from "@/components/publish/sheet/destination-grid";
 import NoConnections from "@/components/publish/sheet/no-connections";
-import OutcomeList, {
-  type SourceOutcome,
-} from "@/components/publish/sheet/outcome-list";
+import OutcomeList from "@/components/publish/sheet/outcome-list";
+import type { SourceOutcome } from "@/components/publish/sheet/outcome-rows";
+import { postSource } from "@/components/publish/sheet/post-source";
+import PostingDeclaration from "@/components/publish/sheet/posting-declaration";
+import { useDeferredCovers } from "@/components/publish/sheet/use-deferred-covers";
 import PublishButton from "@/components/publish/sheet/publish-button";
 import SingleCopyFields from "@/components/publish/sheet/single-copy-fields";
 import ScheduleButton from "@/components/publish/schedule/schedule-button";
@@ -44,10 +38,8 @@ import { useSchedulingAvailable } from "@/components/publish/schedule/use-schedu
 import { useWhen } from "@/components/publish/schedule/use-when";
 import WhenPicker from "@/components/publish/schedule/when-picker";
 import SourceList from "@/components/publish/sheet/source-list";
-import TikTokPostReview, {
-  tiktokAudience,
-  type TikTokReview,
-} from "./tiktok-post-review";
+import TikTokPostReview from "./tiktok-post-review";
+import { tiktokAudience, type TikTokReview } from "./tiktok/tiktok-review";
 import type { CrossPostTarget } from "./compose/types";
 
 import YouTubeSettingsFields, {
@@ -68,74 +60,6 @@ type PosterControls = {
 };
 
 export type { CrossPostTarget } from "./compose/types";
-
-function postSource(
-  source: CrossPostTarget,
-  platform: PublishPlatform,
-  override: CopyOverride | null,
-  idempotencyKey: string,
-  tiktokReview?: TikTokReview,
-  expectedAccountId?: string,
-  youtubeSettings?: YouTubeSettings,
-) {
-  const { title, body } = outgoingCopy(source, platform, override);
-  if (platform === "youtube") {
-    return crossPostToYouTube(
-      {
-        submissionId: source.submissionId,
-        mediaKey: source.mediaKey,
-        title,
-        description: body || undefined,
-        contentItemId: source.contentItemId,
-        thumbnailKey: source.thumbnailKey,
-        privacyStatus: youtubeSettings?.privacyStatus ?? "public",
-        selfDeclaredMadeForKids:
-          youtubeSettings?.selfDeclaredMadeForKids ?? undefined,
-        containsSyntheticMedia: youtubeSettings?.containsSyntheticMedia,
-      },
-      idempotencyKey,
-    );
-  }
-  if (platform === "instagram" || platform === "facebook") {
-    const input = {
-      submissionId: source.submissionId,
-      mediaKey: source.mediaKey,
-      caption: body || title || undefined,
-      contentItemId: source.contentItemId,
-      thumbnailKey: source.thumbnailKey,
-    };
-    return platform === "facebook"
-      ? crossPostToFacebook(
-          { ...input, expectedAccountId: expectedAccountId ?? "" },
-          idempotencyKey,
-        )
-      : crossPostToInstagram(input, idempotencyKey);
-  }
-  if (tiktokReview?.mode === "direct")
-    return crossPostToTikTokDirect(
-      {
-        submissionId: source.submissionId,
-        mediaKey: source.mediaKey,
-        contentItemId: source.contentItemId,
-        caption: tiktokReview.caption,
-        settings: {
-          ...tiktokReview.settings,
-          coverTimestampMs: source.coverTimestampMs,
-        },
-      },
-      idempotencyKey,
-    );
-  // TikTok's inbox endpoint takes no caption at all: the video lands in the
-  // creator's drafts and they paste the caption in the app.
-  return crossPostToTikTok(
-    {
-      submissionId: source.submissionId,
-      mediaKey: source.mediaKey,
-      contentItemId: source.contentItemId,
-    },
-    idempotencyKey,
-  );
-}
 
 /**
  * One explicit publish surface for one or many videos and one or many
@@ -199,6 +123,11 @@ export default function CrossPostSheet({
         }
       : INITIAL_YOUTUBE_SETTINGS,
   );
+  // Consent is for the terms on screen when the box was ticked. Turning on
+  // branded content changes those terms, so the tick does not carry over.
+  const [consentedTo, setConsentedTo] = useState<"standard" | "branded" | null>(
+    null,
+  );
   const [posting, setPosting] = useState(false);
   const [publishError, setPublishError] = useState("");
   const [scheduling, setScheduling] = useState(false);
@@ -221,6 +150,7 @@ export default function CrossPostSheet({
   const scheduled = scheduler.savedFor !== null;
   const later = schedulingAvailable === true && when.mode === "later";
   const [outcomes, setOutcomes] = useState<SourceOutcome[]>([]);
+  const covers = useDeferredCovers();
   const attemptKeys = useRef<PublishAttemptRegistry | null>(null);
   attemptKeys.current ??= new PublishAttemptRegistry();
   const {
@@ -275,9 +205,29 @@ export default function CrossPostSheet({
     !chosen.includes("youtube") ||
     (youtubeSettings.selfDeclaredMadeForKids !== null &&
       !youtubeDescriptionTooLong);
+  const tiktokChosen = chosen.includes("tiktok");
   const tiktokReady =
-    !chosen.includes("tiktok") ||
-    sources.every((source) => tiktokReviews[source.id]?.ready);
+    !tiktokChosen || sources.every((source) => tiktokReviews[source.id]?.ready);
+  const tiktokLoading =
+    tiktokChosen &&
+    sources.some((source) => tiktokReviews[source.id]?.loading ?? true);
+  const tiktokDirect = sources.filter(
+    (source) => tiktokReviews[source.id]?.mode !== "inbox",
+  );
+  const needsConsent = tiktokChosen && tiktokDirect.length > 0;
+  const declaration = tiktokDirect.some(
+    (source) => tiktokReviews[source.id]?.settings?.brandedContent,
+  )
+    ? "branded"
+    : "standard";
+  const consent = consentedTo === declaration;
+  const consentReady = !needsConsent || consent;
+  // Everything still standing between the creator and the publish button,
+  // said in words, so a disabled button is never a puzzle.
+  const blockers = [
+    ...(poster?.blockers ?? []),
+    ...(consentReady ? [] : ["Check the box below to publish."]),
+  ];
 
   const publish = async () => {
     if (
@@ -285,6 +235,7 @@ export default function CrossPostSheet({
       (embedded && chosen.length !== initialPlatforms?.length) ||
       !youtubeReady ||
       !tiktokReady ||
+      !consentReady ||
       operation.current ||
       scheduled ||
       sources.length === 0 ||
@@ -321,13 +272,18 @@ export default function CrossPostSheet({
             postSource(
               source,
               platform,
-              editable,
               attemptKeys.current!.forTarget(`${source.id}:${platform}`),
-              tiktokReviews[source.id],
-              connections?.find(
-                (connection) => connection.platform === platform,
-              )?.externalAccountId ?? undefined,
-              youtubeSettings,
+              {
+                override: editable,
+                tiktokReview: tiktokReviews[source.id],
+                expectedAccountId:
+                  connections?.find(
+                    (connection) => connection.platform === platform,
+                  )?.externalAccountId ?? undefined,
+                youtubeSettings,
+                consent,
+                onCover: (applied) => covers.track(source.id, applied),
+              },
             ),
           (result) => {
             finished.push({
@@ -367,6 +323,11 @@ export default function CrossPostSheet({
       connection.externalAccountId ?? "",
     ]),
   );
+  const handles = Object.fromEntries(
+    (connections ?? []).flatMap((connection) =>
+      connection.handle ? [[connection.platform, connection.handle]] : [],
+    ),
+  );
   const postCount =
     sources.length *
     (embedded ? (initialPlatforms?.length ?? 0) : chosen.length);
@@ -377,7 +338,13 @@ export default function CrossPostSheet({
       return scheduleTargets(
         prepared,
         targets.map((target) => target.platform),
-        { override: editable, accounts, youtubeSettings, tiktokReviews },
+        {
+          override: editable,
+          accounts,
+          youtubeSettings,
+          tiktokReviews,
+          consent,
+        },
       );
     });
   const tiktokDraftLater =
@@ -409,7 +376,6 @@ export default function CrossPostSheet({
       key={source.id}
       source={source}
       compact={embedded}
-      showPreview={!embedded || (settingsOpen && settingsTab === "tiktok")}
       initialCaption={
         outgoingCopy(source, "tiktok", editable).body ||
         outgoingCopy(source, "tiktok", editable).title
@@ -472,7 +438,7 @@ export default function CrossPostSheet({
                     </span>
                   </span>
                 )}
-                {chosen.includes("tiktok") &&
+                {tiktokChosen &&
                   (tiktokReady ? (
                     <span className="text-muted-foreground">
                       TikTok ·{" "}
@@ -480,17 +446,21 @@ export default function CrossPostSheet({
                         single ? tiktokReviews[single.id] : undefined,
                       )}
                     </span>
+                  ) : tiktokLoading ? (
+                    <span role="status" className="text-muted-foreground">
+                      Checking TikTok…
+                    </span>
                   ) : (
                     <button
                       type="button"
                       className="font-medium underline underline-offset-4"
                       onClick={() => showSettings("tiktok")}
                     >
-                      Review TikTok audience and posting options
+                      Review TikTok settings
                     </button>
                   ))}
               </div>
-              {chosen.includes("tiktok") &&
+              {tiktokChosen &&
                 tiktokReviews[single?.id ?? ""]?.mode !== "inbox" &&
                 poster.coverNote && (
                   <p className="text-muted-foreground mt-2 text-xs">
@@ -569,10 +539,8 @@ export default function CrossPostSheet({
           embedded ? "flex flex-col gap-3 pt-4" : "flex flex-col gap-5 p-4"
         }
       >
-        {poster && !outcomes.length && poster.blockers.length > 0 && (
-          <p className="text-muted-foreground text-sm">
-            {poster.blockers.join(" ")}
-          </p>
+        {!outcomes.length && !scheduled && blockers.length > 0 && (
+          <p className="text-muted-foreground text-sm">{blockers.join(" ")}</p>
         )}
         {publishError && (
           <p role="alert" className="text-destructive text-sm">
@@ -652,15 +620,13 @@ export default function CrossPostSheet({
                 vertical videos, 3–90 seconds, at least 540 × 960 pixels.
               </p>
             )}
-            <OutcomeList outcomes={outcomes} />
-
-            {failures.length > 0 && done && (
-              <p className="text-xs font-semibold text-[color:var(--sg-pink-500)]">
-                {failures.length} destination
-                {failures.length === 1 ? "" : "s"} failed. Successful posts were
-                not rolled back.
-              </p>
-            )}
+            <OutcomeList
+              sources={sources}
+              platforms={targets.map((target) => target.platform)}
+              outcomes={covers.settle(outcomes)}
+              posting={posting}
+              handles={handles}
+            />
 
             {scheduler.savedFor && (
               <ScheduledNotice at={scheduler.savedFor} count={postCount} />
@@ -674,6 +640,17 @@ export default function CrossPostSheet({
               <p className="text-destructive text-xs">
                 Schedule up to 20 posts at a time.
               </p>
+            )}
+            {needsConsent && !scheduled && !(done && !failures.length) && (
+              <PostingDeclaration
+                checked={consent}
+                onChange={(checked) =>
+                  setConsentedTo(checked ? declaration : null)
+                }
+                disabled={posting || scheduling}
+                branded={declaration === "branded"}
+                videos={sources.length}
+              />
             )}
             <div
               className={
@@ -720,6 +697,7 @@ export default function CrossPostSheet({
                           scheduling ||
                           !youtubeReady ||
                           !tiktokReady ||
+                          !consentReady ||
                           sources.length === 0 ||
                           chosen.length === 0 ||
                           postCount > 20 ||
@@ -741,7 +719,6 @@ export default function CrossPostSheet({
                             ? (initialPlatforms?.length ?? 0)
                             : chosen.length
                         }
-                        postedSoFar={outcomes.length}
                         posting={posting}
                         done={done}
                         disabled={
@@ -751,6 +728,7 @@ export default function CrossPostSheet({
                           posting ||
                           !youtubeReady ||
                           !tiktokReady ||
+                          !consentReady ||
                           scheduling ||
                           sources.length === 0 ||
                           chosen.length === 0 ||

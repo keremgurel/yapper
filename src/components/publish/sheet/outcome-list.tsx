@@ -1,96 +1,89 @@
 "use client";
 
-import { publishErrorCopy } from "@/lib/publish/error-copy";
-import AddToVoiceButton from "@/components/brain/voice/add-to-voice-button";
-import { ExternalLink } from "lucide-react";
-import { PLATFORMS } from "@/lib/publish/platforms";
-import type { CrossPostOutcome } from "@/lib/publish/run-cross-post";
+import { CircleAlert, Clock, Loader2 } from "lucide-react";
+import type { PublishPlatform } from "@/lib/db/schema";
+import { outcomeHeadline, type OutcomeTone } from "./outcome-headline";
+import OutcomeRow from "./outcome-row";
+import { outcomeRows, type SourceOutcome } from "./outcome-rows";
+import PostedCheck from "./posted-check";
 
-export interface SourceOutcome extends CrossPostOutcome {
-  sourceId: string;
-  sourceTitle: string;
+function ToneIcon({ tone }: { tone: OutcomeTone }) {
+  if (tone === "done") return <PostedCheck className="size-5" />;
+  if (tone === "sending")
+    return (
+      <Loader2
+        aria-hidden
+        className="text-muted-foreground size-5 animate-spin"
+      />
+    );
+  if (tone === "failed")
+    return <CircleAlert aria-hidden className="text-destructive size-5" />;
+  return <Clock aria-hidden className="text-muted-foreground size-5" />;
 }
 
-const STATUS_LABEL: Record<CrossPostOutcome["status"], string> = {
-  posted: "Posted",
-  draft: "Delivered to TikTok inbox",
-  pending: "Awaiting confirmation",
-  failed: "Failed",
-};
-
-/** What happened, per video and per destination. Failures stay on screen
- * beside successes: the fan-out isolates them, so the result is genuinely
- * mixed and summarising it as one state would be a lie. */
+/**
+ * Where a publish stands: one line for the whole press, then every
+ * destination with its own result. Destinations go out together, so each has
+ * a row from the start and failures stay beside successes. Summarising a mixed
+ * result as one state would be a lie.
+ */
 export default function OutcomeList({
+  sources,
+  platforms,
   outcomes,
+  posting,
+  handles,
 }: {
+  sources: { id: string; title: string }[];
+  platforms: PublishPlatform[];
   outcomes: SourceOutcome[];
+  posting: boolean;
+  /** The connected account on each platform, to say where a post went. */
+  handles: Partial<Record<PublishPlatform, string>>;
 }) {
-  if (outcomes.length === 0) return null;
+  const rows = outcomeRows(sources, platforms, outcomes, posting);
+  const headline = outcomeHeadline(rows, sources.length);
+  if (!headline) return null;
+  const batch = sources.length > 1;
+  const render = (list: typeof rows) =>
+    list.map((row) => (
+      <OutcomeRow
+        key={`${row.sourceId}-${row.platform}`}
+        row={row}
+        handle={handles[row.platform]}
+      />
+    ));
 
   return (
-    <div className="divide-border/60 border-border flex flex-col divide-y rounded-xl border">
-      {outcomes.map((outcome) => (
-        <div
-          key={`${outcome.sourceId}-${outcome.platform}`}
-          className="flex items-center justify-between gap-3 px-3 py-2.5"
+    <section className="border-border bg-card rounded-xl border">
+      <h3
+        role="status"
+        className="flex items-center gap-2.5 px-4 py-3.5 text-base font-medium"
+      >
+        <ToneIcon key={headline.tone} tone={headline.tone} />
+        <span
+          key={headline.text}
+          className="outcome-headline-text inline-block"
         >
-          <div className="min-w-0">
-            <p className="text-foreground truncate text-[13px] font-medium">
-              {outcome.sourceTitle}
+          {headline.text}
+        </span>
+      </h3>
+      {batch ? (
+        [...new Set(rows.map((row) => row.sourceId))].map((sourceId) => (
+          <div key={sourceId} className="border-border/60 border-t">
+            <p className="text-muted-foreground truncate px-4 pt-3 text-xs">
+              {rows.find((row) => row.sourceId === sourceId)?.sourceTitle}
             </p>
-            <p className="text-muted-foreground text-xs">
-              {PLATFORMS[outcome.platform].label}
-            </p>
-            {outcome.error && (
-              <p className="text-muted-foreground mt-1 max-w-sm text-xs">
-                {publishErrorCopy(outcome.error)}
-              </p>
-            )}
-            {outcome.coverApplied === false && (
-              <p className="text-muted-foreground mt-1 text-xs">
-                YouTube didn’t apply the cover. You can add it in YouTube
-                Studio.
-              </p>
-            )}
-            {outcome.status === "draft" && (
-              <p className="text-muted-foreground mt-1 max-w-sm text-xs">
-                Open TikTok → Inbox and tap “Your content from Yapper is ready”
-                to finish posting.
-              </p>
-            )}
+            <ul className="divide-border/60 divide-y">
+              {render(rows.filter((row) => row.sourceId === sourceId))}
+            </ul>
           </div>
-          {outcome.url ? (
-            <span className="flex items-center gap-3">
-              <AddToVoiceButton
-                platform={outcome.platform}
-                url={outcome.url}
-                title={outcome.sourceTitle}
-              />
-              <a
-                href={outcome.url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1 text-xs font-semibold text-[color:var(--sg-accent)]"
-              >
-                Posted <ExternalLink aria-hidden className="h-3 w-3" />
-              </a>
-            </span>
-          ) : (
-            <span
-              className={`text-xs font-semibold ${
-                outcome.status === "failed"
-                  ? "text-[color:var(--sg-pink-500)]"
-                  : outcome.status === "pending"
-                    ? "text-muted-foreground"
-                    : "text-[color:var(--sg-green-500)]"
-              }`}
-            >
-              {STATUS_LABEL[outcome.status]}
-            </span>
-          )}
-        </div>
-      ))}
-    </div>
+        ))
+      ) : (
+        <ul className="divide-border/60 border-border/60 divide-y border-t">
+          {render(rows)}
+        </ul>
+      )}
+    </section>
   );
 }
