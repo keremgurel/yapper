@@ -113,3 +113,55 @@ it("never fails the product request when accounting breaks", async () => {
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
   await expect(recordProviderResponse(chatReply())).resolves.toBeUndefined();
 });
+
+it("settles a transcription reply to the audio it decoded and records it", async () => {
+  const calls = await runWithAiUsage(
+    "transcription_requested",
+    async (scope) => {
+      await recordProviderResponse({
+        input: "https://api.deepgram.com/v1/listen?model=nova-3&keyterm=Yapper",
+        init: {
+          method: "POST",
+          body: JSON.stringify({ url: "https://r2.test/a" }),
+        },
+        reservation: {
+          microusd: 1_000_000,
+          at: new Date("2026-11-13T12:00:00Z"),
+        },
+        status: 200,
+        bytes: new TextEncoder().encode(
+          JSON.stringify({ metadata: { duration: 120 } }),
+        ),
+        latencyMs: 2100,
+      });
+      return scope.calls;
+    },
+  );
+  // Two minutes at $0.0043 plus $0.0013 for keyterms.
+  expect(settleProviderBudget).toHaveBeenCalledWith(
+    expect.objectContaining({ microusd: 1_000_000 }),
+    11_200,
+  );
+  expect(calls).toEqual([
+    expect.objectContaining({
+      model: "nova-3",
+      provider: "api.deepgram.com",
+      audioSeconds: 120,
+      inputTokens: 0,
+      listCostMicrousd: 11_200,
+      buyerCostMicrousd: 11_200,
+    }),
+  ]);
+});
+
+it("keeps the whole reservation when a transcriber's reply has no length", async () => {
+  await recordProviderResponse({
+    input: "https://api.elevenlabs.io/v1/speech-to-text",
+    init: { method: "POST", body: new FormData() },
+    reservation: { microusd: 1_000_000, at: new Date("2026-11-13T12:00:00Z") },
+    status: 200,
+    bytes: new TextEncoder().encode(JSON.stringify({ words: [] })),
+    latencyMs: 900,
+  });
+  expect(settleProviderBudget).not.toHaveBeenCalled();
+});
