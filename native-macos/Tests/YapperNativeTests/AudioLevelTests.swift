@@ -93,23 +93,33 @@ struct AudioLevelDraftTests {
         #expect(draft.volume(for: UUID()) == nil)
     }
 
-    @Test func endingHandsBackTheLastValueAndForgetsIt() {
+    @Test func theDraftIsKeptUntilItsOwnCommitLands() {
         let draft = AudioLevelDraft()
         let id = UUID()
         draft.set(0.2, for: id)
         draft.set(0.8, for: id)
+        // A commit for an older value does not clear a newer drag.
+        draft.endLayer(ifStill: (id, 0.2))
+        #expect(draft.pending?.volume == 0.8)
 
-        #expect(draft.endLayer()?.volume == 0.8)
+        draft.endLayer(ifStill: (id, 0.8))
         #expect(draft.pending == nil)
-        #expect(draft.endLayer() == nil)
     }
 
     @Test func theMainTrackHasItsOwnFader() {
         let draft = AudioLevelDraft()
         draft.setMainTrack(0.25)
         #expect(draft.mainTrack == 0.25)
-        #expect(draft.endMainTrack() == 0.25)
+        draft.endMainTrack(ifStill: 0.5)
+        #expect(draft.mainTrack == 0.25)
+        draft.endMainTrack(ifStill: 0.25)
         #expect(draft.mainTrack == nil)
+    }
+
+    @Test func snappingLandsOnWholePercents() {
+        #expect(AudioLevel.snapped(0.2134) == 0.21)
+        #expect(AudioLevel.percent(AudioLevel.snapped(0.2151)) == 22)
+        #expect(AudioLevel.snapped(3) == AudioLevel.maximum)
     }
 
     @Test func aDraftIsHeldInRangeLikeAnythingElse() {

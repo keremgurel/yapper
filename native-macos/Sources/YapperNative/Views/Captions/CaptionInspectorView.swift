@@ -94,15 +94,11 @@ struct CaptionInspectorView: View {
             )
 
             Group {
-                InspectorRow("Look") {
-                    InspectorSelect(
-                        options: TextTemplate.all.map { .init(value: $0.id, label: $0.name) },
-                        selection: TextTemplate.all.first { $0.matches(style.appearance) }?.id ?? "",
-                        onSelect: { id in
-                            guard let template = TextTemplate.all.first(where: { $0.id == id })
-                            else { return }
-                            session.applyCaptionTemplate(template)
-                        }
+                InspectorRow("Look", alignment: .top) {
+                    InspectorLookRail(
+                        templates: TextTemplate.all,
+                        selection: TextTemplate.all.first { $0.matches(style.appearance) }?.id,
+                        onSelect: { session.applyCaptionTemplate($0) }
                     )
                 }
 

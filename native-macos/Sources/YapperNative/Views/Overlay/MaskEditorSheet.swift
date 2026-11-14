@@ -45,64 +45,84 @@ struct MaskEditorSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text(region == nil ? "Mask an area" : "Edit mask").font(.title2.bold())
-            Text("Move and resize the rectangle over the area to hide. The original image stays intact.")
-                .foregroundStyle(.secondary)
-            CropCanvas(image: session.overlaySourceImage(media), mediaAspect: CompositionBuilder.aspect(of: media),
-                       crop: rect, minimumSide: 0.005, onCommit: { rect = $0 })
-                .frame(maxWidth: .infinity, maxHeight: 320)
-            HStack {
-                TextField("Mask name", text: $label)
-                ColorPicker("Cover color", selection: $color, supportsOpacity: false)
-            }
-            HStack {
-                dimension("Left", keyPath: \.x)
-                dimension("Top", keyPath: \.y)
-                dimension("Width", keyPath: \.width)
-                dimension("Height", keyPath: \.height)
-            }
-            Toggle("Animate mask opacity", isOn: $animated)
-            if animated {
-                if region?.opacityKeys == nil && region?.policy == .untilCue && !timingEdited {
-                    Text("The saved animation is preserved. Editing these keys replaces its timing and easing.")
-                        .font(.caption).foregroundStyle(.secondary)
+        StudioSheet(
+            title: region == nil ? "Mask an area" : "Edit mask",
+            detail: "Move and resize the rectangle over the part to hide. The picture itself is not changed.",
+            width: 680,
+            confirmTitle: "Save mask",
+            isWorking: saving,
+            canConfirm: !label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            error: error,
+            onCancel: { dismiss() },
+            onConfirm: { save() },
+            extraActions: {
+                if region != nil {
+                    Button("Remove mask", role: .destructive) { save(removing: true) }
+                        .buttonStyle(EditorGhostButtonStyle(size: .small))
+                        .disabled(saving)
                 }
-                AnimationAnchorEditor(kind: $anchor, time: $anchorTime, phrase: $phrase, occurrence: $occurrence)
-                Text("Keyframe times are offsets from this cue. 100% covers the area; 0% exposes it.")
-                    .font(.caption).foregroundStyle(.secondary)
-                ScrollView {
-                    VStack(spacing: 8) {
-                        ForEach($keys) { $key in
-                            HStack {
-                                Text("Time +")
-                                TextField("Seconds", value: $key.time, format: .number.precision(.fractionLength(2))).frame(width: 70)
-                                Text("Opacity %")
-                                TextField("Opacity", value: $key.opacity, format: .number.precision(.fractionLength(0))).frame(width: 60)
-                                Picker("Easing", selection: $key.easing) {
-                                    Text("Linear").tag(AnimationEase.linear)
-                                    Text("Smooth").tag(AnimationEase.smooth)
-                                }.labelsHidden()
-                                Button { keys.removeAll { $0.id == key.id } } label: { Image(systemName: "minus.circle") }
-                                    .disabled(keys.count <= 2).help("Remove opacity keyframe")
+            },
+            content: {
+                CropCanvas(image: session.overlaySourceImage(media), mediaAspect: CompositionBuilder.aspect(of: media),
+                           crop: rect, minimumSide: 0.005, onCommit: { rect = $0 })
+                    .frame(maxWidth: .infinity, maxHeight: 320)
+                HStack(alignment: .bottom, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Name")
+                            .font(.studioCaption)
+                            .foregroundStyle(Color.studioTextMuted)
+                        StudioSheetTextField(placeholder: "What this mask hides", text: $label)
+                    }
+                    ColorPicker("Cover colour", selection: $color, supportsOpacity: false)
+                        .font(.studioLabel)
+                        .fixedSize()
+                }
+                HStack(alignment: .bottom, spacing: 12) {
+                    dimension("Left", keyPath: \.x)
+                    dimension("Top", keyPath: \.y)
+                    dimension("Width", keyPath: \.width)
+                    dimension("Height", keyPath: \.height)
+                }
+                StudioSheetSwitchRow(title: "Fade the mask in or out", isOn: $animated)
+                if animated {
+                    if region?.opacityKeys == nil && region?.policy == .untilCue && !timingEdited {
+                        Text("The saved animation is kept as it is. Changing these keyframes replaces its timing and easing.")
+                            .font(.studioCaption)
+                            .foregroundStyle(Color.studioTextMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    AnimationAnchorEditor(kind: $anchor, time: $anchorTime, phrase: $phrase, occurrence: $occurrence)
+                    Text("Keyframe times are seconds after the starting point. 100% covers the area and 0% shows it.")
+                        .font(.studioCaption)
+                        .foregroundStyle(Color.studioTextMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach($keys) { $key in
+                                HStack(alignment: .bottom, spacing: 10) {
+                                    StudioSheetNumberField(label: "Time", value: $key.time, unit: "s", showsLabel: key.id == keys.first?.id)
+                                    StudioSheetNumberField(label: "Cover", value: $key.opacity, decimals: 0, unit: "%", showsLabel: key.id == keys.first?.id)
+                                    StudioSheetEasingControl(easing: $key.easing)
+                                    Spacer(minLength: 0)
+                                    StudioSheetRemoveButton(help: "Remove this keyframe") {
+                                        keys.removeAll { $0.id == key.id }
+                                    }
+                                    .disabled(keys.count <= 2)
+                                }
                             }
                         }
                     }
-                }.frame(maxHeight: 130)
-                Button("Add keyframe") {
-                    keys.append(.init(time: (keys.last?.time ?? 0) + 1, opacity: keys.last?.opacity ?? 100))
-                }.disabled(keys.count >= 32)
+                    .frame(maxHeight: 130)
+                    Button {
+                        keys.append(.init(time: (keys.last?.time ?? 0) + 1, opacity: keys.last?.opacity ?? 100))
+                    } label: {
+                        StudioGlyphLabel("Add keyframe", glyph: .plus, size: 12)
+                    }
+                    .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                    .disabled(keys.count >= 32)
+                }
             }
-            if let error { Text(error).foregroundStyle(.red).font(.caption) }
-            HStack {
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                if region != nil { Button("Remove mask", role: .destructive) { save(removing: true) }.disabled(saving) }
-                Spacer()
-                Button(saving ? "Saving…" : "Save mask") { save() }
-                    .keyboardShortcut(.defaultAction).disabled(saving || label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-        }
-        .padding(24).frame(width: 680).interactiveDismissDisabled(saving)
+        )
         .onChange(of: animated) { _, _ in timingEdited = true }
         .onChange(of: keys) { _, _ in timingEdited = true }
         .onChange(of: anchor) { _, _ in timingEdited = true }
@@ -112,13 +132,13 @@ struct MaskEditorSheet: View {
     }
 
     private func dimension(_ name: String, keyPath: WritableKeyPath<OverlayCrop, Double>) -> some View {
-        HStack(spacing: 4) {
-            Text(name).font(.caption)
-            TextField(name, value: Binding(get: { rect[keyPath: keyPath] * 100 },
-                set: { rect[keyPath: keyPath] = $0 / 100 }), format: .number.precision(.fractionLength(1)))
-                .frame(width: 48)
-            Text("%").font(.caption).foregroundStyle(.secondary)
-        }
+        StudioSheetNumberField(
+            label: name,
+            value: Binding(get: { rect[keyPath: keyPath] * 100 }, set: { rect[keyPath: keyPath] = $0 / 100 }),
+            decimals: 1,
+            unit: "%",
+            width: 56
+        )
     }
 
     private func save(removing: Bool = false) {

@@ -39,7 +39,7 @@ struct TimelineCaptionCell: View {
         let current = span
         let startX = contentWidth * current.start / max(0.001, projectDuration)
         let width = max(2, contentWidth * current.duration / max(0.001, projectDuration))
-        RoundedRectangle(cornerRadius: 5, style: .continuous)
+        RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
             .fill(Color(red: 0.13, green: 0.29, blue: 0.42).opacity(0.9))
             .overlay(alignment: .leading) {
                 HStack(spacing: 5) {
@@ -51,7 +51,7 @@ struct TimelineCaptionCell: View {
                 .padding(.horizontal, selected ? 11 : 7)
             }
             .overlay {
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
                     .stroke(
                         selected ? Color.yapperOrange.opacity(0.92) : Color.cyan.opacity(0.42),
                         lineWidth: selected ? 1.15 : 0.7

@@ -77,7 +77,7 @@ export default function YouTubeSettingsFields({
       <label className="flex min-h-11 items-start gap-3 text-sm">
         <input
           type="checkbox"
-          className="mt-1 size-4 shrink-0"
+          className="mt-1 size-4 shrink-0 accent-[color:var(--sg-accent)]"
           checked={value.containsSyntheticMedia}
           onChange={(event) =>
             onChange({ ...value, containsSyntheticMedia: event.target.checked })

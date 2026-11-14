@@ -47,7 +47,7 @@ struct PlayerPanel: View {
                                 Text("Native preview")
                                     .font(.system(size: 14, weight: .bold))
                                 Text("Import one or several videos. The editor opens directly here.")
-                                    .font(.system(size: 11))
+                                    .font(.studioCaption)
                                     .foregroundStyle(.secondary)
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal, 24)
@@ -104,6 +104,13 @@ struct PlayerPanel: View {
                                 stageSize: stageSize
                             )
                         }
+                    }
+                    // Outside the clip for the same reason: an overlay can be
+                    // full frame, larger than it or moved partly off it, and
+                    // its grips have to stay where you can reach them. See
+                    // CanvasSelectionChrome.
+                    .overlay {
+                        CanvasSelectionChrome(session: session, stageSize: stageSize)
                     }
                     // Over the picture and under the offline banner: it points
                     // at something in the picture, so it has to be on top of
@@ -254,23 +261,6 @@ private struct TextLayerCanvasItem: View {
     /// What is being typed into the inspector, shown before it is saved.
     @ObservedObject var typing: TypingPreviewState
 
-    /// Commits a finished drag through the text actions, keeping its draft on
-    /// screen until the edit lands so the layer does not jump back.
-    private func commitText(_ finished: ProjectTextLayer) {
-        let commit = session.commitTextLayerDraft(finished)
-        Task { _ = await commit.value; drag.releaseText(finished.id) }
-    }
-
-    /// The saved position places the layer; the drag is carried as a transform
-    /// on top. See CaptionCanvasOverlay for why.
-    private var dragOffset: CGSize {
-        guard let draft = drag.textDraft(for: layer.id) else { return .zero }
-        return CGSize(
-            width: (draft.x - layer.x) * canvasSize.width,
-            height: (draft.y - layer.y) * canvasSize.height
-        )
-    }
-
     /// What the gesture is doing right now wins over what is saved, so a drag
     /// stays smooth while the project catches up behind it.
     private var displayed: ProjectTextLayer {
@@ -280,19 +270,7 @@ private struct TextLayerCanvasItem: View {
     }
 
     var body: some View {
-        AppearanceText(
-            text: displayed.text.isEmpty ? "Text" : displayed.text,
-            appearance: displayed.appearance,
-            fontSize: max(11, canvasSize.height * displayed.fontScale),
-            lineLimit: 5,
-            minimumScaleFactor: 0.45
-        )
-            .frame(width: max(60, canvasSize.width * displayed.width))
-            // The body takes its own clicks and drags before any decoration
-            // goes on top. A hit shape applied after the corner handles cut
-            // them off: they hang outside the box on purpose, so the shape
-            // clipped exactly the part you reach for, and resizing stopped
-            // working on every item at once.
+        TextLayerCanvasLabel(layer: displayed, canvasSize: canvasSize)
             .contentShape(Rectangle())
             .onTapGesture { session.selectTextLayer(layer.id) }
             .gesture(
@@ -317,37 +295,15 @@ private struct TextLayerCanvasItem: View {
                         drag.updateText(result.layer)
                     }
                     .onEnded { _ in
-                        if let finished = drag.holdText() { commitText(finished) }
+                        if let finished = drag.holdText() {
+                            TextLayerCanvasCommit.commit(finished, session: session, drag: drag)
+                        }
                         alignmentGuides = TextCanvasAlignmentGuides()
                     }
             )
-            .overlay {
-                if selected {
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .stroke(Color.yapperOrange, style: StrokeStyle(lineWidth: 1.25, dash: [5, 3]))
-                        .padding(-4)
-                }
-            }
-            .overlay(alignment: .topLeading) {
-                if selected { resizeHandle(.topLeading) }
-            }
-            .overlay(alignment: .topTrailing) {
-                if selected { resizeHandle(.topTrailing) }
-            }
-            .overlay(alignment: .bottomLeading) {
-                if selected { resizeHandle(.bottomLeading) }
-            }
-            .overlay(alignment: .bottomTrailing) {
-                if selected { resizeHandle(.bottomTrailing) }
-            }
-            .overlay(alignment: .top) {
-                if selected { TurnRing().offset(y: -TurnHandle.reach) }
-            }
-            .overlay {
-                if selected { turnPad(centre: centreOnStage(of: displayed)) }
-            }
-            // The card and its handles turn together, so the corner you grab is
-            // always the corner you can see.
+            // The outline, corners and rotate grip are drawn over the stage by
+            // TextLayerSelectionChrome, so the clip at the frame's edge cannot
+            // cut them off.
             .rotationEffect(.degrees(displayed.rotation))
             // Placed last: `position` hands back a view the size of the whole
             // canvas, so anything after it would claim the lot.
@@ -355,85 +311,8 @@ private struct TextLayerCanvasItem: View {
                 x: canvasSize.width * layer.x,
                 y: canvasSize.height * layer.y
             )
-            .offset(dragOffset)
+            .offset(TextLayerCanvasCommit.dragOffset(for: layer, drag: drag, canvasSize: canvasSize))
     }
-
-    private func centreOnStage(of layer: ProjectTextLayer) -> CGPoint {
-        CGPoint(x: canvasSize.width * layer.x, y: canvasSize.height * layer.y)
-    }
-
-    /// The pad that turns the card, held still while it is dragged: see
-    /// `TurnHandle`. The card is placed from its centre, so that is the point
-    /// the angle is measured about.
-    private func turnPad(centre: CGPoint) -> some View {
-        ZStack(alignment: .top) {
-            Color.clear.allowsHitTesting(false)
-            TurnPad { start, current, ended in
-                if drag.textOrigin?.id != layer.id {
-                    drag.beginText(layer)
-                    if !selected { session.selectTextLayer(layer.id) }
-                }
-                guard let origin = drag.textOrigin else { return }
-                drag.updateText(
-                    TextCanvasGeometry.rotated(
-                        layer: origin,
-                        centre: centre,
-                        from: start,
-                        to: current
-                    )
-                )
-                if ended, let finished = drag.holdText() { commitText(finished) }
-            }
-            .offset(y: -TurnHandle.reach)
-        }
-        // Turned back by however far the card has turned since the drag began,
-        // so that in the frame's own points it stands still.
-        .rotationEffect(.degrees(heldRotation - displayed.rotation))
-        .accessibilityLabel("Rotate text")
-    }
-
-    /// The angle the card stood at when the gesture in flight began.
-    private var heldRotation: Double {
-        guard let origin = drag.textOrigin, origin.id == layer.id else { return displayed.rotation }
-        return origin.rotation
-    }
-
-    private func resizeHandle(_ corner: CanvasResizeCorner) -> some View {
-        RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-            .fill(Color.white)
-            .overlay {
-                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                    .stroke(Color.yapperOrange, lineWidth: 1.5)
-            }
-            .frame(width: 9, height: 9)
-            .offset(x: corner.xOffset, y: corner.yOffset)
-            .contentShape(Rectangle().inset(by: -8))
-            .cursor(.crosshair)
-            .highPriorityGesture(
-                // The handle travels with the corner it is resizing, so it can
-                // no more measure against itself than the layer can.
-                DragGesture(minimumDistance: 0, coordinateSpace: .named(CanvasCoordinateSpace.stage))
-                    .onChanged { value in
-                        if drag.textOrigin?.id != layer.id {
-                            drag.beginText(layer)
-                            if !selected { session.selectTextLayer(layer.id) }
-                        }
-                        guard let origin = drag.textOrigin else { return }
-                        let updated = TextCanvasGeometry.resized(
-                            layer: origin,
-                            translation: value.translation,
-                            corner: corner,
-                            canvasSize: canvasSize
-                        )
-                        drag.updateText(updated)
-                    }
-                    .onEnded { _ in
-                        if let finished = drag.holdText() { commitText(finished) }
-                    }
-            )
-            .accessibilityLabel("Resize text from \(corner.accessibilityName)")
-    }
-
 }
 
 struct TextCanvasAlignmentGuides: Equatable {
@@ -575,6 +454,11 @@ private struct DashedGuideLine: View {
     }
 }
 
+/// Shared with the shell, which keeps Chirpy clear of the bar.
+enum TransportBarMetrics {
+    static let height: CGFloat = 40
+}
+
 private struct TransportBar: View {
     @ObservedObject var session: EditorSession
     @ObservedObject var previewPresentation: PreviewPresentationState
@@ -586,14 +470,12 @@ private struct TransportBar: View {
             Button {
                 session.togglePlayback()
             } label: {
-                Image(systemName: session.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 13, weight: .bold))
-                    .frame(width: 30, height: 30)
+                StudioGlyph(session.isPlaying ? .pause : .play, size: 15)
             }
-            .buttonStyle(.studioPlain)
-            .background(Color.studioFaintFill)
-            .clipShape(RoundedRectangle(cornerRadius: 7))
+            .buttonStyle(StudioBarButtonStyle(isProminent: true))
             .disabled(session.project.clips.isEmpty)
+            .help(session.isPlaying ? "Pause · Space" : "Play · Space")
+            .accessibilityLabel(session.isPlaying ? "Pause" : "Play")
 
             PlaybackTimeReadout(clock: session.playbackClock, duration: session.duration)
 
@@ -606,7 +488,7 @@ private struct TransportBar: View {
                 )
                 .frame(minWidth: 220, maxWidth: .infinity)
             } else {
-                Spacer()
+                Spacer(minLength: 0)
             }
 
             PreviewZoomControl(zoom: $zoom)
@@ -614,32 +496,13 @@ private struct TransportBar: View {
             Button {
                 previewPresentation.toggleFullScreen()
             } label: {
-                Image(
-                    systemName: previewPresentation.isFullScreen
-                        ? "arrow.down.right.and.arrow.up.left"
-                        : "arrow.up.left.and.arrow.down.right"
-                )
-                .font(.system(size: 11, weight: .semibold))
-                .frame(width: 28, height: 28)
-                .contentShape(Rectangle())
-                .accessibilityLabel(
-                    previewPresentation.isFullScreen
-                        ? "Exit full screen"
-                        : "Watch preview full screen"
-                )
+                StudioGlyph(previewPresentation.isFullScreen ? .exitFullScreen : .fullScreen, size: 15)
             }
-            .buttonStyle(.studioPlain)
-            .background(Color.studioFaintFill)
-            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .stroke(Color.studioLine, lineWidth: 1)
-            }
-            .help(
-                previewPresentation.isFullScreen
-                    ? "Exit full screen"
-                    : "Watch preview full screen"
+            .buttonStyle(StudioBarButtonStyle())
+            .accessibilityLabel(
+                previewPresentation.isFullScreen ? "Exit full screen" : "Watch preview full screen"
             )
+            .help(previewPresentation.isFullScreen ? "Exit full screen" : "Watch preview full screen")
 
             Menu {
                 ForEach(ProjectAspectRatio.allCases) { aspectRatio in
@@ -656,30 +519,22 @@ private struct TransportBar: View {
                     }
                 }
             } label: {
+                // AppKit draws a menu's label and keeps only its text and
+                // images, so the glyphs go in as images.
                 HStack(spacing: 6) {
-                    Image(systemName: "aspectratio")
+                    StudioGlyph.image(.aspect, size: 15)
                     Text(session.project.selectedAspectRatio.title)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(.secondary)
+                    StudioGlyph.image(.chevronDown, size: 11)
                 }
-                .font(.system(size: 11, weight: .semibold))
-                .padding(.horizontal, 9)
-                .frame(height: 28)
-                .background(Color.studioFaintFill)
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .stroke(Color.studioLine, lineWidth: 1)
-                }
+                .font(.studioLabelStrong)
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
-            .help("Frame ratio for preview and export")
+            .help("Frame shape for the preview and the export")
         }
-        .padding(.horizontal, 14)
-        .frame(height: 40)
+        .padding(.horizontal, 12)
+        .frame(height: TransportBarMetrics.height)
         .background(Color.panelBackground)
         .overlay(alignment: .top) {
             Rectangle().fill(Color.studioLine).frame(height: 1)
@@ -719,7 +574,7 @@ private struct FullScreenSeekBar: View {
             }
         )
         .controlSize(.small)
-        .tint(.yapperOrange)
+        .tint(Color.studioAccent)
         .disabled(duration <= 0)
         .accessibilityLabel("Preview position")
         .accessibilityValue(formatTimePrecise(draftTime ?? clock.currentTime))

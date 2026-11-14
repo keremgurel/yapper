@@ -60,15 +60,11 @@ struct TextLayerInspectorView: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
 
-            InspectorRow("Look") {
-                InspectorSelect(
-                    options: TextTemplate.all.map { .init(value: $0.id, label: $0.name) },
-                    selection: TextTemplate.all.first { $0.matches(layer.appearance) }?.id ?? "",
-                    onSelect: { id in
-                        guard let template = TextTemplate.all.first(where: { $0.id == id })
-                        else { return }
-                        session.applyTextLayerTemplate(template, to: layer.id)
-                    }
+            InspectorRow("Look", alignment: .top) {
+                InspectorLookRail(
+                    templates: TextTemplate.all,
+                    selection: TextTemplate.all.first { $0.matches(layer.appearance) }?.id,
+                    onSelect: { session.applyTextLayerTemplate($0, to: layer.id) }
                 )
             }
 
@@ -109,16 +105,10 @@ struct TextLayerInspectorView: View {
     }
 
     private var footer: some View {
-        HStack {
-            Label(
-                "\(formatTimePrecise(layer.timelineStart)) to \(formatTimePrecise(layer.timelineStart + layer.duration)) · trim on the timeline",
-                systemImage: "arrow.left.and.right"
-            )
-            .font(.studioCaption)
-            .foregroundStyle(.secondary)
-
-            Spacer(minLength: 8)
-
+        InspectorRow(
+            "Timing",
+            detail: "\(formatTimePrecise(layer.timelineStart)) to \(formatTimePrecise(layer.timelineStart + layer.duration)). Trim it on the timeline."
+        ) {
             Button(role: .destructive) {
                 session.deleteSelectedTextLayer()
             } label: {

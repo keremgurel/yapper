@@ -53,7 +53,7 @@ struct RecorderStageView: View {
         VStack(spacing: 8) {
             Image(systemName: "video.slash").font(.system(size: 22))
             Text(!capture.cameraOn && !capture.micOn ? "Camera and microphone are off." : capture.configuring ? "Preparing devices…" : capture.micReady ? "Audio-only recording is ready." : "Camera preview is unavailable.")
-                .font(.system(size: 12, weight: .medium))
+                .font(.studioLabelStrong)
         }
         .foregroundStyle(Color.white.opacity(0.65))
     }
@@ -63,7 +63,7 @@ struct RecorderStageView: View {
             Color.black.opacity(0.55)
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small).tint(.white)
-                Text("Finishing the take…").font(.system(size: 13, weight: .medium)).foregroundStyle(.white)
+                Text("Finishing the take…").font(.studioBodyStrong).foregroundStyle(.white)
             }
         }
     }

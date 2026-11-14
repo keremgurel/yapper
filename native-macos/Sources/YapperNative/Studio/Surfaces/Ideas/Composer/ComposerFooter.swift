@@ -37,7 +37,7 @@ struct ComposerFooter: View {
             HStack(spacing: 12) {
                 DictationWaveform(levels: dictation.levels)
                 Text(dictation.seconds.dictationClock)
-                    .font(.system(size: 13).monospacedDigit())
+                    .font(.studioBody.monospacedDigit())
                     .foregroundStyle(.secondary)
                     .frame(width: 40, alignment: .trailing)
             }
@@ -45,7 +45,7 @@ struct ComposerFooter: View {
         } else {
             HStack(spacing: 8) {
                 Text(message)
-                    .font(.system(size: 12))
+                    .font(.studioLabel)
                     .foregroundStyle(actions.captureError != nil || dictation.error != nil ? Color.studioDanger : .secondary)
                     .lineLimit(2)
                 if actions.captureError != nil {

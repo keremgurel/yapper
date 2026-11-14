@@ -66,10 +66,10 @@ struct TimelineMarqueeBox: View {
 
     var body: some View {
         if let rect = state.rect {
-            RoundedRectangle(cornerRadius: 3, style: .continuous)
+            RoundedRectangle(cornerRadius: StudioRadius.tag, style: .continuous)
                 .fill(Color.yapperOrange.opacity(0.12))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    RoundedRectangle(cornerRadius: StudioRadius.tag, style: .continuous)
                         .stroke(Color.yapperOrange.opacity(0.92), lineWidth: 1)
                 }
                 .frame(width: rect.width, height: rect.height)

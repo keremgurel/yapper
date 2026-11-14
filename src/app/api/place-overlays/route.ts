@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import {
@@ -44,6 +45,8 @@ const SYSTEM =
   "be on screen. Rules for the quote:\n" +
   "- Copy it EXACTLY as it appears in the transcript. Do not fix grammar, " +
   "punctuation, or wording.\n" +
+  '- "Until X" means the media is gone when X is said: end the quote on the ' +
+  "word before X, never on X itself.\n" +
   "- Between 3 and 20 words. It should start where the media should appear and " +
   "end where it should leave.\n" +
   "- Quote a stretch where the speaker is actually talking about that media's " +
@@ -62,6 +65,11 @@ const SYSTEM =
   "quote. A cue outside the quote is ignored.\n" +
   "- The media appears on that word and stays until the end of the quote.\n" +
   "- Leave it out when the media belongs over the whole quoted stretch.\n\n" +
+  "Two optional fields, only when the user asks for them:\n" +
+  '- "fullLength": true when they want a file\'s full length or the whole clip. ' +
+  "It then plays from its cue to the end of the file, however short the quote.\n" +
+  '- "sourceStart": seconds into the file to start from, when they say to start ' +
+  'partway in ("1.2 seconds into its clip" is 1.2). Copy their number.\n\n' +
   "Add a GROUP when several files belong together on screen as a row, such as " +
   "one icon per platform being named. Rules for the group:\n" +
   "- Members share a short group label, share one quote, and differ only in " +
@@ -157,7 +165,7 @@ async function trackedPOST(req: Request): Promise<Response> {
   const ingressLimited = await guardProviderIngress(req);
   if (ingressLimited) return ingressLimited;
 
-  const key = process.env.SURPLUS_API_KEY;
+  const key = surplusKey("editing");
   if (!key) return Response.json({ error: "no_provider" }, { status: 501 });
   const base =
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";

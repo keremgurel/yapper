@@ -92,3 +92,19 @@ it.each(["gpt-5.4", "claude-haiku-5.5"])(
     );
   },
 );
+it("spends from the overlays key unless the caller names another area", async () => {
+  vi.stubEnv("SURPLUS_API_KEY_OVERLAYS", "overlays-key");
+  vi.stubEnv("SURPLUS_API_KEY_CHIRPY", "chirpy-key");
+  const call = {
+    model: "gpt-5.4",
+    system: "JSON only",
+    user: "plan",
+    maxCompletionTokens: 100,
+    timeoutMs: 1000,
+  };
+  await callSceneModel(call);
+  await callSceneModel({ ...call, keyScope: "chirpy" });
+  const keys = outbound.mock.calls.map((args) => args[1].headers.Authorization);
+  expect(keys).toEqual(["Bearer overlays-key", "Bearer chirpy-key"]);
+  vi.unstubAllEnvs();
+});

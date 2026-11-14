@@ -37,7 +37,7 @@ struct HomePostsRail: View {
         if let posts {
             if posts.isEmpty {
                 Text("Your posts and their views show up here after your first publish.")
-                    .font(.system(size: 13))
+                    .font(.studioBody)
                     .foregroundStyle(.secondary)
                     .padding(.vertical, 8)
             } else {
@@ -86,11 +86,15 @@ private struct HomePostCard: View {
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 cover
-                HStack(alignment: .top, spacing: 8) {
+                // The title gets the card's whole width. Beside the chip it
+                // had room for about ten characters a line.
+                VStack(alignment: .leading, spacing: 6) {
                     Text(post.video.displayTitle)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.studioBodyStrong)
                         .underline(hovering)
-                        .lineLimit(2)
+                        // Two lines held even for a short title, so the chips
+                        // under a row of cards sit on one line.
+                        .lineLimit(2, reservesSpace: true)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     if let times {
@@ -102,7 +106,7 @@ private struct HomePostCard: View {
         .buttonStyle(.studioPlain)
         .onHover { hovering = $0 }
         .clickableCursor()
-        .help("Open on \(post.platform.label)")
+        .help("\(post.video.displayTitle). Opens on \(post.platform.label).")
     }
 
     private var cover: some View {

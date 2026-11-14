@@ -76,13 +76,13 @@ struct TimelineMediaCell: View {
             }
             .clipped()
             .overlay(
-                RoundedRectangle(cornerRadius: 5)
+                RoundedRectangle(cornerRadius: StudioRadius.control)
                     .stroke(
                         selected ? Color.yapperOrange : idleBorder,
                         lineWidth: selected ? 1.6 : 1
                     )
             )
-            .clipShape(RoundedRectangle(cornerRadius: 5))
+            .clipShape(RoundedRectangle(cornerRadius: StudioRadius.control))
         }
     }
 
@@ -107,11 +107,11 @@ struct TimelineMediaCell: View {
         HStack(spacing: 4) {
             if let badgeIcon {
                 Image(systemName: badgeIcon)
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.studioMicro)
             }
             Text(name).lineLimit(1)
         }
-        .font(.system(size: 10, weight: .semibold))
+        .font(.studioMicro)
         // Pinned to white rather than the scheme's primary colour: it sits over
         // video frames, not over the app background.
         .foregroundStyle(Color.white.opacity(0.96))
@@ -121,7 +121,7 @@ struct TimelineMediaCell: View {
         // marker, so a run of cuts from one source no longer reads as a single
         // long strip.
         .background(Color.black.opacity(0.55))
-        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: StudioRadius.tag, style: .continuous))
         .padding(4)
     }
 

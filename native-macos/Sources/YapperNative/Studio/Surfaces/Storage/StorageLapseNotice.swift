@@ -12,9 +12,9 @@ struct StorageLapseNotice: View {
                 .foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Your stored videos will be deleted on \(deleteOn.formatted(date: .long, time: .omitted)).")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.studioBodyStrong)
                 Text("Your subscription ended. Resubscribe before then to keep them. Your Brain, ideas and scripts stay either way.")
-                    .font(.system(size: 12))
+                    .font(.studioLabel)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }

@@ -1,95 +1,60 @@
 "use client";
 
-import { Loader2, Plus } from "lucide-react";
-import { Chip, statusTone } from "@/components/studio-ui";
-import {
-  canOpen,
-  type PosterVideo,
-} from "@/components/publish/poster/poster-video";
-import type { PosterSource } from "@/components/publish/poster/sources/use-source-videos";
+import { Film } from "lucide-react";
+import { canOpen, needsOriginal, type PosterVideo } from "./poster-video";
 import SavedVideoThumbnail from "./saved-video-thumbnail";
+import RemoveUpload from "./remove-upload";
 
-/**
- * The selected source's videos as a bin beside the work. Once a video is open
- * the grid would only repeat what the creator already chose, so the list
- * shrinks to rows: the open one is marked, any other is one click away.
- */
 export default function VideoRail({
-  source,
   videos,
-  activeId,
-  importingId,
   onOpen,
-  onAdd,
+  onRemoved,
 }: {
-  source: PosterSource;
   videos: PosterVideo[];
-  activeId: string | null;
-  importingId: string | null;
   onOpen: (video: PosterVideo) => void;
-  onAdd: () => void;
+  onRemoved?: (id: string) => void;
 }) {
   return (
-    <div className="bg-card border-border divide-border/60 divide-y overflow-hidden rounded-xl border">
-      {source === "uploads" ? (
-        <button
-          type="button"
-          onClick={onAdd}
-          className="text-muted-foreground hover:bg-muted hover:text-foreground flex min-h-10 w-full items-center gap-3 px-3 py-2 text-left text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
-        >
-          <span className="bg-muted grid h-9 w-6 shrink-0 place-items-center rounded-md">
-            <Plus aria-hidden className="h-3.5 w-3.5" />
-          </span>
-          Add a finished video
-        </button>
-      ) : null}
-      {videos.map((video) => {
-        const active = video.id === activeId;
-        const openable = canOpen(video);
-        return (
+    <ul className="border-border divide-border divide-y border-y">
+      {videos.map((video) => (
+        <li key={video.id} className="flex items-center gap-2">
           <button
-            key={video.id}
             type="button"
-            onClick={() => void onOpen(video)}
-            disabled={!openable}
-            aria-current={active ? "true" : undefined}
-            className={`flex min-h-10 w-full items-center gap-3 px-3 py-2 text-left transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none ${
-              active ? "bg-muted" : "hover:bg-muted/60"
-            } ${openable ? "" : "opacity-50"}`}
+            onClick={() => onOpen(video)}
+            disabled={!canOpen(video)}
+            className="focus-visible:ring-ring hover:bg-muted flex min-h-16 min-w-0 flex-1 items-center gap-3 rounded-sm py-2 text-left focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
           >
-            <span className="relative h-9 w-6 shrink-0 overflow-hidden rounded-md bg-[linear-gradient(160deg,#2a2a2a,#0c0c0c)]">
+            <span className="bg-muted relative grid h-12 w-8 shrink-0 place-items-center overflow-hidden rounded-sm">
               {video.kind === "yapper" ? (
                 <SavedVideoThumbnail submissionId={video.submissionId} />
-              ) : null}
-              {video.kind === "platform" && video.thumbnail ? (
+              ) : video.thumbnail ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={video.thumbnail}
                   alt=""
-                  className="h-full w-full object-cover"
+                  className="size-full object-cover"
                 />
-              ) : null}
-              {importingId === video.id ? (
-                <span className="absolute inset-0 grid place-items-center bg-black/50">
-                  <Loader2 className="h-3 w-3 animate-spin text-white motion-reduce:animate-none" />
-                </span>
-              ) : null}
+              ) : (
+                <Film aria-hidden className="text-muted-foreground size-4" />
+              )}
             </span>
-            <span
-              className={`text-foreground min-w-0 flex-1 truncate text-[13px] ${
-                active ? "font-semibold" : "font-medium"
-              }`}
-            >
+            <span className="line-clamp-2 min-w-0 flex-1 text-sm font-medium">
               {video.title}
             </span>
-            {video.kind === "yapper" ? (
-              <Chip tone={statusTone(video.status)} pill>
-                {video.status}
-              </Chip>
-            ) : null}
+            <span className="text-muted-foreground shrink-0 text-xs">
+              {needsOriginal(video) ? "Attach original" : "Use video"}
+            </span>
           </button>
-        );
-      })}
-    </div>
+          {onRemoved && video.kind === "yapper" ? (
+            <RemoveUpload
+              id={video.contentItemId}
+              title={video.title}
+              onRemoved={onRemoved}
+              inline
+            />
+          ) : null}
+        </li>
+      ))}
+    </ul>
   );
 }

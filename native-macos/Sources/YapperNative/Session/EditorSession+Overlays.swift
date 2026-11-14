@@ -141,13 +141,24 @@ extension EditorSession {
     /// whole project is composited, so it always rebuilds.
     func setOverlayBehindSpeaker(_ overlay: ProjectOverlay, behind: Bool) {
         Task { await performAppAction(OverlayPropertiesInput(overlayIDs: [overlay.id], all: nil,
-            hidden: nil, behindSpeaker: behind, sourceStart: nil, timelineStart: nil, duration: nil, track: nil)) }
+            hidden: nil, behindSpeaker: behind, backdrop: nil, backdropColors: nil, backdropMediaID: nil, sourceStart: nil, timelineStart: nil, duration: nil, track: nil)) }
+    }
+
+    /// What fills the frame behind this card. Remembered as the choice for the
+    /// next overlay added, so picking one look for a video is one click, not
+    /// one per cutaway. See `OverlayBackdropDefault`.
+    func setOverlayBackdrop(_ overlay: ProjectOverlay, to backdrop: OverlayBackdrop?) {
+        OverlayBackdropDefault.remember(backdrop)
+        let id = overlay.id
+        LatestActionQueue.shared.request("overlay.backdrop.\(id)") { [self] in
+            await performAppAction(OverlayPropertiesInput(backdrop: backdrop, on: id))
+        }
     }
 
     /// Visibility changes are independent of placement keys.
     func setOverlayHidden(_ overlay: ProjectOverlay, hidden: Bool) {
         Task { await performAppAction(OverlayPropertiesInput(overlayIDs: [overlay.id], all: nil,
-            hidden: hidden, behindSpeaker: nil, sourceStart: nil, timelineStart: nil, duration: nil, track: nil)) }
+            hidden: hidden, behindSpeaker: nil, backdrop: nil, backdropColors: nil, backdropMediaID: nil, sourceStart: nil, timelineStart: nil, duration: nil, track: nil)) }
     }
 
     /// At the end of a gesture, or from the inspector. Every edit to an overlay
@@ -205,11 +216,19 @@ extension EditorSession {
     }
 
     @discardableResult
-    func commitOverlayEdit(_ updated: ProjectOverlay) -> Task<AppActionResult?, Never> {
+    func commitOverlayEdit(_ updated: ProjectOverlay, leadingTrim: Bool = false) -> Task<AppActionResult?, Never> {
         guard let existing = overlays.first(where: { $0.id == updated.id }) else { return Task { nil } }
+        // A lane the drop asked for but that is busy at the new time is not
+        // worth refusing a drag over: without it, the action settles the
+        // overlay on the lowest free lane, as it does for any retime.
+        var updated = updated
+        if updated.lane != existing.lane,
+           OverlayTracks.isOccupied(updated.lane, by: (updated.id, updated.timelineStart, updated.duration), in: overlays) {
+            updated.track = existing.track
+        }
         // Timing, lane and visibility: a drag along the timeline, or the lane
         // menu. The overlay properties action takes exactly those fields.
-        if let timing = OverlayPropertiesInput(timingOf: updated, from: existing) {
+        if let timing = OverlayPropertiesInput(timingOf: updated, from: existing, leadingTrim: leadingTrim) {
             return Task { await performAppAction(timing) }
         }
 
@@ -352,5 +371,55 @@ extension EditorSession {
         let graded = filter.colorMatrix.graded(image) ?? image
         gradedOverlayImages[ObjectIdentifier(image)] = (filter, graded)
         return graded
+    }
+}
+
+// MARK: - Picture backdrops
+
+@MainActor
+extension EditorSession {
+    /// Imports a picture into Media and puts it behind this card.
+    func setOverlayBackdropImage(_ overlay: ProjectOverlay, from url: URL) async {
+        guard let picture = await importedBackdropPicture(from: url) else { return }
+        setOverlayBackdrop(overlay, to: .image(picture.id))
+    }
+
+    /// Generates a picture from a sentence and puts it behind this card,
+    /// through the workflow action Chirpy runs. Throws with a message worth
+    /// showing when it did not happen.
+    func generateOverlayBackdrop(_ overlay: ProjectOverlay, prompt: String) async throws {
+        let result = await performAppAction(OverlayBackdropGenerateInput(overlayID: overlay.id, prompt: prompt))
+        guard result.status == .applied else { throw BackdropImageGenerator.Failure(message: result.message) }
+    }
+
+    /// What `editor.overlays.generateBackdrop` runs. The picture is one edit
+    /// and putting it behind the card is the next, as they are when a picture
+    /// is chosen from a file.
+    func generateOverlayBackdropWorkflow(overlayID: UUID, prompt: String) async throws {
+        let startedIn = project.id
+        guard overlays.contains(where: { $0.id == overlayID }) else { throw AppActionError("That overlay no longer exists.") }
+        let url = try await backdropImageGenerator(prompt)
+        try Task.checkCancellation()
+        // Generation takes a while and does not hold the editor, so the
+        // project may have been closed or the overlay deleted since.
+        guard project.id == startedIn, overlays.contains(where: { $0.id == overlayID }) else {
+            throw AppActionError("The overlay was gone by the time its background was ready, so the picture was not added.")
+        }
+        guard let picture = await importedBackdropPicture(from: url) else {
+            throw AppActionError(errorMessage ?? "The generated picture could not be added to this project.")
+        }
+        let backdrop = OverlayBackdrop.image(picture.id)
+        OverlayBackdropDefault.remember(backdrop)
+        let result = await performAppAction(OverlayPropertiesInput(backdrop: backdrop, on: overlayID))
+        guard result.status == .applied || result.status == .unchanged else { throw AppActionError(result.message) }
+    }
+
+    /// The picture at `url` as project media, importing it when it is new.
+    private func importedBackdropPicture(from url: URL) async -> ProjectMedia? {
+        let before = Set(project.media.map(\.id))
+        await importMedia([url])
+        let canonical = url.resolvingSymlinksInPath()
+        return project.media.first(where: { !before.contains($0.id) && $0.isImage })
+            ?? project.media.first(where: { $0.isImage && $0.url == canonical })
     }
 }

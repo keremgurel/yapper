@@ -4,8 +4,6 @@ import Foundation
 /// The cover a post ships with. One cover serves every platform.
 struct PosterCoverDraft {
     enum Source: Equatable { case frame, generated, uploaded, original }
-    enum TextStyle: String, CaseIterable { case shadow, label }
-    enum Position: String, CaseIterable { case top, center, bottom }
 
     /// The frame under the playhead, kept even while another image is in use.
     var frameImage: CGImage?
@@ -15,8 +13,8 @@ struct PosterCoverDraft {
     var source: Source = .frame
     var headline = ""
     var showHeadline = false
-    var textStyle: TextStyle = .shadow
-    var position: Position = .bottom
+    static let coverTextStyle = TextStyle(x: 0.5, y: 0.80, width: 0.88, appearance: .textLayerDefault)
+    var textStyle = Self.coverTextStyle
 
     func withFrame(_ image: CGImage, at time: Double) -> PosterCoverDraft {
         var next = self

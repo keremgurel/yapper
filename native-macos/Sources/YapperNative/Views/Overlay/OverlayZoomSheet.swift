@@ -27,47 +27,41 @@ struct OverlayZoomSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Zoom into overlay").font(.title2.bold())
-            Text("Move and resize the rectangle around the section to focus on. The overlay stays in place while its contents zoom.")
-                .foregroundStyle(.secondary)
+        StudioSheet(
+            title: "Zoom into overlay",
+            detail: "Move and resize the rectangle around the part to focus on. The overlay stays where it is while its picture zooms.",
+            confirmTitle: "Add zoom keyframes",
+            isWorking: saving,
+            error: error,
+            onCancel: { dismiss() },
+            onConfirm: save
+        ) {
             if let media = session.media(for: overlay) {
                 CropCanvas(image: session.overlaySourceImage(media), mediaAspect: CompositionBuilder.aspect(of: media),
                     crop: target, aspectRatio: currentCrop.width / currentCrop.height,
                     onCommit: { target = $0 })
                     .frame(maxWidth: .infinity, maxHeight: 330)
             }
-            HStack {
-                timeField("Start", value: $start)
-                timeField("Arrive", value: $end)
+            HStack(alignment: .bottom, spacing: 12) {
+                StudioSheetNumberField(label: "Start zooming at", value: $start, unit: "s")
+                StudioSheetNumberField(label: "Arrive at", value: $end, unit: "s")
+                Text("Seconds into this overlay. The zoom eases in and out.")
+                    .font(.studioCaption)
+                    .foregroundStyle(Color.studioTextMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.bottom, 6)
             }
-            Text("Seconds into this overlay · smooth start and finish").font(.caption).foregroundStyle(.secondary)
-            Toggle("Zoom back out", isOn: $returns)
+            StudioSheetSwitchRow(title: "Zoom back out afterwards", isOn: $returns)
             if returns {
-                HStack {
-                    timeField("Start returning", value: $returnStart)
-                    timeField("Finish returning", value: $returnEnd)
+                HStack(alignment: .bottom, spacing: 12) {
+                    StudioSheetNumberField(label: "Start returning at", value: $returnStart, unit: "s")
+                    StudioSheetNumberField(label: "Back to normal at", value: $returnEnd, unit: "s")
                 }
             }
-            if let error { Text(error).foregroundStyle(.red).font(.caption) }
-            HStack {
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Spacer()
-                Button(saving ? "Saving…" : "Add zoom keyframes") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(saving)
-            }
         }
-        .padding(24)
-        .frame(width: 640)
-        .interactiveDismissDisabled(saving)
     }
 
     private var currentCrop: OverlayCrop { OverlayKeyTrack.crop(of: overlay, at: start) }
-
-    private func timeField(_ label: String, value: Binding<Double>) -> some View {
-        HStack { Text(label); TextField(label, value: value, format: .number.precision(.fractionLength(2))).frame(width: 82) }
-    }
 
     private func save() {
         saving = true

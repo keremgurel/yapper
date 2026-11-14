@@ -39,7 +39,7 @@ export const SCENE_LANGUAGE_REFERENCE = [
     "), size, color, align (left, center, right), lineHeight (multiple, default 1.15), uppercase. Give explicit height sufficient for all lines; text must fit without overlapping other text.",
   "- number: everything text takes except text, plus from, to, format (" +
     list(SCENE_NUMBER_FORMATS) +
-    "), prefix, suffix. It draws the value at the animated `value` progress between from and to, so a counter is a number node with a value animation from 0 to 1.",
+    "), prefix, suffix. It draws the value at the animated `value` progress between from and to, so a counter is a number node with a value animation from 0 to 1. clock reads the value as seconds and shows m:ss, so a 5:00 countdown is one number node with from 300, to 0, format clock and a linear value animation from 0 to 1; never build a timer out of separate digit nodes.",
   "- rect: fill, stroke, strokeWidth, cornerRadius.",
   "- ellipse: fill, stroke, strokeWidth.",
   "- line: x2, y2 (the end point, same units as x and y), stroke, strokeWidth, dashed.",

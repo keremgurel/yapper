@@ -12,8 +12,16 @@ type Params = { params: Promise<{ platform: string }> };
 
 /** Where the user lands after the OAuth dance, connected or with a reason: back
  * on the Connections page they started from, not the library. */
-function back(origin: string, params: Record<string, string>): NextResponse {
-  const url = new URL("/studio/connections", origin);
+function back(
+  origin: string,
+  params: Record<string, string>,
+  posterSource?: PublishPlatform,
+): NextResponse {
+  const url = new URL(
+    posterSource ? "/studio/poster" : "/studio/connections",
+    origin,
+  );
+  if (posterSource) url.searchParams.set("source", posterSource);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   return NextResponse.redirect(url);
 }
@@ -42,17 +50,24 @@ export async function GET(req: Request, { params }: Params): Promise<Response> {
     return res;
   }
 
-  const providerError = url.searchParams.get("error");
-  if (providerError) return back(origin, { connect_error: providerError });
-
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const cookieName = `publish_state_${p}`;
-  const expected = req.headers
+  const stored = req.headers
     .get("cookie")
     ?.split(/;\s*/)
     .find((c) => c.startsWith(`${cookieName}=`))
     ?.slice(cookieName.length + 1);
+
+  const [expected, flow] = (stored ?? "").split(".");
+  const posterSource =
+    expected && state === expected && flow === "poster" ? p : undefined;
+  const providerError = url.searchParams.get("error");
+  if (providerError) {
+    const res = back(origin, { connect_error: providerError }, posterSource);
+    res.cookies.delete(cookieName);
+    return res;
+  }
 
   if (!code || !state || !expected || state !== expected) {
     const res = back(origin, { connect_error: "invalid_state" });
@@ -73,7 +88,7 @@ export async function GET(req: Request, { params }: Params): Promise<Response> {
       externalAccountId: account.externalAccountId,
       handle: account.handle,
     });
-    const res = back(origin, { connected: p });
+    const res = back(origin, { connected: p }, posterSource);
     res.cookies.delete(cookieName);
     return res;
   } catch (e) {
@@ -82,11 +97,15 @@ export async function GET(req: Request, { params }: Params): Promise<Response> {
       p === "tiktok" &&
       e instanceof Error &&
       e.message === "oauth_exchange_invalid_client";
-    const res = back(origin, {
-      connect_error: configurationError
-        ? "tiktok_configuration"
-        : "exchange_failed",
-    });
+    const res = back(
+      origin,
+      {
+        connect_error: configurationError
+          ? "tiktok_configuration"
+          : "exchange_failed",
+      },
+      posterSource,
+    );
     res.cookies.delete(cookieName);
     return res;
   }

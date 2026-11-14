@@ -8,19 +8,11 @@ struct StudioIcon: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
-                .fill(selected ? Color.yapperOrange.opacity(0.17) : Color.studioFaintFill)
+                .fill(selected ? Color.studioSelectedFill : Color.studioFaintFill)
 
             Image(systemName: symbol)
-                .symbolRenderingMode(.hierarchical)
-                .font(.system(size: size * 0.46, weight: .semibold))
-                .foregroundStyle(selected ? Color.yapperOrange : Color.primary.opacity(0.72))
-
-            Circle()
-                .fill(Color.yapperOrange)
-                .frame(width: max(3, size * 0.11), height: max(3, size * 0.11))
-                .offset(x: size * 0.29, y: -size * 0.29)
-                .opacity(selected ? 1 : 0)
-                .scaleEffect(selected ? 1 : 0.4)
+                .font(.system(size: size * 0.46, weight: .medium))
+                .foregroundStyle(selected ? Color.primary : Color.studioTextMuted)
         }
         .frame(width: size, height: size)
         .animation(.smooth(duration: 0.18), value: selected)

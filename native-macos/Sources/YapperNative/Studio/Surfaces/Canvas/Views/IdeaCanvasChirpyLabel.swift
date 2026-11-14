@@ -11,7 +11,7 @@ struct IdeaCanvasChirpyLabel: View {
         Label {
             Text(title)
         } icon: {
-            Image(systemName: "sparkles").foregroundStyle(Color.yapperOrange)
+            Image(systemName: "sparkles").foregroundStyle(Color.studioAccent)
         }
     }
 }

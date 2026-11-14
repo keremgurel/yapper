@@ -12,6 +12,7 @@ struct PosterPublishTarget: Identifiable, Equatable {
     let mediaKey: String?
     let contentItemID: String?
     let thumbnailKey: String?
+    var coverTimestampMs: Int? = nil
 
     /// What actually goes out on one platform. Same rule as `outgoingCopy`.
     func copy(for platform: PublishPlatform) -> (title: String, body: String) {

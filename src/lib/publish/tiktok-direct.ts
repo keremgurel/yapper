@@ -75,6 +75,7 @@ export async function startTikTokDirectPost(
           post_info: {
             title: input.caption,
             privacy_level: s.privacy,
+            video_cover_timestamp_ms: s.coverTimestampMs,
             disable_comment: !s.allowComment,
             disable_duet: !s.allowDuet,
             disable_stitch: !s.allowStitch,

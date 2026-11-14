@@ -12,8 +12,13 @@ extension AppActionRegistry {
             case .poster:
                 let url = FileManager.default.temporaryDirectory
                     .appending(path: "yapper-poster-\(UUID().uuidString)").appendingPathExtension("mp4")
-                return await session.exportForPosting(to: url)
+                await session.exportForPosting(to: url)
+                return false
             }
+        }
+        registerWorkflow(OverlayBackdropGenerateInput.self) { session, input in
+            try await session.generateOverlayBackdropWorkflow(overlayID: input.overlayID, prompt: input.prompt)
+            return Task.isCancelled
         }
         register(SavedAudioAddInput.self, availability: { _ in .available }) { session, input in
             let store = session.audioLibrary

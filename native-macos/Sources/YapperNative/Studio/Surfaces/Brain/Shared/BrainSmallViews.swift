@@ -8,7 +8,7 @@ struct BrainSaveNote: View {
     var body: some View {
         if let label = state.label {
             Text(label)
-                .font(.system(size: 12))
+                .font(.studioLabel)
                 .foregroundStyle(state == .error ? Color.studioDanger : .secondary)
         }
     }
@@ -44,7 +44,7 @@ struct BrainInlineError: View {
     let message: String
     var body: some View {
         Text(message)
-            .font(.system(size: 12))
+            .font(.studioLabel)
             .foregroundStyle(Color.studioDanger)
             .fixedSize(horizontal: false, vertical: true)
     }

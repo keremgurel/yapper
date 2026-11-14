@@ -182,12 +182,13 @@ extension EditorSession {
     /// Inspector controls land here. A keyed clip writes a key at the playhead
     /// through `commitFraming`; anything else is a property set and goes
     /// through the registered action, the same one Chirpy calls.
-    private func setStaticFraming(_ framing: VideoFraming, clipID: UUID) {
-        guard let clip = project.clips.first(where: { $0.id == clipID }) else { return }
-        guard !VideoFramingTrack.isKeyed(clip) else { commitFraming(framing, clipID: clipID); return }
+    @discardableResult
+    private func setStaticFraming(_ framing: VideoFraming, clipID: UUID) -> Task<AppActionResult?, Never> {
+        guard let clip = project.clips.first(where: { $0.id == clipID }) else { return Task { nil } }
+        guard !VideoFramingTrack.isKeyed(clip) else { return commitFraming(framing, clipID: clipID) }
         previewFraming(framing, clipID: clipID)
         let targets = framingTargets(for: clipID).sorted { $0.uuidString < $1.uuidString }
-        Task {
+        return Task {
             await performAppAction(VideoFramingInput(clipIDs: targets, scale: framing.scale, x: framing.x, y: framing.y, rotation: framing.rotation))
         }
     }
@@ -213,6 +214,28 @@ extension EditorSession {
         // From what is on screen now, so a stepper press on a keyed clip nudges
         // the moment you are looking at rather than the clip's first key.
         setStaticFraming(displayedFraming.with(scale: scale), clipID: clip.id)
+    }
+
+    /// The Scale slider while it moves. The canvas draws the draft the way it
+    /// draws a corner being pulled, and nothing is saved until the slider lets
+    /// go (`commitFramingScale`).
+    func previewFramingScale(_ scale: Double) {
+        guard let clip = framingClip else { return }
+        let framing = displayedFraming.with(scale: scale)
+        if canvasDrag.framingClipID != clip.id { canvasDrag.beginFraming(displayedFraming, clipID: clip.id, from: .zero) }
+        canvasDrag.updateFraming(framing)
+        previewFraming(framing, clipID: clip.id)
+    }
+
+    /// The Scale slider let go, or a number typed beside it: one save through
+    /// the framing action, however far the handle travelled. The draft stays
+    /// on the canvas until that edit lands.
+    func commitFramingScale(_ scale: Double) async {
+        guard let clip = framingClip else { return }
+        let framing = displayedFraming.with(scale: scale)
+        _ = await setStaticFraming(framing, clipID: clip.id).value
+        // Left alone when a drag on the canvas has taken the picture since.
+        if canvasDrag.framingClipID == clip.id, canvasDrag.framing == framing { _ = canvasDrag.endFraming() }
     }
 
     func resetFraming() {

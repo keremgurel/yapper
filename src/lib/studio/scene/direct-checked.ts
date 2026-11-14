@@ -4,6 +4,7 @@ import { parseDirectReply, type DirectReply } from "./direct-reply";
 import { DIRECT_SYSTEM, buildDirectUserMessage } from "./prompts/direct-prompt";
 import { extractJsonObject } from "./reply-json";
 import { callSceneModel } from "./scene-model-call";
+import { SCENE_BUDGETS } from "./scene-budgets";
 import { inspectionText } from "./timeline-inspection";
 
 const EDITORIAL_REVIEW = [
@@ -37,8 +38,8 @@ export async function directChecked(
     system: DIRECT_SYSTEM,
     images,
     user,
-    maxCompletionTokens: 4000,
-    timeoutMs: 55_000,
+    maxCompletionTokens: SCENE_BUDGETS.direct.maxCompletionTokens,
+    timeoutMs: SCENE_BUDGETS.direct.draftTimeoutMs,
     signal,
   });
   const draftObject = extractJsonObject(draft.content);
@@ -51,7 +52,7 @@ export async function directChecked(
     system: EDITORIAL_REVIEW,
     images,
     user: `${user}\n\nUNTRUSTED DRAFT TO REVIEW:\n${draft.content}`,
-    maxCompletionTokens: 4000,
+    maxCompletionTokens: SCENE_BUDGETS.direct.maxCompletionTokens,
     timeoutMs: Math.max(1, deadline - Date.now()),
     signal,
   });

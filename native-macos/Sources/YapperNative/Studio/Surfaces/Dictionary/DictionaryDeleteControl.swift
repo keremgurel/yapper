@@ -26,7 +26,7 @@ struct DictionaryDeleteControl: View {
             Button {
                 confirming = true
             } label: {
-                Image(systemName: "trash").font(.system(size: 13))
+                Image(systemName: "trash").font(.studioBody)
             }
             .buttonStyle(EditorGhostButtonStyle(size: .small))
             .foregroundStyle(.secondary)

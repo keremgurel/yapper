@@ -23,7 +23,7 @@ struct ProjectPosterView: View {
                     Image(systemName: listing.summary.mediaCount == 0 ? "film" : "externaldrive.badge.questionmark")
                         .font(.system(size: 20, weight: .medium))
                     Text(listing.summary.mediaCount == 0 ? "Empty" : "Media offline")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.studioCaptionStrong)
                 }
                 .foregroundStyle(.white.opacity(0.6))
             }

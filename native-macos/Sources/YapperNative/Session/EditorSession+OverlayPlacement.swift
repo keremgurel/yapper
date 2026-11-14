@@ -97,7 +97,10 @@ extension EditorSession {
 
         switch target {
         case let .place(files):
-            await placeImported(files, instruction: request.instruction)
+            // Files the planner named are each owed an answer; a sweep over
+            // every unused file is not, or the reply would list them all.
+            await placeImported(files, instruction: request.instruction,
+                                reportsMissing: request.mediaIDs?.isEmpty == false)
         case .create:
             await performGeneratedOverlays(instruction: request.instruction, revising: [])
         case let .revise(scenes):
@@ -107,7 +110,7 @@ extension EditorSession {
         }
     }
 
-    private func placeImported(_ files: [ProjectMedia], instruction: String) async {
+    private func placeImported(_ files: [ProjectMedia], instruction: String, reportsMissing: Bool = false) async {
         setOverlayPlacement(.working)
         guard let rollbackState = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
@@ -163,23 +166,34 @@ extension EditorSession {
 
             addSounds(placed.sounds + standalone.sounds)
             let notes = placed.notes + textNotes + soundNotes(standalone.sounds)
+            let before = Set((rollbackState.project.overlays ?? []).map(\.id))
+            let landed = Set((project.overlays ?? []).filter { !before.contains($0.id) }.map(\.mediaID))
+            let missing = reportsMissing
+                ? OverlayWorkflowOutcome.unplaced(files, planned: Set(plan.placements.map(\.file)),
+                                                  matched: Set(spans.map(\.file)), landed: landed)
+                : []
             guard !notes.isEmpty else {
-                setOverlayPlacement(.failed(placed.skippedExisting > 0 && standalone.unknown.isEmpty
-                    ? "Those overlays are already at those moments. No duplicate copies were added."
-                    : nothingLanded(unknownEffects: standalone.unknown)))
+                setOverlayPlacement(.failed(missing.isEmpty
+                    ? (placed.skippedExisting > 0 && standalone.unknown.isEmpty
+                        ? "Those overlays are already at those moments. No duplicate copies were added."
+                        : nothingLanded(unknownEffects: standalone.unknown))
+                    : "Nothing was placed. " + missing.joined(separator: " ")))
                 setStatus("Ready")
                 return
             }
             try Task.checkCancellation()
+            // In the status, because that is what Chirpy's reply carries: four
+            // asked for and "Placed 3 changes" left the fourth unexplained.
+            let unplaced = missing.isEmpty ? "" : ". " + missing.joined(separator: " ")
             let success = await commitPreparedTimelineEdit(
                 rollbackState: rollbackState,
-                successStatus: "Placed \(notes.count) change\(notes.count == 1 ? "" : "s") · ⌘Z to undo"
+                successStatus: "Placed \(notes.count) change\(notes.count == 1 ? "" : "s")\(unplaced) · ⌘Z to undo"
             )
             guard success else {
                 setOverlayPlacement(.failed(errorMessage ?? "The edit could not be saved."))
                 return
             }
-            setOverlayPlacement(.placed(notes: notes + unknownNotes(standalone.unknown)))
+            setOverlayPlacement(.placed(notes: notes + missing + unknownNotes(standalone.unknown)))
         } catch is CancellationError {
             markCurrentLongOperationCanceled()
             await restoreCanceledEditState(

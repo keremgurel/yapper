@@ -16,19 +16,19 @@ struct BrainVoiceSampleRow: View {
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 4) {
                             Image(systemName: "chevron.right")
-                                .font(.system(size: 10, weight: .semibold))
+                                .font(.studioMicro)
                                 .rotationEffect(.degrees(open ? 90 : 0))
                                 .foregroundStyle(.secondary)
                             Text(sample.title.isEmpty ? "Untitled" : sample.title)
-                                .font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                                .font(.studioBodyStrong).lineLimit(1)
                         }
-                        Text(meta).font(.system(size: 12)).foregroundStyle(.secondary).padding(.leading, 14)
+                        Text(meta).font(.studioLabel).foregroundStyle(.secondary).padding(.leading, 14)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.studioPlain)
                 Button(action: onRemove) {
-                    Image(systemName: "xmark").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary).frame(width: 24, height: 24)
+                    Image(systemName: "xmark").font(.studioCaptionStrong).foregroundStyle(.secondary).frame(width: 24, height: 24)
                 }
                 .buttonStyle(.studioPlain)
                 .opacity(hovering ? 1 : 0.35)
@@ -37,7 +37,7 @@ struct BrainVoiceSampleRow: View {
             if open {
                 ScrollView {
                     Text(sample.transcript)
-                        .font(.system(size: 13)).foregroundStyle(.secondary)
+                        .font(.studioBody).foregroundStyle(.secondary)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -73,18 +73,18 @@ struct BrainVideoTile: View {
                 BrainThumbnail(url: video.thumbnail, width: 45, height: 80)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(video.title.isEmpty ? "Untitled" : video.title)
-                        .font(.system(size: 13, weight: .semibold)).lineLimit(2).multilineTextAlignment(.leading)
+                        .font(.studioBodyStrong).lineLimit(2).multilineTextAlignment(.leading)
                     Text([BrainVoiceFormat.date(video.publishedAt), BrainVoiceFormat.duration(video.durationSec)]
                         .filter { !$0.isEmpty }.joined(separator: " \u{00B7} "))
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
-                    Text(status).font(.system(size: 12)).foregroundStyle(.secondary)
+                        .font(.studioLabel).foregroundStyle(.secondary)
+                    Text(status).font(.studioLabel).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
                 ZStack {
-                    Circle().strokeBorder(selected ? Color.yapperOrange : Color.studioLineStrong, lineWidth: 1)
+                    Circle().strokeBorder(selected ? Color.studioAccent : Color.studioLineStrong, lineWidth: 1)
                     if selected {
-                        Circle().fill(Color.yapperOrange)
-                        Image(systemName: "checkmark").font(.system(size: 9, weight: .semibold)).foregroundStyle(.white)
+                        Circle().fill(Color.studioAccent)
+                        Image(systemName: "checkmark").font(.system(size: 9, weight: .semibold)).foregroundStyle(Color.studioAccentForeground)
                     }
                 }
                 .frame(width: 18, height: 18)
@@ -95,7 +95,7 @@ struct BrainVideoTile: View {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(selected ? Color.studioSelectedFill : .clear)
                     .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(selected ? Color.yapperOrange : Color.studioLine))
+                        .strokeBorder(selected ? Color.studioAccent : Color.studioLine))
             )
         }
         .buttonStyle(.studioPlain)

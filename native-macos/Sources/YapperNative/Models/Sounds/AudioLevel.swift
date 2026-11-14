@@ -26,6 +26,13 @@ enum AudioLevel {
         Int((clamped(value) * 100).rounded())
     }
 
+    /// The level on the nearest whole percent, which is all the field can show.
+    /// A dragged handle lands on one too, so the handle and the number beside
+    /// it never disagree by a rounding.
+    static func snapped(_ value: Double) -> Double {
+        (clamped(value) * 100).rounded() / 100
+    }
+
     /// A level read back from something typed, or nil when it was not a number.
     ///
     /// Forgiving about what comes with the digits, because a field showing "%"

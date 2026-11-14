@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { auth } from "@clerk/nextjs/server";
 import {
   preflightPaidActionOrResponse,
@@ -48,7 +49,7 @@ export async function handleSceneRequest(
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const ingress = await guardProviderIngress(req);
   if (ingress) return ingress;
-  if (!process.env.SURPLUS_API_KEY)
+  if (!surplusKey("overlays"))
     return Response.json({ error: "no_provider" }, { status: 501 });
   let raw: unknown;
   try {

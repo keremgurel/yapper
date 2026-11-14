@@ -21,7 +21,7 @@ struct BrandConfirmDeleteButton: View {
             .transition(.opacity)
         } else {
             Button { withAnimation(.easeOut(duration: 0.15)) { confirming = true } } label: {
-                Image(systemName: "trash").font(.system(size: 12))
+                Image(systemName: "trash").font(.studioLabel)
             }
             .buttonStyle(EditorGhostButtonStyle(size: .small))
             .help(label)

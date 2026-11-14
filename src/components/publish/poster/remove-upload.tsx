@@ -8,8 +8,10 @@ export default function RemoveUpload({
   id,
   title,
   onRemoved,
+  inline = false,
 }: {
   id: string;
+  inline?: boolean;
   title: string;
   onRemoved: (id: string) => void;
 }) {
@@ -44,10 +46,14 @@ export default function RemoveUpload({
   return (
     <>
       <Button
-        variant="outline"
-        size="icon"
+        variant={inline ? "ghost" : "outline"}
+        size={inline ? "sm" : "icon"}
         aria-label={`Remove ${title}`}
-        className="bg-background dark:bg-background text-destructive hover:text-destructive absolute top-2 right-2 z-10"
+        className={
+          inline
+            ? "text-muted-foreground hover:text-destructive"
+            : "bg-background dark:bg-background text-destructive hover:text-destructive absolute top-2 right-2 z-10"
+        }
         onClick={() => setOpen(true)}
       >
         <X aria-hidden className="size-4" />

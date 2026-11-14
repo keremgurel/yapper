@@ -18,7 +18,7 @@ struct IdeaCanvasStatusMenu: View {
         ) {
             HStack(spacing: 4) {
                 NativeChip(text: status.label, tone: status.tone, dot: true)
-                Image(systemName: "chevron.down").font(.system(size: 11)).foregroundStyle(.secondary)
+                Image(systemName: "chevron.down").font(.studioCaption).foregroundStyle(.secondary)
             }
         }
         .help("Status: \(status.label)")

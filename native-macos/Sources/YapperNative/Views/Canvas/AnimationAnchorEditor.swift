@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Shared manual authoring of the same timing anchors available to Chirpy.
+/// Shared manual authoring of the same timing anchors available to Chirpy:
+/// what a set of keyframes counts its time from.
 struct AnimationAnchorEditor: View {
     @Binding var kind: TimelineAnchorKind
     @Binding var time: Double
@@ -8,19 +9,28 @@ struct AnimationAnchorEditor: View {
     @Binding var occurrence: Int
 
     var body: some View {
-        HStack {
-            Picker("Timing", selection: $kind) {
-                Text("Timeline time").tag(TimelineAnchorKind.time)
-                Text("Speech starts").tag(TimelineAnchorKind.speechStart)
-                Text("Spoken phrase").tag(TimelineAnchorKind.phrase)
-            }.frame(width: 220)
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Starts from")
+                .font(.studioCaption)
+                .foregroundStyle(Color.studioTextMuted)
+            InspectorSegmentedControl(
+                options: [
+                    .init(value: TimelineAnchorKind.time, label: "A time on the timeline"),
+                    .init(value: TimelineAnchorKind.speechStart, label: "When speech starts"),
+                    .init(value: TimelineAnchorKind.phrase, label: "A spoken phrase"),
+                ],
+                selection: kind
+            ) { kind = $0 }
             if kind == .time {
-                TextField("Seconds", value: $time, format: .number.precision(.fractionLength(2))).frame(width: 70)
-                Text("s").foregroundStyle(.secondary)
+                StudioSheetNumberField(label: "Timeline time", value: $time, unit: "seconds", width: 76)
             }
             if kind == .phrase {
-                TextField("Exact spoken phrase", text: $phrase)
-                Stepper("Occurrence \(occurrence)", value: $occurrence, in: 1...1000)
+                HStack(spacing: 10) {
+                    StudioSheetTextField(placeholder: "The exact words, as they are spoken", text: $phrase)
+                    Stepper("Time it is said: \(occurrence)", value: $occurrence, in: 1...1000)
+                        .font(.studioLabel)
+                        .fixedSize()
+                }
             }
         }
     }

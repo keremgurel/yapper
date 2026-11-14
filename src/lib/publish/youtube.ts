@@ -1,4 +1,6 @@
+import { setTimeout as delay } from "node:timers/promises";
 import {
+  fetchBoundedJson,
   fetchBoundedResponse,
   fetchBoundedText,
   OutboundHttpError,
@@ -224,6 +226,41 @@ export interface YouTubeThumbnailInput {
   filePath: string;
   byteLength: number;
   mimeType: string;
+}
+
+/** Shorts only reliably accept a custom thumbnail after processing. Leave
+ * enough of the shared workflow budget to upload the image afterward. */
+export async function waitForYouTubeProcessing(
+  accessToken: string,
+  videoId: string,
+  workflow: PublishWorkflow,
+): Promise<void> {
+  const until = Math.min(Date.now() + 60_000, workflow.deadlineAt - 15_000);
+  const url = new URL("https://www.googleapis.com/youtube/v3/videos");
+  url.searchParams.set("id", videoId);
+  url.searchParams.set("part", "processingDetails");
+  while (Date.now() < until) {
+    const { response, data } = await fetchBoundedJson<{
+      items?: { processingDetails?: { processingStatus?: string } }[];
+    }>(
+      url,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+      {
+        timeoutMs: Math.min(8_000, until - Date.now()),
+        maxBytes: CONTROL_RESPONSE_BYTES,
+        signal: workflow.signal,
+      },
+    );
+    if (!response.ok) throw new Error(`youtube_processing_${response.status}`);
+    const status = data.items?.[0]?.processingDetails?.processingStatus;
+    if (status === "succeeded") return;
+    if (status === "failed" || status === "terminated")
+      throw new Error("youtube_processing_failed");
+    await delay(Math.max(0, Math.min(2_000, until - Date.now())), undefined, {
+      signal: workflow.signal,
+    });
+  }
+  throw new Error("youtube_thumbnail_processing_timeout");
 }
 
 export async function setYouTubeThumbnail(

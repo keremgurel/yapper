@@ -14,11 +14,11 @@ struct IdeaCanvasFold<Content: View, Trailing: View>: View {
                 Button { withAnimation(.snappy(duration: 0.2)) { open.toggle() } } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.studioCaptionStrong)
                             .rotationEffect(.degrees(open ? 90 : 0))
                         Text(title)
                     }
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.studioBodyStrong)
                     .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.studioPlain)

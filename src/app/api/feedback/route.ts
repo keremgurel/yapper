@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { withProductAnalytics } from "@/lib/analytics/server";
 import {
   PosterSlotBusyError,
@@ -154,7 +155,7 @@ async function trackedPOST(req: NextRequest): Promise<Response> {
   }
   const providerConfigured =
     tier === "audio"
-      ? !!process.env.SURPLUS_API_KEY && !!process.env.DEEPGRAM_API_KEY
+      ? !!surplusKey("feedback") && !!process.env.DEEPGRAM_API_KEY
       : !!process.env.GEMINI_API_KEY;
   if (!providerConfigured) {
     return Response.json({ error: "no_provider" }, { status: 501 });

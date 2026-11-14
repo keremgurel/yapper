@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "project": {
+    "name": "yapper",
+    "productType": null,
+    "stack": ["nextjs", "react", "shadcn", "tailwind-v4"]
+  },
+  "sources": {
+    "tokens": ["src/app/globals.css"],
+    "components": ["src/components/ui"],
+    "assets": ["public/images"],
+    "instructions": ["AGENTS.md", "CLAUDE.md"]
+  },
+  "design": {
+    "colorMode": "light-and-dark"
+  },
+  "components": {
+    "installed": [
+      "audio-player",
+      "badge",
+      "breadcrumb",
+      "button",
+      "card",
+      "cinematic-theme-switcher",
+      "delete-button",
+      "dropdown-menu",
+      "footer-taped-design",
+      "glassy-button",
+      "input",
+      "label",
+      "metal-action",
+      "metal-status-badge",
+      "popover",
+      "separator",
+      "sheet",
+      "sidebar",
+      "skeleton",
+      "textarea",
+      "tooltip",
+      "waveform"
+    ],
+    "preferredPrimitives": ["radix-ui"],
+    "patterns": []
+  },
+  "constraints": {
+    "must": [],
+    "avoid": []
+  },
+  "decisions": [
+    {
+      "surface": "Poster",
+      "decision": "Use Source and Post steps on the shared Studio frame. Keep one aligned composer, one platform settings gear, and a separate cover editor with a persistent live preview."
+    }
+  ]
+}

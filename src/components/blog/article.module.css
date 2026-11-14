@@ -125,7 +125,7 @@
   color: var(--sg-text-muted);
 }
 .prose strong {
-  font-weight: 600;
+  font-weight: 500;
 }
 .prose blockquote {
   padding: 20px 24px;

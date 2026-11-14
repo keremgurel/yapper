@@ -5,8 +5,11 @@ import Foundation
 ///
 /// The two slow steps scale with the take, and a spinner that looks identical
 /// at twenty seconds and four minutes is the reason the edit feels stuck. The
-/// retake pass is measured: the model reads a transcript at about eight words a
-/// second, 472 words in half a minute and 1,888 in four. The rest are close
+/// retake pass is measured: the current model read a 1,399-word take in about
+/// twenty seconds (scripts/clean-eval, 2026-09-03), close to seventy words a
+/// second. The model before it took four minutes over 1,888 words, and the bar
+/// was still paced for that one, so it crawled through a step that had long
+/// since finished its usual run. The rest are close
 /// enough to name honestly, and nothing here is allowed to claim the step is
 /// finished before it is, so being wrong costs a slow bar rather than a lie.
 struct OneClickEditPace: Equatable, Sendable {
@@ -22,7 +25,7 @@ struct OneClickEditPace: Equatable, Sendable {
         switch stage {
         case .preparing: 2
         case .transcribing: max(15, mediaSeconds * 0.22)
-        case .removingRetakes: max(20, Double(words) * 0.13)
+        case .removingRetakes: max(12, Double(words) * 0.015)
         case .cuttingPauses: max(4, mediaSeconds * 0.06)
         case .trimmingSilence: 3
         case .addingCaptions: 2
@@ -39,6 +42,9 @@ struct OneClickEditPace: Equatable, Sendable {
         let expected = expectedSeconds(for: stage)
         guard expected > 0 else { return 0 }
         // Two thirds of the way at the expected time, and asymptotic after.
-        return 1 - exp(-elapsed / (expected * 0.9))
+        // Capped short of full: far past the expected time the curve rounds
+        // to exactly one, and a full bar on a step still running is the lie
+        // this type exists to avoid.
+        return min(0.985, 1 - exp(-elapsed / (expected * 0.9)))
     }
 }

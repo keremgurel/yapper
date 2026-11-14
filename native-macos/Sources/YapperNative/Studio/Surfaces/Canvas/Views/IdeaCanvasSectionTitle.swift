@@ -12,7 +12,7 @@ struct IdeaCanvasSectionTitle<Title: View, Actions: View>: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 title().font(.nativeSectionTitle)
                 if let meta {
-                    Text(meta).font(.system(size: 13)).foregroundStyle(.secondary)
+                    Text(meta).font(.studioBody).foregroundStyle(.secondary)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -42,7 +42,7 @@ struct IdeaCanvasAskChip: View {
 
     var body: some View {
         Button(action: action) {
-            IdeaCanvasChirpyLabel(label).font(.system(size: 12, weight: .medium))
+            IdeaCanvasChirpyLabel(label).font(.studioLabelStrong)
         }
         .buttonStyle(EditorGhostButtonStyle(size: .mini))
         .foregroundStyle(.secondary)

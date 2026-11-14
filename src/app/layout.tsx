@@ -5,12 +5,20 @@ import AnalyticsProvider from "@/components/analytics-provider";
 import ClerkThemeProvider from "@/components/clerk-theme-provider";
 import AppChrome from "@/components/studio-shell/app-chrome";
 import AppRouteGuard from "@/components/studio-shell/app-route-guard";
-import { Geist_Mono } from "next/font/google";
+import { Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { getSiteUrl } from "@/lib/json-ld";
 
-// Display only. Headlines are the one place the brand voice lives; every
+// One family for interface and display. The optical-size axis lets large
+// light headlines and 12px labels both come from the same variable file.
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  axes: ["opsz"],
+  display: "swap",
+});
+
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -77,7 +85,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
+    { media: "(prefers-color-scheme: light)", color: "#fdfcfc" },
     { media: "(prefers-color-scheme: dark)", color: "#000000" },
   ],
   width: "device-width",
@@ -93,7 +101,7 @@ export default function RootLayout({
     <html
       lang="en"
       data-scroll-behavior="smooth"
-      className={`${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

@@ -10,10 +10,10 @@ struct HomeSetupTrack: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Get set up").font(.system(size: 13, weight: .semibold))
+                Text("Get set up").font(.studioBodyStrong)
                 Spacer(minLength: 8)
                 Text("\(done) of \(steps.count) done")
-                    .font(.system(size: 12).monospacedDigit())
+                    .font(.studioLabel.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 16)
@@ -56,12 +56,12 @@ private struct HomeSetupStepCell: View {
             badge
             VStack(alignment: .leading, spacing: 2) {
                 Text(step.title)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.studioBodyStrong)
                     .strikethrough(step.done)
                     .foregroundStyle(step.done ? .secondary : .primary)
                 if !step.done {
                     Text(step.detail)
-                        .font(.system(size: 12))
+                        .font(.studioLabel)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     if let action = step.action {
@@ -83,7 +83,7 @@ private struct HomeSetupStepCell: View {
             if step.done {
                 Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundStyle(.white)
             } else {
-                Text("\(number)").font(.system(size: 12, weight: .semibold).monospacedDigit()).foregroundStyle(.secondary)
+                Text("\(number)").font(.studioLabelStrong.monospacedDigit()).foregroundStyle(.secondary)
             }
         }
         .frame(width: 24, height: 24)

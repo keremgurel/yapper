@@ -4,6 +4,7 @@ import {
   ownPillarIdByName,
   resolveOwnPillar,
 } from "@/lib/content/pillar-ownership";
+import { normalizeBody } from "@/lib/content/normalize";
 import { parseContentBase, rebaseOnto } from "@/lib/content/rebase";
 import { getDb } from "@/lib/db/client";
 import { ContentConflict } from "@/lib/db/content-conflict";
@@ -101,7 +102,14 @@ export async function updateOwnContentItem(
     item = await updateContentItem(userId, id, input, (current) => {
       if (reconcile) return reconcile(current, input);
       if (!base) return input;
-      const merged = rebaseOnto(input, base, current);
+      // Merged against the row as the client read it: an idea last saved
+      // before the flexible body shows its old columns as blocks, and the
+      // empty `blocks` beside them would read as someone having deleted
+      // the whole body.
+      const merged = rebaseOnto(input, base, {
+        ...current,
+        blocks: normalizeBody(current).blocks,
+      });
       rebased = merged.rebased;
       return merged.patch;
     });

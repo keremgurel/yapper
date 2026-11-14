@@ -104,7 +104,7 @@ final class PosterScheduleModel: ObservableObject {
         case .tiktok:
             if let tiktok, tiktok.mode == .direct {
                 input["caption"] = tiktok.caption
-                input["settings"] = PosterPublishAPI.settingsBody(tiktok.settings)
+                input["settings"] = PosterPublishAPI.settingsBody(tiktok.settings, coverTimestampMs: target.coverTimestampMs)
             }
         }
         return input

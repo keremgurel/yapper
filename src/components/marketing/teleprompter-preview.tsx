@@ -35,7 +35,7 @@ function LiquidOptions({
     <fieldset className="prompter-control">
       <legend>{label}</legend>
       <Liquid
-        fill="var(--sg-text)"
+        fill="var(--sg-surface-raised)"
         blur={4}
         contrast={20}
         className="prompter-segments"

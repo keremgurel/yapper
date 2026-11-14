@@ -11,6 +11,7 @@
     "openStudioRecording": "App hand-off: web Studio passes a recording by deep link and it is downloaded into a project, like opening a file. Not an edit.",
     "prepareForTermination": "App lifecycle: flushes the pending edit on quit. Not a user action.",
     "retryManagedMedia": "App lifecycle: retries copying imported files into the project package after a storage failure. Background file housekeeping, not an edit.",
-    "saveCopy": "Opens or writes a package the creator picks in a file panel; library projects open through app.projects.open."
+    "saveCopy": "Opens or writes a package the creator picks in a file panel; library projects open through app.projects.open.",
+    "setOverlayBackdropImage": "Needs a picture the creator picks in a file panel. It is imported, then set as the backdrop through editor.overlays.setProperties; a generated picture goes through editor.overlays.generateBackdrop."
   }
 }

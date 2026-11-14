@@ -6,6 +6,9 @@ extension AppActionRegistry {
             let ids = Set(input.mediaIDs)
             let media = input.mediaIDs.compactMap { id in session.project.media.first { $0.id == id } }
             guard media.count == ids.count else { throw AppActionError("Some imported media no longer exists.") }
+            guard input.operation == .append || (input.sourceStart == nil && input.sourceEnd == nil) else {
+                throw AppActionError("sourceStart and sourceEnd choose the part of a file to append. Leave them out to remove or reset media.")
+            }
             var project = session.project
             var changes: [AppActionChange] = []
             for item in media {
@@ -14,7 +17,14 @@ extension AppActionRegistry {
                     guard !item.isScene else { throw AppActionError("Use Add as overlay for generated visuals.") }
                     let length = item.isImage ? EditorSession.imageClipDefaultDuration : item.duration
                     guard length > 0 else { throw AppActionError("That media has no playable duration.") }
-                    let clip = TimelineClip(mediaID: item.id, sourceStart: 0, sourceEnd: length)
+                    // A still has nothing to trim, so a range only applies to
+                    // media with a length of its own.
+                    let start = item.isImage ? 0 : input.sourceStart ?? 0
+                    let end = item.isImage ? length : min(length, input.sourceEnd ?? length)
+                    guard start < end else {
+                        throw AppActionError("Choose a part of \(item.name) that starts before it ends, inside its \(String(format: "%.2f", length)) seconds.")
+                    }
+                    let clip = TimelineClip(mediaID: item.id, sourceStart: start, sourceEnd: end)
                     project.clips.append(clip)
                     changes.append(.init(targetID: clip.id, property: "clip", before: "none", after: item.name))
                 case .remove:
@@ -119,5 +129,12 @@ extension AppActionRegistry {
             await session.restoreHistory(input.direction)
             return Task.isCancelled
         }
+    }
+}
+
+extension MediaEditInput {
+    /// Whole files: an append of everything, a removal or a reset.
+    init(mediaIDs: [UUID], operation: MediaEditOperation) {
+        self.init(mediaIDs: mediaIDs, operation: operation, sourceStart: nil, sourceEnd: nil)
     }
 }

@@ -2,7 +2,7 @@ import type { PublishPlatform } from "@/lib/db/schema";
 import type { ScheduleRequest } from "@/lib/publish/schedule-client";
 import { outgoingCopy, type CopyOverride } from "../outgoing-copy";
 import type { CrossPostTarget } from "../compose/types";
-import type { TikTokReview } from "../tiktok-post-review";
+import { tiktokDirectPost, type TikTokReview } from "../tiktok/tiktok-review";
 import type { YouTubeSettings } from "../youtube-settings";
 
 /**
@@ -18,17 +18,24 @@ export function scheduleTargets(
     accounts,
     youtubeSettings,
     tiktokReviews,
+    consent,
   }: {
     override: CopyOverride | null;
     accounts: Partial<Record<PublishPlatform, string>>;
     youtubeSettings: YouTubeSettings;
     tiktokReviews: Record<string, TikTokReview>;
+    /** The creator's tick on the posting declaration when they scheduled. */
+    consent: boolean;
   },
 ): ScheduleRequest["targets"] {
   return sources.flatMap((source) =>
     platforms.map((platform) => {
       const copy = outgoingCopy(source, platform, override);
-      const review = tiktokReviews[source.id];
+      const direct = tiktokDirectPost(
+        tiktokReviews[source.id],
+        consent,
+        source.coverTimestampMs,
+      );
       return {
         platform,
         expectedAccountId: accounts[platform] ?? "",
@@ -48,9 +55,7 @@ export function scheduleTargets(
               }
             : platform === "instagram" || platform === "facebook"
               ? { caption: copy.body || copy.title || undefined }
-              : review?.mode === "direct"
-                ? { caption: review.caption, settings: review.settings }
-                : {}),
+              : (direct ?? {})),
         },
       };
     }),

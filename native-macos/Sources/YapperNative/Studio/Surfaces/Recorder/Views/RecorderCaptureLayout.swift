@@ -22,7 +22,7 @@ struct RecorderCaptureLayout: View {
                     if capture.micOn { RecorderAudioMeter(movie: movie).frame(width: 200) }
                     if !movie.isRecording {
                         HStack {
-                            Text(capture.readiness).font(.system(size: 12)).fixedSize(horizontal: false, vertical: true)
+                            Text(capture.readiness).font(.studioLabel).fixedSize(horizontal: false, vertical: true)
                             if !capture.canRecord && !capture.configuring && (capture.cameraOn || capture.micOn) {
                                 Button("Retry devices") { capture.retry() }
                                     .buttonStyle(EditorSecondaryButtonStyle(size: .small))
@@ -37,7 +37,7 @@ struct RecorderCaptureLayout: View {
                         onRecord: onRecord, onFinish: workspace.flow.finish)
                     if focused {
                         RecorderPrompterPanel(store: prompter, compact: true)
-                        Text("Press F or Escape to leave focus.").font(.system(size: 12)).foregroundStyle(.secondary)
+                        Text("Press F or Escape to leave focus.").font(.studioLabel).foregroundStyle(.secondary)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -50,7 +50,7 @@ struct RecorderCaptureLayout: View {
                                     .disabled(locked)
                             }
                             Text("Auto uses the camera frame. Other ratios crop the center of the preview and saved video.")
-                                .font(.system(size: 12)).foregroundStyle(.secondary)
+                                .font(.studioLabel).foregroundStyle(.secondary)
                             RecorderScriptPanel(script: script).disabled(locked)
                             RecorderPrompterPanel(store: prompter)
                             RecorderDevicesPanel(capture: capture, devices: workspace.devices,

@@ -194,3 +194,89 @@ it("lets a project or dictionary action run only on its own", () => {
     planValidationIssue({ message: "", actions: [add, hide] }, withApp),
   ).toContain("Project and dictionary actions must run alone");
 });
+
+it("keeps to the fields the client's own build knows", () => {
+  const known = {
+    type: "object",
+    additionalProperties: false,
+    required: ["text"],
+    properties: { text: {}, at: {}, duration: {}, asHook: {} },
+  };
+  const older: PlanInput = {
+    ...input,
+    catalog: [{ id: "editor.text.add", parameters: known }],
+  };
+  const newer: PlanInput = { ...input, catalog: [{ id: "editor.text.add" }] };
+  const styled = {
+    message: "Adding it.",
+    actions: [
+      {
+        action: "editor.text.add",
+        arguments: { text: "Comment TEF", style: { font: "editorial" } },
+      },
+    ],
+  };
+  const plain = {
+    ...styled,
+    actions: [{ ...styled.actions[0], arguments: { text: "Comment TEF" } }],
+  };
+  expect(
+    Object.keys(discoveredCatalog(older)[0].parameters.properties ?? {}),
+  ).toEqual(["text", "at", "duration", "asHook"]);
+  expect(parsePlanReply(styled, older)).toBeNull();
+  expect(parsePlanReply(plain, older)).toEqual(plain);
+  expect(parsePlanReply(styled, newer)).toEqual(styled);
+});
+
+it("hides the native control fields from builds that predate them", () => {
+  const older: PlanInput = {
+    ...input,
+    catalog: [
+      {
+        id: "editor.audio.trim",
+        parameters: {
+          type: "object",
+          additionalProperties: false,
+          required: ["layerIDs"],
+          properties: { layerIDs: {}, sourceStart: {}, duration: {} },
+        },
+      },
+      {
+        id: "editor.captions.setVisible",
+        parameters: {
+          type: "object",
+          additionalProperties: false,
+          required: ["visible"],
+          properties: { visible: {} },
+        },
+      },
+    ],
+  };
+  const catalog = discoveredCatalog(older);
+  const trim = catalog.find((action) => action.id === "editor.audio.trim")!;
+  const setVisible = catalog.find(
+    (action) => action.id === "editor.captions.setVisible",
+  )!;
+  expect(Object.keys(trim.parameters.properties ?? {})).toEqual([
+    "layerIDs",
+    "sourceStart",
+    "duration",
+  ]);
+  expect(Object.keys(setVisible.parameters.properties ?? {})).toEqual([
+    "visible",
+  ]);
+  // What moving and regenerating mean lives on the fields, so an older build
+  // is never told about either.
+  expect(trim.description).not.toMatch(/timelineStart|move/i);
+  expect(setVisible.description).not.toMatch(/regenerate/i);
+  const moved = {
+    message: "Moving it.",
+    actions: [
+      {
+        action: "editor.audio.trim",
+        arguments: { layerIDs: [crypto.randomUUID()], timelineStart: 5 },
+      },
+    ],
+  };
+  expect(parsePlanReply(moved, older)).toBeNull();
+});

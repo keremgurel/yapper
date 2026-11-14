@@ -13,7 +13,7 @@ struct DictionaryAliasStrip: View {
     var body: some View {
         DictionaryFlowLayout(spacing: 8) {
             Text("Correct these")
-                .font(.system(size: 12, weight: .medium))
+                .font(.studioLabelStrong)
                 .foregroundStyle(.secondary)
                 .padding(.trailing, 2)
             ForEach(entry.aliases, id: \.self) { item in
@@ -28,7 +28,7 @@ struct DictionaryAliasStrip: View {
             Task { await editor.save(term: term, aliases: entry.aliases.filter { $0 != item }) }
         } label: {
             HStack(spacing: 4) {
-                Text(item).font(.system(size: 12, weight: .medium))
+                Text(item).font(.studioLabelStrong)
                 Image(systemName: "xmark").font(.system(size: 9, weight: .semibold))
             }
             .foregroundStyle(Color.primary.opacity(0.78))

@@ -62,15 +62,23 @@
     {
       "id": "editor.overlays.setProperties",
       "symbol": "overlayProperties",
-      "description": "Edit existing overlays: visibility, behind-speaker depth, source in point, timeline start/duration, or zero-based lane. Only supplied fields change. all=true targets every overlay; otherwise use overlayIDs. Cannot put generated scenes behind the speaker, exceed video source bounds, or collide on a lane.",
+      "description": "Edit existing overlays: visibility, behind-speaker depth, backdrop (what fills the frame behind the card: frosted is the speaker blurred and dimmed; image is a picture already in the project's media, named by backdropMediaID; navyGlow, aurora, lightRays, grainient and shapeGrid are dark generated surfaces; none removes it), source in point, timeline start/duration, or zero-based lane. Only supplied fields change. all=true targets every overlay; otherwise use overlayIDs. Cannot put generated scenes behind the speaker, exceed video source bounds, or collide on a lane.",
       "input": "OverlayPropertiesInput",
       "effect": "reversibleEdit",
       "requiresRebuild": true
     },
     {
+      "id": "editor.overlays.generateBackdrop",
+      "symbol": "overlayBackdropGenerate",
+      "description": "Generate a picture from a sentence and put it behind one overlay's card, as Generate in the backdrop picker does. The picture is added to the project's media and becomes that overlay's image backdrop. Costs one AI thumbnail credit, so use it only when the creator asks for a generated or AI background. Runs alone and can take a few minutes. A preset, frosted or a picture already in the project's media is editor.overlays.setProperties.",
+      "input": "OverlayBackdropGenerateInput",
+      "effect": "workflow",
+      "requiresRebuild": true
+    },
+    {
       "id": "editor.overlays.add",
       "symbol": "overlayAdd",
-      "description": "Place one existing media item as an overlay at a known timeline anchor. Optional duration and sourceStart; defaults match Add as overlay. Use designOverlays/placeImported only when editorial placement across speech must be decided.",
+      "description": "Place one existing media item as an overlay at a known timeline anchor. Optional duration and sourceStart; defaults match Add as overlay. For \"while I say X\" (at and until both X) or \"until I say Y\", set until instead of duration, so the end never depends on arithmetic. Use designOverlays/placeImported only when editorial placement across speech must be decided.",
       "input": "OverlayAddInput",
       "effect": "reversibleEdit",
       "requiresRebuild": true
@@ -386,6 +394,23 @@
         }
       }
     },
+    "OverlayBackdropGenerateInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overlayID", "prompt"],
+      "properties": {
+        "overlayID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1200,
+          "description": "What the picture shows, in the creator's words. The app adds the rest: dark, soft, no text, room for captions."
+        }
+      }
+    },
     "OverlayPropertiesInput": {
       "type": "object",
       "additionalProperties": false,
@@ -409,6 +434,34 @@
         "behindSpeaker": {
           "type": "boolean"
         },
+        "backdrop": {
+          "type": "string",
+          "enum": [
+            "none",
+            "frosted",
+            "image",
+            "navyGlow",
+            "aurora",
+            "lightRays",
+            "grainient",
+            "shapeGrid"
+          ]
+        },
+        "backdropColors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 7,
+            "maxLength": 7
+          },
+          "maxItems": 4,
+          "description": "The preset's colours as #RRGGBB, background first, in the preset's slot order (navyGlow: background, glow, halo; aurora: sky, upper band, lower band; lightRays: background, rays, light; grainient: background, top left, right, bottom; shapeGrid: background, lines, glow). An empty array goes back to the preset's own colours. Needs a preset backdrop."
+        },
+        "backdropMediaID": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The imported picture shown behind the card when backdrop is image."
+        },
         "sourceStart": {
           "type": "number",
           "minimum": 0,
@@ -428,6 +481,10 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 5000
+        },
+        "leadingTrim": {
+          "type": "boolean",
+          "description": "With timelineStart (and usually duration and sourceStart), the overlay's left edge moves rather than the whole overlay: keyframes stay at the same moments on the timeline, as dragging its left edge does. Leave it out to move the overlay with its keyframes."
         }
       }
     },
@@ -447,6 +504,10 @@
           "type": "number",
           "minimum": 0.1,
           "maximum": 86400
+        },
+        "until": {
+          "$ref": "#/$defs/TimelineAnchorInput",
+          "description": "Where the overlay ends, instead of duration. A phrase ends it where that phrase begins (until I say Y); when the overlay starts on that same phrase (while I say X) it ends where the phrase ends. Without an occurrence the phrase is the first match after the start. Other anchors are the moment they name."
         },
         "sourceStart": {
           "type": "number",

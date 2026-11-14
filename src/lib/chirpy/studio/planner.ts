@@ -106,6 +106,7 @@ export async function planStudio(
       maxCompletionTokens: 2000,
       timeoutMs: remaining,
       signal,
+      keyScope: "chirpy",
     });
     const raw = extractJsonObject(reply.content);
     const plan = parseStudioPlan(raw);

@@ -8,7 +8,7 @@ struct StoragePlanHeadroom: View {
             Text("Yapper keeps one current video, plus files needed by scheduled posts. Published files, including editor exports, are released after the 24-hour retry window and the next cleanup run.")
             Text("Keep originals on your Mac. Scripts, transcripts and feedback remain after video files are removed.")
         }
-        .font(.system(size: 13))
+        .font(.studioBody)
         .foregroundStyle(.secondary)
         .frame(maxWidth: .infinity, alignment: .leading)
         .nativeCard(padding: 20)

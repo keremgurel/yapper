@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// A small segmented control: a quiet track, the chosen option lifted onto a
-/// raised pill, and an optional colour dot per option (a format's colour, for
+/// A small segmented control: a stone tray, the chosen option lifted onto a
+/// raised white pill, and an optional colour dot per option (a format's colour, for
 /// instance). For a handful of short choices that should all stay visible.
 struct NativeSegmented<Value: Hashable>: View {
     struct Option: Identifiable {
@@ -21,16 +21,16 @@ struct NativeSegmented<Value: Hashable>: View {
                 Button { withAnimation(.snappy(duration: 0.15)) { selection = option.value } } label: {
                     HStack(spacing: 6) {
                         if let dot = option.dot { Circle().fill(dot).frame(width: 6, height: 6) }
-                        Text(option.label).font(.system(size: 12, weight: on ? .semibold : .medium))
+                        Text(option.label).font(.studioLabelStrong)
                     }
                     .foregroundStyle(on ? Color.primary : Color.secondary)
                     .padding(.horizontal, 11)
                     .frame(height: 24)
                     .background {
                         if on {
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            Capsule(style: .continuous)
                                 .fill(Color.studioRaisedChip)
-                                .shadow(color: .black.opacity(0.25), radius: 1, y: 1)
+                                .shadow(color: .black.opacity(0.10), radius: 1.5, y: 1)
                         }
                     }
                     .contentShape(Rectangle())
@@ -41,8 +41,7 @@ struct NativeSegmented<Value: Hashable>: View {
             }
         }
         .padding(3)
-        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.studioInputBackground))
-        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Color.studioLine, lineWidth: 1))
+        .background(Capsule(style: .continuous).fill(Color.studioTray))
         .fixedSize()
     }
 }

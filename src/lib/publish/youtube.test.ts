@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { uploadYouTubeVideo, youtubeSnippetText } from "@/lib/publish/youtube";
+import {
+  uploadYouTubeVideo,
+  waitForYouTubeProcessing,
+  youtubeSnippetText,
+} from "@/lib/publish/youtube";
 import { createPublishWorkflow } from "@/lib/publish/workflow";
 
 afterEach(() => {
@@ -193,5 +197,28 @@ describe("uploadYouTubeVideo", () => {
       await rm(directory, { recursive: true, force: true });
     }
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("YouTube custom cover processing", () => {
+  it("checks the owner’s processing status until the upload can accept a cover", async () => {
+    const response = (processingStatus: string) =>
+      Response.json({ items: [{ processingDetails: { processingStatus } }] });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(response("processing"))
+      .mockResolvedValueOnce(response("succeeded"));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(
+      waitForYouTubeProcessing(
+        "token",
+        "video-1",
+        createPublishWorkflow(new AbortController().signal),
+      ),
+    ).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[0][0])).toContain(
+      "id=video-1&part=processingDetails",
+    );
   });
 });

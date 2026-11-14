@@ -54,7 +54,7 @@ struct AudioEntryCard: View {
                 .overlay {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .strokeBorder(
-                            isPlaying ? Color.yapperOrange : Color.studioLine,
+                            isPlaying ? Color.studioLineStrong : Color.studioLine,
                             lineWidth: isPlaying ? 1.5 : 1
                         )
                 }
@@ -77,13 +77,12 @@ struct AudioEntryCard: View {
     }
 
     private var icon: some View {
-        Image(systemName: isPlaying ? "stop.fill" : "play.fill")
-            .font(.system(size: 10.5, weight: .bold))
-            .foregroundStyle(isPlaying ? Color.white : Color.yapperOrange)
+        StudioGlyph(isPlaying ? .stop : .play, size: 13)
+            .foregroundStyle(isPlaying ? Color.studioAccentForeground : Color.primary)
             .frame(width: 28, height: 28)
             .background {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(isPlaying ? Color.yapperOrange : Color.yapperOrange.opacity(0.12))
+                RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
+                    .fill(isPlaying ? Color.studioAccent : Color.studioTray)
             }
     }
 
@@ -127,15 +126,14 @@ struct AudioEntryCard: View {
 
             if !isMissing {
                 Button(action: onAdd) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 10.5, weight: .bold))
-                        .foregroundStyle(canAddToProject ? Color.white : Color.secondary)
+                    StudioGlyph(.plus, size: 13)
+                        .foregroundStyle(canAddToProject ? Color.studioAccentForeground : Color.studioTextMuted)
                         .frame(width: 28, height: 28)
                         .background {
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
                                 .fill(
                                     canAddToProject
-                                        ? Color.yapperOrange.opacity(isHovering ? 1 : 0.75)
+                                        ? Color.studioAccent.opacity(isHovering ? 1 : 0.85)
                                         : Color.studioFaintFill
                                 )
                         }

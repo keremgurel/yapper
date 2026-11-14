@@ -26,8 +26,8 @@ struct OverlayKeyframeControls: View {
                 session.toggleOverlayKey(overlay)
             } label: {
                 Image(systemName: isOnKey ? "diamond.fill" : "diamond")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(isOnKey ? Color.yapperOrange : Color.secondary)
+                    .font(.studioCaptionStrong)
+                    .foregroundStyle(isOnKey ? Color.studioAccent : Color.secondary)
                     .frame(width: 24, height: 22)
                     .contentShape(Rectangle())
             }

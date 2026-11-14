@@ -23,7 +23,7 @@ struct ComposerFormatMenu: View {
         } label: {
             HStack(spacing: 6) {
                 Circle().fill(format.current.tone.color).frame(width: 6, height: 6)
-                Text(format.current.label).font(.system(size: 12, weight: .medium))
+                Text(format.current.label).font(.studioLabelStrong)
                 Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary)
             }
             .padding(.horizontal, 10)

@@ -60,7 +60,7 @@ struct BrainAddContextSheet: View {
             BrainInlineError(message: "That file couldn't be read as text. Paste its contents instead.")
         case .namingFailed(let message):
             Text("Could not come up with a name. \(message) Type one and it saves the same.")
-                .font(.system(size: 12)).foregroundStyle(.secondary)
+                .font(.studioLabel).foregroundStyle(.secondary)
         case nil:
             EmptyView()
         }

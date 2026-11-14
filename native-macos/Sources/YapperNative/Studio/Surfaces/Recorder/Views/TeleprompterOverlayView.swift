@@ -41,7 +41,7 @@ struct TeleprompterOverlayView: View {
                         Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
                         Text("Drag to move")
                     }
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.studioMicro)
                     .foregroundStyle(.white.opacity(0.85))
                     .padding(.top, 8).opacity(active ? 1 : 0).allowsHitTesting(false)
                 }

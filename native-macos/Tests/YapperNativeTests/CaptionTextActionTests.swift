@@ -122,7 +122,7 @@ struct CaptionTextActionTests {
         let ui = await session(project) { _ in throw AppActionError("unused") }
         let chat = await session(project) { instruction in
             instruction.contains("hook")
-                ? try Self.reply(TextLayerAddInput(text: "Your hook", at: .playhead, duration: nil, asHook: true))
+                ? try Self.reply(TextLayerAddInput(text: "Your hook", at: .playhead, duration: nil, asHook: true, style: nil))
                 : try Self.reply(TextLayerUpdateInput(textLayerID: UUID(), text: nil, timelineStart: nil, duration: nil))
         }
         ui.addTextLayer(asHook: true)

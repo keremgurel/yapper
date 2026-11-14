@@ -3,6 +3,8 @@ import Foundation
 enum ClipSpeed {
     static let range = 0.25...4.0
     static let presets: [Double] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 3, 4]
+    /// The handful worth a button of their own in the inspector.
+    static let quickPresets: [Double] = [0.5, 1, 1.25, 1.5, 2]
 
     static func normalized(_ value: Double?) -> Double {
         guard let value, value.isFinite, range.contains(value) else { return 1 }

@@ -325,6 +325,18 @@ enum CompositionBuilder {
         let filter = project.resolvedVisualFilter
         let usesCustomCompositor = project.needsStudioCompositor
         let backdrop = project.resolvedBackdrop.ciColor
+        let backdropImage = project.backdropPreset
+            .flatMap {
+                BackdropPresetRenderer.image($0, width: Int(renderSize.width), height: Int(renderSize.height),
+                                             colors: project.backdropPresetColors)
+            }
+            .map { CIImage(cgImage: $0) }
+        let backdropSpans = OverlayBackdropSpans.make(
+            overlays,
+            isMainTrackHidden: project.isVideoTrackHidden,
+            renderSize: renderSize,
+            media: project.media
+        )
         let instructions = instructions(
             segments: segments,
             lanes: lanes,
@@ -335,7 +347,9 @@ enum CompositionBuilder {
             exactEnd: cursor,
             usesCustomCompositor: usesCustomCompositor,
             matteQuality: .accurate,
-            backdrop: backdrop
+            backdrop: backdrop,
+            backdropImage: backdropImage,
+            backdropSpans: backdropSpans
         )
 
         // Stated, not inferred: see CompositionColorSpace. Taken from the take
@@ -388,7 +402,9 @@ enum CompositionBuilder {
                 exactEnd: cursor,
                 usesCustomCompositor: usesCustomCompositor,
                 matteQuality: .fast,
-                backdrop: backdrop
+                backdrop: backdrop,
+                backdropImage: backdropImage,
+                backdropSpans: backdropSpans
             )
             : instructions
         if purpose.needsVisualLayers {
@@ -641,7 +657,9 @@ enum CompositionBuilder {
         exactEnd: CMTime? = nil,
         usesCustomCompositor: Bool,
         matteQuality: MatteQuality,
-        backdrop: CIColor
+        backdrop: CIColor,
+        backdropImage: CIImage? = nil,
+        backdropSpans: [OverlayBackdropSpan] = []
     ) -> [any AVVideoCompositionInstructionProtocol] {
         let boundaries = OverlayCompositionPlan.boundaries(
             clipEnds: segments.map(\.range.end.seconds),
@@ -649,6 +667,7 @@ enum CompositionBuilder {
             duration: duration,
             keyframes: segments.flatMap(\.keyframeTimes)
                 + lanes.flatMap { $0.motion.values.flatMap(\.keyframeTimes) }
+                + backdropSpans.flatMap(\.boundaries).filter { $0 > 0 && $0 < duration }
         )
         guard boundaries.count > 1 else { return [] }
 
@@ -723,6 +742,26 @@ enum CompositionBuilder {
             // is always a straight line.
             let mainStart = segment.isKeyed ? segment.transform(atTimeline: start) : segment.transform
             let mainEnd = segment.isKeyed ? segment.transform(atTimeline: end) : nil
+            // What sits behind the cards, in front of the speaker: the frame
+            // frosted or a preset, easing in with the card. See
+            // `OverlayBackdrop`.
+            if let span = OverlayBackdropSpans.active(in: backdropSpans, from: start, to: end) {
+                let fade = start < span.fade.start + span.fade.duration ? span.fade : nil
+                switch span.fill {
+                case .frosted:
+                    placements.append(
+                        .init(
+                            source: segment.still.map { .still($0) } ?? .track(mainTrack.trackID),
+                            transform: mainStart,
+                            endTransform: mainEnd == mainStart ? nil : mainEnd,
+                            frost: true,
+                            fade: fade
+                        )
+                    )
+                case let .still(image):
+                    placements.append(.init(source: .still(image), transform: .identity, fade: fade))
+                }
+            }
             placements.append(
                 .init(
                     source: segment.still.map { .still($0) }
@@ -796,7 +835,8 @@ enum CompositionBuilder {
                         layers: placements,
                         colorMatrix: matrix,
                         matteQuality: matteQuality,
-                        backdrop: backdrop
+                        backdrop: backdrop,
+                        backdropImage: backdropImage
                     )
                 )
             }

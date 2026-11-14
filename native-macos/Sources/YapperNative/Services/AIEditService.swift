@@ -177,8 +177,7 @@ actor AIEditService {
 
     // Broad context supplies vocabulary. Independent acoustic coverage and
     // short recovery windows catch restarts that broad ASR context suppresses.
-    private let chunkSeconds = 120.0
-    private let overlapSeconds = 30.0
+    // How long the main pieces are comes from the service: TranscriptionPiecePlan.
     private let maximumConcurrentUploads = 3
 
     /// How loud each take was, moment by moment, kept from the decode the
@@ -231,16 +230,31 @@ actor AIEditService {
         Self.purgeStaleTranscriptionFiles()
         let keyterms = TranscriptionDictionary.keyterms(dictionary)
         return try await TranscriptionTemporaryFile.withPCMFile { temporaryURL in
+            var run = EditLatencyLog.Run("transcribe")
+            // Finding where the speech is reads the whole file a second time.
+            // Started here so it runs beside the decode instead of after it:
+            // on a long take that was the difference between two full reads
+            // back to back and two at once.
+            let mediaURL = media.url
+            let speechTask = Task.detached(priority: .userInitiated) {
+                try TranscriptionSpeechCoverage.measure(url: mediaURL)
+            }
+            defer { speechTask.cancel() }
+            // Asked while the take decodes, so the answer costs no time.
+            let piecePlanTask = Task { await TranscriptionPiecePlan.current(baseURL: YapperAPI.baseURL) }
             let decoded = try await decodeAudio(
                 url: media.url, output: temporaryURL, progress: progress
             )
+            run.mark("decoded")
+            let piecePlan = await piecePlanTask.value
             let chunks = TranscriptionChunkPlan.make(
                 byteCount: decoded.byteCount,
                 sampleRate: decoded.sampleRate,
-                chunkSeconds: chunkSeconds,
-                overlapSeconds: overlapSeconds
+                chunkSeconds: piecePlan.pieceSeconds,
+                overlapSeconds: piecePlan.overlapSeconds
             )
-            let speech = try TranscriptionSpeechCoverage.measure(url: media.url)
+            let speech = try await speechTask.value
+            run.mark("speech found")
             let recovery = TranscriptionChunkPlan.make(
                 byteCount: decoded.byteCount, sampleRate: decoded.sampleRate,
                 chunkSeconds: 10, overlapSeconds: 4
@@ -261,6 +275,7 @@ actor AIEditService {
                 try payload.write(to: file)
                 return file
             }
+            run.mark("encoded \(plans.count) chunks")
             let sizes = try files.map { try Data(contentsOf: $0, options: .mappedIfSafe).count }
             let tickets = try await Self.uploadTickets(sizes: sizes, baseURL: YapperAPI.baseURL)
             guard tickets.count == plans.count else {
@@ -290,12 +305,14 @@ actor AIEditService {
                 }
             )
             await progress?(0.6)
+            run.mark("uploaded \(sizes.reduce(0, +) / 1_000) kB")
             let spoken = try await Self.transcribeStored(
                 chunks: Array(uploaded.prefix(chunks.count)),
                 recoveryChunks: Array(uploaded.dropFirst(chunks.count)), speech: speech,
                 keyterms: keyterms, baseURL: YapperAPI.baseURL
             )
             await progress?(1)
+            run.mark("transcribed")
 
             let heard = HeardWords.withoutDoubledEmissions(
                 (spoken.words ?? []).map {

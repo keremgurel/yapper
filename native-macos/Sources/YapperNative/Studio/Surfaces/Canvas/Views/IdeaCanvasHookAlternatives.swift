@@ -65,7 +65,7 @@ private struct IdeaCanvasHookCard: View {
         .overlay(alignment: .topTrailing) {
             if hovering {
                 Button(action: onRemove) {
-                    Image(systemName: "xmark").font(.system(size: 11, weight: .semibold))
+                    Image(systemName: "xmark").font(.studioCaptionStrong)
                         .frame(width: 22, height: 22)
                 }
                 .buttonStyle(EditorGhostButtonStyle(size: .mini))

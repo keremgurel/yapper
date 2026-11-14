@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import sharp from "sharp";
 import { fetchBoundedJson } from "@/lib/http/outbound";
 
@@ -41,7 +42,7 @@ export async function generateThumbnail(
   input: ThumbnailInput,
   signal?: AbortSignal,
 ): Promise<string> {
-  const key = process.env.SURPLUS_API_KEY;
+  const key = surplusKey("publishing");
   if (!key) throw new Error("no_provider");
   const base = (
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1"

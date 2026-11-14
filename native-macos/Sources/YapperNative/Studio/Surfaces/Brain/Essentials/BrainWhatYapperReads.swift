@@ -14,9 +14,9 @@ struct BrainWhatYapperReads: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.studioMicro)
                         .rotationEffect(.degrees(open ? 90 : 0))
-                    Text("What Yapper reads").font(.system(size: 13, weight: .medium))
+                    Text("What Yapper reads").font(.studioBodyStrong)
                 }
                 .foregroundStyle(.secondary)
             }
@@ -47,7 +47,7 @@ struct BrainWhatYapperReads: View {
                     let section = preview.section.trimmingCharacters(in: .whitespacesAndNewlines)
                     if section.isEmpty {
                         Text("Nothing yet. Every prompt runs exactly as it did before you had a brain.")
-                            .font(.system(size: 13)).foregroundStyle(.secondary)
+                            .font(.studioBody).foregroundStyle(.secondary)
                     } else {
                         ScrollView {
                             Text(section)
@@ -62,7 +62,7 @@ struct BrainWhatYapperReads: View {
                 }
                 .opacity(store.fetching ? 0.6 : 1)
             } else if store.failed {
-                Text("Could not compile a preview just now.").font(.system(size: 13)).foregroundStyle(.secondary)
+                Text("Could not compile a preview just now.").font(.studioBody).foregroundStyle(.secondary)
             } else {
                 NativeLoadingState(label: "Compiling…")
             }
@@ -96,7 +96,7 @@ struct BrainBudgetMeter: View {
                 }
             }
             .frame(height: 4)
-            Text(hint).font(.system(size: 12)).foregroundStyle(.secondary)
+            Text(hint).font(.studioLabel).foregroundStyle(.secondary)
         }
     }
 }

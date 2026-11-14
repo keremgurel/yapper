@@ -12,11 +12,11 @@ struct InstagramImportSheet: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Import your saved inspiration").font(.nativeSectionTitle)
                     Text("Bring your saved posts and collections into Ideas without giving Yapper your Instagram password.")
-                        .font(.system(size: 13)).foregroundStyle(.secondary)
+                        .font(.studioBody).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 12)
-                Button { dismiss() } label: { Image(systemName: "xmark").font(.system(size: 12)) }
+                Button { dismiss() } label: { Image(systemName: "xmark").font(.studioLabel) }
                     .buttonStyle(EditorGhostButtonStyle(size: .small))
                     .keyboardShortcut(.cancelAction)
                     .help("Close")
@@ -41,7 +41,7 @@ struct InstagramImportSheet: View {
                 Rectangle().fill(Color.studioLine).frame(height: 1)
                 HStack {
                     if let error = model.error {
-                        Text(error).font(.system(size: 12)).foregroundStyle(Color.studioDanger)
+                        Text(error).font(.studioLabel).foregroundStyle(Color.studioDanger)
                     }
                     Spacer()
                     Button { model.commit() } label: {
@@ -75,15 +75,15 @@ struct InstagramImportSteps: View {
         VStack(alignment: .leading, spacing: 16) {
             ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
                 HStack(alignment: .top, spacing: 12) {
-                    Text("\(index + 1)").font(.system(size: 11, weight: .semibold))
+                    Text("\(index + 1)").font(.studioCaptionStrong)
                         .frame(width: 22, height: 22)
                         .overlay(Circle().strokeBorder(Color.studioLine, lineWidth: 1))
-                    Text(step).font(.system(size: 13)).foregroundStyle(.primary.opacity(0.8))
+                    Text(step).font(.studioBody).foregroundStyle(.primary.opacity(0.8))
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
             Link(destination: URL(string: "https://www.facebook.com/help/181231772500920")!) {
-                Label("Open Meta's export instructions", systemImage: "arrow.up.right").font(.system(size: 12, weight: .medium))
+                Label("Open Meta's export instructions", systemImage: "arrow.up.right").font(.studioLabelStrong)
             }
             .clickableCursor()
 
@@ -92,7 +92,7 @@ struct InstagramImportSteps: View {
                     Image(systemName: "square.and.arrow.down").font(.system(size: 20)).foregroundStyle(.secondary)
                 }
                 Text(model.reading ? "Reading your archive…" : "ZIP, JSON, or HTML, up to 100 MB")
-                    .font(.system(size: 12)).foregroundStyle(.secondary)
+                    .font(.studioLabel).foregroundStyle(.secondary)
                 Button("Choose Instagram export") { model.choose() }
                     .buttonStyle(EditorSecondaryButtonStyle())
                     .disabled(model.reading)
@@ -102,11 +102,11 @@ struct InstagramImportSteps: View {
             .nativeWell()
 
             if let error = model.error {
-                Text(error).font(.system(size: 13)).foregroundStyle(Color.studioDanger)
+                Text(error).font(.studioBody).foregroundStyle(Color.studioDanger)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Label("The archive is read on this Mac. Yapper imports only the Instagram links you select, not the ZIP or your account credentials.", systemImage: "lock")
-                .font(.system(size: 12)).foregroundStyle(.secondary)
+                .font(.studioLabel).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -122,9 +122,9 @@ struct InstagramCollectionList: View {
             HStack(spacing: 12) {
                 Image(systemName: "doc").foregroundStyle(.secondary)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(model.filename ?? "").font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                    Text(model.filename ?? "").font(.studioBodyStrong).lineLimit(1)
                     Text("\(model.entries.count) unique saves found" + (model.duplicateCount > 0 ? " · \(model.duplicateCount) already in Ideas" : ""))
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                        .font(.studioLabel).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Button("Change") { model.reset() }.buttonStyle(EditorGhostButtonStyle(size: .small))
@@ -133,8 +133,8 @@ struct InstagramCollectionList: View {
 
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Choose collections").font(.system(size: 13, weight: .semibold))
-                    Text("Collection names are kept on imported references.").font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text("Choose collections").font(.studioBodyStrong)
+                    Text("Collection names are kept on imported references.").font(.studioLabel).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Button(model.selected.count == collections.count ? "Clear all" : "Select all") { model.toggleAll() }
@@ -148,10 +148,10 @@ struct InstagramCollectionList: View {
                     HStack(spacing: 10) {
                         IdeaCheckMark(on: checked)
                         Image(systemName: "folder").foregroundStyle(.secondary)
-                        Text(collection.name).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                        Text(collection.name).font(.studioBodyStrong).lineLimit(1)
                         Spacer()
                         Text(collection.count.newItems == collection.count.total ? "\(collection.count.total)" : "\(collection.count.newItems) new")
-                            .font(.system(size: 12)).foregroundStyle(.secondary)
+                            .font(.studioLabel).foregroundStyle(.secondary)
                     }
                     .padding(12)
                     .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(checked ? Color.studioSelectedFill : Color.clear))
@@ -169,9 +169,9 @@ struct IdeaCheckMark: View {
     let on: Bool
     var body: some View {
         RoundedRectangle(cornerRadius: 5, style: .continuous)
-            .fill(on ? Color.yapperOrange : Color.clear)
-            .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).strokeBorder(on ? Color.yapperOrange : Color.studioLineStrong, lineWidth: 1))
-            .overlay { if on { Image(systemName: "checkmark").font(.system(size: 10, weight: .semibold)).foregroundStyle(.white) } }
+            .fill(on ? Color.studioAccent : Color.clear)
+            .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).strokeBorder(on ? Color.studioAccent : Color.studioLineStrong, lineWidth: 1))
+            .overlay { if on { Image(systemName: "checkmark").font(.studioMicro).foregroundStyle(Color.studioAccentForeground) } }
             .frame(width: 16, height: 16)
     }
 }
@@ -190,9 +190,9 @@ struct InstagramImportResult: View {
                 .background(Circle().fill(NativeChip.Tone.green.color.opacity(0.14)))
             Text("\(imported) saved \(imported == 1 ? "post" : "posts") imported").font(.system(size: 17, weight: .semibold))
             Text("They are in Ideas now as references. Open the ones you want Chirpy to work on.")
-                .font(.system(size: 13)).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 340)
+                .font(.studioBody).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 340)
             if skipped > 0 {
-                Text("\(skipped) existing \(skipped == 1 ? "item was" : "items were") skipped.").font(.system(size: 12)).foregroundStyle(.secondary)
+                Text("\(skipped) existing \(skipped == 1 ? "item was" : "items were") skipped.").font(.studioLabel).foregroundStyle(.secondary)
             }
             Button("View ideas", action: onDone).buttonStyle(EditorSecondaryButtonStyle()).padding(.top, 8)
         }

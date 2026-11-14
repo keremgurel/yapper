@@ -158,6 +158,17 @@ describe("parsePlacements", () => {
     ]);
   });
 
+  it("carries a full-length request and a source offset, and nothing else", () => {
+    const reply =
+      '{"placements":[{"file":"a.mp4","quote":"hello","fullLength":true,"sourceStart":1.2},' +
+      '{"file":"b.mp4","quote":"there","fullLength":"yes","sourceStart":-3}]}';
+    const [full, junk] = parsePlacements(reply);
+    expect(full.fullLength).toBe(true);
+    expect(full.sourceStart).toBe(1.2);
+    expect(junk.fullLength).toBeUndefined();
+    expect(junk.sourceStart).toBeUndefined();
+  });
+
   it("returns nothing for a reply that is not JSON at all", () => {
     expect(parsePlacements("I could not find anything.")).toEqual([]);
     expect(parsePlacements('{"placements": "soon"}')).toEqual([]);

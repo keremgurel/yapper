@@ -162,6 +162,9 @@ async function reconcile(
       jobId: claim.jobId,
       draft: false,
       url: claim.externalUrl || undefined,
+      profileUrl: claim.externalUrl
+        ? undefined
+        : tiktokProfileUrl(claim.providerState.username),
       replayed: true,
     });
   const publishId = claim.providerState.publishId ?? claim.externalPostId;
@@ -222,5 +225,18 @@ async function checkDelivery(
   } catch {
     return pending(jobId);
   }
-  return Response.json({ jobId, draft: false, url: url || undefined });
+  return Response.json({
+    jobId,
+    draft: false,
+    url: url || undefined,
+    profileUrl: url ? undefined : tiktokProfileUrl(username),
+  });
+}
+/** TikTok only names the post once it is publicly viewable, which can be after
+ * it reports the publish complete. Until then the account is the closest link
+ * there is. It is returned, never stored as the post's own address. */
+function tiktokProfileUrl(username?: string): string | undefined {
+  return username
+    ? `https://www.tiktok.com/@${encodeURIComponent(username)}`
+    : undefined;
 }

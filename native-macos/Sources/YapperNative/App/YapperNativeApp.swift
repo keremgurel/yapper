@@ -14,6 +14,10 @@ final class YapperNativeAppDelegate: NSObject, NSApplicationDelegate {
         // launches behave like the packaged application.
         NativeAnalytics.shared.start()
         Task.detached(priority: .utility) { await PosterProjectRender.shared.removeStaleRenders() }
+        Task.detached(priority: .utility) { StaleExportScratchSweeper.sweep() }
+        // Taken now, before any export can start and record a file of its own.
+        let leftovers = StagedExportLedger.shared.takeLeftovers()
+        Task.detached(priority: .utility) { StagedExportLedger.remove(leftovers) }
         NSApp.setActivationPolicy(.regular)
         DispatchQueue.main.async {
             NSApp.activate(ignoringOtherApps: true)
@@ -24,13 +28,21 @@ final class YapperNativeAppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard terminationTask == nil else { return .terminateLater }
         guard let session else { return .terminateNow }
+        guard ExportQuitConfirmation.allowsQuit(session.exportJobs.runningJobs) else {
+            return .terminateCancel
+        }
 
         terminationTask = Task { @MainActor [weak self] in
             // A caption or text layer still being typed into is saved first.
             await session.commitTyping()
             let shouldTerminate = await session.prepareForTermination()
+            if shouldTerminate {
+                // A canceled export deletes its staged file and intermediate on
+                // the way out. Exiting first would leave both on disk.
+                await session.exportJobs.cancelAll(waitingAtMost: .seconds(5))
+                NativeAnalytics.shared.flush()
+            }
             self?.terminationTask = nil
-            if shouldTerminate { NativeAnalytics.shared.flush() }
             sender.reply(toApplicationShouldTerminate: shouldTerminate)
         }
         return .terminateLater
@@ -44,6 +56,7 @@ struct YapperNativeApp: App {
     @AppStorage("studioColorScheme") private var themeRaw = StudioTheme.dark.rawValue
 
     init() {
+        OverlayScrollers.enforce()
         let session = EditorSession()
         _session = StateObject(wrappedValue: session)
         appDelegate.session = session
@@ -62,10 +75,17 @@ struct YapperNativeApp: App {
             AppShellView(session: session)
                 .frame(minWidth: 1_100, minHeight: 700)
                 .preferredColorScheme(theme.colorScheme)
+                // System controls (sliders, progress bars, pop-up menus) take
+                // the app's ink rather than the Mac's accent colour, so they
+                // match the controls drawn by hand.
+                .tint(Color.studioAccent)
                 .onOpenURL { url in
-                    // A project double-clicked in Finder, or the sign-in ticket.
+                    // A project double-clicked in Finder, a video, image or
+                    // sound opened with Yapper, or the sign-in ticket.
                     if url.isFileURL, ProjectPackage.isPackage(url) {
                         Task { await session.openProject(ProjectPackage(url: url)) }
+                    } else if url.isFileURL {
+                        OpenedFileImporter.shared.importOpened(url, into: session)
                     } else if let request = StudioEditorRequest(url: url) {
                         StudioWebCommands.shared.openEditor(request)
                         NSApp.activate(ignoringOtherApps: true)
@@ -79,16 +99,20 @@ struct YapperNativeApp: App {
         .commands {
             CommandGroup(replacing: .undoRedo) {
                 Button("Undo") {
+                    // A caption or text field being typed in lets go first, so
+                    // what it holds is saved and is what Undo takes back.
+                    NSApp.keyWindow?.makeFirstResponder(nil)
                     Task { await session.undo() }
                 }
                 .keyboardShortcut("z", modifiers: [.command])
-                .disabled(!session.canUndo || session.isBusy || session.isExporting)
+                .disabled(!session.canUndo || session.isBusy)
 
                 Button("Redo") {
+                    NSApp.keyWindow?.makeFirstResponder(nil)
                     Task { await session.redo() }
                 }
                 .keyboardShortcut("z", modifiers: [.command, .shift])
-                .disabled(!session.canRedo || session.isBusy || session.isExporting)
+                .disabled(!session.canRedo || session.isBusy)
             }
             CommandGroup(after: .toolbar) {
                 Button("Audio library") {

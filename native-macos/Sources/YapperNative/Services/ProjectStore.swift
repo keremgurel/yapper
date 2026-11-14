@@ -16,18 +16,26 @@ actor ProjectStore: ProjectPersisting {
     private let directoryURL: URL
     private let primaryName: String
     private let backupName: String
+    private let createsParentFolders: Bool
     private var pendingRecoveryNotice: String?
 
     /// The shared store keeps the legacy single-project file names; a project
     /// package names its files for what they are inside the package folder.
+    ///
+    /// A package store passes `createsParentFolders: false`. Its folder may be
+    /// made again, but never the folders above it: a projects folder that was
+    /// renamed, or a cloud folder that went away, would otherwise come back
+    /// as an empty stand-in holding one stub project, and read as fine.
     init(
         directory: URL = ProjectStore.directory,
         primaryName: String = "CurrentProject.json",
-        backupName: String = "CurrentProject.backup.json"
+        backupName: String = "CurrentProject.backup.json",
+        createsParentFolders: Bool = true
     ) {
         directoryURL = directory
         self.primaryName = primaryName
         self.backupName = backupName
+        self.createsParentFolders = createsParentFolders
     }
 
     private let encoder: JSONEncoder = {
@@ -135,10 +143,12 @@ actor ProjectStore: ProjectPersisting {
 
     func save(_ project: EditorProject) async throws {
         let directory = directoryURL
-        try FileManager.default.createDirectory(
-            at: directory,
-            withIntermediateDirectories: true
-        )
+        if createsParentFolders || !FileManager.default.fileExists(atPath: directory.path) {
+            try FileManager.default.createDirectory(
+                at: directory,
+                withIntermediateDirectories: createsParentFolders
+            )
+        }
         let next = try encoder.encode(project)
         _ = try decoder.decode(EditorProject.self, from: next)
 

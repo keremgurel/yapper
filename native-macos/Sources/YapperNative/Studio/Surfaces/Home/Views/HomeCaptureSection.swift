@@ -28,7 +28,7 @@ struct HomeCaptureSection: View {
                         .clickableCursor()
                 }
             }
-            .font(.system(size: 12))
+            .font(.studioLabel)
             .foregroundStyle(.secondary)
             .frame(minHeight: 18)
             .padding(.horizontal, 4)

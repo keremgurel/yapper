@@ -106,9 +106,11 @@ extension TextAppearance {
         shadowEnabled: true
     )
 
+    /// A new hook opens on the Modern face at inspector size 33 (the UI shows
+    /// font scale times 1000).
     static let hookDefault = TextAppearance(
-        font: .rounded,
-        fontScale: 0.043,
+        font: .modern,
+        fontScale: 0.033,
         color: .black,
         backgroundEnabled: true,
         backgroundColor: StudioColor.white.withOpacity(0.96),

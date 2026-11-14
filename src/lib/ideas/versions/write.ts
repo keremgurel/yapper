@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import type { VersionFormat } from "@/lib/content/formats";
 import type { PromptContext } from "@/lib/ideas/expand-prompt";
 import { dropRestatedOpener, matchPillar } from "@/lib/ideas/expansion-guards";
@@ -59,7 +60,7 @@ export async function writeVersion(
   context: PromptContext,
   signal?: AbortSignal,
 ): Promise<WrittenVersion> {
-  const key = process.env.SURPLUS_API_KEY;
+  const key = surplusKey("ideas");
   if (!key) throw new Error("no_provider");
   const base =
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";

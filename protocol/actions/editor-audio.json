@@ -47,7 +47,7 @@
       "id": "editor.audio.trim",
       "symbol": "audioTrim",
       "input": "AudioTrimInput",
-      "description": "Set the source in point, duration and/or timeline start of existing audio layers, as dragging an edge or the body of a sound on the timeline does. Only supplied fields change; volume and speed are kept. sourceStart is recording seconds; duration and timelineStart are timeline seconds.",
+      "description": "Set source in point and/or duration of existing audio layers. Preserve volume and speed. SourceStart is recording seconds; duration is timeline seconds.",
       "effect": "reversibleEdit",
       "requiresRebuild": true
     },
@@ -211,7 +211,8 @@
         "timelineStart": {
           "type": "number",
           "minimum": 0,
-          "maximum": 86400
+          "maximum": 86400,
+          "description": "Timeline seconds where the sounds start. Alone it moves them; with sourceStart and duration it trims their leading edge, as dragging a sound's left edge does. Leave it out to keep their timeline position."
         }
       }
     },

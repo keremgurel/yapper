@@ -109,12 +109,49 @@ extension AppActionRegistry {
 
     private func registerProjectBackdrop() {
         register(ProjectBackdropInput.self, availability: { _ in .available }) { session, input in
-            guard let color = StudioColor(hex: input.color) else {
+            if input.preset == nil, input.color == nil, let colors = input.presetColors {
+                guard let preset = session.project.backdropPreset else {
+                    throw AppActionError("Colours apply to a preset backdrop. Choose a preset first.")
+                }
+                guard colors.count <= preset.defaultColors.count, colors.allSatisfy(BackdropPreset.isHex) else {
+                    throw AppActionError("\(preset.title) takes up to \(preset.defaultColors.count) colours as #RRGGBB: \(preset.colorNames.joined(separator: ", ")).")
+                }
+                let before = preset.resolvedColors(session.project.backdropPresetColors)
+                let after = colors.isEmpty ? nil : preset.resolvedColors(colors)
+                session.updateProject { project in
+                    project.backdropPresetColors = after
+                    project.updatedAt = Date()
+                }
+                return AppActionMutation(message: "\(preset.title) colours saved",
+                    changes: [.init(targetID: session.project.id, property: "backdropPresetColors",
+                                    before: before.joined(separator: " "), after: (after ?? preset.defaultColors).joined(separator: " "))])
+            }
+            if let token = input.preset {
+                guard input.color == nil else { throw AppActionError("Send a colour or a preset, not both.") }
+                let preset = BackdropPreset(rawValue: token)
+                guard token == "none" || preset != nil else { throw AppActionError("Choose none or one of the backdrop presets.") }
+                let before = session.project.backdropPreset
+                guard before != preset else { return AppActionMutation(message: "The backdrop is already \(preset?.title ?? "a colour").") }
+                session.updateProject { project in
+                    project.backdropPreset = preset
+                    project.backdropPresetColors = nil
+                    project.updatedAt = Date()
+                }
+                return AppActionMutation(message: "Backdrop \(preset?.title ?? session.project.resolvedBackdrop.hex)",
+                    changes: [.init(targetID: session.project.id, property: "backdropPreset",
+                                    before: before?.rawValue ?? "none", after: token)])
+            }
+            guard let hex = input.color, let color = StudioColor(hex: hex) else {
                 throw AppActionError("color must be a hex colour such as #FF7A21.")
             }
             let before = session.project.resolvedBackdrop
-            guard before != color else { return AppActionMutation(message: "The backdrop is already \(color.hex).") }
+            guard before != color || session.project.backdropPreset != nil else {
+                return AppActionMutation(message: "The backdrop is already \(color.hex).")
+            }
             session.updateProject { project in
+                // A colour picked is a colour wanted, over any preset.
+                project.backdropPreset = nil
+                project.backdropPresetColors = nil
                 // Black is what the frame was filled with before there was a
                 // choice, so choosing it is stored as no choice at all.
                 project.backdrop = color == .black ? nil : color

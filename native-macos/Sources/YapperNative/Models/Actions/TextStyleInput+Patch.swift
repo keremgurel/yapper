@@ -18,7 +18,9 @@ extension TextStylePatch {
             width: input.width,
             rotation: input.rotation,
             font: input.font.flatMap { TextLayerFont(rawValue: $0.rawValue) },
-            fontScale: input.fontScale,
+            // The size the inspector shows is exact; a model's own division
+            // of 33 by 1080 gave 0.0306 for "size 33".
+            fontScale: input.size.map { Double($0) / 1000 } ?? input.fontScale,
             textCase: input.textCase.flatMap { TextCasing(rawValue: $0.rawValue) },
             color: try color(input.color, "color"),
             strokeEnabled: input.strokeEnabled,
@@ -44,6 +46,7 @@ extension TextStyleInput {
             rotation: patch.rotation,
             font: patch.font.flatMap { TextFontChoice(rawValue: $0.rawValue) },
             fontScale: patch.fontScale,
+            size: nil,
             textCase: patch.textCase.flatMap { TextCaseChoice(rawValue: $0.rawValue) },
             color: patch.color?.hex,
             strokeEnabled: patch.strokeEnabled,

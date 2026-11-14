@@ -1,5 +1,6 @@
 import type { OverlayScene, SceneNode, SceneProperty } from "./scene-types";
 import { SCENE_LIMITS } from "./scene-limits";
+import { sceneNumberText } from "./scene-number-text";
 
 type Box = { x: number; y: number; width: number; height: number };
 export interface QualityContext {
@@ -129,10 +130,7 @@ export function sceneQualityIssues(
         const texts =
           n.type === "text"
             ? [n.uppercase ? n.text.toUpperCase() : n.text]
-            : [n.from, n.to].map(
-                (v) =>
-                  `${n.prefix}${new Intl.NumberFormat("en-US", { maximumFractionDigits: n.format === "decimal1" ? 1 : 0 }).format(v)}${n.suffix}${n.format === "percent" ? "%" : ""}`,
-              );
+            : [n.from, n.to].map((v) => sceneNumberText(n, v));
         const font = n.size * context.heightPx;
         let lines = 1;
         for (const text of texts) {

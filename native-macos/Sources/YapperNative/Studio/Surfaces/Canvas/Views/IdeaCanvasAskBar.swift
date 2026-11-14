@@ -14,8 +14,8 @@ struct IdeaCanvasAskBar: View {
             if let target = targetBlock {
                 HStack(spacing: 6) {
                     Text("Changing \(target.label.isEmpty ? "this part" : target.label)")
-                        .font(.system(size: 12, weight: .medium))
-                    Button { bar.targetID = nil } label: { Image(systemName: "xmark").font(.system(size: 11, weight: .semibold)) }
+                        .font(.studioLabelStrong)
+                    Button { bar.targetID = nil } label: { Image(systemName: "xmark").font(.studioCaptionStrong) }
                         .buttonStyle(.studioPlain)
                         .help("Ask about the whole piece instead")
                 }
@@ -39,7 +39,7 @@ struct IdeaCanvasAskBar: View {
                         .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                         .disabled(bar.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-                Button { bar.close() } label: { Image(systemName: "xmark").font(.system(size: 12, weight: .medium)) }
+                Button { bar.close() } label: { Image(systemName: "xmark").font(.studioLabelStrong) }
                     .buttonStyle(EditorGhostButtonStyle(size: .small))
                     .help("Close (Esc)")
             }
@@ -54,12 +54,12 @@ struct IdeaCanvasAskBar: View {
 
     @ViewBuilder private var status: some View {
         if let error = runner.error {
-            Text(error.message).font(.system(size: 12)).foregroundStyle(Color.studioDanger)
+            Text(error.message).font(.studioLabel).foregroundStyle(Color.studioDanger)
         } else if runner.busy {
-            Text("Chirpy is working on it…").font(.system(size: 12)).foregroundStyle(.secondary)
+            Text("Chirpy is working on it…").font(.studioLabel).foregroundStyle(.secondary)
         } else if let reply = runner.lastReply {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(reply).font(.system(size: 13)).lineLimit(3).frame(maxWidth: .infinity, alignment: .leading)
+                Text(reply).font(.studioBody).lineLimit(3).frame(maxWidth: .infinity, alignment: .leading)
                 if runner.undo != nil {
                     Button(action: runner.undoLast) { Label("Undo", systemImage: "arrow.uturn.backward") }
                         .buttonStyle(EditorGhostButtonStyle(size: .mini))

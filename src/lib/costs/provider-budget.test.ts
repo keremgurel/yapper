@@ -86,6 +86,7 @@ it("covers each paid provider and leaves ordinary storage/social reads alone", (
   for (const url of [
     "https://api.deepgram.com/v1/listen",
     "https://api.groq.com/openai/v1/audio/transcriptions",
+    "https://api.elevenlabs.io/v1/speech-to-text",
     "https://generativelanguage.googleapis.com/v1/models/image:generateContent",
     "https://api.surplusintelligence.ai/v1/images/edits",
     "https://api.surplusintelligence.ai/v1/images/generations",
@@ -164,4 +165,43 @@ it("a Chat Completions reply settles its worst-case admission to the tokens it u
   const windows = await db.select().from(schema.providerSpendWindows);
   expect(windows).toHaveLength(2);
   for (const window of windows) expect(window.reservedMicrousd).toBe(4000);
+});
+
+it("a day of transcription claims what the audio cost, not a dollar a call", async () => {
+  vi.stubEnv("NEXT_PUBLIC_POSTHOG_KEY", "");
+  vi.stubEnv("PROVIDER_DAILY_BUDGET_USD", "25");
+  // Two minutes heard on every call, as a Mac app piece is.
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => Response.json({ metadata: { duration: 120 } })),
+  );
+  // Forty pieces is one hour-long take. At a dollar each the 26th was refused.
+  for (let piece = 0; piece < 40; piece++)
+    await fetchBoundedJson(
+      "https://api.deepgram.com/v1/listen?model=nova-3",
+      { method: "POST", body: JSON.stringify({ url: "https://r2.test/a" }) },
+      { timeoutMs: 1000, maxBytes: 10_000 },
+    );
+  const windows = await db.select().from(schema.providerSpendWindows);
+  expect(windows).toHaveLength(2);
+  // 40 x 2 minutes x $0.0043.
+  for (const window of windows) {
+    expect(window.reservedMicrousd).toBe(344_000);
+    expect(window.attempts).toBe(40);
+  }
+});
+
+it("a failed transcription keeps its whole reservation", async () => {
+  vi.stubEnv("NEXT_PUBLIC_POSTHOG_KEY", "");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => Response.json({ err_msg: "bad audio" }, { status: 400 })),
+  );
+  await fetchBoundedJson(
+    "https://api.deepgram.com/v1/listen?model=nova-3",
+    { method: "POST", body: JSON.stringify({ url: "https://r2.test/a" }) },
+    { timeoutMs: 1000, maxBytes: 10_000 },
+  );
+  for (const window of await db.select().from(schema.providerSpendWindows))
+    expect(window.reservedMicrousd).toBe(1_000_000);
 });

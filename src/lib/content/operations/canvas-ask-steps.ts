@@ -32,6 +32,7 @@ import {
   type OperationResult,
 } from "@/lib/http/operation-result";
 import { guardProviderSpend } from "@/lib/provider-rate-limit";
+import { surplusKey } from "@/lib/providers/surplus-key";
 
 export const KEY_POINTS_ASK = "Give me the key points as bullets";
 
@@ -60,7 +61,7 @@ export async function openCanvasAsk(
     return refused(402, "insufficient_credits");
   const item = await getContentItem(userId, ideaID);
   if (!item) return refused(404, "not_found");
-  if (!process.env.SURPLUS_API_KEY) return refused(501, "no_provider");
+  if (!surplusKey("ideas")) return refused(501, "no_provider");
   const spendLimited = await guardProviderSpend(
     request,
     userId,

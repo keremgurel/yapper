@@ -22,11 +22,11 @@ extension AppActionRegistry {
             return try session.mutateActionOverlays(updated, message: input.fit == .full ? "Overlays set to full frame" : "Overlay framing saved")
         }
         register(OverlayPropertiesInput.self, availability: { _ in .available }) { session, input in
-            guard input.hidden != nil || input.behindSpeaker != nil || input.sourceStart != nil || input.timelineStart != nil || input.duration != nil || input.track != nil else {
+            guard input.hidden != nil || input.behindSpeaker != nil || input.backdrop != nil || input.backdropColors != nil || input.backdropMediaID != nil || input.sourceStart != nil || input.timelineStart != nil || input.duration != nil || input.track != nil else {
                 throw AppActionError("Include an overlay property to change.")
             }
             let targets = try session.actionOverlays(input.overlayIDs, all: input.all == true)
-            let updated = try targets.map { overlay in
+            var updated = try targets.map { overlay in
                 guard let media = session.media(for: overlay) else { throw AppActionError("The overlay source is missing.") }
                 if input.behindSpeaker == true && media.isScene {
                     throw AppActionError("Generated overlays currently sit in front of the video.")
@@ -34,31 +34,59 @@ extension AppActionRegistry {
                 var copy = overlay
                 if let hidden = input.hidden { copy.isHidden = hidden ? true : nil }
                 if let behind = input.behindSpeaker { copy.behindSpeaker = behind ? true : nil }
+                if let token = input.backdrop {
+                    if token == "image" {
+                        guard let id = input.backdropMediaID,
+                              let picture = session.project.media.first(where: { $0.id == id }), picture.isImage else {
+                            throw AppActionError("An image backdrop needs backdropMediaID: a picture already in the project's media.")
+                        }
+                        _ = picture
+                        copy.backdrop = .image(id)
+                    } else {
+                        guard token == "none" || OverlayBackdrop(token: token) != nil else {
+                            throw AppActionError("Choose none, frosted, image or one of the backdrop presets.")
+                        }
+                        copy.backdrop = OverlayBackdrop(token: token)
+                    }
+                } else if input.backdropMediaID != nil {
+                    throw AppActionError("Send backdrop: image with backdropMediaID.")
+                }
+                if let colors = input.backdropColors {
+                    guard copy.backdrop?.kind == .preset, let preset = copy.backdrop?.preset else {
+                        throw AppActionError("Colours apply to a preset backdrop. Choose a preset first.")
+                    }
+                    guard colors.count <= preset.defaultColors.count, colors.allSatisfy(BackdropPreset.isHex) else {
+                        throw AppActionError("\(preset.title) takes up to \(preset.defaultColors.count) colours as #RRGGBB: \(preset.colorNames.joined(separator: ", ")).")
+                    }
+                    copy.backdrop?.colors = colors.isEmpty ? nil : preset.resolvedColors(colors)
+                }
                 if let start = input.timelineStart { copy.timelineStart = start }
                 if let duration = input.duration { copy.duration = duration }
                 if let start = input.sourceStart { copy.sourceStart = start }
                 if let track = input.track { copy.track = track == 0 ? nil : track }
-                // The leading edge moved and the end stayed put: a trim, so the
-                // keyframes stay where they were on the timeline, as they do
-                // when the edge is dragged.
-                if copy.timelineStart != overlay.timelineStart,
-                   abs(copy.timelineStart + copy.duration - (overlay.timelineStart + overlay.duration)) < 0.000_001 {
+                // The left edge moved rather than the overlay: keyframes stay at
+                // the same moments on the timeline, as they do when the edge is
+                // dragged. Asked for, never inferred, so a start typed into the
+                // inspector still moves the overlay with its keys.
+                if input.leadingTrim == true, copy.timelineStart != overlay.timelineStart {
                     copy = OverlayKeyTrack.rebased(copy, by: copy.timelineStart - overlay.timelineStart)
                 }
                 if input.timelineStart != nil || input.duration != nil || input.sourceStart != nil {
-                    guard copy.timelineStart + copy.duration <= session.duration + 0.000001,
-                          media.isImage || copy.sourceStart + copy.sourceDuration <= media.duration + 0.000001 else {
-                        throw AppActionError("Keep the overlay inside the timeline and its source media.")
+                    guard let fitted = OverlaySpanBounds.fitted(duration: copy.duration, start: copy.timelineStart,
+                        sourceStart: copy.sourceStart, mediaDuration: media.isImage ? nil : media.duration,
+                        rate: copy.duration > 0 ? copy.sourceDuration / copy.duration : 1,
+                        timelineDuration: session.duration) else {
+                        throw AppActionError(OverlaySpanBounds.refusal(media: media, sourceStart: copy.sourceStart))
                     }
+                    copy.duration = fitted
                 }
                 return copy
             }
             if input.track != nil || input.timelineStart != nil || input.duration != nil {
                 let ids = Set(targets.map(\.id))
-                let final = session.overlays.filter { !ids.contains($0.id) } + updated
-                guard !updated.contains(where: { OverlayTracks.isOccupied($0.lane, by: ($0.id, $0.timelineStart, $0.duration), in: final) }) else {
-                    throw AppActionError("That overlay lane is occupied at the requested time.")
-                }
+                updated = try OverlayLaneFit.settle(updated, among: session.overlays.filter { !ids.contains($0.id) },
+                                                    keepingRequestedLane: input.track != nil,
+                                                    name: { session.media(for: $0)?.name ?? "That overlay" })
             }
             return try session.mutateActionOverlays(updated, message: "Overlay properties saved")
         }
@@ -71,12 +99,26 @@ extension AppActionRegistry {
             let start = min(time, max(0, session.duration - 0.1))
             let source = input.sourceStart ?? 0
             let available = media.isImage ? EditorSession.imageClipDefaultDuration : media.duration - source
-            let duration = input.duration ?? min(session.duration - start, available)
-            guard duration >= 0.1, start + duration <= session.duration + 0.000001,
-                  media.isImage || source + duration <= media.duration + 0.000001 else {
-                throw AppActionError("Keep the overlay inside the timeline and its source media.")
+            let duration: Double
+            if let until = input.until {
+                // The end is resolved, never computed by the planner: a "while I
+                // say X" placement once ran its whole 13.3 s source over two
+                // later overlays because the arithmetic was off.
+                guard input.duration == nil else { throw AppActionError("Send duration or until, not both.") }
+                let end = try TimelineCue.resolveEnd(until, after: start, project: session.project, playhead: session.currentTime)
+                duration = min(end, session.duration) - start
+                guard duration >= 0.1 else { throw AppActionError("The overlay has to end after it starts.") }
+                guard media.isImage || source + duration <= media.duration + OverlaySpanBounds.tolerance else {
+                    throw AppActionError("\(media.name) is \(String(format: "%.1f", available)) s long, shorter than the \(String(format: "%.1f", duration)) s it would have to cover. Choose an earlier end or a longer clip.")
+                }
+            } else {
+                duration = input.duration ?? min(session.duration - start, available)
             }
-            let overlay = session.introducedOverlay(media: media, timelineStart: start, duration: duration, sourceStart: source)
+            guard let fitted = OverlaySpanBounds.fitted(duration: duration, start: start, sourceStart: source,
+                mediaDuration: media.isImage ? nil : media.duration, timelineDuration: session.duration) else {
+                throw AppActionError(OverlaySpanBounds.refusal(media: media, sourceStart: source))
+            }
+            let overlay = session.introducedOverlay(media: media, timelineStart: start, duration: fitted, sourceStart: source)
             session.updateProject { $0.overlays = ($0.overlays ?? []) + [overlay] }
             return .init(message: "Overlay added · ⌘Z to undo", changes: [.init(targetID: overlay.id, property: "overlay", before: "none", after: media.name)],
                          afterCommit: { session.selectTimelineItem(.overlay(overlay.id)); session.requestInspector("Overlays") })
@@ -167,9 +209,34 @@ extension OverlayFrameInput {
 }
 
 extension OverlayPropertiesInput {
+    /// Visibility, depth, timing and lane, leaving the backdrop alone. A plain
+    /// move or edit unless `leadingTrim` says the left edge was dragged.
+    init(overlayIDs: [UUID], all: Bool?, hidden: Bool?, behindSpeaker: Bool?, sourceStart: Double?,
+         timelineStart: Double?, duration: Double?, track: Int?, leadingTrim: Bool? = nil) {
+        self.init(overlayIDs: overlayIDs, all: all, hidden: hidden, behindSpeaker: behindSpeaker, backdrop: nil,
+                  backdropColors: nil, backdropMediaID: nil, sourceStart: sourceStart, timelineStart: timelineStart,
+                  duration: duration, track: track, leadingTrim: leadingTrim)
+    }
+
+    /// Every field but `leadingTrim`: the overlay moves with its keyframes.
+    init(overlayIDs: [UUID], all: Bool?, hidden: Bool?, behindSpeaker: Bool?, backdrop: String?, backdropColors: [String]?,
+         backdropMediaID: UUID?, sourceStart: Double?, timelineStart: Double?, duration: Double?, track: Int?) {
+        self.init(overlayIDs: overlayIDs, all: all, hidden: hidden, behindSpeaker: behindSpeaker, backdrop: backdrop,
+                  backdropColors: backdropColors, backdropMediaID: backdropMediaID, sourceStart: sourceStart,
+                  timelineStart: timelineStart, duration: duration, track: track, leadingTrim: nil)
+    }
+
+    /// What fills the frame behind one card, and nothing else about it.
+    init(backdrop: OverlayBackdrop?, on overlayID: UUID) {
+        self.init(overlayIDs: [overlayID], all: nil, hidden: nil, behindSpeaker: nil, backdrop: backdrop?.token ?? "none",
+                  backdropColors: backdrop?.colors, backdropMediaID: backdrop?.mediaID, sourceStart: nil,
+                  timelineStart: nil, duration: nil, track: nil, leadingTrim: nil)
+    }
+
     /// What a timeline drag or the lane menu changed on an overlay, or nil
-    /// when it changed none of these.
-    init?(timingOf updated: ProjectOverlay, from existing: ProjectOverlay) {
+    /// when it changed none of these. `leadingTrim` is the drag on its left
+    /// edge, which keeps keyframes where they were on the timeline.
+    init?(timingOf updated: ProjectOverlay, from existing: ProjectOverlay, leadingTrim: Bool = false) {
         func changed(_ value: Double, _ old: Double, _ range: ClosedRange<Double>) -> Double? {
             value == old ? nil : min(range.upperBound, max(range.lowerBound, value))
         }
@@ -180,7 +247,8 @@ extension OverlayPropertiesInput {
         let duration = changed(updated.duration, existing.duration, 0.1 ... 86_400)
         guard hidden != nil || track != nil || sourceStart != nil || timelineStart != nil || duration != nil else { return nil }
         self.init(overlayIDs: [existing.id], all: nil, hidden: hidden, behindSpeaker: nil, sourceStart: sourceStart,
-                  timelineStart: timelineStart, duration: duration, track: track)
+                  timelineStart: timelineStart, duration: duration, track: track,
+                  leadingTrim: leadingTrim && timelineStart != nil ? true : nil)
     }
 }
 

@@ -17,6 +17,7 @@ import {
   type OperationResult,
 } from "@/lib/http/operation-result";
 import { guardProviderSpend } from "@/lib/provider-rate-limit";
+import { surplusKey } from "@/lib/providers/surplus-key";
 
 export interface ClipBrainstorm {
   messages: ChatMessage[];
@@ -39,7 +40,7 @@ export async function brainstormClip(
 ): Promise<
   OperationResult<{ reply: string; balance: number; used: BrainUsed }>
 > {
-  if (!process.env.SURPLUS_API_KEY) return refused(501, "no_provider");
+  if (!surplusKey("ideas")) return refused(501, "no_provider");
   const billing = await preflightPaidActionOrResponse(userId, "brainstorm");
   if (billing) return refusedBy(billing);
 

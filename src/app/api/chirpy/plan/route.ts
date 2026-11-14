@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import {
@@ -33,7 +34,7 @@ async function trackedPOST(req: Request): Promise<Response> {
     const reply = await withPlanLedger(userId, input, async () => {
       if (!(await canUsePremium(userId)))
         throw Response.json({ error: "not_entitled" }, { status: 402 });
-      if (!process.env.SURPLUS_API_KEY)
+      if (!surplusKey("chirpy"))
         throw Response.json({ error: "no_provider" }, { status: 501 });
       const limited = await guardProviderSpend(req, userId, "chirpy-plan");
       if (limited) throw limited;
@@ -48,10 +49,14 @@ async function trackedPOST(req: Request): Promise<Response> {
       return Response.json({ error: "insufficient_credits" }, { status: 402 });
     if (error instanceof PlanConflict)
       return Response.json({ error: "execution_conflict" }, { status: 409 });
-    console.error(
-      "[chirpy/plan] failed",
-      error instanceof Error ? error.message : "unknown",
-    );
+    console.error("[chirpy/plan] failed", {
+      reason: error instanceof Error ? error.message : "unknown",
+      name: error instanceof Error ? error.name : typeof error,
+      cause:
+        error instanceof Error && error.cause instanceof Error
+          ? error.cause.message
+          : undefined,
+    });
     const reason =
       error instanceof Error && error.message === "invalid_action_plan"
         ? "invalid_action_plan"

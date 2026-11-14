@@ -24,7 +24,7 @@ struct AutomationRuleCard: View {
             Divider()
             NativeField(label: "Source") {
                 Text("Instagram · \(accounts.label("instagram"))")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.studioBodyStrong)
             }
             NativeField(label: "Send new videos to") {
                 HStack(spacing: 8) {

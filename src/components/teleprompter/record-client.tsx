@@ -115,7 +115,9 @@ export default function RecordClient({
   if (setup)
     return (
       <section className="mx-auto flex w-full max-w-3xl flex-col gap-4 py-6">
-        <h1 className="text-[22px] font-semibold">Recorder</h1>
+        <h1 className="font-display text-2xl font-normal tracking-[-0.02em]">
+          Recorder
+        </h1>
         <p className="text-muted-foreground">
           Choose an idea or paste a script to rehearse with the teleprompter.
         </p>

@@ -56,11 +56,12 @@ struct HomeStatsBand: View {
                     .contentTransition(.numericText())
             }
             Text(block.detail ?? " ")
-                .font(.system(size: 12))
+                .font(.studioLabel)
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 18)
         .padding(.vertical, 16)
     }
@@ -81,7 +82,7 @@ struct HomeStatsBand: View {
             }
             Spacer(minLength: 0)
         }
-        .font(.system(size: 12))
+        .font(.studioLabel)
         .foregroundStyle(.secondary)
         .padding(.horizontal, 18)
         .padding(.vertical, 12)

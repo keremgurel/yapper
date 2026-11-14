@@ -19,7 +19,7 @@ struct StorageMediaSection: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Video storage").font(.nativeSectionTitle)
                     Text("Current videos, scheduled posts and publishing retries.")
-                        .font(.system(size: 12))
+                        .font(.studioLabel)
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
@@ -31,7 +31,7 @@ struct StorageMediaSection: View {
                 .buttonStyle(EditorGhostButtonStyle(size: .small))
             }
             Text("Editor exports appear in Made in Yapper. Direct uploads appear in Uploads. Cross-post imports come from your connected platforms. Manage videos shows every stored cloud video.")
-                .font(.system(size: 12)).foregroundStyle(.secondary)
+                .font(.studioLabel).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             LazyVGrid(columns: columns, spacing: 12) {
                 StorageMediaTile(
@@ -80,10 +80,10 @@ private struct StorageMediaTile: View {
                     .font(.system(size: 17, weight: .semibold).monospacedDigit())
             }
             Text(label)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.studioBodyStrong)
                 .padding(.top, 14)
             Text(detail)
-                .font(.system(size: 12))
+                .font(.studioLabel)
                 .foregroundStyle(.secondary)
                 .padding(.top, 2)
         }

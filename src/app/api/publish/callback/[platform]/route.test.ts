@@ -133,3 +133,25 @@ it.each([
     expect(mocks.save).not.toHaveBeenCalled();
   },
 );
+
+it("returns a Poster connection to the same source after consent", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(fullGrant))
+      .mockResolvedValueOnce(Response.json({ items: [{ id: "channel" }] })),
+  );
+  const response = await GET(
+    new Request(
+      "https://ypr.app/api/publish/callback/youtube?code=code&state=nonce",
+      {
+        headers: { cookie: "publish_state_youtube=nonce.poster" },
+      },
+    ),
+    { params: Promise.resolve({ platform: "youtube" }) },
+  );
+  expect(response.headers.get("location")).toBe(
+    "https://ypr.app/studio/poster?source=youtube&connected=youtube",
+  );
+});

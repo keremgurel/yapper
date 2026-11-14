@@ -14,7 +14,7 @@ struct PosterCaptionBriefView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .top) {
                     Text("Controls captions, hashtags, and the YouTube title. Add context or requests.")
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                        .font(.studioLabel).foregroundStyle(.secondary)
                     Spacer()
                     if customized {
                         Button("Reset", systemImage: "arrow.counterclockwise") { onChange(PosterCaptionBrief.standard) }
@@ -25,11 +25,11 @@ struct PosterCaptionBriefView: View {
                 NativeTextArea(
                     text: Binding(get: { value }, set: { onChange(String($0.prefix(2000))) }),
                     placeholder: "Add context: audience, offer, call to action, keywords, tone, hashtags, or anything to avoid",
-                    font: .system(size: 13),
+                    font: .studioBody,
                     minHeight: 120
                 )
                 .disabled(disabled)
-                Text("\(value.count)/2000").font(.system(size: 11).monospacedDigit()).foregroundStyle(.secondary)
+                Text("\(value.count)/2000").font(.studioCaption.monospacedDigit()).foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }

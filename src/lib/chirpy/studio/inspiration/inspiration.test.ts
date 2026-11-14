@@ -6,6 +6,7 @@ import { captureAction } from "../ideas/capture";
 import { studioRequest, type StudioOverview } from "../planner";
 import { parseStudioTurnInput, type StudioTurnInput } from "../wire";
 import { brainstormAction } from "./brainstorm";
+import { inspirationFocus, noteInspirationFocus } from "./focus-client";
 
 vi.mock("@/lib/content/operations/brainstorm", () => ({
   brainstormClip: vi.fn(),
@@ -81,6 +82,37 @@ describe("the open inspiration item", () => {
       note: CLIP.note,
     });
     expect(JSON.stringify(request)).not.toContain("Most lifters");
+  });
+});
+
+describe("the card the Inspiration tab remembers", () => {
+  const card = {
+    id: "item_1",
+    kind: "video" as const,
+    pillarId: null,
+    createdAt: 0,
+    ...CLIP,
+    platform: "youtube" as const,
+  };
+
+  it("is cut to what the server keeps, so a long transcript fits the turn", () => {
+    // An hour of talk is well past the turn's 64 KB body limit on its own.
+    noteInspirationFocus({ ...card, transcript: "x".repeat(200_000) });
+    const sent = inspirationFocus();
+    expect(sent?.transcript).toHaveLength(12_000);
+    expect(
+      parseStudioTurnInput({ ...input, focus: { inspiration: sent } })?.focus
+        ?.inspiration,
+    ).toEqual(sent);
+    const body = JSON.stringify({ ...input, focus: { inspiration: sent } });
+    expect(new TextEncoder().encode(body).length).toBeLessThan(64 * 1024);
+  });
+
+  it("forgets a card the server would refuse instead of failing every turn", () => {
+    noteInspirationFocus(card);
+    expect(inspirationFocus()).toEqual(CLIP);
+    noteInspirationFocus({ ...card, url: "instagram.com/reel/abc" });
+    expect(inspirationFocus()).toBeNull();
   });
 });
 

@@ -22,10 +22,10 @@ struct PosterDestinationCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
-                Image(systemName: readiness.platform.symbol).font(.system(size: 13)).foregroundStyle(.secondary)
+                Image(systemName: readiness.platform.symbol).font(.studioBody).foregroundStyle(.secondary)
                 Button { expanded.toggle() } label: {
                     Label(readiness.spec.label, systemImage: expanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.studioBodyStrong)
                 }
                 .buttonStyle(.studioPlain)
                 .accessibilityLabel("\(expanded ? "Collapse" : "Edit") \(readiness.spec.label) caption")
@@ -33,7 +33,7 @@ struct PosterDestinationCard: View {
                 Spacer()
                 NativeChip(text: sending ? "Sending" : readiness.state.label, tone: sending ? .neutral : readiness.state.tone)
                 if !done {
-                    Button(action: onRemove) { Image(systemName: "xmark").font(.system(size: 11, weight: .semibold)) }
+                    Button(action: onRemove) { Image(systemName: "xmark").font(.studioCaptionStrong) }
                         .buttonStyle(EditorGhostButtonStyle(size: .mini))
                         .help("Remove \(readiness.platform.label)")
                 }
@@ -60,16 +60,16 @@ struct PosterDestinationCard: View {
                 }
             }
             field("Caption", used: readiness.bodyUsed, max: readiness.spec.bodyMax) {
-                NativeTextArea(text: binding(\.body), placeholder: "What this says here", font: .system(size: 13), minHeight: 84)
+                NativeTextArea(text: binding(\.body), placeholder: "What this says here", font: .studioBody, minHeight: 84)
             }
-            Text(foldNote).font(.system(size: 11)).foregroundStyle(.secondary)
+            Text(foldNote).font(.studioCaption).foregroundStyle(.secondary)
             if !caption.rendered.isEmpty {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 8) { reuseButtons }
                     VStack(alignment: .leading, spacing: 8) { reuseButtons }
                 }
                 Text("Replaces captions for other selected destinations. Copying keeps their titles.")
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    .font(.studioCaption).foregroundStyle(.secondary)
             }
             PosterHashtagEditor(tags: caption.hashtags, min: readiness.spec.hashtagMin, max: readiness.spec.hashtagMax) { tags in
                 var next = caption
@@ -78,7 +78,7 @@ struct PosterDestinationCard: View {
             }
             ForEach(readiness.blockers, id: \.self) { blocker in
                 Label(blocker, systemImage: "exclamationmark.triangle")
-                    .font(.system(size: 12)).foregroundStyle(NativeChip.Tone.yellow.color)
+                    .font(.studioLabel).foregroundStyle(NativeChip.Tone.yellow.color)
             }
             notes
         }
@@ -100,7 +100,7 @@ struct PosterDestinationCard: View {
         VStack(alignment: .leading, spacing: 4) {
             ForEach(readiness.notes, id: \.self) { note in
                 Label(note, systemImage: "info.circle")
-                    .font(.system(size: 12)).foregroundStyle(.secondary)
+                    .font(.studioLabel).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -117,7 +117,7 @@ struct PosterDestinationCard: View {
             HStack {
                 Text(label).font(.nativeLabel).foregroundStyle(.secondary)
                 Spacer()
-                Text("\(used)/\(max)").font(.system(size: 11).monospacedDigit())
+                Text("\(used)/\(max)").font(.studioCaption.monospacedDigit())
                     .foregroundStyle(used > max ? NativeChip.Tone.yellow.color : Color.secondary)
             }
             content()

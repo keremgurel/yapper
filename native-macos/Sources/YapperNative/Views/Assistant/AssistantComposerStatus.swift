@@ -14,7 +14,7 @@ struct AssistantComposerStatus: View {
             HStack(spacing: 8) {
                 DictationWaveform(levels: dictation.levels, height: 18)
                 Text(dictation.seconds.dictationClock)
-                    .font(.system(size: 10.5).monospacedDigit())
+                    .font(.studioCaption.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
         } else if let error = dictation.error {
@@ -34,7 +34,7 @@ struct AssistantComposerStatus: View {
 
     private func label(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 10.5))
+            .font(.studioCaption)
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
     }

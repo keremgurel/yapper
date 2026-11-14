@@ -69,20 +69,38 @@ const invoice = {
   parent: { subscription_details: { metadata: { creditGrantVersion: "2" } } },
   lines: { data: [{ pricing: { price_details: { price: "yearly" } } }] },
 };
-it("annual free trial gets 100 credits, never the 12000 annual allotment", async () => {
-  expect(
-    (
-      await send("checkout.session.completed", {
-        id: "cs_1",
-        mode: "subscription",
-        client_reference_id: "owner",
-        payment_status: "no_payment_required",
-        subscription: "sub_1",
-        metadata: { plan: "creator_yearly" },
-      })
-    ).status,
-  ).toBe(200);
-  expect(mocks.trial).toHaveBeenCalledWith("owner", 100);
+it.each(["no_payment_required", "paid"])(
+  "grants 100 trial credits for a $0 checkout with payment status %s",
+  async (paymentStatus) => {
+    expect(
+      (
+        await send("checkout.session.completed", {
+          id: "cs_1",
+          mode: "subscription",
+          client_reference_id: "owner",
+          payment_status: paymentStatus,
+          amount_total: 0,
+          subscription: "sub_1",
+          metadata: { plan: "creator_yearly" },
+        })
+      ).status,
+    ).toBe(200);
+    expect(mocks.trial).toHaveBeenCalledWith("owner", 100);
+    expect(mocks.grant).not.toHaveBeenCalled();
+  },
+);
+it("does not treat a zero-dollar checkout for an active subscription as a trial", async () => {
+  mocks.retrieve.mockResolvedValue({ status: "active" });
+  await send("checkout.session.completed", {
+    id: "cs_1",
+    mode: "subscription",
+    client_reference_id: "owner",
+    payment_status: "paid",
+    amount_total: 0,
+    subscription: "sub_1",
+    metadata: { plan: "creator_yearly" },
+  });
+  expect(mocks.trial).not.toHaveBeenCalled();
   expect(mocks.grant).not.toHaveBeenCalled();
 });
 it("paid checkout defers the full allotment to its paid invoice", async () => {
@@ -91,8 +109,11 @@ it("paid checkout defers the full allotment to its paid invoice", async () => {
     mode: "subscription",
     client_reference_id: "owner",
     payment_status: "paid",
+    amount_total: 19999,
+    subscription: "sub_1",
     metadata: { plan: "creator_yearly" },
   });
+  expect(mocks.trial).not.toHaveBeenCalled();
   expect(mocks.grant).not.toHaveBeenCalled();
   await send("invoice.paid", invoice);
   expect(mocks.grant).toHaveBeenCalledWith(

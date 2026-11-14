@@ -11,13 +11,29 @@ struct MediaWorkbench: View {
     /// True while a Finder drag is over the panel, so the whole thing lights up
     /// rather than one row of it.
     @State private var isDropTargeted = false
+    /// The part of each file chosen so far. Kept after its strip is closed, so
+    /// the choice is still there when the strip comes back.
+    @State private var trims: [UUID: MediaTrimRange] = [:]
+    /// Whether the list is narrowed to the files not on the timeline yet.
+    @State private var showsOnlyUnplaced = false
+
+    /// The one file picked, whose trim strip is open. Picking several is for
+    /// acting on them together, so no strip shows then.
+    private var trimmingID: UUID? {
+        session.mediaSelection.count == 1 ? session.mediaSelection.ids.first : nil
+    }
+
+    private var usage: [UUID: MediaUsage] {
+        MediaUsage.byMedia(clips: session.project.clips, overlays: session.overlays)
+    }
 
     private var canOverlay: Bool { !session.project.clips.isEmpty }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             header
-            if !session.mediaSelection.isEmpty {
+            // One file's actions are on its own row. The bar is for several.
+            if session.mediaSelection.count > 1 {
                 MediaSelectionBar(session: session)
             }
             if session.project.media.isEmpty {
@@ -46,93 +62,81 @@ struct MediaWorkbench: View {
     }
 
     private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Media")
-                    .font(.system(size: 15, weight: .bold))
-                Text("Drop files here")
-                    .font(.studioBody)
-                    .foregroundStyle(.secondary)
+        WorkbenchPaneHeader(
+            title: "Media",
+            detail: "Click a file to trim it before adding. Drop more in from Finder."
+        ) {
+            Button {
+                ImportPanels.openMedia(for: session)
+            } label: {
+                StudioGlyphLabel("Import", glyph: .plus, size: 13)
             }
-            Spacer()
-            Button("Import") { ImportPanels.openMedia(for: session) }
-                .buttonStyle(EditorSecondaryButtonStyle())
-                .disabled(session.isBusy)
+            .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+            .disabled(session.isBusy)
+            .help("Choose videos, pictures or audio to add to this project")
         }
     }
 
     private var list: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 10) {
-                ForEach(session.project.media) { media in
-                    MediaRow(
-                        session: session,
-                        media: media,
-                        thumbnail: session.thumbnailsByMedia[media.id]?.first,
-                        waveformProgress: session.waveformProgressByMedia[media.id],
-                        isSelected: session.isMediaSelected(media.id),
-                        canOverlay: canOverlay,
-                        onClick: { session.clickMedia(media.id, modifier: $0) }
-                    )
+        let usage = usage
+        let all = session.project.media
+        let unplaced = all.filter { usage[$0.id]?.isPlaced != true }
+        let shown = showsOnlyUnplaced ? unplaced : all
+        return VStack(alignment: .leading, spacing: 10) {
+            // Only once the question exists: some placed, some not.
+            if !unplaced.isEmpty, unplaced.count < all.count {
+                InspectorSegmentedControl(
+                    options: [
+                        .init(value: false, label: "All \(all.count)"),
+                        .init(value: true, label: "Not placed \(unplaced.count)"),
+                    ],
+                    selection: showsOnlyUnplaced
+                ) { showsOnlyUnplaced = $0 }
+            }
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 8) {
+                    ForEach(shown) { media in
+                        MediaRow(
+                            session: session,
+                            media: media,
+                            thumbnails: session.thumbnailsByMedia[media.id] ?? [],
+                            waveform: session.waveformByMedia[media.id] ?? [],
+                            waveformProgress: session.waveformProgressByMedia[media.id],
+                            isSelected: session.isMediaSelected(media.id),
+                            canOverlay: canOverlay,
+                            trim: trimBinding(for: media),
+                            isTrimming: trimmingID == media.id,
+                            usage: usage[media.id] ?? .none,
+                            onClick: { session.clickMedia(media.id, modifier: $0) }
+                        )
+                    }
                 }
             }
         }
+    }
+
+    /// Only media with a length of its own can be trimmed: a picture or a
+    /// generated visual has no start and end to move.
+    private func trimBinding(for media: ProjectMedia) -> Binding<MediaTrimRange>? {
+        guard !media.isImage, !media.isScene, media.duration > 0 else { return nil }
+        return Binding(
+            get: { trims[media.id] ?? MediaTrimRange(duration: media.duration) },
+            set: { trims[media.id] = $0 }
+        )
     }
 
     @ViewBuilder
     private var dropHighlight: some View {
         if isDropTargeted {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.yapperOrange.opacity(0.09))
+            RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
+                .fill(Color.studioAccent.opacity(0.09))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                         .strokeBorder(
-                            Color.yapperOrange.opacity(0.7),
+                            Color.studioAccent.opacity(0.7),
                             style: StrokeStyle(lineWidth: 2, dash: [7, 5])
                         )
                 }
         }
-    }
-
-}
-
-/// What the panel says before anything has been imported.
-struct MediaEmptyState: View {
-    @ObservedObject var session: EditorSession
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "plus.rectangle.on.rectangle")
-                    .font(.system(size: 23, weight: .light))
-                    .foregroundStyle(Color.yapperOrange)
-                    .frame(width: 30)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("No media yet")
-                        .font(.studioBodyStrong)
-                    Text("Drag videos or images in from Finder, or import them. They stay local on this Mac.")
-                        .font(.studioCaption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-
-            Button {
-                ImportPanels.openMedia(for: session)
-            } label: {
-                Label("Import media", systemImage: "square.and.arrow.down")
-            }
-            .buttonStyle(EditorPrimaryButtonStyle())
-            .disabled(session.isBusy)
-        }
-        .padding(16)
-        .frame(maxWidth: 440, alignment: .leading)
-        .background(Color.raisedBackground)
-        .overlay(
-            RoundedRectangle(cornerRadius: 9)
-                .stroke(Color.studioLine, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 9))
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

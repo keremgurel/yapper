@@ -17,6 +17,7 @@ export interface TikTokCreator {
 }
 export interface TikTokDirectSettings {
   privacy: TikTokPrivacy;
+  coverTimestampMs?: number;
   allowComment: boolean;
   allowDuet: boolean;
   allowStitch: boolean;
@@ -78,6 +79,13 @@ export function validateTikTokDirectSettings(
     duration > creator.max_video_post_duration_sec
   )
     return "duration_check_failed";
+  if (
+    settings.coverTimestampMs !== undefined &&
+    (!Number.isSafeInteger(settings.coverTimestampMs) ||
+      settings.coverTimestampMs < 0 ||
+      settings.coverTimestampMs >= duration * 1000)
+  )
+    return "cover_frame_invalid";
   if (typeof settings.accountId !== "string" || !settings.accountId)
     return "account_required";
   return null;

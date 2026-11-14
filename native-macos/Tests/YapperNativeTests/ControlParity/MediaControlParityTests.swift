@@ -46,6 +46,38 @@ struct MediaControlParityTests {
         #expect(ui.statusMessage.hasPrefix("Removed take.mov"))
     }
 
+    /// The trim handles on a media row add part of a file. Chirpy names the
+    /// same part in recording seconds.
+    @Test func aTrimmedAddMatchesTheMediaActionWithASourceRange() async throws {
+        let h = try await ControlParityHarness.make()
+        let (ui, _) = try await h.session(), (chat, _) = try await h.session()
+        defer { h.cleanUp(ui, chat) }
+        let range = MediaTrimRange(duration: h.video.duration).movingStart(to: 1).movingEnd(to: 2.5)
+        await ui.appendMediaToTimeline(h.video.id, range: range)
+        try await chat.chirpy(MediaEditInput(mediaIDs: [h.video.id], operation: .append, sourceStart: range.start, sourceEnd: range.end))
+        #expect(ui.lastReceipt?.action == "editor.media.edit" && ui.lastReceipt?.status == .applied)
+        let added = try #require(ui.project.clips.last), planned = try #require(chat.project.clips.last)
+        #expect(ui.project.clips.count == 3 && chat.project.clips.count == 3)
+        #expect(added.sourceStart == range.start && added.sourceEnd == range.end)
+        #expect(added.sourceStart == planned.sourceStart && added.sourceEnd == planned.sourceEnd)
+        #expect(ui.selectedClipID == added.id)
+
+        await ui.undo()
+        #expect(ui.project.clips.count == 2)
+
+        // An end past the file stops at the file; a part with no length, or a
+        // range on anything but an append, is refused before anything changes.
+        let before = parity(chat.project)
+        let long = try await chat.chirpy(MediaEditInput(mediaIDs: [h.video.id], operation: .append, sourceStart: 4, sourceEnd: 600))
+        #expect(long.status == .applied)
+        #expect(chat.project.clips.last?.sourceEnd == h.video.duration)
+        await chat.undo()
+        let empty = try await chat.chirpy(MediaEditInput(mediaIDs: [h.video.id], operation: .append, sourceStart: 3, sourceEnd: 3))
+        let misplaced = try await chat.chirpy(MediaEditInput(mediaIDs: [h.video.id], operation: .remove, sourceStart: 1, sourceEnd: nil))
+        #expect(empty.status == .rejected && misplaced.status == .rejected)
+        #expect(parity(chat.project) == before)
+    }
+
     @Test func liftingAndDroppingMatchTheTransferAction() async throws {
         let h = try await ControlParityHarness.make()
         let (ui, _) = try await h.session(), (chat, _) = try await h.session()

@@ -100,6 +100,18 @@ final class CompositionSourceCache: @unchecked Sendable {
         }
     }
 
+    /// Drops every file inside `directory`. An export builds from private
+    /// copies that it deletes when it ends; without this the cache would keep
+    /// them open, and their disk space allocated, until the project changes.
+    func forget(filesIn directory: URL) {
+        let folder = directory.standardizedFileURL.path + "/"
+        let outside = { (url: URL) in !url.standardizedFileURL.path.hasPrefix(folder) }
+        lock.withLock {
+            videoSources = videoSources.filter { outside($0.key) }
+            audioSources = audioSources.filter { outside($0.key) }
+        }
+    }
+
     /// Keeps only the files the project still uses.
     func keepOnly(_ urls: Set<URL>) {
         lock.withLock {

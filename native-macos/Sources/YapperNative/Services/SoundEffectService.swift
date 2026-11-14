@@ -83,6 +83,7 @@ struct SoundEffectDescriptor: Identifiable, Equatable, Sendable {
         .init(id: "shutter-snap", name: "Shutter snap", detail: "One fast frame", icon: "camera", duration: 0.17, category: .clicks),
         .init(id: "camera-shutter", name: "Camera shutter", detail: "Mirror and mechanism", icon: "camera", duration: 0.46, category: .clicks),
         .init(id: "page-flip", name: "Page flip", detail: "Paper turn", icon: "book.pages", duration: 0.76, category: .clicks),
+        .init(id: "highlighter", name: "Highlighter", detail: "Marker stroke on paper", icon: "highlighter", duration: 1.42, category: .clicks),
 
         // Stings
         .init(id: "cha-ching", name: "Cha-ching", detail: "Cash register hit", icon: "dollarsign.circle.fill", duration: 2.05, category: .stings),

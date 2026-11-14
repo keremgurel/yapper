@@ -20,7 +20,7 @@ struct NativeDrawer<Header: View, Content: View, Footer: View>: View {
                     Spacer(minLength: 0)
                     Button(action: onClose) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.studioLabelStrong)
                             .frame(width: 28, height: 28)
                     }
                     .buttonStyle(EditorGhostButtonStyle(size: .small))

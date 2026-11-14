@@ -26,7 +26,7 @@ struct PosterRemixAttachment: View {
             .opacity(included ? 1 : 0.35)
             .overlay(alignment: .bottomLeading) {
                 Text(label)
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.studioMicro)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 6).padding(.vertical, 3)
                     .background(Capsule().fill(.black.opacity(0.6)))

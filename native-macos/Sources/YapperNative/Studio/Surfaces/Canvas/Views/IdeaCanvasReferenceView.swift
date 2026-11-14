@@ -42,7 +42,7 @@ struct IdeaCanvasReferenceView: View {
 
     @ViewBuilder private var sourceLink: some View {
         IdeaCanvasSourceLink(item: item)
-            .font(.system(size: 12))
+            .font(.studioLabel)
             .foregroundStyle(.secondary)
             .buttonStyle(.studioPlain)
     }
@@ -54,14 +54,14 @@ struct IdeaCanvasReferenceView: View {
             VStack(alignment: .leading, spacing: 8) {
                 reading(summary)
                 Text("This is a summary of the page, not the reference's spoken words.")
-                    .font(.system(size: 12)).foregroundStyle(.secondary)
+                    .font(.studioLabel).foregroundStyle(.secondary)
             }
         } else if item.transcriptStatus == "pending" {
             Text("Fetching the transcript. It shows up here when it lands.")
-                .font(.system(size: 13)).foregroundStyle(.secondary)
+                .font(.studioBody).foregroundStyle(.secondary)
         } else {
             Text("No transcript for this reference yet, so Chirpy only knows what you wrote about it.")
-                .font(.system(size: 13)).foregroundStyle(.secondary)
+                .font(.studioBody).foregroundStyle(.secondary)
                 .frame(maxWidth: 560, alignment: .leading)
         }
     }

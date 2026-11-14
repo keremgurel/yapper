@@ -8,6 +8,18 @@ struct ProjectPackage: Hashable, Sendable {
 
     let url: URL
 
+    /// One folder is one package, whether its URL came from a directory
+    /// listing (which ends in a slash) or from a saved path (which doesn't).
+    static func == (lhs: ProjectPackage, rhs: ProjectPackage) -> Bool {
+        lhs.identity == rhs.identity
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(identity)
+    }
+
+    private var identity: String { url.standardizedFileURL.path }
+
     var projectFileURL: URL { url.appending(path: "project.json", directoryHint: .notDirectory) }
     var backupFileURL: URL { url.appending(path: "project.backup.json", directoryHint: .notDirectory) }
     var summaryFileURL: URL { url.appending(path: "summary.json", directoryHint: .notDirectory) }

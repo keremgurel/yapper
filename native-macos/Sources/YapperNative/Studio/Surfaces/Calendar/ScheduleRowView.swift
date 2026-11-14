@@ -33,10 +33,10 @@ struct ScheduleRowView: View {
     private var summary: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(row.title).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                Text(row.title).font(.studioBodyStrong).lineLimit(1)
                 Text("\(row.platformLabel) · \(row.accountLabel)")
-                    .font(.system(size: 12)).foregroundStyle(.secondary)
-                Text(whenLabel).font(.system(size: 12)).foregroundStyle(.secondary)
+                    .font(.studioLabel).foregroundStyle(.secondary)
+                Text(whenLabel).font(.studioLabel).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
             NativeChip(text: row.status.label, tone: row.status.tone, dot: true)
@@ -98,7 +98,7 @@ struct ScheduleRowView: View {
 
     private func note(_ text: String, danger: Bool = false) -> some View {
         Text(text)
-            .font(.system(size: 12))
+            .font(.studioLabel)
             .foregroundStyle(danger ? Color.studioDanger : Color.secondary)
             .fixedSize(horizontal: false, vertical: true)
     }

@@ -15,7 +15,7 @@ struct BrainProposalPreview: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
                         NativeChip(text: detected.kind.rawValue, tone: .cyan)
-                        Text(detected.shape).font(.system(size: 12)).foregroundStyle(.secondary)
+                        Text(detected.shape).font(.studioLabel).foregroundStyle(.secondary)
                     }
                     ScrollView {
                         Text(String(detected.sample.prefix(1200)))

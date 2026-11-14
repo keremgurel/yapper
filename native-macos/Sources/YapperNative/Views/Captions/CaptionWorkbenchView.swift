@@ -68,20 +68,45 @@ struct CaptionWorkbenchView: View {
         .inspectorPane(maxWidth: 620)
     }
 
+    /// The state of the captions and the two things to do about it. On one
+    /// line when it fits; in a narrow pane the buttons drop under the status
+    /// instead of cutting "Captions on" down to "Cap…".
     private var toolbar: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                status.fixedSize()
+                Spacer(minLength: 8)
+                toolbarActions
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                status
+                HStack(spacing: 8) { toolbarActions }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+    }
+
+    private var status: some View {
         HStack(spacing: 8) {
+            // Green for showing, grey for hidden: a state, not an action.
             Circle()
-                .fill(isOn ? Color.yapperOrange : Color.secondary.opacity(0.45))
+                .fill(isOn ? Color.studioSuccess : Color.studioTextMuted.opacity(0.5))
                 .frame(width: 7, height: 7)
             Text(isOn ? "Captions on" : "Captions off")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.studioBodyStrong)
             if session.hasCaptions {
                 Text("\(CaptionListProjection.visibleCount(in: session.captions, textsByID: session.captionTexts)) cards")
                     .font(.studioCaption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.studioTextMuted)
             }
+        }
+        .lineLimit(1)
+    }
 
-            Spacer(minLength: 8)
+    @ViewBuilder
+    private var toolbarActions: some View {
 
             if session.hasCaptions {
                 Button {
@@ -92,7 +117,7 @@ struct CaptionWorkbenchView: View {
                         systemImage: isOn ? "eye.slash" : "eye"
                     )
                 }
-                .buttonStyle(EditorGhostButtonStyle(size: .mini))
+                .buttonStyle(EditorGhostButtonStyle(size: .small))
                 .disabled(!session.appActions.availability(.captionVisibility, in: session).isAvailable)
                 .help(
                     isOn
@@ -109,16 +134,13 @@ struct CaptionWorkbenchView: View {
                     systemImage: "wand.and.stars"
                 )
             }
-            .buttonStyle(EditorPrimaryButtonStyle(size: .mini))
+            .buttonStyle(EditorPrimaryButtonStyle(size: .small))
             .disabled(session.project.clips.isEmpty || session.isBusy)
             .help(
                 session.hasCaptions
                     ? "Rebuild every card from the transcript while keeping your corrections."
                     : "Build caption cards from the transcript"
             )
-        }
-        .padding(.horizontal, 12)
-        .frame(height: 36)
     }
 
     private var emptyState: some View {

@@ -1,5 +1,6 @@
 import type { EditInput } from "./revise-input";
 import { callSceneModel } from "./scene-model-call";
+import { SCENE_BUDGETS } from "./scene-budgets";
 import { extractJsonObject } from "./reply-json";
 import { finiteBetween } from "./input-guards";
 import type { OverlayScene } from "./scene-types";
@@ -20,8 +21,8 @@ export async function planRevision(
   const { content } = await callSceneModel({
     model,
     signal,
-    timeoutMs: 45_000,
-    maxCompletionTokens: 1500,
+    timeoutMs: SCENE_BUDGETS.revisionPlan.timeoutMs,
+    maxCompletionTokens: SCENE_BUDGETS.revisionPlan.maxCompletionTokens,
     system: [
       "Translate the creator's requested changes into editing operations. Animation timing and timeline placement are independent and can be combined. Preserve everything not requested; distinguish requested actions from explanations or future intentions.",
       'Return JSON only with all fields: {"openingHoldSeconds":null,"sceneInstruction":null,"duration":null,"placementQuote":null,"timelineShiftSeconds":null}.',

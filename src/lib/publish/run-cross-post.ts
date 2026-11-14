@@ -4,12 +4,17 @@ import type { CrossPostResult } from "@/lib/publish/client";
 export type CrossPostStatus = "posted" | "draft" | "pending" | "failed";
 
 /** What happened on one platform in a fan-out. `url` is present for a live post
- * that landed somewhere linkable; `error` for a failure. */
+ * that landed somewhere linkable, `profileUrl` when only the account is known
+ * so far; `error` for a failure. */
 export interface CrossPostOutcome {
   platform: PublishPlatform;
   status: CrossPostStatus;
   url?: string;
+  profileUrl?: string;
   error?: string;
+  coverApplied?: boolean;
+  /** Live, with its cover still being set. */
+  coverPending?: boolean;
 }
 
 /**
@@ -34,6 +39,11 @@ export async function runCrossPost(
           platform,
           status: result.draft ? "draft" : "posted",
           url: result.url,
+          ...(result.profileUrl ? { profileUrl: result.profileUrl } : {}),
+          ...(result.coverPending ? { coverPending: true } : {}),
+          ...(result.coverApplied === undefined
+            ? {}
+            : { coverApplied: result.coverApplied }),
         };
       } catch (error) {
         outcome = {

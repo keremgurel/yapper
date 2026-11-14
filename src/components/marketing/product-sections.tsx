@@ -4,6 +4,7 @@ import { ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { featureGroups } from "@/data/marketing-navigation";
 import { marketingFeatures } from "@/data/marketing-features";
+import { TRIAL_CREDITS, TRIAL_DAYS } from "@/lib/billing/plans";
 
 export function WorkflowLinks() {
   return (
@@ -36,15 +37,22 @@ export function WorkflowLinks() {
 /** The closing invitation to access Studio. */
 export function StudioStart() {
   return (
-    <section id="start" className="marketing-section marketing-rule">
+    <section
+      id="start"
+      className="marketing-section marketing-rule"
+      aria-labelledby="studio-start-title"
+    >
       <div className="marketing-container">
         <div className="studio-signup">
-          <h2 className="type-h2">Make your next video in Yapper Studio.</h2>
+          <h2 id="studio-start-title" className="type-h2">
+            Make your next video in Yapper Studio.
+          </h2>
           <p className="type-description">
-            Every tool, 30 credits to try the AI, and 7 days before your first
-            payment. Cancel anytime.
+            Try every Studio tool free for {TRIAL_DAYS} days, with{" "}
+            {TRIAL_CREDITS} AI credits.
           </p>
           <StudioStartActions />
+          <p className="type-caption">Cancel anytime.</p>
         </div>
       </div>
     </section>

@@ -12,7 +12,7 @@ struct PosterReferenceSlot: View {
             Button(action: onChoose) {
                 VStack(spacing: 6) {
                     Image(systemName: "photo.badge.plus").font(.system(size: 18)).foregroundStyle(.secondary)
-                    Text("Reference").font(.system(size: 12, weight: .semibold))
+                    Text("Reference").font(.studioLabelStrong)
                     Text("Drop or choose a thumbnail to copy its look")
                         .font(.system(size: 10)).foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)

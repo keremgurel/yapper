@@ -10,7 +10,7 @@ struct IdeaCanvasDeleteControl: View {
     var body: some View {
         HStack(spacing: 6) {
             if confirming {
-                Text("Delete this idea?").font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+                Text("Delete this idea?").font(.studioLabelStrong).foregroundStyle(.secondary)
                 Button("Delete") {
                     confirming = false
                     onConfirm()
@@ -20,7 +20,7 @@ struct IdeaCanvasDeleteControl: View {
                     .buttonStyle(EditorGhostButtonStyle(size: .small))
             } else {
                 Button { withAnimation(.snappy(duration: 0.18)) { confirming = true } } label: {
-                    Image(systemName: "trash").font(.system(size: 13))
+                    Image(systemName: "trash").font(.studioBody)
                 }
                 .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                 .help("Delete this idea")

@@ -43,7 +43,7 @@ struct DictionaryAddCard: View {
             .disabled(adding || store.loading)
             if let error {
                 Text(error)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.studioLabelStrong)
                     .foregroundStyle(Color.studioDanger)
             }
         }

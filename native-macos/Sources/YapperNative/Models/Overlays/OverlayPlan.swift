@@ -21,6 +21,11 @@ struct OverlayPlacement: Equatable, Sendable {
     let group: String?
     /// An effect from the shipped library to play as it appears.
     let sound: String?
+    /// The creator asked for the file's whole length, so it plays from its cue
+    /// to the end of the file rather than to the end of the quote.
+    let fullLength: Bool
+    /// Seconds into the file to start from.
+    let sourceStart: Double?
 
     init(
         file: String,
@@ -29,7 +34,9 @@ struct OverlayPlacement: Equatable, Sendable {
         box: ProposedOverlayBox? = nil,
         cue: String? = nil,
         group: String? = nil,
-        sound: String? = nil
+        sound: String? = nil,
+        fullLength: Bool = false,
+        sourceStart: Double? = nil
     ) {
         self.file = file
         self.quote = quote
@@ -38,6 +45,8 @@ struct OverlayPlacement: Equatable, Sendable {
         self.cue = cue
         self.group = group
         self.sound = sound
+        self.fullLength = fullLength
+        self.sourceStart = sourceStart
     }
 }
 
@@ -56,6 +65,8 @@ struct PlacedOverlaySpan: Equatable, Sendable {
     let box: ProposedOverlayBox?
     let group: String?
     let sound: String?
+    let fullLength: Bool
+    let sourceStart: Double?
 
     init(
         file: String,
@@ -65,8 +76,12 @@ struct PlacedOverlaySpan: Equatable, Sendable {
         anchorWord: Int? = nil,
         box: ProposedOverlayBox? = nil,
         group: String? = nil,
-        sound: String? = nil
+        sound: String? = nil,
+        fullLength: Bool = false,
+        sourceStart: Double? = nil
     ) {
+        self.fullLength = fullLength
+        self.sourceStart = sourceStart
         self.file = file
         self.reason = reason
         self.firstWord = firstWord
@@ -114,7 +129,9 @@ enum OverlayPlan {
                 box: proposedBox(entry),
                 cue: entry["cue"] as? String,
                 group: entry["group"] as? String,
-                sound: entry["sound"] as? String
+                sound: entry["sound"] as? String,
+                fullLength: entry["fullLength"] as? Bool == true,
+                sourceStart: (entry["sourceStart"] as? Double).flatMap { $0 > 0 ? $0 : nil }
             )
         }
     }
@@ -252,7 +269,9 @@ enum OverlayPlan {
                     anchorWord: anchor,
                     box: placement.box,
                     group: placement.group,
-                    sound: placement.sound
+                    sound: placement.sound,
+                    fullLength: placement.fullLength,
+                    sourceStart: placement.sourceStart
                 )
             )
         }

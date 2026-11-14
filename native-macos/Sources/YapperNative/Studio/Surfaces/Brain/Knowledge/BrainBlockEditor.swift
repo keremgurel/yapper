@@ -11,7 +11,7 @@ struct BrainListItemsEditor: View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                 HStack(spacing: 8) {
-                    Text("\u{2022}").font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text("\u{2022}").font(.studioLabel).foregroundStyle(.secondary)
                     TextField("", text: Binding(
                         get: { item },
                         set: { value in onChange(items.enumerated().map { $0.offset == index ? value : $0.element }) }
@@ -22,14 +22,14 @@ struct BrainListItemsEditor: View {
                         if item.trimmingCharacters(in: .whitespaces).isEmpty { remove(index) }
                     }
                     Button { remove(index) } label: {
-                        Image(systemName: "xmark").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary).frame(width: 20, height: 20)
+                        Image(systemName: "xmark").font(.studioMicro).foregroundStyle(.secondary).frame(width: 20, height: 20)
                     }
                     .buttonStyle(.studioPlain)
                     .accessibilityLabel("Remove line \(index + 1)")
                 }
             }
             HStack(spacing: 8) {
-                Image(systemName: "plus").font(.system(size: 11)).foregroundStyle(.secondary)
+                Image(systemName: "plus").font(.studioCaption).foregroundStyle(.secondary)
                 TextField("Add a line", text: $draft)
                     .textFieldStyle(.native)
                     .onSubmit(add)

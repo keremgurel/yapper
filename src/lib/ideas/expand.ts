@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { deriveIdeaType } from "@/lib/ideas/derive-type";
 import {
   buildExpandMessages,
@@ -31,7 +32,7 @@ export async function expandIdea(
   context: PromptContext = EMPTY_PROMPT_CONTEXT,
   requestSignal?: AbortSignal,
 ): Promise<IdeaExpansion> {
-  const key = process.env.SURPLUS_API_KEY;
+  const key = surplusKey("ideas");
   if (!key) throw new Error("no_provider");
   const base =
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";

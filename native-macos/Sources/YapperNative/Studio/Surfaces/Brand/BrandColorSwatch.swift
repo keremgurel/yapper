@@ -25,7 +25,7 @@ struct BrandColorSwatch: View {
                         // A dark pill reads on any swatch; a tinted chip
                         // vanishes on a color close to its own.
                         Text(role.title)
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.studioCaptionStrong)
                             .foregroundStyle(.white)
                             .padding(.horizontal, 8).padding(.vertical, 3)
                             .background(Capsule().fill(.black.opacity(0.55)))
@@ -43,7 +43,7 @@ struct BrandColorSwatch: View {
             HStack(spacing: 4) {
                 TextField("#RRGGBB", text: $draft)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 12, weight: .medium).monospaced())
+                    .font(.studioLabelStrong.monospaced())
                     .onSubmit(commitDraft)
                     .accessibilityLabel("Hex value for \(role.title.lowercased()) color")
                 Spacer(minLength: 0)

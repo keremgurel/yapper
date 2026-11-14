@@ -48,8 +48,8 @@ struct StorageVideoManager: View {
                 Button("Done") { dismiss() }.buttonStyle(EditorSecondaryButtonStyle())
             }
             Text("Remove temporary video files from this account. Scripts, transcripts and feedback stay. Unpublished editor exports, scheduled posts and active publishing work are protected.")
-                .font(.system(size: 13)).foregroundStyle(.secondary)
-            if let error { Text(error).font(.system(size: 13)).foregroundStyle(Color.studioDanger) }
+                .font(.studioBody).foregroundStyle(.secondary)
+            if let error { Text(error).font(.studioBody).foregroundStyle(Color.studioDanger) }
             if loading {
                 ProgressView("Loading videos…").frame(maxWidth: .infinity, minHeight: 100)
             } else if videos.isEmpty {
@@ -113,8 +113,8 @@ HStack(spacing: 12) {
                                 Image(systemName: "film")
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(video.title).lineLimit(2).help(video.title)
-                                    Text("\(StorageFormat.bytes(video.bytes)) · \(video.sourceLabel)").font(.system(size: 12)).foregroundStyle(.secondary)
-                                    Text(video.retentionLabel).font(.system(size: 12)).foregroundStyle(.secondary)
+                                    Text("\(StorageFormat.bytes(video.bytes)) · \(video.sourceLabel)").font(.studioLabel).foregroundStyle(.secondary)
+                                    Text(video.retentionLabel).font(.studioLabel).foregroundStyle(.secondary)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                                 Spacer()

@@ -136,7 +136,7 @@
       "id": "editor.audio.trim",
       "symbol": "audioTrim",
       "input": "AudioTrimInput",
-      "description": "Set the source in point, duration and/or timeline start of existing audio layers, as dragging an edge or the body of a sound on the timeline does. Only supplied fields change; volume and speed are kept. sourceStart is recording seconds; duration and timelineStart are timeline seconds.",
+      "description": "Set source in point and/or duration of existing audio layers. Preserve volume and speed. SourceStart is recording seconds; duration is timeline seconds.",
       "effect": "reversibleEdit",
       "requiresRebuild": true,
       "runtime": "client"
@@ -208,7 +208,7 @@
       "id": "editor.captions.setVisible",
       "symbol": "captionVisibility",
       "input": "CaptionVisibilityInput",
-      "description": "Show or hide existing captions, preserving their text and styling. If showing captions for the first time, generate them from speech using the caption workflow. regenerate=true (with visible=true) rebuilds every card from the current transcript and cut, transcribing first if needed, and discards hand edits to caption text.",
+      "description": "Show or hide existing captions, preserving their text and styling. If showing captions for the first time, generate them from speech using the caption workflow.",
       "effect": "reversibleEdit",
       "requiresRebuild": false,
       "runtime": "client"
@@ -333,7 +333,7 @@
     {
       "id": "editor.overlays.add",
       "symbol": "overlayAdd",
-      "description": "Place one existing media item as an overlay at a known timeline anchor. Optional duration and sourceStart; defaults match Add as overlay. Use designOverlays/placeImported only when editorial placement across speech must be decided.",
+      "description": "Place one existing media item as an overlay at a known timeline anchor. Optional duration and sourceStart; defaults match Add as overlay. For \"while I say X\" (at and until both X) or \"until I say Y\", set until instead of duration, so the end never depends on arithmetic. Use designOverlays/placeImported only when editorial placement across speech must be decided.",
       "input": "OverlayAddInput",
       "effect": "reversibleEdit",
       "requiresRebuild": true,
@@ -345,6 +345,15 @@
       "description": "Remove an overlay lane and compact remaining lanes, or set every overlay on it hidden/shown. track is zero-based. Removing keeps original media.",
       "input": "OverlayTrackInput",
       "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.overlays.generateBackdrop",
+      "symbol": "overlayBackdropGenerate",
+      "description": "Generate a picture from a sentence and put it behind one overlay's card, as Generate in the backdrop picker does. The picture is added to the project's media and becomes that overlay's image backdrop. Costs one AI thumbnail credit, so use it only when the creator asks for a generated or AI background. Runs alone and can take a few minutes. A preset, frosted or a picture already in the project's media is editor.overlays.setProperties.",
+      "input": "OverlayBackdropGenerateInput",
+      "effect": "workflow",
       "requiresRebuild": true,
       "runtime": "client"
     },
@@ -378,7 +387,7 @@
     {
       "id": "editor.overlays.setProperties",
       "symbol": "overlayProperties",
-      "description": "Edit existing overlays: visibility, behind-speaker depth, source in point, timeline start/duration, or zero-based lane. Only supplied fields change. all=true targets every overlay; otherwise use overlayIDs. Cannot put generated scenes behind the speaker, exceed video source bounds, or collide on a lane.",
+      "description": "Edit existing overlays: visibility, behind-speaker depth, backdrop (what fills the frame behind the card: frosted is the speaker blurred and dimmed; image is a picture already in the project's media, named by backdropMediaID; navyGlow, aurora, lightRays, grainient and shapeGrid are dark generated surfaces; none removes it), source in point, timeline start/duration, or zero-based lane. Only supplied fields change. all=true targets every overlay; otherwise use overlayIDs. Cannot put generated scenes behind the speaker, exceed video source bounds, or collide on a lane.",
       "input": "OverlayPropertiesInput",
       "effect": "reversibleEdit",
       "requiresRebuild": true,
@@ -397,7 +406,7 @@
       "id": "editor.project.setBackdrop",
       "symbol": "projectBackdrop",
       "input": "ProjectBackdropInput",
-      "description": "Set the project backdrop colour that fills the frame where there is no picture, including behind a speaker whose background is removed.",
+      "description": "Set what fills the frame where there is no picture, including behind a speaker whose background is removed (a background swap): a flat colour, or a generated preset. Send color or preset.",
       "effect": "reversibleEdit",
       "requiresRebuild": true,
       "runtime": "client"
@@ -453,7 +462,7 @@
       "id": "editor.text.add",
       "symbol": "textLayerAdd",
       "input": "TextLayerAddInput",
-      "description": "Add an on-screen text layer with the given text at a timeline anchor (default the playhead) for duration seconds (default 5). asHook places it at the very start with the hook look.",
+      "description": "Add an on-screen text layer with the given text at a timeline anchor (default the playhead) for duration seconds (default 5). asHook places it at the very start with the hook look. style sets its look and position in the same action, on top of that default; a layer added in this plan has no ID yet, so later actions in the plan cannot restyle or update it.",
       "effect": "reversibleEdit",
       "requiresRebuild": false,
       "runtime": "client"
@@ -1475,7 +1484,8 @@
         "timelineStart": {
           "type": "number",
           "minimum": 0,
-          "maximum": 86400
+          "maximum": 86400,
+          "description": "Timeline seconds where the sounds start. Alone it moves them; with sourceStart and duration it trims their leading edge, as dragging a sound's left edge does. Leave it out to keep their timeline position."
         }
       }
     },
@@ -1519,7 +1529,8 @@
           "type": "boolean"
         },
         "regenerate": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "With visible=true, rebuild every card from the current transcript and cut, transcribing first if needed. Discards hand edits to caption text; send it only when the creator asks to regenerate."
         }
       }
     },
@@ -1573,7 +1584,13 @@
           "type": "number",
           "minimum": 0.012,
           "maximum": 0.22,
-          "description": "Cap height as a fraction of frame height. Captions default near 0.05."
+          "description": "Cap height as a fraction of frame height. Captions default near 0.05. The inspector shows Size as fontScale x 1000, so Size 33 is exactly 0.033 and 0.043 reads as Size 43."
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 12,
+          "maximum": 220,
+          "description": "The text size the inspector shows. Sets fontScale to size / 1000 exactly, so 33 is 0.033. Use it whenever the creator gives a size number; it wins over fontScale."
         },
         "textCase": {
           "$ref": "#/$defs/TextCaseChoice"
@@ -1800,6 +1817,10 @@
         },
         "asHook": {
           "type": "boolean"
+        },
+        "style": {
+          "$ref": "#/$defs/TextStyleInput",
+          "description": "Optional look and position for the new layer, the same fields as editor.text.setStyle. Send only the fields that differ from the default."
         }
       }
     },
@@ -2196,6 +2217,26 @@
         }
       }
     },
+    "OverlayBackdropGenerateInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overlayID",
+        "prompt"
+      ],
+      "properties": {
+        "overlayID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1200,
+          "description": "What the picture shows, in the creator's words. The app adds the rest: dark, soft, no text, room for captions."
+        }
+      }
+    },
     "OverlayPropertiesInput": {
       "type": "object",
       "additionalProperties": false,
@@ -2221,6 +2262,34 @@
         "behindSpeaker": {
           "type": "boolean"
         },
+        "backdrop": {
+          "type": "string",
+          "enum": [
+            "none",
+            "frosted",
+            "image",
+            "navyGlow",
+            "aurora",
+            "lightRays",
+            "grainient",
+            "shapeGrid"
+          ]
+        },
+        "backdropColors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 7,
+            "maxLength": 7
+          },
+          "maxItems": 4,
+          "description": "The preset's colours as #RRGGBB, background first, in the preset's slot order (navyGlow: background, glow, halo; aurora: sky, upper band, lower band; lightRays: background, rays, light; grainient: background, top left, right, bottom; shapeGrid: background, lines, glow). An empty array goes back to the preset's own colours. Needs a preset backdrop."
+        },
+        "backdropMediaID": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The imported picture shown behind the card when backdrop is image."
+        },
         "sourceStart": {
           "type": "number",
           "minimum": 0,
@@ -2240,6 +2309,10 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 5000
+        },
+        "leadingTrim": {
+          "type": "boolean",
+          "description": "With timelineStart (and usually duration and sourceStart), the overlay's left edge moves rather than the whole overlay: keyframes stay at the same moments on the timeline, as dragging its left edge does. Leave it out to move the overlay with its keyframes."
         }
       }
     },
@@ -2262,6 +2335,10 @@
           "type": "number",
           "minimum": 0.1,
           "maximum": 86400
+        },
+        "until": {
+          "$ref": "#/$defs/TimelineAnchorInput",
+          "description": "Where the overlay ends, instead of duration. A phrase ends it where that phrase begins (until I say Y); when the overlay starts on that same phrase (while I say X) it ends where the phrase ends. Without an occurrence the phrase is the first match after the start. Other anchors are the moment they name."
         },
         "sourceStart": {
           "type": "number",
@@ -2301,15 +2378,35 @@
     "ProjectBackdropInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "color"
-      ],
+      "required": [],
       "properties": {
         "color": {
           "type": "string",
           "minLength": 4,
           "maxLength": 9,
-          "description": "Hex colour: #RGB, #RRGGBB or #RRGGBBAA."
+          "description": "Hex colour: #RGB, #RRGGBB or #RRGGBBAA. Setting a colour clears any preset."
+        },
+        "preset": {
+          "type": "string",
+          "enum": [
+            "none",
+            "navyGlow",
+            "aurora",
+            "lightRays",
+            "grainient",
+            "shapeGrid"
+          ],
+          "description": "A generated dark surface instead of a flat colour; none goes back to the colour."
+        },
+        "presetColors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 7,
+            "maxLength": 7
+          },
+          "maxItems": 4,
+          "description": "Colours for the preset as #RRGGBB, background first, in the same slot order as editor.overlays.setProperties backdropColors. An empty array goes back to the preset's own colours."
         }
       }
     },
@@ -2387,6 +2484,18 @@
         },
         "operation": {
           "$ref": "#/$defs/MediaEditOperation"
+        },
+        "sourceStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400,
+          "description": "With append, the recording second the new clip starts at, as the trim handles on a media row choose. Leave it out to start at the top of the file. Ignored for pictures."
+        },
+        "sourceEnd": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400,
+          "description": "With append, the recording second the new clip ends at. Leave it out to run to the end of the file. Ignored for pictures."
         }
       }
     },

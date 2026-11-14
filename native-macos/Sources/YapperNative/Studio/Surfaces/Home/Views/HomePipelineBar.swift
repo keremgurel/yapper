@@ -39,7 +39,7 @@ struct HomePipelineBar: View {
                         }
                     }
                 }
-                .font(.system(size: 12))
+                .font(.studioLabel)
                 .foregroundStyle(.secondary)
             }
             .padding(.bottom, 4)

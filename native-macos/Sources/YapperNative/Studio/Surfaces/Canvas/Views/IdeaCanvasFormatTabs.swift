@@ -40,7 +40,7 @@ struct IdeaCanvasFormatTabs: View {
                     .font(.system(size: 13, weight: on ? .semibold : .medium))
                 if format == lead {
                     Text("Lead")
-                        .font(.system(size: 10.5, weight: .semibold))
+                        .font(.studioCaptionStrong)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 6).padding(.vertical, 1)
                         .background(Capsule().fill(Color.studioFaintFill))
@@ -51,7 +51,7 @@ struct IdeaCanvasFormatTabs: View {
             .padding(.vertical, 11)
             .overlay(alignment: .bottom) {
                 if on {
-                    Capsule().fill(Color.yapperOrange).frame(height: 2).offset(y: 0.5)
+                    Capsule().fill(Color.studioAccent).frame(height: 2).offset(y: 0.5)
                 }
             }
             .contentShape(Rectangle())
@@ -60,7 +60,7 @@ struct IdeaCanvasFormatTabs: View {
         .clickableCursor()
         .contextMenu {
             if exists && format != lead {
-                Button("Delete the \(format.noun)…", role: .destructive) { onDelete(format) }
+                Button("Delete the \(format.noun)", role: .destructive) { onDelete(format) }
             }
         }
         .accessibilityAddTraits(on ? .isSelected : [])

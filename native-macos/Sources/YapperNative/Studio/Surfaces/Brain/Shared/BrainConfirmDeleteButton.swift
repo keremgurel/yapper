@@ -24,7 +24,7 @@ struct BrainConfirmDeleteButton: View {
             } else {
                 Button { confirming = true } label: {
                     Image(systemName: "trash")
-                        .font(.system(size: 12))
+                        .font(.studioLabel)
                         .foregroundStyle(.secondary)
                         .frame(width: 24, height: 24)
                 }

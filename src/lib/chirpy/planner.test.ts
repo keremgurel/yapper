@@ -120,3 +120,17 @@ it("sends the catalog ahead of the turn, identical across turns, so it can be ca
   expect(second.promptCacheKey).toBe(first.promptCacheKey);
   expect(second.user).not.toBe(first.user);
 });
+
+it("tries once more when the provider answered nothing, but not after a timeout", async () => {
+  vi.mocked(callSceneModel).mockReset();
+  vi.mocked(callSceneModel)
+    .mockRejectedValueOnce(new Error("empty_answer"))
+    .mockResolvedValueOnce({ content: JSON.stringify(fullFrameReply) });
+  await expect(planChirpy(bulkInput)).resolves.toEqual(fullFrameReply);
+  expect(callSceneModel).toHaveBeenCalledTimes(2);
+
+  vi.mocked(callSceneModel).mockReset();
+  vi.mocked(callSceneModel).mockRejectedValueOnce(new Error("timeout"));
+  await expect(planChirpy(bulkInput)).rejects.toThrow("timeout");
+  expect(callSceneModel).toHaveBeenCalledTimes(1);
+});

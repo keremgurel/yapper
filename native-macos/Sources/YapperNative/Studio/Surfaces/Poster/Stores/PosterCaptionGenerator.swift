@@ -18,9 +18,12 @@ final class PosterCaptionGenerator: ObservableObject {
         brief: String,
         titleOnly: Bool,
         into drafts: PosterDraftStore,
-        reference: String? = nil
+        reference: String? = nil,
+        shared: Bool = false
     ) async {
         guard !platforms.isEmpty, !generating else { return }
+        let initialCaption = drafts.sharedCaption(video)
+        let initialTitle = drafts.title(video)
         generating = true
         error = nil
         errorVideoID = video.id
@@ -66,7 +69,11 @@ final class PosterCaptionGenerator: ObservableObject {
                 "titleOnly": titleOnly,
                 "instructions": brief,
             ]))
-            drafts.applyGenerated(response.captions, to: video.id, titleOnly: titleOnly, sourceCaption: video.sourceCaption ?? "")
+            if shared, let caption = response.captions.first {
+                drafts.applySharedGeneration(caption, to: video, initialCaption: initialCaption, initialTitle: initialTitle)
+            } else {
+                drafts.applyGenerated(response.captions, to: video.id, titleOnly: titleOnly, sourceCaption: video.sourceCaption ?? "")
+            }
         } catch let failure as PosterMessage {
             error = failure.text
         } catch let failure as PosterHTTPError {

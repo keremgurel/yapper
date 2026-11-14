@@ -45,7 +45,7 @@ private struct ConnectionRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(platform.label).font(.system(size: 14, weight: .semibold))
                 Text(connection.map { $0.handle ?? "Connected" } ?? platform.postMeaning)
-                    .font(.system(size: 12))
+                    .font(.studioLabel)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
@@ -63,17 +63,17 @@ private struct ConnectionRow: View {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
                 Text(store.connecting == platform ? "Connecting…" : "Disconnecting…")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.studioLabelStrong)
                     .foregroundStyle(.secondary)
             }
         } else if let connection {
             HStack(spacing: 10) {
                 if connection.status == "active" {
                     Label("Connected", systemImage: "checkmark")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.studioLabelStrong)
                         .foregroundStyle(NativeChip.Tone.green.color)
                 } else {
-                    Text("Reconnect required").font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+                    Text("Reconnect required").font(.studioLabelStrong).foregroundStyle(.secondary)
                     if store.canConnect(platform) {
                         Button("Reconnect") { store.connect(platform) }
                             .buttonStyle(EditorSecondaryButtonStyle(size: .small))
@@ -89,7 +89,7 @@ private struct ConnectionRow: View {
             Button("Connect") { store.connect(platform) }
                 .buttonStyle(EditorSecondaryButtonStyle(size: .small))
         } else {
-            Text("Coming soon").font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+            Text("Coming soon").font(.studioLabelStrong).foregroundStyle(.secondary)
         }
     }
 }

@@ -69,7 +69,7 @@ struct BrainVoiceSheet: View {
     private var connectNote: some View {
         HStack(spacing: 10) {
             Text("Connect Instagram, TikTok or YouTube and your published videos appear here to pick from.")
-                .font(.system(size: 13)).foregroundStyle(.secondary)
+                .font(.studioBody).foregroundStyle(.secondary)
             Spacer(minLength: 0)
             Button("Open Connections") {
                 onClose()
@@ -85,7 +85,7 @@ struct BrainVoiceSheet: View {
             if samples.isEmpty {
                 if !platforms.isEmpty {
                     Text("No videos yet. Three or four where you talk to camera are enough to start.")
-                        .font(.system(size: 13)).foregroundStyle(.secondary)
+                        .font(.studioBody).foregroundStyle(.secondary)
                 }
             } else {
                 VStack(spacing: 0) {

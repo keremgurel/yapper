@@ -20,7 +20,7 @@ struct BrainSetupReview: View {
             if !proposal.pillars.isEmpty { pillars }
             if !proposal.blocks.isEmpty { blocks }
             if !proposal.notes.isEmpty {
-                Text("Not covered: \(proposal.notes)").font(.system(size: 12)).foregroundStyle(.secondary)
+                Text("Not covered: \(proposal.notes)").font(.studioLabel).foregroundStyle(.secondary)
             }
         }
     }
@@ -32,10 +32,10 @@ struct BrainSetupReview: View {
                 Text(key.label).font(.nativeLabel)
             }
             Text(current.isEmpty ? "Now: empty" : "Now: \(current)")
-                .font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(3)
+                .font(.studioLabel).foregroundStyle(.secondary).lineLimit(3)
             NativeTextArea(
                 text: Binding(get: { proposal.essentials[key.rawValue] ?? "" }, set: { onEditEssential(key, $0) }),
-                font: .system(size: 13),
+                font: .studioBody,
                 minHeight: 60
             )
             .disabled(!selection.essentials.contains(key.rawValue))
@@ -62,13 +62,13 @@ struct BrainSetupReview: View {
             ForEach(proposal.pillars, id: \.name) { pillar in
                 BrainCheckRow(isOn: member(\.pillars, pillar.name)) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(pillar.name).font(.system(size: 13, weight: .semibold))
+                        Text(pillar.name).font(.studioBodyStrong)
                         if !pillar.description.isEmpty {
-                            Text(pillar.description).font(.system(size: 12)).foregroundStyle(.secondary)
+                            Text(pillar.description).font(.studioLabel).foregroundStyle(.secondary)
                         }
                         if !pillar.examples.isEmpty {
                             Text("e.g. \(pillar.examples.joined(separator: " \u{00B7} "))")
-                                .font(.system(size: 11)).foregroundStyle(.secondary)
+                                .font(.studioCaption).foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -84,8 +84,8 @@ struct BrainSetupReview: View {
             ForEach(proposal.blocks, id: \.title) { block in
                 BrainCheckRow(isOn: member(\.blocks, block.title)) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(block.title).font(.system(size: 13, weight: .medium))
-                        Text(block.digest).font(.system(size: 12)).foregroundStyle(.secondary)
+                        Text(block.title).font(.studioBodyStrong)
+                        Text(block.digest).font(.studioLabel).foregroundStyle(.secondary)
                     }
                 }
             }

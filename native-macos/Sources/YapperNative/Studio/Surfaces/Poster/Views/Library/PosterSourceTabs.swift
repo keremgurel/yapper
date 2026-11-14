@@ -16,7 +16,7 @@ struct PosterSourceTabs: View {
                 ForEach(PublishPlatform.enabledCases) { platform in
                     tab(.platform(platform)) {
                         HStack(spacing: 6) {
-                            Image(systemName: platform.symbol).font(.system(size: 12))
+                            Image(systemName: platform.symbol).font(.studioLabel)
                             Text(platform.label)
                             Circle()
                                 .fill(connected.contains(platform) ? NativeChip.Tone.green.color : Color.secondary.opacity(0.35))
@@ -34,13 +34,13 @@ struct PosterSourceTabs: View {
         let active = key == source
         return Button { onChange(key) } label: {
             label()
-                .font(.system(size: 13, weight: .semibold))
+                .font(.studioBodyStrong)
                 .foregroundStyle(active ? Color.primary : Color.secondary)
                 .padding(.horizontal, 12)
                 .frame(height: 36)
                 .overlay(alignment: .bottom) {
                     if active {
-                        Capsule().fill(Color.yapperOrange).frame(height: 2).padding(.horizontal, 12)
+                        Capsule().fill(Color.studioAccent).frame(height: 2).padding(.horizontal, 12)
                     }
                 }
         }

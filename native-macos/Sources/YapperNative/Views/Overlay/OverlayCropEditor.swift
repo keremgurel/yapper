@@ -26,7 +26,7 @@ struct OverlayCropEditor: View {
             .frame(maxWidth: 260)
 
             HStack(spacing: 8) {
-                Button("Crop…") { session.beginCropping(overlayID: overlay.id) }
+                Button("Open crop editor") { session.beginCropping(overlayID: overlay.id) }
                     .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
                     .help("Open the crop editor with room to aim in")
 

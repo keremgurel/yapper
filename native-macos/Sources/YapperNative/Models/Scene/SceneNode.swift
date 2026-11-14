@@ -52,6 +52,8 @@ struct SceneNode: Codable, Equatable, Sendable, Identifiable {
 
     enum NumberFormat: String, Codable, CaseIterable, Sendable {
         case plain, grouped, percent, compact, decimal1
+        /// The value is seconds, shown as m:ss. See docs/overlay-scene-format.md.
+        case clock
     }
 
     enum ImageFit: String, Codable, CaseIterable, Sendable {

@@ -218,7 +218,7 @@ struct CropCanvas: View {
     private func moveAffordance(in size: CGSize, crop: OverlayCrop) -> some View {
         if size.width * crop.width >= 92, size.height * crop.height >= 92 {
             Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.studioBodyStrong)
                 .foregroundStyle(.white)
                 .padding(9)
                 .background(Color.black.opacity(0.58), in: Circle())

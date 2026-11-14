@@ -12,7 +12,7 @@ struct BrainPillarEditor: View {
         VStack(alignment: .leading, spacing: 10) {
             if pillars.isEmpty {
                 Text("No pillars yet. Add the handful of angles you post about.")
-                    .font(.system(size: 13)).foregroundStyle(.secondary)
+                    .font(.studioBody).foregroundStyle(.secondary)
             } else {
                 VStack(spacing: 8) {
                     ForEach(Array(pillars.enumerated()), id: \.element.id) { index, pillar in
@@ -77,7 +77,7 @@ struct BrainPillarRow: View {
                     .font(.system(size: 14, weight: .semibold))
                 Button(action: onToggle) {
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.studioCaptionStrong)
                         .rotationEffect(.degrees(open ? 180 : 0))
                         .foregroundStyle(.secondary)
                         .frame(width: 24, height: 24)
@@ -90,7 +90,7 @@ struct BrainPillarRow: View {
             if open {
                 Rectangle().fill(Color.studioLine).frame(height: 1)
                 VStack(alignment: .leading, spacing: 8) {
-                    NativeTextArea(text: binding(\.description), placeholder: "What belongs in this pillar, and what does not.", font: .system(size: 13), minHeight: 44)
+                    NativeTextArea(text: binding(\.description), placeholder: "What belongs in this pillar, and what does not.", font: .studioBody, minHeight: 44)
                     NativeTextArea(
                         text: Binding(
                             get: { pillar.examples.joined(separator: "\n") },
@@ -101,11 +101,11 @@ struct BrainPillarRow: View {
                             }
                         ),
                         placeholder: "One example angle per line\nTask 5 in 60 seconds",
-                        font: .system(size: 13),
+                        font: .studioBody,
                         minHeight: 44
                     )
                     Text("One example angle per line. These teach the AI the shape of the pillar, not just its name.")
-                        .font(.system(size: 11)).foregroundStyle(.secondary)
+                        .font(.studioCaption).foregroundStyle(.secondary)
                 }
                 .padding(12)
             }

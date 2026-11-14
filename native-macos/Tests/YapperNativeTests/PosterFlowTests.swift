@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Testing
 @testable import YapperNative
@@ -82,6 +83,39 @@ import Testing
         #expect(captions[.tiktok]?.body == "My description")
         let other = PosterVideo(file: URL(filePath: "/tmp/other.mp4"))
         #expect(drafts.captions(other).isEmpty)
+    }
+
+    @Test @MainActor func sharedGenerationPreservesManualEditsAndCanBeUndone() {
+        let drafts = PosterDraftStore()
+        let video = PosterVideo(file: URL(filePath: "/tmp/edit.mp4"))
+        #expect(drafts.destinations(video, connected: [.youtube, .instagram]).isEmpty)
+        drafts.setSharedCaption("I wrote this", for: video)
+        drafts.setOverride("Instagram only", for: .instagram, video: video)
+        drafts.applySharedGeneration(PosterCaption(platform: "youtube", title: "Generated title", body: "AI copy", hashtags: []),
+                                     to: video, initialCaption: "", initialTitle: "")
+        #expect(drafts.captions(video)[.youtube]?.body == "I wrote this")
+        #expect(drafts.captions(video)[.youtube]?.title == "Generated title")
+        #expect(drafts.captions(video)[.instagram]?.body == "Instagram only")
+        drafts.undoGeneration(video)
+        #expect(drafts.title(video).isEmpty)
+        #expect(drafts.sharedCaption(video) == "I wrote this")
+    }
+
+    @Test func styledCoverTextIsRenderedIntoTheExport() throws {
+        let source = try #require(CGContext(data: nil, width: 90, height: 160, bitsPerComponent: 8, bytesPerRow: 0,
+                                             space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        source.setFillColor(red: 0.2, green: 0.3, blue: 0.45, alpha: 1)
+        source.fill(CGRect(x: 0, y: 0, width: 90, height: 160))
+        var draft = PosterCoverDraft()
+        draft.image = source.makeImage()
+        let plain = try #require(PosterCoverRenderer.png(draft))
+        draft.headline = "TEF Canada"
+        draft.showHeadline = true
+        draft.textStyle.appearance = .hookDefault
+        let styled = try #require(PosterCoverRenderer.png(draft))
+        #expect(plain != styled)
+        draft.textStyle.appearance.font = .editorial
+        #expect(PosterCoverRenderer.png(draft) != styled)
     }
 
     @Test func silentTranscriptDecodesAsSuccessfulEmptyResult() throws {

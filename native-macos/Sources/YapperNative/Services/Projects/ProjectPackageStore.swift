@@ -12,7 +12,8 @@ actor ProjectPackageStore: ProjectPersisting {
         store = ProjectStore(
             directory: package.url,
             primaryName: package.projectFileURL.lastPathComponent,
-            backupName: package.backupFileURL.lastPathComponent
+            backupName: package.backupFileURL.lastPathComponent,
+            createsParentFolders: false
         )
     }
 

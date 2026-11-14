@@ -25,7 +25,10 @@ export default function StudioPreview({
         panelId={`${id}-panel`}
         id={id}
       />
-      <div className="demo-field">
+      <div
+        className="studio-preview-stage"
+        data-interactive={step === "Record" || step === "Publish" || undefined}
+      >
         <div
           className="studio-showcase-screen"
           role="tabpanel"

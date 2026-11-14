@@ -22,8 +22,8 @@ struct BrandAddColorCard: View {
         } label: {
             VStack(spacing: 6) {
                 Image(systemName: "plus").font(.system(size: 14, weight: .semibold)).foregroundStyle(.secondary)
-                Text("Add \(role.title.lowercased())").font(.system(size: 13, weight: .semibold))
-                Text(role.hint).font(.system(size: 11)).foregroundStyle(.secondary)
+                Text("Add \(role.title.lowercased())").font(.studioBodyStrong)
+                Text(role.hint).font(.studioCaption).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }

@@ -32,21 +32,21 @@ struct IdeaCanvasNoteCard: View {
                             set: { update(IdeaCanvasNoteEdit.patch(note: $0, ideaType: item.ideaType)) }
                         ),
                         placeholder: "The angle, what to keep from the source, how it should end.",
-                        font: .system(size: 13),
+                        font: .studioBody,
                         lineSpacing: 3,
                         minHeight: 80,
                         focusRequest: focusRequest
                     )
                 } else if note.isEmpty {
                     Text("Say what you want from this idea: the angle, what to keep from the source, the call to action. Chirpy uses it every time it writes.")
-                        .font(.system(size: 12))
+                        .font(.studioLabel)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     Button("Add a note") { toggleEditing() }
                         .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                 } else {
                     Text(note)
-                        .font(.system(size: 13)).lineSpacing(3)
+                        .font(.studioBody).lineSpacing(3)
                         .foregroundStyle(Color.primary.opacity(0.85))
                         .lineLimit(expanded ? nil : Self.foldLines)
                         .textSelection(.enabled)
@@ -54,7 +54,7 @@ struct IdeaCanvasNoteCard: View {
                     if isLong {
                         Button(expanded ? "Show less" : "Show all") { expanded.toggle() }
                             .buttonStyle(.studioPlain)
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.studioLabelStrong)
                             .foregroundStyle(.secondary)
                     }
                 }

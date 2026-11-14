@@ -19,7 +19,7 @@ struct IdeaCanvasSourceCard: View {
                 header
                 if let title = item.sourceTitle?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty {
                     Text(title)
-                        .font(.system(size: 13))
+                        .font(.studioBody)
                         .foregroundStyle(Color.primary.opacity(0.85))
                         .lineLimit(3)
                         .fixedSize(horizontal: false, vertical: true)
@@ -27,7 +27,7 @@ struct IdeaCanvasSourceCard: View {
                 transcriptBlock
                 if borrowedOnly {
                     Text("This is someone else's video with nothing of yours in it yet. Add your own note below and it becomes semi-original.")
-                        .font(.system(size: 12))
+                        .font(.studioLabel)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -49,10 +49,10 @@ struct IdeaCanvasSourceCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 Rectangle().fill(Color.studioLine).frame(height: 1)
                 Text("Transcript · \(transcript.split(whereSeparator: \.isWhitespace).count) words")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.studioCaptionStrong)
                     .foregroundStyle(.secondary)
                 Text(transcript)
-                    .font(.system(size: 13)).lineSpacing(3)
+                    .font(.studioBody).lineSpacing(3)
                     .foregroundStyle(Color.primary.opacity(0.85))
                     .lineLimit(expanded ? nil : 6)
                     .fixedSize(horizontal: false, vertical: true)
@@ -60,14 +60,14 @@ struct IdeaCanvasSourceCard: View {
                 Button(expanded ? "Show less" : "Show full transcript") {
                     withAnimation(.snappy(duration: 0.18)) { expanded.toggle() }
                 }
-                .font(.system(size: 12, weight: .medium))
+                .font(.studioLabelStrong)
                 .foregroundStyle(.secondary)
                 .buttonStyle(.studioPlain)
                 .clickableCursor()
             }
         } else if item.transcriptStatus == "pending" {
             Text("Fetching the transcript. It shows up here when it lands.")
-                .font(.system(size: 12)).foregroundStyle(.secondary)
+                .font(.studioLabel).foregroundStyle(.secondary)
         }
     }
 
@@ -77,16 +77,16 @@ struct IdeaCanvasSourceCard: View {
                 PlatformGlyph(platform: platform, size: 28)
             } else {
                 Image(systemName: "link")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.studioBodyStrong)
                     .foregroundStyle(.secondary)
                     .frame(width: 28, height: 28)
                     .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.studioRaisedChip))
             }
             VStack(alignment: .leading, spacing: 1) {
                 Text(sourceName)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.studioBodyStrong)
                 if let path = internalSource ? item.title : shortLink {
-                    Text(path).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                    Text(path).font(.studioCaption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                 }
             }
             Spacer(minLength: 8)

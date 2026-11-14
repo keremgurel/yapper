@@ -1,96 +1,183 @@
 "use client";
 
-import type {
-  CoverDraft,
-  CoverPosition,
-  CoverTextStyle,
-} from "@/components/publish/poster/cover-draft";
+import { Button } from "@/components/ui/button";
+import {
+  coverFonts,
+  defaultCoverText,
+  type CoverDraft,
+  type CoverTextAppearance,
+  type CoverPosition,
+} from "../cover-draft";
+import { posterField } from "../poster-layout";
 
-/** Optional headline burned onto the cover. Off by default. */
 export default function TextOverlayPanel({
   draft,
   onChange,
 }: {
   draft: CoverDraft;
-  onChange: (draft: CoverDraft) => void;
+  onChange: (value: CoverDraft) => void;
 }) {
-  const segmented = <T extends string>(
-    label: string,
-    options: readonly T[],
-    value: T,
-    pick: (next: T) => void,
-  ) => (
-    <div
-      className="bg-muted flex rounded-lg p-1"
-      role="group"
-      aria-label={label}
-    >
-      {options.map((option) => (
-        <button
-          key={option}
-          type="button"
-          aria-pressed={value === option}
-          onClick={() => pick(option)}
-          className={`rounded-md px-2.5 py-1 text-[11px] font-bold capitalize ${
-            value === option
-              ? "bg-background text-foreground"
-              : "text-muted-foreground"
-          }`}
-        >
-          {option}
-        </button>
-      ))}
-    </div>
-  );
-
+  const { text } = draft;
+  const set = (patch: Partial<CoverTextAppearance>) =>
+    onChange({ ...draft, text: { ...text, ...patch } });
+  const groups = [
+    {
+      label: "Background",
+      enabled: "background",
+      color: "backgroundColor",
+      radius: "cornerRadius",
+      range: "Corner radius",
+    },
+    {
+      label: "Shadow",
+      enabled: "shadow",
+      color: "shadowColor",
+      radius: "shadowRadius",
+      range: "Shadow blur",
+    },
+    { label: "Outline", enabled: "stroke", color: "strokeColor" },
+  ] as const;
   return (
-    <div className="space-y-2">
-      <label className="flex items-center justify-between gap-3">
-        <span className="text-[13px] font-semibold">Text on the thumbnail</span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={draft.showHeadline}
-          onClick={() =>
-            onChange({ ...draft, showHeadline: !draft.showHeadline })
+    <div className="space-y-4">
+      <label className="block space-y-2 text-sm font-medium">
+        <span>Cover text</span>
+        <textarea
+          value={draft.headline}
+          maxLength={100}
+          rows={2}
+          placeholder="Write a short hook…"
+          className={posterField}
+          onChange={(event) =>
+            onChange({
+              ...draft,
+              headline: event.target.value,
+              showHeadline: Boolean(event.target.value.trim()),
+            })
           }
-          className={`relative h-6 w-11 rounded-full transition-colors ${
-            draft.showHeadline ? "bg-[color:var(--sg-accent)]" : "bg-white/15"
-          }`}
-        >
-          <span
-            className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-              draft.showHeadline ? "translate-x-5" : "translate-x-0"
-            }`}
-          />
-          <span className="sr-only">Toggle text overlay</span>
-        </button>
+        />
       </label>
-      {draft.showHeadline ? (
-        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
-          <input
-            value={draft.headline}
-            maxLength={100}
-            placeholder="Short thumbnail hook"
-            onChange={(event) =>
-              onChange({ ...draft, headline: event.target.value })
-            }
-            className="border-border bg-background text-foreground rounded-lg border px-3 py-2 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)]"
-          />
-          {segmented<CoverTextStyle>(
-            "Text style",
-            ["shadow", "label"],
-            draft.textStyle,
-            (textStyle) => onChange({ ...draft, textStyle }),
-          )}
-          {segmented<CoverPosition>(
-            "Text position",
-            ["top", "center", "bottom"],
-            draft.position,
-            (position) => onChange({ ...draft, position }),
+      <fieldset className="min-w-0 space-y-2">
+        <legend className="mb-2 text-sm font-medium">Font</legend>
+        <div className="flex flex-wrap gap-2">
+          {(Object.keys(coverFonts) as (keyof typeof coverFonts)[]).map(
+            (font) => (
+              <Button
+                key={font}
+                size="sm"
+                type="button"
+                variant={text.font === font ? "secondary" : "outline"}
+                aria-pressed={text.font === font}
+                style={{ fontFamily: coverFonts[font].family }}
+                onClick={() => set({ font })}
+              >
+                {coverFonts[font].label}
+              </Button>
+            ),
           )}
         </div>
-      ) : null}
+      </fieldset>
+      <label className="grid grid-cols-[auto_1fr_auto] items-center gap-3 text-sm">
+        Size
+        <input
+          type="range"
+          min={48}
+          max={160}
+          step={2}
+          value={text.size}
+          className="accent-primary min-w-0"
+          onChange={(event) => set({ size: Number(event.target.value) })}
+        />
+        <span className="tabular-nums">{text.size}</span>
+      </label>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div
+          role="group"
+          aria-label="Text position"
+          className="flex flex-wrap gap-2"
+        >
+          {(["top", "center", "bottom"] as CoverPosition[]).map((position) => (
+            <Button
+              key={position}
+              type="button"
+              variant={draft.position === position ? "secondary" : "outline"}
+              size="sm"
+              aria-pressed={draft.position === position}
+              onClick={() => onChange({ ...draft, position })}
+              className="capitalize"
+            >
+              {position}
+            </Button>
+          ))}
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          Fill
+          <input
+            type="color"
+            value={text.fill}
+            className="border-border size-8 rounded border"
+            onChange={(event) => set({ fill: event.target.value })}
+          />
+        </label>
+      </div>
+      {groups.map((group) => (
+        <div
+          key={group.enabled}
+          className="border-border space-y-2 border-t pt-3"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <label className="flex min-h-8 items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                className="accent-primary"
+                checked={text[group.enabled]}
+                onChange={(event) =>
+                  set({ [group.enabled]: event.target.checked })
+                }
+              />
+              {group.label}
+            </label>
+            {text[group.enabled] && (
+              <input
+                type="color"
+                aria-label={group.label + " color"}
+                value={text[group.color]}
+                className="border-border size-8 rounded border"
+                onChange={(event) => set({ [group.color]: event.target.value })}
+              />
+            )}
+          </div>
+          {text[group.enabled] && "radius" in group && (
+            <label className="grid grid-cols-[auto_1fr_auto] items-center gap-3 text-sm">
+              {group.range}
+              <input
+                type="range"
+                min={0}
+                max={64}
+                value={text[group.radius]}
+                className="accent-primary min-w-0"
+                onChange={(event) =>
+                  set({ [group.radius]: Number(event.target.value) })
+                }
+              />
+              <span className="tabular-nums">{text[group.radius]}</span>
+            </label>
+          )}
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() =>
+          onChange({
+            ...draft,
+            text: { ...defaultCoverText },
+            position: "bottom",
+          })
+        }
+      >
+        Reset text style
+      </Button>
     </div>
   );
 }

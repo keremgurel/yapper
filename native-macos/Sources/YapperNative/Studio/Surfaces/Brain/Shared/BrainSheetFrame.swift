@@ -17,14 +17,14 @@ struct BrainSheetFrame<Content: View, Footer: View>: View {
                     Text(title).font(.nativeSectionTitle)
                     if let description {
                         Text(description)
-                            .font(.system(size: 13))
+                            .font(.studioBody)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 Spacer(minLength: 0)
                 Button(action: onClose) {
-                    Image(systemName: "xmark").font(.system(size: 12, weight: .medium)).frame(width: 24, height: 24)
+                    Image(systemName: "xmark").font(.studioLabelStrong).frame(width: 24, height: 24)
                 }
                 .buttonStyle(EditorGhostButtonStyle(size: .mini))
                 .keyboardShortcut(.cancelAction)

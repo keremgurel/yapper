@@ -70,6 +70,33 @@ struct FramingControlParityTests {
         #expect(parity(ui.project) == parity(chat.project))
     }
 
+    /// Dragging the Scale slider is one edit and one Undo step, however many
+    /// steps the handle took on the way. Until it is let go only the canvas
+    /// has the new size.
+    @Test func scaleSliderSavesOnceWhenItIsLetGo() async throws {
+        let h = try await ControlParityHarness.make()
+        let (ui, _) = try await h.session(), (chat, _) = try await h.session()
+        defer { h.cleanUp(ui, chat) }
+        let clip = h.project.clips[0]
+        for session in [ui, chat] { session.scrub(to: 0.5) }
+        let before = parity(ui.project)
+        for scale in [1.1, 1.2, 1.3, 1.4] { ui.previewFramingScale(scale) }
+        #expect(parity(ui.project) == before)
+        #expect(ui.displayedFraming.scale == 1.4)
+        #expect(ui.appActions.recentResults.isEmpty)
+
+        await ui.commitFramingScale(1.4)
+        try await chat.chirpy(VideoFramingInput(clipIDs: [clip.id], scale: 1.4, x: 0, y: 0, rotation: 0))
+        #expect(ui.appActions.recentResults.map(\.action) == ["editor.video.setFraming"])
+        #expect(ui.lastReceipt?.status == .applied)
+        #expect(ui.canvasDrag.framing == nil)
+        #expect(ui.project.clips[0].resolvedFraming.scale == 1.4)
+        #expect(parity(ui.project) == parity(chat.project))
+
+        await ui.undo()
+        #expect(parity(ui.project) == before)
+    }
+
     @Test func retouchSlidersCommitTheReleasedValueThroughTheRetouchAction() async throws {
         let h = try await ControlParityHarness.make()
         let (ui, _) = try await h.session(), (chat, _) = try await h.session()

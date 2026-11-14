@@ -8,14 +8,14 @@ struct RecorderTimeBadge: View {
         TimelineView(.periodic(from: .now, by: 0.25)) { _ in
             HStack(spacing: 6) {
                 if movie.phase == .paused {
-                    Image(systemName: "pause.fill").font(.system(size: 11))
+                    Image(systemName: "pause.fill").font(.studioCaption)
                 } else {
                     Circle().fill(Color.studioDanger).frame(width: 9, height: 9)
                 }
                 Text(Self.format(movie.recordedSeconds))
-                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                    .font(.studioLabelStrong.monospacedDigit())
                 if movie.phase == .paused {
-                    Text("Paused").font(.system(size: 11, weight: .medium)).foregroundStyle(.white.opacity(0.75))
+                    Text("Paused").font(.studioCaptionStrong).foregroundStyle(.white.opacity(0.75))
                 }
             }
             .foregroundStyle(.white)
@@ -52,7 +52,7 @@ struct RecorderStageNotice: View {
 
     var body: some View {
         Text(message)
-            .font(.system(size: 12, weight: .medium))
+            .font(.studioLabelStrong)
             .foregroundStyle(.white)
             .multilineTextAlignment(.leading)
             .padding(.horizontal, 12).padding(.vertical, 8)

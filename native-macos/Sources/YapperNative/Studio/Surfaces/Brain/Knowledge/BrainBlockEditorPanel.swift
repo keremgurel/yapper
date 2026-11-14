@@ -26,7 +26,7 @@ struct BrainBlockEditorPanel: View {
             .onDisappear { commitTags(block) }
         } else {
             BrainEditorPanel(title: "Knowledge", onClose: onClose) {
-                Text("This section isn't here anymore.").font(.system(size: 13)).foregroundStyle(.secondary)
+                Text("This section isn't here anymore.").font(.studioBody).foregroundStyle(.secondary)
             } main: { EmptyView() }
         }
     }
@@ -42,11 +42,11 @@ struct BrainBlockEditorPanel: View {
                 NativeTextArea(
                     text: Binding(get: { block.digest }, set: { store.edit(block.id, .digest($0)) }),
                     placeholder: "Search terms with thin answers, use when picking a topic",
-                    font: .system(size: 13),
+                    font: .studioBody,
                     minHeight: 54
                 )
                 Text("The only part of this section in every prompt. Say when it matters, not just what it is.")
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    .font(.studioCaption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -77,7 +77,7 @@ struct BrainBlockEditorPanel: View {
                 Text(block.body.utf16.count > 1_500
                      ? "Kept whole, read in pieces. Only the parts about what you are writing go into a prompt."
                      : "Short enough to be read in one piece.")
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    .font(.studioCaption).foregroundStyle(.secondary)
             }
         case .list:
             ScrollView {

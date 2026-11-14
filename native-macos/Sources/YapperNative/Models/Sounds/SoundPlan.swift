@@ -30,7 +30,7 @@ struct SoundRequest: Equatable, Sendable {
     }
 }
 
-/// Turning "add a pop" into one of the eighteen sounds the app actually ships.
+/// Turning "add a pop" into one of the nineteen sounds the app actually ships.
 ///
 /// The model names an effect in whatever words it likes and the library is
 /// fixed, so everything here is a lookup with a hard floor: a name that matches
@@ -65,6 +65,10 @@ enum SoundPlan {
         "typing": "keyboard-typing",
         "riser": "metal-riser",
         "drumroll": "drum-roll",
+        "highlight": "highlighter",
+        "marker": "highlighter",
+        "marker pen": "highlighter",
+        "highlighter pen": "highlighter",
     ]
 
     /// The effect a name refers to, or nil when the library has nothing like it.

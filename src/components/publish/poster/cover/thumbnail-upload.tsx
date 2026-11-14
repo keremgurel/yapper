@@ -67,7 +67,7 @@ export default function ThumbnailUpload({
   };
 
   return (
-    <div className="mx-auto mt-3 w-full max-w-[270px] space-y-2">
+    <div className="space-y-2">
       <input
         ref={input}
         type="file"
@@ -84,7 +84,6 @@ export default function ThumbnailUpload({
         type="button"
         variant="outline"
         size="sm"
-        className="w-full"
         disabled={disabled || busy}
         onClick={() => input.current?.click()}
       >
@@ -99,7 +98,7 @@ export default function ThumbnailUpload({
             ? "Replace thumbnail"
             : "Upload thumbnail"}
       </Button>
-      <p className="text-muted-foreground text-center text-[11px]">
+      <p className="text-muted-foreground text-xs">
         JPG, PNG, WebP · Up to 20 MB · 9:16 works best
       </p>
       {error ? (

@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { parseSections } from "@/lib/ideas/expand-prompt";
 import { undash } from "@/lib/text/undash";
 import type { IdeaExpansionSection } from "@/lib/ideas/types";
@@ -77,7 +78,7 @@ export async function generateIdea(
   input: IdeaInput,
   signal?: AbortSignal,
 ): Promise<GeneratedIdea> {
-  const key = process.env.SURPLUS_API_KEY;
+  const key = surplusKey("ideas");
   if (!key) throw new Error("no_provider");
   const base =
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";

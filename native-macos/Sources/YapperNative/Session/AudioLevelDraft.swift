@@ -31,14 +31,15 @@ final class AudioLevelDraft: ObservableObject {
         mainTrack = AudioLevel.clamped(volume)
     }
 
-    /// Hands back where the fader ended up and forgets it, for the commit.
-    func endLayer() -> (id: UUID, volume: Double)? {
-        defer { pending = nil }
-        return pending
+    /// Forgets the draft once the project holds it. Left alone when another
+    /// drag has started since, which is that drag's draft and not this one.
+    func endLayer(ifStill finished: (id: UUID, volume: Double)) {
+        guard let pending, pending.id == finished.id, pending.volume == finished.volume else { return }
+        self.pending = nil
     }
 
-    func endMainTrack() -> Double? {
-        defer { mainTrack = nil }
-        return mainTrack
+    func endMainTrack(ifStill finished: Double) {
+        guard mainTrack == finished else { return }
+        mainTrack = nil
     }
 }

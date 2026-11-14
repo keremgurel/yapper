@@ -9,6 +9,8 @@ extension EditorSession {
         defer { assistantRunInFlight = false }
         let text = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, text.count <= 4000 else { return }
+        // Chirpy reads the project to plan, so typing lands in it first.
+        await commitTyping()
 
         if assistantUsesStudioBrain || AssistantRouter.requestsBrandKit(text) {
             // Each Studio tab has its own thread; the editor keeps the project's.

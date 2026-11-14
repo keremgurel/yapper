@@ -1,4 +1,5 @@
 import { fetchBoundedJson, OutboundHttpError } from "@/lib/http/outbound";
+import { surplusKey, type SurplusKeyScope } from "@/lib/providers/surplus-key";
 
 /**
  * The one place the overlay routes call Chat Completions.
@@ -10,7 +11,9 @@ import { fetchBoundedJson, OutboundHttpError } from "@/lib/http/outbound";
  * as an error, so `finish_reason` "length" is thrown rather than parsed.
  *
  * No `reasoning` parameter is sent: Google rejects it with a 400 through the
- * gateway, and the reasoning models here decide their own budget.
+ * gateway, and the gateway does not pass a budget on to Claude, so the models
+ * decide how long to think. That thinking counts against
+ * `maxCompletionTokens`; see scene-budgets.ts for what each pass needs.
  */
 export interface SceneModelCall {
   model: string;
@@ -28,6 +31,8 @@ export interface SceneModelCall {
   /** Wall clock for every attempt together. */
   timeoutMs: number;
   signal?: AbortSignal;
+  /** Which Surplus key pays. Overlays unless another area borrows this call. */
+  keyScope?: SurplusKeyScope;
 }
 
 export interface SceneModelReply {
@@ -37,6 +42,10 @@ export interface SceneModelReply {
 
 interface ChatCompletionResponse {
   choices?: { message?: { content?: string }; finish_reason?: string }[];
+  usage?: {
+    completion_tokens?: number;
+    completion_tokens_details?: { reasoning_tokens?: number } | null;
+  };
   /** The gateway answers 200 and puts the provider's failure in the body. */
   error?: { code?: number; message?: string };
 }
@@ -71,7 +80,7 @@ export function sceneModelFailureReason(error: unknown): string {
 export async function callSceneModel(
   call: SceneModelCall,
 ): Promise<SceneModelReply> {
-  const key = process.env.SURPLUS_API_KEY;
+  const key = surplusKey(call.keyScope ?? "overlays");
   if (!key) throw new Error("no_provider");
   const base =
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";
@@ -134,6 +143,15 @@ export async function callSceneModel(
       if (!response.ok) throw new Error(`ai_${response.status}`);
       const choice = data.choices?.[0];
       if (choice?.finish_reason === "length") {
+        // Says whether the budget went on the answer or on thinking about it,
+        // which decides whether a bigger cap or a shorter answer is the fix.
+        console.warn("[scene] answer truncated", {
+          model: call.model,
+          cap: call.maxCompletionTokens,
+          completionTokens: data.usage?.completion_tokens,
+          reasoningTokens:
+            data.usage?.completion_tokens_details?.reasoning_tokens,
+        });
         throw new Error("answer_truncated");
       }
       const content = choice?.message?.content ?? "";

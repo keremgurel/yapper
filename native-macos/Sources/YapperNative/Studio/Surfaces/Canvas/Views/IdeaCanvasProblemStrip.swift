@@ -10,9 +10,9 @@ struct IdeaCanvasProblemStrip: View {
         if operation.error != nil || autosave.state == .error {
             HStack(spacing: 12) {
                 if let error = operation.error {
-                    Text(error).font(.system(size: 13)).foregroundStyle(Color.studioDanger)
+                    Text(error).font(.studioBody).foregroundStyle(Color.studioDanger)
                 } else {
-                    Text("Your edits couldn't be saved yet.").font(.system(size: 13)).foregroundStyle(Color.studioDanger)
+                    Text("Your edits couldn't be saved yet.").font(.studioBody).foregroundStyle(Color.studioDanger)
                 }
                 Spacer(minLength: 0)
                 if autosave.state == .error {

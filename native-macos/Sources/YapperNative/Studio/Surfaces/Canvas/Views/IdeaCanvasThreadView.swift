@@ -18,7 +18,7 @@ struct IdeaCanvasThreadView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     if thread.failed {
                         Text("The earlier conversation couldn't be loaded. New asks still work.")
-                            .font(.system(size: 12)).foregroundStyle(.secondary)
+                            .font(.studioLabel).foregroundStyle(.secondary)
                     }
                     ForEach(Array(thread.messages.enumerated()), id: \.element.id) { index, message in
                         IdeaCanvasMessageView(
@@ -56,11 +56,11 @@ struct IdeaCanvasMessageView: View {
             if creator { Spacer(minLength: 40) }
             VStack(alignment: .leading, spacing: 4) {
                 if !creator {
-                    Text("Chirpy").font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+                    Text("Chirpy").font(.studioLabelStrong).foregroundStyle(.secondary)
                 }
                 Text(message.text).font(.system(size: 14)).lineSpacing(3).textSelection(.enabled)
                 if !creator && !message.actions.isEmpty {
-                    Text(IdeaCanvasActions.describe(message.actions)).font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text(IdeaCanvasActions.describe(message.actions)).font(.studioLabel).foregroundStyle(.secondary)
                 }
                 if !creator && (canAddToPage || canUndo) {
                     HStack(spacing: 4) {

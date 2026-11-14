@@ -35,7 +35,7 @@ struct BrainEssentialsCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("About you").font(.nativeSectionTitle)
                     Text("Read before anything is written for you. Plain sentences are fine.")
-                        .font(.system(size: 13)).foregroundStyle(.secondary)
+                        .font(.studioBody).foregroundStyle(.secondary)
                     BrainEssentialsFitNote(project: project)
                 }
                 Spacer(minLength: 0)
@@ -53,7 +53,7 @@ struct BrainEssentialsCard: View {
                         set: { store.update(.defaultFormat($0)) }
                     ))
                     Text("New ideas start in this format. You can make the other formats from any idea later.")
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                        .font(.studioLabel).foregroundStyle(.secondary)
                 }
             }
             LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
@@ -74,7 +74,7 @@ struct BrainEssentialsCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Pillars").font(.nativeLabel)
                     Text("The angles you actually make. Every idea is filed under one.")
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                        .font(.studioLabel).foregroundStyle(.secondary)
                 }
                 BrainPillarEditor(pillars: store.pillars) { store.update(.pillars($0)) }
             }

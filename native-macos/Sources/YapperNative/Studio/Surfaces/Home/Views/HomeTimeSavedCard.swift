@@ -14,10 +14,10 @@ struct HomeTimeSavedCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("Time saved").font(.system(size: 13, weight: .semibold))
+                Text("Time saved").font(.studioBodyStrong)
                 Spacer()
                 Image(systemName: "info.circle")
-                    .font(.system(size: 13))
+                    .font(.studioBody)
                     .foregroundStyle(.secondary)
                     .help(howItsCounted)
                     .accessibilityLabel(howItsCounted)
@@ -27,7 +27,7 @@ struct HomeTimeSavedCard: View {
 
             if let saved, saved.edits == 0 {
                 Label("Starts with your next 1-Click Edit. The hours it saves you add up here.", systemImage: "scissors")
-                    .font(.system(size: 13))
+                    .font(.studioBody)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 18)
@@ -57,11 +57,11 @@ struct HomeTimeSavedCard: View {
                 RoundedRectangle(cornerRadius: 6).fill(Color.studioFaintFill).frame(width: 190, height: 40)
             }
             Text("saved vs cutting it yourself")
-                .font(.system(size: 13))
+                .font(.studioBody)
                 .foregroundStyle(.secondary)
             if let saved {
                 Text("\(HomeDuration.text(saved.footageSeconds)) of footage · \(HomeDuration.text(saved.cutSeconds)) cut out")
-                    .font(.system(size: 12))
+                    .font(.studioLabel)
                     .foregroundStyle(.secondary)
             }
         }
@@ -78,9 +78,11 @@ struct HomeTimeSavedCard: View {
             } else {
                 RoundedRectangle(cornerRadius: 6).fill(Color.studioFaintFill).frame(width: 64, height: 28)
             }
-            Text(detail).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
+            Text(detail).font(.studioLabel).foregroundStyle(.secondary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 18)
         .padding(.vertical, 16)
     }

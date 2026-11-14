@@ -21,7 +21,8 @@ struct MaskInspector: View {
                             .font(.studioCaption).foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Button("Edit…") { session.pausePlayback(); editing = region }
+                    Button("Edit") { session.pausePlayback(); editing = region }
+                        .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
                         .help("Change the area, color and opacity keyframes")
                 }
             }

@@ -59,6 +59,12 @@ export interface Placement {
   group?: string;
   /** An effect from the client's library to play as it appears. */
   sound?: string;
+  /** The creator asked for the file's whole length: it plays from its cue to
+   * the end of the file, however long the quote is. */
+  fullLength?: boolean;
+  /** Seconds into the file to start from, when the creator asked to start
+   * partway in ("1.2 seconds into its clip"). */
+  sourceStart?: number;
 }
 
 /** A sound that belongs to no media. */
@@ -251,6 +257,14 @@ export function parsePlacements(reply: string): Placement[] {
         cue: text(entry.cue),
         group: text(entry.group),
         sound: text(entry.sound),
+        fullLength: entry.fullLength === true ? true : undefined,
+        sourceStart:
+          typeof entry.sourceStart === "number" &&
+          Number.isFinite(entry.sourceStart) &&
+          entry.sourceStart > 0 &&
+          entry.sourceStart <= 86_400
+            ? entry.sourceStart
+            : undefined,
       },
     ];
   });

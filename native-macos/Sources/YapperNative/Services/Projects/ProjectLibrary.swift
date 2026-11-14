@@ -2,50 +2,47 @@ import Foundation
 
 /// Every project the creator has, in one folder they can see in Finder.
 ///
-/// Defaults to `~/Movies/Yapper Projects`. Nothing here talks to the network:
-/// a project is a folder, listing is reading the folder, and deleting is the
-/// Trash, so a mistake is undoable the way any file mistake is.
+/// The folder is the one chosen for editor projects in Storage, by default
+/// `~/Movies/Yapper Projects`. Nothing here talks to the network: a project
+/// is a folder, listing is reading the folder, and deleting is the Trash, so a
+/// mistake is undoable the way any file mistake is.
 actor ProjectLibrary {
     static let shared = ProjectLibrary()
-    private static let directoryKey = "projectsDirectoryPath"
 
-    nonisolated let directory: URL
+    /// Set for a library pinned to one folder; nil follows the Storage choice,
+    /// so changing it takes effect on the next read without a new library.
+    private nonisolated let pinnedDirectory: URL?
+    private nonisolated let folders: StorageFolders
 
-    init(directory: URL = ProjectLibrary.defaultDirectory) {
-        self.directory = directory
+    nonisolated var directory: URL { pinnedDirectory ?? folders.folder(for: .editorProjects) }
+
+    init(directory: URL? = nil, folders: StorageFolders = .standard) {
+        self.pinnedDirectory = directory
+        self.folders = folders
     }
 
-    static var defaultDirectory: URL {
-        if ProjectStore.isTesting {
-            return FileManager.default.temporaryDirectory
-                .appending(
-                    path: "YapperProjectsTests-\(ProcessInfo.processInfo.processIdentifier)",
-                    directoryHint: .isDirectory
-                )
-        }
-        if let path = UserDefaults.standard.string(forKey: directoryKey) {
-            return URL(filePath: path, directoryHint: .isDirectory)
-        }
-        let movies = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0]
-        return movies.appending(path: "Yapper Projects", directoryHint: .isDirectory)
-    }
-
-    /// Newest edited first.
+    /// Newest edited first. A package whose summary can't be read isn't
+    /// listed; `packages()` still finds it.
     func listings() throws -> [ProjectListing] {
+        var listings: [ProjectListing] = []
+        for package in try packages() {
+            if let summary = summary(for: package) {
+                listings.append(ProjectListing(package: package, summary: summary))
+            }
+        }
+        return listings.sorted { $0.summary.updatedAt > $1.summary.updatedAt }
+    }
+
+    /// Every package in the folder, readable or not. A move takes all of them
+    /// so none is left behind unseen.
+    func packages() throws -> [ProjectPackage] {
         try ensureDirectory()
         let contents = try FileManager.default.contentsOfDirectory(
             at: directory,
             includingPropertiesForKeys: [.contentModificationDateKey],
             options: [.skipsHiddenFiles]
         )
-        var listings: [ProjectListing] = []
-        for url in contents where ProjectPackage.isPackage(url) {
-            let package = ProjectPackage(url: url)
-            if let summary = summary(for: package) {
-                listings.append(ProjectListing(package: package, summary: summary))
-            }
-        }
-        return listings.sorted { $0.summary.updatedAt > $1.summary.updatedAt }
+        return contents.filter(ProjectPackage.isPackage).map { ProjectPackage(url: $0) }
     }
 
     /// The summary sidecar, or one rebuilt from the project when the sidecar
@@ -90,8 +87,13 @@ actor ProjectLibrary {
         return nil
     }
 
+    /// Renamed where it is. A project left in an earlier projects folder, or
+    /// opened from anywhere else, keeps its folder: taking it into the
+    /// library's would be a plain move, across disks when the library is on
+    /// a drive, with none of the checks `ProjectMover` makes.
     func rename(_ package: ProjectPackage, to name: String) throws -> ProjectPackage {
-        let destination = uniqueURL(for: name, excluding: package.url)
+        let folder = package.url.deletingLastPathComponent()
+        let destination = ProjectPackage.uniqueURL(for: name, in: folder, excluding: package.url)
         guard destination != package.url else { return package }
         try FileManager.default.moveItem(at: package.url, to: destination)
         RecentProjects.replace(package.url, with: destination)
@@ -173,22 +175,18 @@ actor ProjectLibrary {
         return PackagedMediaLayout.relocated(GeneratedAssetLayout.relocated(project, to: package.url), to: package.url)
     }
 
+    /// A pinned folder is made as needed. The Storage folder is made only when
+    /// it is the default: a chosen one on an unplugged drive throws instead of
+    /// getting an empty stand-in on this Mac.
     private func ensureDirectory() throws {
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        if let pinnedDirectory {
+            try FileManager.default.createDirectory(at: pinnedDirectory, withIntermediateDirectories: true)
+        } else {
+            _ = try folders.usableFolder(for: .editorProjects)
+        }
     }
 
-    private func uniqueURL(for name: String, excluding: URL? = nil) -> URL {
-        let base = ProjectPackage.fileName(for: name)
-        var candidate = directory.appending(path: base, directoryHint: .isDirectory)
-        var counter = 2
-        while FileManager.default.fileExists(atPath: candidate.path), candidate != excluding {
-            let stem = String(base.dropLast(ProjectPackage.pathExtension.count + 1))
-            candidate = directory.appending(
-                path: "\(stem) \(counter).\(ProjectPackage.pathExtension)",
-                directoryHint: .isDirectory
-            )
-            counter += 1
-        }
-        return candidate
+    private func uniqueURL(for name: String) -> URL {
+        ProjectPackage.uniqueURL(for: name, in: directory)
     }
 }

@@ -12,7 +12,7 @@ struct StorageWorkspaceCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Saved writing and settings").font(.nativeSectionTitle)
                     Text("About \(StorageFormat.bytes(workspace.estimatedBytes)) of writing and settings in the cloud. Idea and library counts are separate stored categories; neither uses your video allowance.")
-                        .font(.system(size: 12))
+                        .font(.studioLabel)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: 620, alignment: .leading)
                         .fixedSize(horizontal: false, vertical: true)
@@ -57,8 +57,8 @@ private struct StorageWorkspaceWell: View {
                     .foregroundStyle(.secondary)
                     .frame(width: 22)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(.primary)
-                    Text(detail).font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text(title).font(.studioBodyStrong).foregroundStyle(.primary)
+                    Text(detail).font(.studioLabel).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
             }

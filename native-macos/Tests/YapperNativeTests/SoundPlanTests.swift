@@ -30,6 +30,17 @@ struct SoundPlanTests {
         #expect(SoundPlan.effect(named: "drumroll")?.id == "drum-roll")
     }
 
+    /// The marker stroke for a highlighted number answers to the words a
+    /// creator uses for it, and plays a file that is really in the build.
+    @Test func theHighlighterResolvesToItsBundledFile() throws {
+        for name in ["highlighter", "Highlighter", "a highlighter sound", "highlight", "marker", "the marker effect", "marker pen"] {
+            #expect(SoundPlan.effect(named: name)?.id == "highlighter", "\(name)")
+        }
+        let effect = try #require(SoundEffectDescriptor.effect(id: "highlighter"))
+        #expect(effect.category == .clicks)
+        #expect(SoundEffectService.shared.bundledURL(for: effect)?.lastPathComponent == "highlighter.m4a")
+    }
+
     /// Longest name first, or "cheek pop" inside a sentence loses to "pop".
     @Test func theMoreSpecificNameWins() {
         #expect(SoundPlan.effect(named: "give me a cheek pop there")?.id == "pop")

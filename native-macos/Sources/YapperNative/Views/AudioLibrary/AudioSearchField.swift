@@ -38,7 +38,7 @@ struct AudioSearchField: View {
             Capsule().fill(Color.studioInputBackground)
                 .overlay {
                     Capsule().strokeBorder(
-                        isFocused ? Color.yapperOrange : Color.studioLine,
+                        isFocused ? Color.studioLineStrong : Color.studioLine,
                         lineWidth: 1
                     )
                 }

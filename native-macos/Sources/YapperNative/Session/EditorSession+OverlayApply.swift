@@ -78,10 +78,14 @@ extension EditorSession {
             let end = unit.map(\.end).max() ?? 0
 
             for (member, box) in zip(unit, boxes) {
-                let duration = min(
+                var duration = min(
                     max(OverlayPlan.minimumSpanSeconds, end - member.start),
                     max(0.1, project.duration - member.start)
                 )
+                // A video never runs past its own last frame: a 3.1 s clip
+                // quoted over 3.43 s of speech was placed for 3.43 s.
+                let sourceStart = member.media.isImage ? 0 : min(member.span.sourceStart ?? 0, member.media.duration - 0.1)
+                if !member.media.isImage { duration = min(duration, member.media.duration - sourceStart) }
                 guard duration >= OverlayPlan.minimumSpanSeconds else { continue }
                 // Grouping can extend a member beyond its original quote.
                 // Recheck the final interval against earlier members as well.
@@ -97,6 +101,7 @@ extension EditorSession {
                         media: member.media,
                         timelineStart: member.start,
                         duration: duration,
+                        sourceStart: max(0, sourceStart),
                         alongside: (project.overlays ?? []) + placed,
                         box: box
                     )
@@ -140,7 +145,11 @@ extension EditorSession {
         let start = OverlayCue.start(
             forWordAt: project.nearestTimelineTime(for: words[span.anchorWord])
         )
-        let end = (project.timelineEnd(for: last) ?? project.nearestTimelineTime(for: last))
+        var end = (project.timelineEnd(for: last) ?? project.nearestTimelineTime(for: last))
+        // "For its full length" is the file's length, not the quote's.
+        if span.fullLength, !media.isImage {
+            end = start + max(0, media.duration - (span.sourceStart ?? 0))
+        }
         guard end > start else { return nil }
         return TimedSpan(span: span, media: media, start: start, end: end)
     }

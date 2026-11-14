@@ -16,7 +16,7 @@ struct CalendarMonthGrid: View {
             HStack(spacing: 0) {
                 ForEach(dates.weekDays(focus), id: \.self) { day in
                     Text(day.formatted(.dateTime.weekday(.abbreviated)))
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.studioCaptionStrong)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 8).padding(.vertical, 8)
                         .frame(maxWidth: .infinity, alignment: .leading)
