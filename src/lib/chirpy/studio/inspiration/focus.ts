@@ -1,4 +1,5 @@
 import { record } from "../../protocol";
+import { INSPIRATION_FOCUS_MAX as MAX, isWebLink } from "./focus-limits";
 
 /**
  * The inspiration item the creator has open on the Inspiration tab. Saved
@@ -24,14 +25,14 @@ const text = (value: unknown, max: number): string | undefined =>
 /** The item, bounded; null when it is malformed. */
 export function parseInspirationFocus(raw: unknown): InspirationFocus | null {
   if (!record(raw)) return null;
-  const url = text(raw.url, 600);
-  const title = text(raw.title, 300);
-  if (!url || !/^https?:\/\//i.test(url) || !title) return null;
+  const url = text(raw.url, MAX.url);
+  const title = text(raw.title, MAX.title);
+  if (!url || !isWebLink(url) || !title) return null;
   const item: InspirationFocus = { url, title };
-  const platform = text(raw.platform, 20);
-  const author = text(raw.author, 120);
-  const note = text(raw.note, 1000);
-  const transcript = text(raw.transcript, 12_000);
+  const platform = text(raw.platform, MAX.platform);
+  const author = text(raw.author, MAX.author);
+  const note = text(raw.note, MAX.note);
+  const transcript = text(raw.transcript, MAX.transcript);
   if (platform) item.platform = platform;
   if (author) item.author = author;
   if (note) item.note = note;
