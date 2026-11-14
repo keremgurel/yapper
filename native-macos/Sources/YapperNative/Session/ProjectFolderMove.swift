@@ -99,7 +99,7 @@ final class ProjectFolderMove: ObservableObject {
                     failures[package] = error.localizedDescription
                 }
             }
-            ProjectMoveStaging.noteMoving(into: nil, preferences: folders.preferences)
+            ProjectMoveStaging.finishMoving(into: target, preferences: folders.preferences)
             ranMoves = true
         } catch {
             outcome = error.localizedDescription

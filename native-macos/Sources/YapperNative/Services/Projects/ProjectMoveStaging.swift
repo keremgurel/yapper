@@ -5,8 +5,8 @@ import Foundation
 ///
 /// A move cut short by a quit, a crash or a pulled drive leaves one behind,
 /// and it can be many gigabytes. They are swept from the destination before
-/// each move, and at launch from the projects folder and from wherever a move
-/// was heading when the app last stopped.
+/// and after each move, and at launch from the projects folder and from
+/// wherever the last move was heading if it couldn't be swept then.
 enum ProjectMoveStaging {
     static let prefix = ".moving-"
     static let destinationKey = "storageFolder.movingInto"
@@ -36,14 +36,24 @@ enum ProjectMoveStaging {
         preferences.setPath(folder?.standardizedFileURL.path, for: destinationKey)
     }
 
+    /// Ends a move, or picks one up at launch: sweeps the folder it was
+    /// heading to and forgets it. A folder that can't be reached, because its
+    /// drive was pulled mid-copy, stays noted so the copy stranded on it is
+    /// swept at a launch that finds the drive back.
+    static func finishMoving(into folder: URL, preferences: any StoragePreferences) {
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: folder.path, isDirectory: &isDirectory), isDirectory.boolValue else { return }
+        sweep(in: folder)
+        noteMoving(into: nil, preferences: preferences)
+    }
+
     /// The launch sweep.
     static func sweepAfterLaunch(folders: StorageFolders) {
         if folders.availability(of: .editorProjects) == .available {
             sweep(in: folders.folder(for: .editorProjects))
         }
         if let path = folders.preferences.path(for: destinationKey) {
-            sweep(in: URL(filePath: path, directoryHint: .isDirectory))
-            noteMoving(into: nil, preferences: folders.preferences)
+            finishMoving(into: URL(filePath: path, directoryHint: .isDirectory), preferences: folders.preferences)
         }
     }
 }

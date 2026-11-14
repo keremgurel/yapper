@@ -340,6 +340,30 @@ struct ProjectMoverTests {
         }
     }
 
+    @Test("A copy stranded on a pulled drive stays noted until a launch finds the drive back")
+    func strandedCopyWaitsForTheDrive() throws {
+        try withFolders { root in
+            let folders = StorageFolders(
+                preferences: MemoryStoragePreferences(),
+                movies: root.appending(path: "Movies", directoryHint: .isDirectory),
+                downloads: root.appending(path: "Downloads", directoryHint: .isDirectory)
+            )
+            let drive = root.appending(path: "Drive", directoryHint: .isDirectory)
+            ProjectMoveStaging.noteMoving(into: drive, preferences: folders.preferences)
+            // The move ends, then the app launches, both with the drive away.
+            ProjectMoveStaging.finishMoving(into: drive, preferences: folders.preferences)
+            ProjectMoveStaging.sweepAfterLaunch(folders: folders)
+            #expect(folders.preferences.path(for: ProjectMoveStaging.destinationKey) != nil)
+            #expect(!FileManager.default.fileExists(atPath: drive.path))
+
+            let stranded = ProjectMoveStaging.url(in: try make(drive))
+            try FileManager.default.createDirectory(at: stranded, withIntermediateDirectories: true)
+            ProjectMoveStaging.sweepAfterLaunch(folders: folders)
+            #expect(!FileManager.default.fileExists(atPath: stranded.path))
+            #expect(folders.preferences.path(for: ProjectMoveStaging.destinationKey) == nil)
+        }
+    }
+
     @Test("Saving a project never makes the folders above its package")
     func saveNeverMakesParentFolders() async throws {
         let root = FileManager.default.temporaryDirectory
