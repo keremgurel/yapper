@@ -22,10 +22,19 @@ enum ProjectPanels {
         return name.isEmpty ? nil : name
     }
 
-    static func newProject(for session: EditorSession) {
+    static func newProject(for session: EditorSession, folders: StorageFolders = .standard) {
+        let folder = folders.folder(for: .editorProjects)
+        if let problem = StorageWarningCopy.problem(kind: .editorProjects, folder: folder,
+                                                    availability: folders.availability(of: .editorProjects)) {
+            StorageFolderPanels.showAlert(title: "Can’t create a project right now", message: problem)
+            return
+        }
+        let place = folders.chosen(.editorProjects) == nil
+            ? "on this Mac in your Yapper Projects folder"
+            : "in “\(folder.lastPathComponent)”, the projects folder you chose in Storage"
         guard let name = promptName(
             title: "New project",
-            message: "Saved on this Mac in your Yapper Projects folder.",
+            message: "Saved \(place).",
             initial: "Untitled project",
             action: "Create"
         ) else { return }
@@ -35,7 +44,7 @@ enum ProjectPanels {
     static func renameProject(for session: EditorSession) {
         guard let name = promptName(
             title: "Rename project",
-            message: "The folder in Yapper Projects is renamed with it.",
+            message: "The project’s folder is renamed with it.",
             initial: session.project.name,
             action: "Rename"
         ) else { return }
@@ -50,7 +59,7 @@ enum ProjectPanels {
         panel.canChooseFiles = true
         panel.allowsMultipleSelection = false
         panel.treatsFilePackagesAsDirectories = false
-        panel.directoryURL = ProjectLibrary.defaultDirectory
+        FilePanelFolder.pointFilePanel(panel, at: .editorProjects)
         Task {
             guard await FilePanelPresenter.present(panel) == .OK, let url = panel.url else { return }
             guard ProjectPackage.isPackage(url) else {
@@ -66,7 +75,7 @@ enum ProjectPanels {
         panel.title = "Save a copy"
         panel.prompt = "Save"
         panel.nameFieldStringValue = ProjectPackage.fileName(for: session.project.name + " copy")
-        panel.directoryURL = ProjectLibrary.defaultDirectory
+        FilePanelFolder.pointFilePanel(panel, at: .editorProjects)
         panel.canCreateDirectories = true
         Task {
             guard await FilePanelPresenter.present(panel) == .OK, var url = panel.url else { return }

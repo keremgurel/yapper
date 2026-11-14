@@ -13,6 +13,10 @@ final class ProjectNavigationState: ObservableObject {
     /// Bumped whenever a package is created, renamed, duplicated or trashed, so
     /// the grid reloads without polling the folder.
     @Published var libraryVersion = 0
+    /// True while projects move to another folder. Nothing may open, make or
+    /// change a project then: one opened from the old folder would be copied
+    /// out from under its edits.
+    @Published var isMovingProjects = false
 
     func noteOpened(_ package: ProjectPackage) {
         currentPackage = package

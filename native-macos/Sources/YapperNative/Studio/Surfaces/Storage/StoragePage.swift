@@ -2,15 +2,17 @@ import SwiftUI
 
 /// What the account's storage is used by and how much room each plan leaves.
 struct StoragePage: View {
+    let session: EditorSession
     @ObservedObject var store: StorageStore = .shared
 
     var body: some View {
         NativePage() {
             NativePageHeader(
                 title: "Storage",
-                description: "Temporary space for your current video and scheduled posts. Originals and editor projects stay on your Mac. Your written workspace stays in Yapper."
+                description: "Where projects, recordings and exports are saved on your Mac, and the temporary cloud space for your current video and scheduled posts. Your written workspace stays in Yapper."
             )
 
+            StorageFoldersSection(session: session)
             content
         }
         .task { await store.refresh() }

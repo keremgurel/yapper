@@ -7,6 +7,8 @@ import UniformTypeIdentifiers
 struct ProjectsHomeView: View {
     @ObservedObject var session: EditorSession
     @ObservedObject var navigation: ProjectNavigationState
+    var openStorage: () -> Void = {}
+    @ObservedObject private var monitor = StorageMonitor.shared
     @State private var listings: [ProjectListing] = []
     @State private var loaded = false
     @State private var isDropTargeted = false
@@ -17,9 +19,14 @@ struct ProjectsHomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 header
-                ProjectStorageSummary(listings: listings)
+                HStack(spacing: 6) {
+                    ProjectStorageSummary(listings: listings)
+                    ProjectsFolderLink(openStorage: openStorage)
+                }
                 ManagedMediaNotice(session: session)
-                if loaded, listings.isEmpty {
+                if monitor.status(of: .editorProjects) != .available {
+                    ProjectsFolderUnavailableView(availability: monitor.status(of: .editorProjects), openStorage: openStorage)
+                } else if loaded, listings.isEmpty {
                     emptyState
                 } else {
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
@@ -58,7 +65,7 @@ struct ProjectsHomeView: View {
             }
             return true
         }
-        .task(id: navigation.libraryVersion) { await reload() }
+        .task(id: "\(navigation.libraryVersion)|\(monitor.generation)") { await reload() }
     }
 
     private var header: some View {
@@ -81,12 +88,15 @@ struct ProjectsHomeView: View {
                 Label("Open project", systemImage: "folder")
             }
             .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+            .disabled(navigation.isMovingProjects)
             Button {
                 ProjectPanels.newProject(for: session)
             } label: {
                 Label("New project", systemImage: "plus")
             }
             .buttonStyle(EditorPrimaryButtonStyle(size: .small))
+            .disabled(monitor.status(of: .editorProjects) != .available || navigation.isMovingProjects)
+            .help(monitor.status(of: .editorProjects) == .available ? "" : "Plug the drive back in, or choose another folder in Storage, to make a project.")
         }
     }
 

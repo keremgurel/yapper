@@ -35,7 +35,7 @@ struct NativeSurfaceHost: View {
         case .dictionary:
             DictionaryPage()
         case .storage:
-            StoragePage()
+            StoragePage(session: session)
         case .calendar:
             CalendarPage()
         case .automations:
