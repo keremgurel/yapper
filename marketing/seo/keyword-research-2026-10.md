@@ -204,7 +204,7 @@ Every row is brand or speakingpractice.ai overlap. There is no creator-workflow 
 | 27  | auto captions youtube                                             | Captions & subtitles          |  1,000 |  27 |  3.38 | informational |   +81% |    730 |
 | 28  | how teleprompter work **(covered)** (+8 variants)                 | Teleprompter                  |    720 |   0 |  0.91 | informational |   -55% |    720 |
 | 29  | speakflow teleprompter                                            | Teleprompter                  |    720 |   0 |  2.59 | informational |   -80% |    720 |
-| 30  | marketing video script example                                    | Video scripts & templates     |    720 |   0 |       | informational |  +400% |    720 |
+| 30  | marketing video script example **(covered)**                      | Video scripts & templates     |    720 |   0 |       | informational |  +400% |    720 |
 | 31  | how to quickly memorize a script **(covered)**                    | Video scripts & templates     |    720 |   0 |       | informational |   +23% |    720 |
 | 32  | how to memorize a script fast **(covered)** (+1 variants)         | Video scripts & templates     |    720 |   0 |  2.12 | informational |   +50% |    720 |
 | 33  | canva auto captions                                               | Captions & subtitles          |    720 |   0 |       | transactional |   -19% |    720 |
@@ -529,7 +529,7 @@ US desktop, top results:
 | #   | Topic                                                          | Primary keyword (vol / KD)                | Secondary                                                                                                          | Why                                                                                                                      | Status                                             |
 | --- | -------------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
 | 1   | How to write a video script for talking to camera              | how to write a video script (2,900 / 1)   | write a video script, how to make a video script, video script template, video script example                      | Largest easy cluster, +440% YoY, weak SERP, directly feeds AI script writer + teleprompter                               | **Covered** 2026-10-24 ([log](./blog-post-log.md)) |
-| 2   | Video script examples for Reels, Shorts and YouTube            | marketing video script example (720 / 0)  | video tutorial script (1,300 / 0), video script examples (390 / 3), youtube script (1,900 / 18)                    | Example-led follow-up; links to #1                                                                                       | Planned                                            |
+| 2   | Video script examples for Reels, Shorts and YouTube            | marketing video script example (720 / 0)  | video tutorial script (1,300 / 0), video script examples (390 / 3), youtube script (1,900 / 18)                    | Example-led follow-up; links to #1                                                                                       | **Covered** 2026-11-13 ([log](./blog-post-log.md)) |
 | 3   | Teleprompter app for Mac: how to set one up and read naturally | teleprompter app for mac (720 / 19)       | teleprompter for mac (1,000 / 55), free teleprompter for mac (170 / 21), does capcut have a teleprompter (140 / 0) | Product page target; needs a fair comparison including free options                                                      | Planned                                            |
 | 4   | What is a teleprompter and how does it work (for creators)     | what is a teleprompter (2,400 / 0)        | how teleprompter works (720 / 0), teleprompter meaning (590 / 0), what does a teleprompter look like (210 / 4)     | Easy informational volume; top of funnel                                                                                 | **Covered** 2026-10-26 ([log](./blog-post-log.md)) |
 | 5   | Hook ideas for talking-head videos                             | hook ideas (3,600 / 11)                   | video hooks (210 / 4), good hook ideas (320 / 11), viral video hooks for reels (90 / 3)                            | Answer "7 types of hooks" PAA with video examples                                                                        | Planned                                            |
@@ -590,6 +590,32 @@ No public replies posted or drafted in an external app.
 **Internal links / boundaries:** Links /blog/how-to-write-a-video-script, /blog/what-is-a-teleprompter, /blog/how-to-memorize-a-script, /features/teleprompter-recorder, /features/transcript-video-editor, /features/automatic-captions (last two verified live before linking). Adds inbound from script and teleprompter posts. Keeps this strictly recording/creator Studio; no new speech practice guides or edits to old impromptu posts.
 
 **JSON update:** Set `covered: "2026-11-08 talking-head-video"` on `talking head video`, `what is a talking head video`, `how to make a talking head video`, `how to film yourself`. Do not mark `video talking head` (inversion) as covered.
+
+## November 13, 2026 update: video-script-examples post
+
+Research date: November 13, 2026, Pacific. Extra mid-week post. GSC 90 days to November 11, 2026; DataForSEO Labs keyword overview, US, pulled November 13.
+
+**Post:** [Video script examples: 6 short scripts you can copy](https://ypr.app/blog/video-script-examples), published 2026-11-13.
+
+**Keywords covered (one per variant group):**
+
+| Keyword                        | Vol |  KD |
+| ------------------------------ | --: | --: |
+| marketing video script example | 880 |   0 |
+| video script examples          | 480 |   3 |
+| corporate video script example | 170 |   0 |
+| promo video script             |  70 |   0 |
+| training video script example  |  70 |   0 |
+| explainer video script example |  50 |   0 |
+| youtube video script example   |  50 |   0 |
+
+Deduplicated total: 1,770. Mean KD 0.4. Also marked covered in the JSON: video script example, corporate video script examples, explainer video script examples (same variant groups). The examples terms move from /blog/how-to-write-a-video-script to this page. Not marked: video tutorial script (1,300, KD 7), which needs its own template page.
+
+**Why:** Queue #2. GSC shows the examples intent reaching the how-to post at position 90 to 100, where it has only one example. Top pages each cover one video type; this one covers six with measured word counts.
+
+**Content:** Six original, illustrative scripts with placeholder products, beat tables, word counts and times at 150 wpm (NCVS), stage notes for the tutorial, YouTube Shorts 3-minute maximum (YouTube Blog), adaptation steps, mistakes, FAQ. Links to the script writer, teleprompter recorder, transcript editor and captions pages.
+
+**Community sources:** reddit.com/r/digital_marketing/comments/14navm3/, reddit.com/r/UGCcreators/comments/1rkq2en/, reddit.com/r/marketing/comments/5p76zl/. No public replies posted.
 
 ## Related docs
 
