@@ -78,7 +78,7 @@ final class ProjectFolderMove: ObservableObject {
             let target = try folders.usableFolder(folder, for: .editorProjects)
             destination = target
             if let reason = await exportBlocker(packages, session: session) { throw ProjectMoveStop(reason) }
-            if let reason = await uploadBlocker(packages) { throw ProjectMoveStop(reason) }
+            if let reason = await uploadBlocker(packages, session: session) { throw ProjectMoveStop(reason) }
             reopen = try await closeIfMoving(packages, session: session)
             // Asked again: the checks above awaited with the project still
             // open, and an export of it may have started in the meantime.
@@ -141,14 +141,22 @@ final class ProjectFolderMove: ObservableObject {
 
     /// Saves and closes the open project when it is one of those moving. A
     /// save that fails stops the move rather than leave edits behind.
+    ///
+    /// Returns the package as the move lists it. The editor may have opened
+    /// it by another path to the same folder, through a link say, and a
+    /// project matched by spelling alone would stay open while its package
+    /// moved, then save its edits into an empty stand-in at the old path.
     private func closeIfMoving(_ packages: [ProjectPackage], session: EditorSession) async throws -> ProjectPackage? {
-        guard let open = session.projectNavigation.currentPackage, packages.contains(open) else { return nil }
+        guard let open = session.projectNavigation.currentPackage,
+              let moving = packages.first(where: { $0 == open || FolderIdentity.same($0.url, open.url) })
+        else { return nil }
         do {
             try await session.persist()
         } catch {
             throw ProjectMoveStop("“\(open.displayName)” couldn’t be saved, so nothing was moved. \(error.localizedDescription)")
         }
-        return await session.closeCurrentProject()
+        await session.closeCurrentProject()
+        return moving
     }
 
     /// Exports know projects by ID, so each package is asked which project
@@ -164,12 +172,15 @@ final class ProjectFolderMove: ObservableObject {
         return nil
     }
 
-    private func uploadBlocker(_ packages: [ProjectPackage]) async -> String? {
-        let listings = (try? await ProjectLibrary.shared.listings()) ?? []
-        for listing in listings where packages.contains(listing.package) {
-            if PosterProjectSync.shared.isUploading(projectID: listing.summary.id) {
-                return "Wait for “\(listing.package.displayName)” to finish uploading, then move your projects."
-            }
+    /// Asked of each package rather than the library's listing: after the
+    /// setting has switched, Try again moves projects the library no longer
+    /// lists.
+    private func uploadBlocker(_ packages: [ProjectPackage], session: EditorSession) async -> String? {
+        for package in packages {
+            guard let projectID = await session.projectID(in: package),
+                  PosterProjectSync.shared.isUploading(projectID: projectID)
+            else { continue }
+            return "Wait for “\(package.displayName)” to finish uploading, then move your projects."
         }
         return nil
     }

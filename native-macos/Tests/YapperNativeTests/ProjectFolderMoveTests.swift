@@ -155,6 +155,54 @@ struct ProjectFolderMoveTests {
         rig.session.projectNavigation.isMovingProjects = false
     }
 
+    @Test("A project opened through a link to the folder is still closed, moved and reopened in the new folder")
+    func projectOpenedThroughALinkMovesToo() async throws {
+        let rig = try await rig()
+        defer { try? FileManager.default.removeItem(at: rig.root) }
+        let link = rig.root.appending(path: "Link", directoryHint: .isDirectory)
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: rig.old)
+        let linked = ProjectPackage(url: link.appending(path: "Day 25.yapperproj", directoryHint: .isDirectory))
+        await rig.session.openProject(linked)
+        #expect(rig.session.projectNavigation.currentPackage == linked)
+
+        let move = ProjectFolderMove()
+        await move.moveProjects(choosing: rig.new, moving: [rig.first, rig.second], session: rig.session, folders: rig.folders)
+
+        #expect(isIn(rig.session.projectNavigation.currentPackage, rig.new))
+        #expect(rig.session.project.name == "Day 25")
+        // A save now lands in the moved package, not in a stand-in where it was.
+        try await rig.session.persist()
+        #expect(try packages(in: rig.old).isEmpty)
+        #expect(try packages(in: rig.new) == ["Day 25.yapperproj", "Day 26.yapperproj"])
+    }
+
+    @Test("A move waits while an export is still copying the footage of a project that isn't open")
+    func exportPreparingHoldsTheMove() async throws {
+        let rig = try await rig()
+        defer { try? FileManager.default.removeItem(at: rig.root) }
+        var exporting = EditorProject(name: "Day 26")
+        exporting.id = try #require(await rig.session.library.summary(for: rig.second)?.id)
+        let destination = rig.root.appending(path: "day-26.mp4")
+        let jobs = rig.session.exportJobs
+        let job = jobs.start(ExportProjectSnapshot(project: exporting, package: rig.second), kind: .file, to: destination) { _ in
+            try await Task.sleep(for: .seconds(60))
+            return .file(destination)
+        }
+        let move = ProjectFolderMove()
+        #expect(await move.blocker(for: rig.session, moving: [rig.first, rig.second])?.contains("export of “Day 26”") == true)
+        await move.moveProjects(choosing: rig.new, moving: [rig.first, rig.second], session: rig.session, folders: rig.folders)
+
+        #expect(move.outcome?.contains("export of “Day 26”") == true)
+        #expect(try packages(in: rig.old) == ["Day 25.yapperproj", "Day 26.yapperproj"])
+        #expect(rig.session.projectNavigation.currentPackage == rig.first)
+        #expect(rig.folders.chosen(.editorProjects) == nil)
+        #expect(!rig.session.projectNavigation.isMovingProjects)
+
+        jobs.cancel(job)
+        _ = await jobs.completion(of: job)
+        #expect(await move.blocker(for: rig.session, moving: [rig.first, rig.second]) == nil)
+    }
+
     @Test("Picking the folder already in use, by any path, is recognised as the same folder")
     func sameFolderIsRecognised() async throws {
         let rig = try await rig()
