@@ -157,11 +157,9 @@ struct ExportSourceSnapshotTests {
     }
 
     @Test("Abandoned snapshot directories are reclaimed without touching a fresh export")
-    func staleSnapshotCleanupIsAgeBounded() async throws {
+    func staleSnapshotCleanupIsAgeBounded() throws {
         let root = try snapshotTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
-        let source = root.appending(path: "source.mov")
-        try Data("source".utf8).write(to: source)
         let stale = root.appending(path: "yapper-export-snapshot-stale")
         let fresh = root.appending(path: "yapper-export-snapshot-fresh")
         try FileManager.default.createDirectory(at: stale, withIntermediateDirectories: true)
@@ -170,21 +168,8 @@ struct ExportSourceSnapshotTests {
             [.modificationDate: Date(timeIntervalSinceNow: -(25 * 60 * 60))],
             ofItemAtPath: stale.path
         )
-        let media = ProjectMedia(
-            url: source,
-            name: "Source",
-            duration: 1,
-            width: 16,
-            height: 9,
-            hasAudio: false
-        )
-        let project = EditorProject(
-            media: [media],
-            clips: [TimelineClip(mediaID: media.id, sourceStart: 0, sourceEnd: 1)]
-        )
 
-        let snapshot = try await ExportSourceSnapshot.create(project: project, root: root)
-        defer { snapshot.discard() }
+        StaleExportScratchSweeper.sweep(in: root)
 
         #expect(!FileManager.default.fileExists(atPath: stale.path))
         #expect(FileManager.default.fileExists(atPath: fresh.path))
