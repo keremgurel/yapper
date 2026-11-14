@@ -24,7 +24,7 @@ struct StoragePage: View {
                     StorageLapseNotice(deleteOn: deleteOn)
                 }
                 Text("Cloud publishing storage counts uploaded media plus upload reservations, including expired reservations awaiting cleanup. Your Mac project files are separate and are not included in this total.")
-                    .font(.system(size: 13)).foregroundStyle(.secondary)
+                    .font(.studioBody).foregroundStyle(.secondary)
                 Button("Open local projects") { StudioNavigation.shared.goTo(.editor) }
                     .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                 StorageUsageCard(usage: usage)

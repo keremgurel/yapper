@@ -45,7 +45,7 @@ struct NativeCapsuleTabs<Value: Hashable>: View {
         } label: {
             HStack(spacing: 7) {
                 if let symbol = tab.symbol {
-                    Image(systemName: symbol).font(.system(size: 12, weight: .medium))
+                    Image(systemName: symbol).font(.studioLabelStrong)
                 }
                 Text(tab.label).lineLimit(1).truncationMode(.tail)
             }

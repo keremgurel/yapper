@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import {
   preflightPaidActionOrResponse,
   refundCreditReservation,
@@ -32,7 +33,7 @@ export async function chargedIngestProposal(
   signal?: AbortSignal,
 ): Promise<OperationResult<{ proposal: IngestProposal; balance: number }>> {
   await ensureUser(userId);
-  if (!process.env.SURPLUS_API_KEY) return refused(501, "no_provider");
+  if (!surplusKey("brain")) return refused(501, "no_provider");
   const billing = await preflightPaidActionOrResponse(userId, "ingest_context");
   if (billing) return refusedBy(billing);
 

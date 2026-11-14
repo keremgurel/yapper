@@ -11,11 +11,11 @@ struct PosterDisclosure<Content: View>: View {
         VStack(alignment: .leading, spacing: 0) {
             Button { withAnimation(.easeOut(duration: 0.15)) { open.toggle() } } label: {
                 HStack(spacing: 8) {
-                    Text(title).font(.system(size: 13, weight: .semibold))
-                    if let meta { Text(meta).font(.system(size: 12)).foregroundStyle(.secondary) }
+                    Text(title).font(.studioBodyStrong)
+                    if let meta { Text(meta).font(.studioLabel).foregroundStyle(.secondary) }
                     Spacer()
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.studioCaptionStrong)
                         .foregroundStyle(.secondary)
                         .rotationEffect(.degrees(open ? 180 : 0))
                 }

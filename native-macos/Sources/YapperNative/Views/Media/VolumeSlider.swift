@@ -10,6 +10,14 @@ import SwiftUI
 /// number. Typing 100 is how you get back to unity, which is why there is no
 /// button for it: a control that only does what the field already does is one
 /// more thing to read.
+///
+/// The level shown is, in order: where the handle is being dragged, what was
+/// just committed and is still on its way into the project, and what the
+/// project has saved. The middle one is what stops the jump. The project is
+/// written by an action that lands a beat after the drag or the Return key,
+/// and reading the saved value in that beat drew the old level for a frame
+/// before the new one arrived: the handle snapped back and forward, and a
+/// typed 40 showed 21 and then 40.
 struct VolumeSlider: View {
     let volume: Double
     let onChange: (Double) -> Void
@@ -18,31 +26,21 @@ struct VolumeSlider: View {
     var accessibilityName = "Volume"
 
     /// Where the handle is while it is being dragged.
-    ///
-    /// The handle has to move under the pointer whatever the view around it is
-    /// watching. Without this it was drawn from `volume`, which comes from a
-    /// store the inspector does not observe, so the slider stood still for the
-    /// whole drag and jumped to its new value on release: the fader felt stuck
-    /// and the change looked like it only landed at the end. The timeline's
-    /// waveform follows the store, which it does observe; the handle follows
-    /// this.
     @State private var dragging: Double?
-    /// What is in the field. Kept apart from the level so a half-typed number
-    /// is not read as one: "1" on the way to "125" would otherwise drop the
-    /// track to one percent for a keystroke.
-    @State private var typed: String?
-    @FocusState private var fieldFocused: Bool
+    /// What was committed last, held until the project reports it back.
+    @State private var held: Double?
 
-    private var shown: Double { dragging ?? volume }
+    private var shown: Double { dragging ?? held ?? volume }
 
     var body: some View {
-        HStack(spacing: 9) {
+        HStack(spacing: 10) {
             Button {
                 set(shown > 0 ? AudioLevel.minimum : AudioLevel.unity)
                 commit()
             } label: {
                 Image(systemName: icon)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.studioCaptionStrong)
+                    .foregroundStyle(.secondary)
                     .frame(width: 20, height: 20)
                     .contentShape(Rectangle())
             }
@@ -50,85 +48,43 @@ struct VolumeSlider: View {
             .accessibilityLabel(shown > 0 ? "Silence \(accessibilityName)" : "Reset \(accessibilityName) to 100%")
             .help(shown > 0 ? "Silence this" : "Back to 100%")
 
-            Slider(
-                value: Binding(get: { shown }, set: { newValue in set(newValue) }),
-                in: AudioLevel.minimum ... maximum,
-                onEditingChanged: { editing in
-                    // The one that matters: everything before this was a draft
-                    // that never touched the project.
-                    if !editing { commit() }
-                }
+            VolumeFader(
+                value: shown,
+                maximum: maximum,
+                accessibilityName: accessibilityName,
+                onDrag: set,
+                onRelease: commit
             )
-            .controlSize(.small)
-            .accessibilityLabel(accessibilityName)
-            .accessibilityValue("\(AudioLevel.percent(shown)) percent")
 
-            field
-        }
-    }
-
-    private var field: some View {
-        HStack(spacing: 2) {
-            TextField(
-                "",
-                text: Binding(
-                    get: { typed ?? String(AudioLevel.percent(shown)) },
-                    set: { newValue in typed = newValue }
-                )
-            )
-            .textFieldStyle(.plain)
-            .accessibilityLabel("\(accessibilityName), percent")
-            .multilineTextAlignment(.trailing)
-            .font(.system(size: 11, weight: .semibold))
-            .monospacedDigit()
-            .focused($fieldFocused)
-            .frame(width: 32)
-            .onSubmit { commitTyped() }
-            .onChange(of: fieldFocused) { _, focused in
-                // Clicking away is as much an answer as pressing Return.
-                if !focused { commitTyped() }
+            VolumePercentField(
+                percent: AudioLevel.percent(shown),
+                accessibilityName: accessibilityName
+            ) { level in
+                set(level)
+                commit()
             }
-
-            Text("%")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
         }
-        .padding(.horizontal, 6)
-        .frame(height: 22)
-        .background(Color.studioFaintFill)
-        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .stroke(
-                    fieldFocused ? Color.yapperOrange.opacity(0.7) : Color.studioLine,
-                    lineWidth: 1
-                )
+        .onChange(of: volume) {
+            // The project caught up. Anything else arriving here (an undo, a
+            // fader moved elsewhere) is the new truth, so it replaces what was
+            // held either way.
+            held = nil
         }
-        .help("Type a level, in percent. 100 is how it was recorded.")
     }
 
     private func set(_ value: Double) {
-        let value = min(maximum, AudioLevel.clamped(value))
+        let value = AudioLevel.snapped(min(maximum, AudioLevel.clamped(value)))
+        guard value != dragging else { return }
         dragging = value
-        // A number being dragged is the number the field should show.
-        typed = nil
         onChange(value)
     }
 
+    /// Once per gesture: on release, on Return, on a click of the speaker.
     private func commit() {
-        onCommit()
-        // Back to reading the saved value, now that there is one to read.
+        guard let value = dragging else { return }
+        held = abs(value - volume) > 0.0005 ? value : nil
         dragging = nil
-    }
-
-    /// Reads what was typed, if it was a number. Anything else puts the field
-    /// back to the level it is really at rather than arguing about it.
-    private func commitTyped() {
-        guard let entry = typed else { return }
-        typed = nil
-        guard let percent = AudioLevel.percentTyped(entry) else { return }
-        set(percent)
-        commit()
+        onCommit()
     }
 
     private var icon: String {

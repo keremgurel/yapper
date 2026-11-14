@@ -42,7 +42,8 @@ final class PosterPublishPrep: ObservableObject {
             submissionID: submissionID,
             mediaKey: video.mediaKey,
             contentItemID: contentItemID,
-            thumbnailKey: thumbnailKey
+            thumbnailKey: thumbnailKey,
+            coverTimestampMs: cover.frameImage == nil ? nil : Int((cover.frameTime * 1000).rounded(.down))
         )
     }
 

@@ -6,7 +6,7 @@
       "id": "editor.project.setBackdrop",
       "symbol": "projectBackdrop",
       "input": "ProjectBackdropInput",
-      "description": "Set the project backdrop colour that fills the frame where there is no picture, including behind a speaker whose background is removed.",
+      "description": "Set what fills the frame where there is no picture, including behind a speaker whose background is removed (a background swap): a flat colour, or a generated preset. Send color or preset.",
       "effect": "reversibleEdit",
       "requiresRebuild": true
     },
@@ -31,13 +31,35 @@
     "ProjectBackdropInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["color"],
+      "required": [],
       "properties": {
         "color": {
           "type": "string",
           "minLength": 4,
           "maxLength": 9,
-          "description": "Hex colour: #RGB, #RRGGBB or #RRGGBBAA."
+          "description": "Hex colour: #RGB, #RRGGBB or #RRGGBBAA. Setting a colour clears any preset."
+        },
+        "preset": {
+          "type": "string",
+          "enum": [
+            "none",
+            "navyGlow",
+            "aurora",
+            "lightRays",
+            "grainient",
+            "shapeGrid"
+          ],
+          "description": "A generated dark surface instead of a flat colour; none goes back to the colour."
+        },
+        "presetColors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 7,
+            "maxLength": 7
+          },
+          "maxItems": 4,
+          "description": "Colours for the preset as #RRGGBB, background first, in the same slot order as editor.overlays.setProperties backdropColors. An empty array goes back to the preset's own colours."
         }
       }
     },
@@ -94,6 +116,18 @@
         },
         "operation": {
           "$ref": "#/$defs/MediaEditOperation"
+        },
+        "sourceStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400,
+          "description": "With append, the recording second the new clip starts at, as the trim handles on a media row choose. Leave it out to start at the top of the file. Ignored for pictures."
+        },
+        "sourceEnd": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400,
+          "description": "With append, the recording second the new clip ends at. Leave it out to run to the end of the file. Ignored for pictures."
         }
       }
     }

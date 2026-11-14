@@ -15,7 +15,7 @@ struct PosterFramePlayer: View {
             if let error {
                 VStack(spacing: 8) {
                     Image(systemName: "video.slash")
-                    Text(error).font(.system(size: 12)).multilineTextAlignment(.center)
+                    Text(error).font(.studioLabel).multilineTextAlignment(.center)
                 }.foregroundStyle(.white.opacity(0.7)).padding(20)
             } else if let player {
                 NativeVideoPlayer(player: player)
@@ -41,20 +41,5 @@ struct PosterFramePlayer: View {
     private func seek() {
         guard let player, player.timeControlStatus != .playing else { return }
         player.seek(to: CMTime(seconds: time, preferredTimescale: 60_000), toleranceBefore: .zero, toleranceAfter: .zero)
-    }
-}
-
-/// A plain player for a signed preview URL, made once per URL.
-struct PosterPreviewPlayer: View {
-    let url: URL
-    @State private var player: AVPlayer?
-
-    var body: some View {
-        ZStack {
-            Rectangle().fill(Color.black)
-            if let player { NativeVideoPlayer(player: player) } else { ProgressView().controlSize(.small) }
-        }
-        .task(id: url) { player = AVPlayer(url: url) }
-        .onDisappear { player?.pause() }
     }
 }

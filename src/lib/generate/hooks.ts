@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { hookPattern, hookPatternBlock } from "@/lib/content/hook-patterns";
 import { undash } from "@/lib/text/undash";
 import type { ContentBlock, ContentHook } from "@/lib/db/schema";
@@ -126,7 +127,7 @@ export async function generateHooks(
   input: HooksInput,
   signal?: AbortSignal,
 ): Promise<ContentHook[]> {
-  const key = process.env.SURPLUS_API_KEY;
+  const key = surplusKey("ideas");
   if (!key) throw new Error("no_provider");
   if (!input.title?.trim() && !input.originalNote?.trim()) {
     throw new Error("no_input");

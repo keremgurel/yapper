@@ -21,7 +21,7 @@ struct StageProgressBar: View {
                     Capsule()
                         .fill(Color.secondary.opacity(0.16))
                     Capsule()
-                        .fill(Color.yapperOrange)
+                        .fill(Color.studioAccent)
                         .frame(width: max(2, geometry.size.width * fraction))
                 }
             }

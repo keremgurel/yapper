@@ -154,6 +154,7 @@ export const UNCOVERED_ROUTES: Record<string, string> = {
   "POST /api/publish/thumbnail": "poster",
   "DELETE /api/publish/uploads/[id]": "poster",
   "POST /api/publish/youtube": "poster",
+  "POST /api/publish/youtube/cover": "poster",
   "POST /api/publish/tiktok": "poster",
   "POST /api/publish/tiktok/direct": "poster",
   "POST /api/publish/tiktok/import": "poster",

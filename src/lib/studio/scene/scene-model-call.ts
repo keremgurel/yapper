@@ -1,4 +1,5 @@
 import { fetchBoundedJson, OutboundHttpError } from "@/lib/http/outbound";
+import { surplusKey, type SurplusKeyScope } from "@/lib/providers/surplus-key";
 
 /**
  * The one place the overlay routes call Chat Completions.
@@ -30,6 +31,8 @@ export interface SceneModelCall {
   /** Wall clock for every attempt together. */
   timeoutMs: number;
   signal?: AbortSignal;
+  /** Which Surplus key pays. Overlays unless another area borrows this call. */
+  keyScope?: SurplusKeyScope;
 }
 
 export interface SceneModelReply {
@@ -77,7 +80,7 @@ export function sceneModelFailureReason(error: unknown): string {
 export async function callSceneModel(
   call: SceneModelCall,
 ): Promise<SceneModelReply> {
-  const key = process.env.SURPLUS_API_KEY;
+  const key = surplusKey(call.keyScope ?? "overlays");
   if (!key) throw new Error("no_provider");
   const base =
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";

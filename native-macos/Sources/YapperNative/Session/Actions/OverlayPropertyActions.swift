@@ -22,7 +22,7 @@ extension AppActionRegistry {
             return try session.mutateActionOverlays(updated, message: input.fit == .full ? "Overlays set to full frame" : "Overlay framing saved")
         }
         register(OverlayPropertiesInput.self, availability: { _ in .available }) { session, input in
-            guard input.hidden != nil || input.behindSpeaker != nil || input.sourceStart != nil || input.timelineStart != nil || input.duration != nil || input.track != nil else {
+            guard input.hidden != nil || input.behindSpeaker != nil || input.backdrop != nil || input.backdropColors != nil || input.backdropMediaID != nil || input.sourceStart != nil || input.timelineStart != nil || input.duration != nil || input.track != nil else {
                 throw AppActionError("Include an overlay property to change.")
             }
             let targets = try session.actionOverlays(input.overlayIDs, all: input.all == true)
@@ -34,6 +34,32 @@ extension AppActionRegistry {
                 var copy = overlay
                 if let hidden = input.hidden { copy.isHidden = hidden ? true : nil }
                 if let behind = input.behindSpeaker { copy.behindSpeaker = behind ? true : nil }
+                if let token = input.backdrop {
+                    if token == "image" {
+                        guard let id = input.backdropMediaID,
+                              let picture = session.project.media.first(where: { $0.id == id }), picture.isImage else {
+                            throw AppActionError("An image backdrop needs backdropMediaID: a picture already in the project's media.")
+                        }
+                        _ = picture
+                        copy.backdrop = .image(id)
+                    } else {
+                        guard token == "none" || OverlayBackdrop(token: token) != nil else {
+                            throw AppActionError("Choose none, frosted, image or one of the backdrop presets.")
+                        }
+                        copy.backdrop = OverlayBackdrop(token: token)
+                    }
+                } else if input.backdropMediaID != nil {
+                    throw AppActionError("Send backdrop: image with backdropMediaID.")
+                }
+                if let colors = input.backdropColors {
+                    guard copy.backdrop?.kind == .preset, let preset = copy.backdrop?.preset else {
+                        throw AppActionError("Colours apply to a preset backdrop. Choose a preset first.")
+                    }
+                    guard colors.count <= preset.defaultColors.count, colors.allSatisfy(BackdropPreset.isHex) else {
+                        throw AppActionError("\(preset.title) takes up to \(preset.defaultColors.count) colours as #RRGGBB: \(preset.colorNames.joined(separator: ", ")).")
+                    }
+                    copy.backdrop?.colors = colors.isEmpty ? nil : preset.resolvedColors(colors)
+                }
                 if let start = input.timelineStart { copy.timelineStart = start }
                 if let duration = input.duration { copy.duration = duration }
                 if let start = input.sourceStart { copy.sourceStart = start }
@@ -183,10 +209,20 @@ extension OverlayFrameInput {
 }
 
 extension OverlayPropertiesInput {
-    /// Any of the fields before `leadingTrim` was added; a plain move or edit.
+    /// Visibility, depth, timing and lane, leaving the backdrop alone. A plain
+    /// move or edit unless `leadingTrim` says the left edge was dragged.
     init(overlayIDs: [UUID], all: Bool?, hidden: Bool?, behindSpeaker: Bool?, sourceStart: Double?,
-         timelineStart: Double?, duration: Double?, track: Int?) {
-        self.init(overlayIDs: overlayIDs, all: all, hidden: hidden, behindSpeaker: behindSpeaker, sourceStart: sourceStart,
+         timelineStart: Double?, duration: Double?, track: Int?, leadingTrim: Bool? = nil) {
+        self.init(overlayIDs: overlayIDs, all: all, hidden: hidden, behindSpeaker: behindSpeaker, backdrop: nil,
+                  backdropColors: nil, backdropMediaID: nil, sourceStart: sourceStart, timelineStart: timelineStart,
+                  duration: duration, track: track, leadingTrim: leadingTrim)
+    }
+
+    /// Every field but `leadingTrim`: the overlay moves with its keyframes.
+    init(overlayIDs: [UUID], all: Bool?, hidden: Bool?, behindSpeaker: Bool?, backdrop: String?, backdropColors: [String]?,
+         backdropMediaID: UUID?, sourceStart: Double?, timelineStart: Double?, duration: Double?, track: Int?) {
+        self.init(overlayIDs: overlayIDs, all: all, hidden: hidden, behindSpeaker: behindSpeaker, backdrop: backdrop,
+                  backdropColors: backdropColors, backdropMediaID: backdropMediaID, sourceStart: sourceStart,
                   timelineStart: timelineStart, duration: duration, track: track, leadingTrim: nil)
     }
 

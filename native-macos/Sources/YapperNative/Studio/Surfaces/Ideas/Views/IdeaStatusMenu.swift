@@ -24,9 +24,9 @@ struct IdeaStatusMenu: View {
                     } label: {
                         HStack(spacing: 8) {
                             Circle().fill(option.tone.color).frame(width: 6, height: 6)
-                            Text(option.label).font(.system(size: 13, weight: .medium))
+                            Text(option.label).font(.studioBodyStrong)
                             Spacer(minLength: 12)
-                            if option == status { Image(systemName: "checkmark").font(.system(size: 11, weight: .semibold)) }
+                            if option == status { Image(systemName: "checkmark").font(.studioCaptionStrong) }
                         }
                         .padding(.horizontal, 8).padding(.vertical, 6)
                         .contentShape(Rectangle())
@@ -61,16 +61,16 @@ struct IdeaCheckbox: View {
     var body: some View {
         Button(action: action) {
             RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .fill(mark == .off ? Color.clear : Color.yapperOrange)
+                .fill(mark == .off ? Color.clear : Color.studioAccent)
                 .overlay {
                     RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .strokeBorder(mark == .off ? Color.studioLineStrong : Color.yapperOrange, lineWidth: 1)
+                        .strokeBorder(mark == .off ? Color.studioLineStrong : Color.studioAccent, lineWidth: 1)
                 }
                 .overlay {
                     if mark != .off {
                         Image(systemName: mark == .on ? "checkmark" : "minus")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(.white)
+                            .font(.studioMicro)
+                            .foregroundStyle(Color.studioAccentForeground)
                     }
                 }
                 .frame(width: 16, height: 16)

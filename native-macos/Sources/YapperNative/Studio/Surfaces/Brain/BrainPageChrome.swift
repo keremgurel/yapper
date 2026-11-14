@@ -13,7 +13,7 @@ struct BrainFillInMenu: View {
         Button { open.toggle() } label: {
             HStack(spacing: 6) {
                 Text("Fill in from")
-                Image(systemName: "chevron.down").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
+                Image(systemName: "chevron.down").font(.studioMicro).foregroundStyle(.secondary)
             }
         }
         .buttonStyle(EditorSecondaryButtonStyle())
@@ -54,11 +54,11 @@ struct BrainTabBar: View {
         let active = selection == tab
         return Button { selection = tab } label: {
             HStack(spacing: 6) {
-                Text(title).font(.system(size: 13, weight: .semibold))
+                Text(title).font(.studioBodyStrong)
                     .foregroundStyle(active ? Color.primary : Color.secondary)
                 if let count {
                     Text("\(count)")
-                        .font(.system(size: 11, weight: .medium).monospacedDigit())
+                        .font(.studioCaptionStrong.monospacedDigit())
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 6).padding(.vertical, 1)
                         .background(Capsule().fill(Color.studioFaintFill))
@@ -68,7 +68,7 @@ struct BrainTabBar: View {
             .padding(.vertical, 10)
             .overlay(alignment: .bottom) {
                 if active {
-                    Capsule().fill(Color.yapperOrange).frame(height: 2).padding(.horizontal, 10)
+                    Capsule().fill(Color.studioAccent).frame(height: 2).padding(.horizontal, 10)
                 }
             }
         }

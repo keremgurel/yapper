@@ -67,7 +67,7 @@ export default function AppSidebar({
             <SidebarMenuButton asChild size="lg" tooltip="Yapper Studio">
               <Link href="/studio/home" className="no-underline">
                 <ChirpyMark size={24} />
-                <span className="text-[17px] font-semibold tracking-[-0.03em]">
+                <span className="text-foreground text-[17px] font-semibold tracking-[-0.03em]">
                   yapper{" "}
                   <span className="text-muted-foreground font-normal">
                     studio

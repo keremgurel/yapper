@@ -378,7 +378,7 @@
     {
       "id": "editor.overlays.setProperties",
       "symbol": "overlayProperties",
-      "description": "Edit existing overlays: visibility, behind-speaker depth, source in point, timeline start/duration, or zero-based lane. Only supplied fields change. all=true targets every overlay; otherwise use overlayIDs. Cannot put generated scenes behind the speaker, exceed video source bounds, or collide on a lane.",
+      "description": "Edit existing overlays: visibility, behind-speaker depth, backdrop (what fills the frame behind the card: frosted is the speaker blurred and dimmed; image is a picture already in the project's media, named by backdropMediaID; navyGlow, aurora, lightRays, grainient and shapeGrid are dark generated surfaces; none removes it), source in point, timeline start/duration, or zero-based lane. Only supplied fields change. all=true targets every overlay; otherwise use overlayIDs. Cannot put generated scenes behind the speaker, exceed video source bounds, or collide on a lane.",
       "input": "OverlayPropertiesInput",
       "effect": "reversibleEdit",
       "requiresRebuild": true,
@@ -397,7 +397,7 @@
       "id": "editor.project.setBackdrop",
       "symbol": "projectBackdrop",
       "input": "ProjectBackdropInput",
-      "description": "Set the project backdrop colour that fills the frame where there is no picture, including behind a speaker whose background is removed.",
+      "description": "Set what fills the frame where there is no picture, including behind a speaker whose background is removed (a background swap): a flat colour, or a generated preset. Send color or preset.",
       "effect": "reversibleEdit",
       "requiresRebuild": true,
       "runtime": "client"
@@ -2197,6 +2197,34 @@
         "behindSpeaker": {
           "type": "boolean"
         },
+        "backdrop": {
+          "type": "string",
+          "enum": [
+            "none",
+            "frosted",
+            "image",
+            "navyGlow",
+            "aurora",
+            "lightRays",
+            "grainient",
+            "shapeGrid"
+          ]
+        },
+        "backdropColors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 7,
+            "maxLength": 7
+          },
+          "maxItems": 4,
+          "description": "The preset's colours as #RRGGBB, background first, in the preset's slot order (navyGlow: background, glow, halo; aurora: sky, upper band, lower band; lightRays: background, rays, light; grainient: background, top left, right, bottom; shapeGrid: background, lines, glow). An empty array goes back to the preset's own colours. Needs a preset backdrop."
+        },
+        "backdropMediaID": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The imported picture shown behind the card when backdrop is image."
+        },
         "sourceStart": {
           "type": "number",
           "minimum": 0,
@@ -2285,15 +2313,35 @@
     "ProjectBackdropInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "color"
-      ],
+      "required": [],
       "properties": {
         "color": {
           "type": "string",
           "minLength": 4,
           "maxLength": 9,
-          "description": "Hex colour: #RGB, #RRGGBB or #RRGGBBAA."
+          "description": "Hex colour: #RGB, #RRGGBB or #RRGGBBAA. Setting a colour clears any preset."
+        },
+        "preset": {
+          "type": "string",
+          "enum": [
+            "none",
+            "navyGlow",
+            "aurora",
+            "lightRays",
+            "grainient",
+            "shapeGrid"
+          ],
+          "description": "A generated dark surface instead of a flat colour; none goes back to the colour."
+        },
+        "presetColors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 7,
+            "maxLength": 7
+          },
+          "maxItems": 4,
+          "description": "Colours for the preset as #RRGGBB, background first, in the same slot order as editor.overlays.setProperties backdropColors. An empty array goes back to the preset's own colours."
         }
       }
     },
@@ -2371,6 +2419,18 @@
         },
         "operation": {
           "$ref": "#/$defs/MediaEditOperation"
+        },
+        "sourceStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400,
+          "description": "With append, the recording second the new clip starts at, as the trim handles on a media row choose. Leave it out to start at the top of the file. Ignored for pictures."
+        },
+        "sourceEnd": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400,
+          "description": "With append, the recording second the new clip ends at. Leave it out to run to the end of the file. Ignored for pictures."
         }
       }
     },

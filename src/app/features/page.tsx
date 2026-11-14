@@ -1,7 +1,9 @@
 import Link from "next/link";
 import MarketingLayout from "@/components/marketing/marketing-layout";
 import Breadcrumbs from "@/components/marketing/breadcrumbs";
+import { ArrowUpRight } from "lucide-react";
 import { StudioStart } from "@/components/marketing/product-sections";
+import { featurePalettes } from "@/components/marketing/feature-preview";
 import { featureGroups } from "@/data/marketing-navigation";
 import { marketingFeatures } from "@/data/marketing-features";
 import { marketingMetadata } from "@/lib/marketing-metadata";
@@ -63,12 +65,18 @@ export default function FeaturesPage() {
               {group.slugs.map((slug) => {
                 const feature = marketingFeatures.find((f) => f.slug === slug)!;
                 return (
-                  <Link key={slug} href={`/features/${slug}`}>
-                    <h3 className="type-h3">{feature.shortTitle}</h3>
-                    <p className="type-description">{feature.description}</p>
-                    <span className="marketing-text-link mt-4">
-                      Explore {feature.shortTitle.toLowerCase()}
+                  <Link
+                    key={slug}
+                    href={`/features/${slug}`}
+                    className="reveal-card"
+                    data-palette={featurePalettes[slug]}
+                  >
+                    <span className="reveal-card-tag">{group.title}</span>
+                    <span className="reveal-card-arrow" aria-hidden="true">
+                      <ArrowUpRight size={18} strokeWidth={1.75} />
                     </span>
+                    <h3 className="reveal-card-title">{feature.shortTitle}</h3>
+                    <p className="reveal-card-copy">{feature.description}</p>
                   </Link>
                 );
               })}

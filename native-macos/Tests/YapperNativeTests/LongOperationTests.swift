@@ -9,25 +9,6 @@ private actor OperationTestStore: ProjectPersisting {
     func saves() -> Int { saveAttempts }
 }
 
-private actor SuspendedExportRunner {
-    private(set) var attempts = 0
-    private(set) var cancellations = 0
-
-    func run(project _: EditorProject, url _: URL) async throws {
-        attempts += 1
-        do {
-            try await Task.sleep(for: .seconds(60))
-        } catch is CancellationError {
-            cancellations += 1
-            throw CancellationError()
-        }
-    }
-
-    func counts() -> (attempts: Int, cancellations: Int) {
-        (attempts, cancellations)
-    }
-}
-
 private actor SuspendedOverlayPlanner: OverlayPlacementPlanning {
     private(set) var attempts = 0
     private(set) var cancellations = 0
@@ -62,7 +43,7 @@ struct LongOperationTests {
         var coordinator = LongOperationCoordinator()
         let importLease = coordinator.acquire(.importingMedia)
         #expect(importLease != nil)
-        #expect(coordinator.acquire(.exporting) == nil)
+        #expect(coordinator.acquire(.autoTrim) == nil)
         #expect(coordinator.active == importLease)
     }
 
@@ -73,7 +54,7 @@ struct LongOperationTests {
         let old = try #require(oldValue)
         let released = coordinator.release(old)
         #expect(released)
-        let currentValue = coordinator.acquire(.exporting)
+        let currentValue = coordinator.acquire(.autoTrim)
         let current = try #require(currentValue)
         let staleReleased = coordinator.release(old)
         #expect(!staleReleased)
@@ -84,9 +65,8 @@ struct LongOperationTests {
     func categories() {
         #expect(LongOperation.oneClickEdit.isAI)
         #expect(!LongOperation.importingAudio.isAI)
-        #expect(LongOperation.exporting.isExport)
-        #expect(!LongOperation.relinkingMedia.isExport)
-        #expect(LongOperation.exporting.cancelLabel == "Cancel export")
+        #expect(LongOperation.autoTrim.cancelLabel == "Cancel auto-trim")
+        #expect(LongOperation.relinkingMedia.cancelLabel == "Cancel operation")
     }
 
     @Test("Restoration dominates verification while events are coalesced")
@@ -104,7 +84,7 @@ struct LongOperationTests {
     @MainActor
     func sessionEditBarrier() async throws {
         let session = EditorSession(store: OperationTestStore())
-        let lease = try #require(session.beginLongOperation(.exporting))
+        let lease = try #require(session.beginLongOperation(.autoTrim))
         var immediateRan = false
         let committed = await session.commitTimelineEdit(requiresRebuild: false) {
             immediateRan = true
@@ -119,7 +99,6 @@ struct LongOperationTests {
         #expect(!immediateRan)
         #expect(!scheduledRan)
         #expect(session.isBusy)
-        #expect(session.isExporting)
         session.endLongOperation(lease)
         #expect(!session.isBusy)
     }
@@ -223,65 +202,6 @@ struct LongOperationTests {
         #expect(session.statusMessage == "Transcription canceled")
         #expect(session.conversation.messages.last?.tone == .trouble)
         #expect(session.conversation.messages.last?.notes.contains("The workflow was canceled.") == true)
-    }
-
-    @Test("Tracked export cancellation reaches work, preserves destination, and releases the lease")
-    @MainActor
-    func trackedExportCancellation() async throws {
-        let runner = SuspendedExportRunner()
-        let session = EditorSession(
-            store: OperationTestStore(),
-            exportRunner: { project, url in
-                try await runner.run(project: project, url: url)
-            }
-        )
-        await Task.yield()
-
-        let directory = FileManager.default.temporaryDirectory
-            .appending(path: "yapper-operation-export-\(UUID().uuidString)", directoryHint: .isDirectory)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let source = directory.appending(path: "source.mov")
-        let destination = directory.appending(path: "existing.mp4")
-        try Data("source".utf8).write(to: source)
-        try Data("keep me".utf8).write(to: destination)
-        let mediaID = UUID()
-        session.updateProject { project in
-            project.media = [ProjectMedia(
-                id: mediaID,
-                url: source,
-                name: "Source",
-                duration: 1,
-                width: 1920,
-                height: 1080,
-                hasAudio: true
-            )]
-            project.clips = [TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 1)]
-        }
-
-        let export = Task { @MainActor in await session.export(to: destination) }
-        for _ in 0 ..< 100 {
-            if await runner.counts().attempts > 0 { break }
-            await Task.yield()
-        }
-        #expect(session.activeOperation?.operation == .exporting)
-        #expect(session.canCancelCurrentOperation)
-        session.cancelCurrentOperation()
-        let exportWasCanceled = await export.value
-
-        let counts = await runner.counts()
-        let delivered = try Data(contentsOf: destination)
-        #expect(counts.attempts == 1)
-        #expect(counts.cancellations == 1)
-        #expect(exportWasCanceled)
-        #expect(delivered == Data("keep me".utf8))
-        #expect(session.statusMessage == "Export canceled")
-        #expect(session.errorMessage == nil)
-        #expect(session.activeOperation == nil)
-        #expect(!session.canCancelCurrentOperation)
-
-        let next = try #require(session.beginLongOperation(.autoTrim))
-        session.endLongOperation(next)
     }
 
     @Test("Tracked overlay cancellation rolls back without save or false success")

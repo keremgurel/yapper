@@ -93,4 +93,5 @@ edited flows back onto its idea, so captions come from what was said; and
    history, per platform; the export's transcript lands on the idea as
    recorded_transcript (migration 0026) and captions are written from it,
    never from the inspiration's transcript; a successful publish marks the
-   idea Posted; every posted outcome offers "Add to your voice".
+   idea Posted; every posted outcome offers "Add to your voice". (That
+   prompt was removed from the posted state on 2026-11-12.)

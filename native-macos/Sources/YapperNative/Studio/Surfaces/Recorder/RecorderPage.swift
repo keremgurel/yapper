@@ -61,14 +61,18 @@ struct RecorderPage: View {
                     title: "Recorder",
                     description: "Rehearse your script, record a take, then edit the video or download the file."
                 ) {
-                    Button { focused = true } label: { Label("Focus", systemImage: "arrow.up.left.and.arrow.down.right") }
+                    Button { focused = true } label: { StudioGlyphLabel("Focus", glyph: .fullScreen, size: 13) }
                         .buttonStyle(EditorGhostButtonStyle(size: .small))
                         .help("Hide everything but the frame (F)")
                 }
                 layout
             }
-            .padding(24)
-            .frame(maxWidth: 1440)
+            // The same gutters as `NativePage`, so the title sits on the edge
+            // every other page's title sits on.
+            .padding(.horizontal, 32)
+            .padding(.top, 28)
+            .padding(.bottom, 24)
+            .frame(maxWidth: 1440 + 64)
             .frame(maxWidth: .infinity)
             .background(Color.editorBackground)
         }

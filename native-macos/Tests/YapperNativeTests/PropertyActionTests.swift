@@ -147,7 +147,7 @@ struct PropertyActionTests {
             #expect(result.status == .rejected, "\(type(of: input))")
             #expect(session.project == project)
         }
-        var bad = try session.actionRequest(ProjectBackdropInput(color: "#FF7A21"))
+        var bad = try session.actionRequest(ProjectBackdropInput(color: "#FF7A21", preset: nil, presetColors: nil))
         bad = .init(protocolVersion: bad.protocolVersion, id: bad.id, projectID: bad.projectID, revision: bad.revision,
                     action: bad.action, arguments: ["color": .string("orange")])
         #expect(await session.appActions.execute(bad, in: session).status == .rejected)
@@ -167,7 +167,7 @@ struct PropertyActionTests {
             if instruction.contains("zoom") { return try Self.reply(VideoFramingInput(clipIDs: [clip], scale: 1.3, x: 0.1, y: 0, rotation: 0)) }
             if instruction.contains("skin") { return try Self.reply(ClipRetouchInput(clipIDs: [clip], clearBlemishes: 0.4, whitenTeeth: nil)) }
             if instruction.contains("background") { return try Self.reply(ClipBackgroundInput(clipIDs: [clip], removed: true)) }
-            return try Self.reply(ProjectBackdropInput(color: "#112233"))
+            return try Self.reply(ProjectBackdropInput(color: "#112233", preset: nil, presetColors: nil))
         }
         let (ui, _) = await session(project) { _ in throw AppActionError("unused") }
         ui.setFramingScale(1.3)

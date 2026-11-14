@@ -1,79 +1,70 @@
 import SwiftUI
 
-/// One video open: the source's videos as a rail, the thumbnail in the
-/// middle, and the destinations with the one publish button on the right.
-/// The column is rebuilt per video, so publish settings never carry over.
-/// Stacks on narrow windows.
+/// The source stays compact. The cover editor and publishing settings open on
+/// top of the composer so its rows never change position.
 struct PosterBenchView: View {
-    var availableHeight: CGFloat = 540
     let video: PosterVideo
-    let source: PosterSource
-    let videos: [PosterVideo]
     @ObservedObject var bench: PosterBench
     @ObservedObject var upload: PosterUploadStore
     @ObservedObject var drafts: PosterDraftStore
     @ObservedObject var connections: PosterConnectionStore
-    @State private var framePending = false
-    @State private var width: CGFloat = 1200
+    @State private var editingCover = false
+    @State private var locked = false
 
     var body: some View {
-        Group {
-            if width >= 760 {
-                HStack(alignment: .top, spacing: 28) {
-                    if width >= 1180 { rail.frame(width: 200) }
-                    ScrollView { cover }.frame(maxWidth: .infinity).frame(height: availableHeight)
-                    destinations.frame(width: min(420, width * 0.48), height: availableHeight)
-                }
-            } else {
-                VStack(alignment: .leading, spacing: 28) {
-                    cover
-                    destinations.frame(height: availableHeight)
-                    rail
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .onGeometryChange(for: CGFloat.self, of: { $0.size.width }, action: { width = $0 })
-    }
-
-    private var rail: some View {
-        NativeSection(title: "Videos", meta: String(videos.count)) {
-            Button("All videos", systemImage: "square.grid.2x2") { bench.close() }
-                .buttonStyle(EditorGhostButtonStyle(size: .small))
-        } content: {
-            PosterVideoRail(source: source, videos: videos, activeID: video.id, bench: bench, upload: upload)
-        }
-    }
-
-    /// The thumbnail tools, or the attach step for a post with no file yet.
-    /// A channel title can be a whole caption, so a long one folds away.
-    private var cover: some View {
-        let long = video.title.count > 120
-        return NativeSection(title: video.needsOriginal ? "Attach original video" : "Thumbnail", meta: long ? nil : video.title) {
-            VStack(alignment: .leading, spacing: 12) {
-                if long {
-                    PosterDisclosure(title: "View original post title") {
-                        Text(video.title).font(.system(size: 13)).textSelection(.enabled)
-                            .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Create your post").font(.nativeSectionTitle).padding(.bottom, 14)
+            Divider()
+            PosterComposerRow(label: "Video") {
+                HStack(spacing: 12) {
+                    let cover = drafts.cover(video)
+                    Group {
+                        if cover.image != nil { PosterCoverPreview(draft: cover, compact: true) }
+                        else { PosterVideoStill(video: video, iconSize: 12) }
                     }
-                }
-                if video.needsOriginal {
-                    PosterAttachOriginal(video: video, upload: upload)
-                } else {
-                    PosterCoverStudio(video: video, drafts: drafts, framePending: $framePending)
-                        .id(video.id)
+                    .frame(width: 34, height: 56)
+                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(video.title).font(.studioBodyStrong).lineLimit(2)
+                            .help(video.title)
+                        Text(video.platform.map { "From \($0.label)" } ?? "From your library")
+                            .font(.studioLabel).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 4)
+                    Button("Edit cover") { editingCover = true }
+                        .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+                        .disabled(locked || video.needsOriginal || !canEditCover)
+                    Button("Change video") { bench.close() }
+                        .buttonStyle(EditorGhostButtonStyle(size: .small))
+                        .disabled(locked)
                 }
             }
+            if video.needsOriginal {
+                PosterComposerRow(label: "Original file") {
+                    PosterAttachOriginal(video: video, upload: upload)
+                }
+            }
+            PosterDestinationColumn(video: video, drafts: drafts, connections: connections,
+                                    generator: .shared, prep: .shared, locked: $locked)
+        }
+        .sheet(isPresented: $editingCover) {
+            PosterCoverStudio(video: video, initial: drafts.cover(video)) {
+                drafts.setCover($0, for: video)
+            }
+        }
+        .task(id: video.id) {
+            guard !drafts.hasCover(video), let path = video.originalThumbnailPath,
+                  let data = try? await PosterHTTP.bytes(path),
+                  let image = PosterImageData.image(from: data),
+                  !Task.isCancelled, !drafts.hasCover(video) else { return }
+            var cover = drafts.cover(video)
+            cover.source = .original
+            cover.image = image
+            drafts.setCover(cover, for: video)
         }
     }
 
-    private var destinations: some View {
-        NativeSection(title: "Send to") {
-            PosterDestinationColumn(
-                video: video, framePending: framePending, drafts: drafts, connections: connections,
-                generator: .shared, prep: .shared
-            )
-            .id(video.id)
-        }
+    private var canEditCover: Bool {
+        video.readyToPublish || video.previewURL != nil || drafts.cover(video).image != nil
     }
 }

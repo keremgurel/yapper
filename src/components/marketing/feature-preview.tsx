@@ -19,7 +19,8 @@ const previews = {
   "automatic-captions": CaptionsPreview,
 };
 
-const palettes: Record<string, string> = {
+/** The stage backdrop each feature is shown on, wherever it appears. */
+export const featurePalettes: Record<string, string> = {
   "idea-capture": "ideas",
   "ai-script-writer": "script",
   "teleprompter-recorder": "record",
@@ -36,7 +37,7 @@ export default function FeaturePreview({ slug }: { slug: string }) {
   return (
     <div
       className={`feature-focused-preview ${backdrops.background} ${backdrops.wide}`}
-      data-palette={palettes[slug]}
+      data-palette={featurePalettes[slug]}
     >
       <div className="studio-showcase-screen">
         <Preview />

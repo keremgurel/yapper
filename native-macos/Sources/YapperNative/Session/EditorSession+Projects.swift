@@ -79,6 +79,7 @@ extension EditorSession {
     func renameCurrentProject(to name: String) async {
         guard let package = projectNavigation.currentPackage else { return }
         await stopManagedMedia(for: projectNavigation.currentPackage)
+        if refusesWhileExportReadsFootage(of: project.id, Self.renameRefusal) { return }
         do {
             let renamed = try await library.rename(package, to: name)
             store = ProjectPackageStore(package: renamed)
@@ -113,6 +114,8 @@ extension EditorSession {
 
     /// Into the Trash. Trashing the open project leaves the grid showing.
     func trashProject(_ package: ProjectPackage) async {
+        let projectID = await projectID(in: package)
+        if refusesWhileExportReadsFootage(of: projectID, Self.trashRefusal) { return }
         do {
             if let listing = try await library.listings().first(where: { $0.package == package }),
                PosterProjectSync.shared.isUploading(projectID: listing.summary.id) {
@@ -132,6 +135,9 @@ extension EditorSession {
             if let listing = try await library.listings().first(where: { $0.package == package }) {
                 await PosterProjectSync.shared.cancel(projectID: listing.summary.id)
             }
+            // Checked again: everything above awaited, and an export of this
+            // project may have started copying in the meantime.
+            if refusesWhileExportReadsFootage(of: projectID, Self.trashRefusal) { return }
             try await library.trash(package)
             await ProjectPosterLoader.shared.invalidate(package)
             projectNavigation.noteLibraryChanged()

@@ -4,6 +4,7 @@
     "createProject": "createProject(fromVideos:) needs dropped files; named creation goes through app.projects.create.",
     "export": "Save panel or Poster hand-off; Chirpy runs editor.export, which calls the same session method.",
     "exportForPosting": "Save panel or Poster hand-off; Chirpy runs editor.export, which calls the same session method.",
+    "generateOverlayBackdrop": "Network generation (api/publish/thumbnail) then a file import; the backdrop itself is set through editor.overlays.setProperties.",
     "importAudio": "Needs files the creator picks or drops; Chirpy can only open the picker (editor.media.import).",
     "importDropped": "Needs files the creator picks or drops; Chirpy can only open the picker (editor.media.import).",
     "importMedia": "Needs files the creator picks or drops; Chirpy can only open the picker (editor.media.import).",
@@ -11,6 +12,7 @@
     "openStudioRecording": "App hand-off: web Studio passes a recording by deep link and it is downloaded into a project, like opening a file. Not an edit.",
     "prepareForTermination": "App lifecycle: flushes the pending edit on quit. Not a user action.",
     "retryManagedMedia": "App lifecycle: retries copying imported files into the project package after a storage failure. Background file housekeeping, not an edit.",
-    "saveCopy": "Opens or writes a package the creator picks in a file panel; library projects open through app.projects.open."
+    "saveCopy": "Opens or writes a package the creator picks in a file panel; library projects open through app.projects.open.",
+    "setOverlayBackdropImage": "File picker then a media import; the backdrop itself is set through editor.overlays.setProperties."
   }
 }

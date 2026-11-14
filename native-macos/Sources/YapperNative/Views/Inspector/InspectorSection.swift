@@ -15,6 +15,10 @@ struct InspectorSection<Content: View>: View {
     /// Shows the reset control. Left false for sections with nothing to undo.
     var isModified = false
     var onReset: (() -> Void)?
+    /// The section's one way to copy its settings to other items, drawn in
+    /// the header: `ApplyToAllButton` or `OverlayApplyMenu`. Once per
+    /// section, never once per row.
+    var accessory: AnyView?
     @ViewBuilder let content: Content
 
     @AppStorage private var isExpanded: Bool
@@ -27,12 +31,14 @@ struct InspectorSection<Content: View>: View {
         isEnabled: Binding<Bool>? = nil,
         isModified: Bool = false,
         onReset: (() -> Void)? = nil,
+        accessory: AnyView? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
         self.isEnabled = isEnabled
         self.isModified = isModified
         self.onReset = onReset
+        self.accessory = accessory
         self.content = content()
         _isExpanded = AppStorage(wrappedValue: expandedByDefault, "inspector.section.\(id)")
     }
@@ -61,14 +67,13 @@ struct InspectorSection<Content: View>: View {
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 8, weight: .black))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(Color.studioTextMuted)
+                        .frame(width: 10)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                     Text(title)
-                        .font(.system(size: 10.5, weight: .bold))
-                        .textCase(.uppercase)
-                        .kerning(0.4)
-                        .foregroundStyle(.secondary)
+                        .font(.studioLabelStrong)
+                        .foregroundStyle(.primary)
                 }
                 .contentShape(Rectangle())
             }
@@ -90,40 +95,14 @@ struct InspectorSection<Content: View>: View {
                 .help("Reset \(title.lowercased())")
             }
 
+            if isExpanded, let accessory {
+                accessory
+            }
+
             if let isEnabled {
-                InspectorSwitch(isOn: isEnabled)
+                StudioSwitch(isOn: isEnabled)
             }
         }
-        .frame(height: 28)
-    }
-}
-
-/// A small switch in the brand's colour rather than the system accent, so a
-/// panel of them reads as one piece.
-struct InspectorSwitch: View {
-    @Binding var isOn: Bool
-
-    var body: some View {
-        Button {
-            isOn.toggle()
-        } label: {
-            Capsule(style: .continuous)
-                .fill(isOn ? Color.yapperOrange : Color.studioInputBackground)
-                .overlay {
-                    Capsule(style: .continuous)
-                        .strokeBorder(isOn ? Color.clear : Color.studioLine, lineWidth: 1)
-                }
-                .overlay(alignment: isOn ? .trailing : .leading) {
-                    Circle()
-                        .fill(.white)
-                        .padding(1.5)
-                        .shadow(color: .black.opacity(0.25), radius: 1, y: 0.5)
-                }
-                .frame(width: 26, height: 15)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.studioPlain)
-        .clickableCursor()
-        .animation(.easeOut(duration: 0.12), value: isOn)
+        .frame(height: 32)
     }
 }

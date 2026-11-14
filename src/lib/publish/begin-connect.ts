@@ -10,9 +10,19 @@ import type { PublishPlatform } from "@/lib/db/schema";
  * platform. Invoking the popup directly leaves the page alone until the flow
  * actually finishes.
  */
-export function beginConnect(platform: PublishPlatform): void {
+export function beginConnect(
+  platform: PublishPlatform,
+  from?: "poster-source" | "poster-draft",
+): void {
   if (!isNative()) {
-    window.location.href = connectUrl(platform);
+    const url = connectUrl(platform);
+    if (from === "poster-draft") {
+      // The current draft stays open while the account is authorized.
+      window.open(url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    window.location.href =
+      from === "poster-source" ? url + "?from=poster" : url;
     return;
   }
   void invoke("open_oauth_flow", {

@@ -10,7 +10,7 @@ struct StorageUsageCard: View {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Temporary publishing workspace")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.studioLabelStrong)
                         .foregroundStyle(.secondary)
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(StorageFormat.bytes(usage.usedBytes))
@@ -30,12 +30,12 @@ struct StorageUsageCard: View {
                 Spacer(minLength: 8)
                 Text("\(StorageFormat.bytes(usage.freeBytes)) free")
             }
-            .font(.system(size: 12).monospacedDigit())
+            .font(.studioLabel.monospacedDigit())
             .foregroundStyle(.secondary)
             .padding(.top, 8)
             if usage.reservedBytes > 0 {
                 Text(reservedNote)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.studioLabelStrong)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .nativeWell(padding: 10)

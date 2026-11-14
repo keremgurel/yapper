@@ -6,6 +6,8 @@ export interface AiCall extends ChatUsage {
   provider: string;
   status: number;
   latencyMs: number;
+  /** Audio the provider decoded, for a transcription call. */
+  audioSeconds?: number;
 }
 
 /**

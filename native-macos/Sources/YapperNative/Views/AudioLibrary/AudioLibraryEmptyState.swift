@@ -12,7 +12,7 @@ struct AudioLibraryEmptyState: View {
         VStack(spacing: 12) {
             Image(systemName: "waveform.badge.plus")
                 .font(.system(size: 34, weight: .light))
-                .foregroundStyle(Color.yapperOrange)
+                .foregroundStyle(Color.studioTextMuted)
 
             Text("Nothing saved yet")
                 .font(.studioSectionTitle)

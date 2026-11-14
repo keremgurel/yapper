@@ -14,9 +14,9 @@ struct AutomationRunRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(run.title).font(.system(size: 13, weight: .semibold)).lineLimit(2)
+                Text(run.title).font(.studioBodyStrong).lineLimit(2)
                 Spacer(minLength: 0)
-                Text(run.status.label).font(.system(size: 12)).foregroundStyle(.secondary)
+                Text(run.status.label).font(.studioLabel).foregroundStyle(.secondary)
             }
             if let url = run.sourceURL {
                 Button("View Instagram post") { NSWorkspace.shared.open(url) }

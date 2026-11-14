@@ -39,7 +39,7 @@
 .intro p {
   font-size: 32px;
   line-height: 1.12;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.035em;
 }
 .intro span {
@@ -63,12 +63,12 @@
   gap: 8px;
   margin-bottom: 20px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
 }
 .caption h2 {
   font-size: 20px;
   line-height: 1.25;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.02em;
 }
 .caption p {

@@ -75,6 +75,10 @@ struct AppShellView: View {
             studioShell
             if isSignedIn {
                 FloatingAssistant(session: session, conversation: chirpyThreads.current ?? session.conversation)
+                    // In the editor the bottom of the window is the transport
+                    // bar. Chirpy rests above it instead of on top of the
+                    // frame-ratio menu.
+                    .padding(.bottom, destination == .editor ? TransportBarMetrics.height : 0)
             }
             StudioEditorHandoffView(session: session, signedIn: auth.isSignedIn == true) {
                 navigate(.editor)
@@ -279,7 +283,7 @@ private struct StudioSidebar: View {
                 YapperMark(size: 27)
                 if expanded {
                     Text("Yapper Studio")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(.studioSectionTitle)
                         .lineLimit(1)
                         .transition(.opacity.combined(with: .offset(x: -4)))
                 }
@@ -295,10 +299,11 @@ private struct StudioSidebar: View {
                     ForEach(visibleGroups, id: \.0) { group, items in
                         if !group.isEmpty, expanded {
                             Text(group)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(Color.secondary.opacity(0.8))
+                                .font(.studioLabel)
+                                .foregroundStyle(Color.studioTextMuted)
                                 .padding(.top, 14)
-                                .padding(.horizontal, 12)
+                                .padding(.bottom, 2)
+                                .padding(.horizontal, 10)
                                 .transition(.opacity)
                         } else if !group.isEmpty {
                             Spacer().frame(height: 10)
@@ -309,23 +314,20 @@ private struct StudioSidebar: View {
                                 onNavigate(item)
                             } label: {
                                 HStack(spacing: 10) {
-                                    StudioIcon(
-                                        symbol: item.systemImage,
-                                        selected: destination == item,
-                                        size: 28
-                                    )
+                                    StudioNavGlyph(destination: item, size: 18)
+                                        .frame(width: 22, height: 22)
                                     if expanded {
                                         Text(item.title)
-                                            .font(.system(size: 13, weight: .semibold))
+                                            .font(.studioBodyStrong)
                                             .lineLimit(1)
                                     }
                                     Spacer(minLength: 0)
                                 }
                                 .foregroundStyle(
-                                    destination == item ? Color.primary : Color.secondary
+                                    destination == item ? Color.primary : Color.studioTextMuted
                                 )
-                                .padding(.horizontal, expanded ? 8 : 10)
-                                .frame(height: 40)
+                                .padding(.horizontal, expanded ? 9 : 14)
+                                .frame(height: 32)
                                 .contentShape(Rectangle())
                                 .background {
                                     if destination == item {
@@ -335,13 +337,6 @@ private struct StudioSidebar: View {
                                                 id: "sidebar-selection",
                                                 in: selectionNamespace
                                             )
-                                        HStack {
-                                            RoundedRectangle(cornerRadius: 2)
-                                                .fill(Color.yapperOrange)
-                                                .frame(width: 3, height: 17)
-                                            Spacer()
-                                        }
-                                        .padding(.leading, 2)
                                     }
                                 }
                             }
@@ -358,13 +353,17 @@ private struct StudioSidebar: View {
             Rectangle().fill(Color.studioLine).frame(height: 1)
             HStack(spacing: 10) {
                 Circle()
-                    .fill(Color(red: 0.78, green: 0.20, blue: 0.08))
-                    .overlay(Text(auth.accountInitial).font(.system(size: 12, weight: .bold)).foregroundStyle(.white))
+                    .fill(Color.studioAccent)
+                    .overlay(
+                        Text(auth.accountInitial)
+                            .font(.studioLabelStrong)
+                            .foregroundStyle(Color.studioAccentForeground)
+                    )
                     .frame(width: 30, height: 30)
                 if expanded {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(auth.accountName)
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.studioLabelStrong)
                             .lineLimit(1)
                         Text(auth.account?.email ?? "Account")
                             .font(.system(size: 10))
@@ -421,79 +420,57 @@ private struct StudioTopBar: View {
                 Button {
                     session.showProjectsHome()
                 } label: {
-                    Label("Projects", systemImage: "square.grid.2x2")
-                        .font(.system(size: 12, weight: .semibold))
+                    StudioGlyphLabel("Projects", glyph: .projects, size: 14)
+                        .font(.studioLabelStrong)
                 }
                 .buttonStyle(.studioPlain)
-                .clickableCursor()
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.studioTextMuted)
                 .help("All projects")
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .semibold))
+                StudioGlyph(.chevronRight, size: 11)
                     .foregroundStyle(.tertiary)
                 Button {
                     ProjectPanels.renameProject(for: session)
                 } label: {
+                    // The whole name while there is room for it. It gives way
+                    // before the buttons do, and only then from the middle,
+                    // where a file name has the least to say.
                     Text(session.project.name)
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(.studioSectionTitle)
                         .lineLimit(1)
-                        .frame(maxWidth: 260, alignment: .leading)
+                        .truncationMode(.middle)
                 }
                 .buttonStyle(.studioPlain)
-                .clickableCursor()
-                .help("Rename project")
+                .help("Rename \(session.project.name)")
                 .disabled(session.projectNavigation.currentPackage == nil)
             } else {
                 Text(destination.title)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .font(.studioSectionTitle)
                     .contentTransition(.interpolate)
             }
 
             Spacer()
 
             if destination == .editor {
-                HStack(spacing: 2) {
-                    ForEach(EditorLayoutMode.allCases) { mode in
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.22)) {
-                                layoutModeRaw = mode.rawValue
-                            }
-                        } label: {
-                            Image(systemName: mode.icon)
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(layoutMode == mode ? Color.yapperOrange : Color.secondary)
-                                .frame(width: 27, height: 25)
-                                .background(layoutMode == mode ? Color.yapperOrange.opacity(0.12) : Color.clear)
-                                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-                        }
-                        .buttonStyle(.studioPlain)
-        .clickableCursor()
-                        .help(mode.title)
+                EditorLayoutPicker(mode: layoutMode) { mode in
+                    withAnimation(.easeInOut(duration: 0.22)) {
+                        layoutModeRaw = mode.rawValue
                     }
                 }
-                .padding(2)
-                .background(Color.studioFaintFill)
-                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .stroke(Color.studioLine, lineWidth: 1)
-                }
 
-                if session.isBusy || session.isExporting {
+                if session.isBusy {
                     ProgressView().controlSize(.small)
                 }
                 ManagedMediaNotice(session: session)
-                if let url = session.lastExportURL, !session.isBusy {
-                    Menu("Export complete") {
-                        Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
-                        Button("Continue to Poster") { onNavigate(.poster) }
-                    }.menuStyle(.borderlessButton).fixedSize()
-                }
+                // The last thing the editor did. Whole when there is room; it
+                // is the first thing in the bar to shorten, and the tooltip
+                // always has all of it.
                 Text(session.statusMessage)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .font(.studioCaption)
+                    .foregroundStyle(Color.studioTextMuted)
                     .lineLimit(1)
-                    .frame(maxWidth: 150, alignment: .trailing)
+                    .truncationMode(.middle)
+                    .layoutPriority(-1)
+                    .help(session.statusMessage)
                 if session.canCancelCurrentOperation,
                    let operation = session.activeOperation?.operation {
                     Button(operation.cancelLabel) { session.cancelCurrentOperation() }
@@ -502,8 +479,7 @@ private struct StudioTopBar: View {
                 Button {
                     onNavigate(.audio)
                 } label: {
-                    Label("Audio library", systemImage: "music.note.list")
-                        .fixedSize()
+                    StudioGlyphLabel("Audio library", glyph: .note)
                 }
                 .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                 .help("Browse music and sound effects, import audio, and set default volumes")
@@ -511,19 +487,27 @@ private struct StudioTopBar: View {
                 Button {
                     ImportPanels.openMedia(for: session)
                 } label: {
-                    Label("Import", systemImage: "plus")
+                    StudioGlyphLabel("Import", glyph: .plus)
                 }
                 .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                 .disabled(session.isBusy)
+                .help("Add video, pictures or sound to this project")
                 Button {
                     ImportPanels.saveExport(for: session)
                 } label: {
-                    Label("Export", systemImage: "square.and.arrow.up")
+                    StudioGlyphLabel("Export", glyph: .export)
                 }
-                .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+                // The one thing the editor exists to end in, so the one ink
+                // button in its bar.
+                .buttonStyle(EditorPrimaryButtonStyle(size: .small))
+                .help("Save the finished video")
                 .disabled(session.project.clips.isEmpty || session.isBusy)
 
             }
+
+            // Outside the editor's own controls: an export keeps running on
+            // every tab and across project switches, so its progress does too.
+            ExportJobsIndicator(center: session.exportJobs, onNavigate: onNavigate)
 
             NativeThemeSwitcher(theme: theme, action: toggleTheme)
 

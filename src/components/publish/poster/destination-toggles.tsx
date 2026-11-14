@@ -24,7 +24,7 @@ export default function DestinationToggles({
 }) {
   return (
     <div
-      className="grid grid-cols-2 gap-2"
+      className="flex flex-wrap gap-2"
       role="group"
       aria-label="Destinations"
     >
@@ -38,7 +38,7 @@ export default function DestinationToggles({
               key={platform}
               type="button"
               onClick={() => onConnect(platform)}
-              className="bg-muted text-muted-foreground hover:text-foreground flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
+              className="bg-muted text-muted-foreground hover:text-foreground flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
             >
               <Link2 aria-hidden className="h-3.5 w-3.5 shrink-0" />
               Connect {label}
@@ -51,7 +51,7 @@ export default function DestinationToggles({
             type="button"
             aria-pressed={on}
             onClick={() => onToggle(platform)}
-            className={`flex min-h-11 items-center justify-center gap-2 rounded-lg border px-2 text-[13px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none ${
+            className={`flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-[13px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none ${
               on
                 ? "bg-card text-foreground border-[color:var(--sg-accent)]"
                 : "border-border text-muted-foreground hover:text-foreground"

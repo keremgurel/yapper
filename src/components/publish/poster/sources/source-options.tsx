@@ -1,61 +1,52 @@
 "use client";
 
-import { Check, Upload } from "lucide-react";
-import PlatformIcon from "@/components/publish/platform-icon";
 import { PLATFORMS } from "@/lib/publish/platforms";
 import type { PublishPlatform } from "@/lib/db/schema";
-import { enabledPublishPlatforms } from "@/lib/publish/availability";
 import type { PosterSource } from "./use-source-videos";
-import type { CSSProperties } from "react";
 
-/** Wide screens give every source an equal slot in one row, however many
- * platforms are enabled, so pausing one never leaves a hole at the end. */
+const sources = ["uploads", "instagram", "youtube", "tiktok"] as const;
+
 export default function SourceOptions({
   selected,
   onChoose,
   connected,
+  onUpload,
+  uploadBusy,
 }: {
   selected: PosterSource;
   onChoose: (source: PosterSource) => void;
   connected: PublishPlatform[];
+  onUpload: () => void;
+  uploadBusy: boolean;
 }) {
-  const sources = ["uploads", ...enabledPublishPlatforms] as const;
   return (
-    <nav
+    <div
+      role="group"
       aria-label="Video sources"
-      style={{ "--source-count": sources.length } as CSSProperties}
-      className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-[repeat(var(--source-count),minmax(0,1fr))]"
+      className="grid auto-rows-fr grid-cols-2 gap-2 sm:grid-cols-4"
     >
-      {sources.map((source) => (
-        <button
-          key={source}
-          type="button"
-          onClick={() => onChoose(source)}
-          aria-pressed={selected === source}
-          className={`focus-visible:outline-ring flex min-h-16 items-center gap-3 rounded-lg border p-3 text-left focus-visible:outline-2 focus-visible:outline-offset-2 ${selected === source ? "border-foreground/50 bg-muted" : "border-border hover:bg-muted/50"}`}
-        >
-          {source === "uploads" ? (
-            <Upload aria-hidden className="size-5 shrink-0" />
-          ) : (
-            <PlatformIcon platform={source} className="size-5 shrink-0" />
-          )}
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold">
-              {source === "uploads" ? "Uploads" : PLATFORMS[source].label}
+      {sources.map((source) => {
+        const upload = source === "uploads";
+        const linked = upload || connected.includes(source);
+        const picked = !upload && selected === source;
+        return (
+          <button
+            key={source}
+            type="button"
+            disabled={upload && uploadBusy}
+            onClick={upload ? onUpload : () => onChoose(source)}
+            aria-pressed={upload ? undefined : picked}
+            className={`focus-visible:outline-ring flex min-h-[72px] min-w-0 flex-col items-start justify-center gap-1 rounded-lg border px-3 py-2 text-left focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 ${picked ? "border-primary bg-muted" : linked ? "border-border bg-card hover:bg-muted" : "border-border bg-muted text-muted-foreground hover:bg-card"}`}
+          >
+            <span className="text-sm font-semibold">
+              {upload ? "Upload video" : PLATFORMS[source].label}
             </span>
-            <span className="text-muted-foreground mt-1 block text-xs">
-              {source === "uploads"
-                ? "Ready to post"
-                : connected.includes(source)
-                  ? "Connected"
-                  : "Connect account"}
+            <span className="text-muted-foreground text-xs">
+              {upload ? "From device" : linked ? "Connected" : "Connect"}
             </span>
-          </span>
-          {selected === source && (
-            <Check aria-hidden className="size-3 shrink-0" />
-          )}
-        </button>
-      ))}
-    </nav>
+          </button>
+        );
+      })}
+    </div>
   );
 }

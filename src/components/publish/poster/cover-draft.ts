@@ -1,5 +1,43 @@
 export type CoverPosition = "top" | "center" | "bottom";
-export type CoverTextStyle = "shadow" | "label";
+export const coverFonts = {
+  modern: { label: "Modern", family: "system-ui, sans-serif" },
+  rounded: {
+    label: "Rounded",
+    family: 'ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif',
+  },
+  editorial: {
+    label: "Editorial",
+    family: 'Georgia, "Times New Roman", serif',
+  },
+} as const;
+
+export type CoverTextAppearance = {
+  font: keyof typeof coverFonts;
+  size: number;
+  fill: string;
+  background: boolean;
+  backgroundColor: string;
+  cornerRadius: number;
+  shadow: boolean;
+  shadowColor: string;
+  shadowRadius: number;
+  stroke: boolean;
+  strokeColor: string;
+};
+
+export const defaultCoverText: CoverTextAppearance = {
+  font: "modern",
+  size: 92,
+  fill: "#ffffff",
+  background: false,
+  backgroundColor: "#1b181c",
+  cornerRadius: 28,
+  shadow: true,
+  shadowColor: "#000000",
+  shadowRadius: 18,
+  stroke: false,
+  strokeColor: "#000000",
+};
 export type CoverSource = "frame" | "generated" | "uploaded" | "original";
 
 /** The cover image a post ships with, kept separate from its captions: one
@@ -11,7 +49,7 @@ export interface CoverDraft {
   frameTime: number;
   headline: string;
   showHeadline: boolean;
-  textStyle: CoverTextStyle;
+  text: CoverTextAppearance;
   position: CoverPosition;
 }
 
@@ -41,7 +79,7 @@ export function defaultCover(title: string): CoverDraft {
     frameTime: 0,
     headline: "",
     showHeadline: false,
-    textStyle: "shadow",
+    text: { ...defaultCoverText },
     position: "bottom",
   };
 }

@@ -47,7 +47,7 @@ struct PlayerPanel: View {
                                 Text("Native preview")
                                     .font(.system(size: 14, weight: .bold))
                                 Text("Import one or several videos. The editor opens directly here.")
-                                    .font(.system(size: 11))
+                                    .font(.studioCaption)
                                     .foregroundStyle(.secondary)
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal, 24)
@@ -454,6 +454,11 @@ private struct DashedGuideLine: View {
     }
 }
 
+/// Shared with the shell, which keeps Chirpy clear of the bar.
+enum TransportBarMetrics {
+    static let height: CGFloat = 40
+}
+
 private struct TransportBar: View {
     @ObservedObject var session: EditorSession
     @ObservedObject var previewPresentation: PreviewPresentationState
@@ -465,14 +470,12 @@ private struct TransportBar: View {
             Button {
                 session.togglePlayback()
             } label: {
-                Image(systemName: session.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 13, weight: .bold))
-                    .frame(width: 30, height: 30)
+                StudioGlyph(session.isPlaying ? .pause : .play, size: 15)
             }
-            .buttonStyle(.studioPlain)
-            .background(Color.studioFaintFill)
-            .clipShape(RoundedRectangle(cornerRadius: 7))
+            .buttonStyle(StudioBarButtonStyle(isProminent: true))
             .disabled(session.project.clips.isEmpty)
+            .help(session.isPlaying ? "Pause · Space" : "Play · Space")
+            .accessibilityLabel(session.isPlaying ? "Pause" : "Play")
 
             PlaybackTimeReadout(clock: session.playbackClock, duration: session.duration)
 
@@ -485,7 +488,7 @@ private struct TransportBar: View {
                 )
                 .frame(minWidth: 220, maxWidth: .infinity)
             } else {
-                Spacer()
+                Spacer(minLength: 0)
             }
 
             PreviewZoomControl(zoom: $zoom)
@@ -493,32 +496,13 @@ private struct TransportBar: View {
             Button {
                 previewPresentation.toggleFullScreen()
             } label: {
-                Image(
-                    systemName: previewPresentation.isFullScreen
-                        ? "arrow.down.right.and.arrow.up.left"
-                        : "arrow.up.left.and.arrow.down.right"
-                )
-                .font(.system(size: 11, weight: .semibold))
-                .frame(width: 28, height: 28)
-                .contentShape(Rectangle())
-                .accessibilityLabel(
-                    previewPresentation.isFullScreen
-                        ? "Exit full screen"
-                        : "Watch preview full screen"
-                )
+                StudioGlyph(previewPresentation.isFullScreen ? .exitFullScreen : .fullScreen, size: 15)
             }
-            .buttonStyle(.studioPlain)
-            .background(Color.studioFaintFill)
-            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .stroke(Color.studioLine, lineWidth: 1)
-            }
-            .help(
-                previewPresentation.isFullScreen
-                    ? "Exit full screen"
-                    : "Watch preview full screen"
+            .buttonStyle(StudioBarButtonStyle())
+            .accessibilityLabel(
+                previewPresentation.isFullScreen ? "Exit full screen" : "Watch preview full screen"
             )
+            .help(previewPresentation.isFullScreen ? "Exit full screen" : "Watch preview full screen")
 
             Menu {
                 ForEach(ProjectAspectRatio.allCases) { aspectRatio in
@@ -535,30 +519,22 @@ private struct TransportBar: View {
                     }
                 }
             } label: {
+                // AppKit draws a menu's label and keeps only its text and
+                // images, so the glyphs go in as images.
                 HStack(spacing: 6) {
-                    Image(systemName: "aspectratio")
+                    StudioGlyph.image(.aspect, size: 15)
                     Text(session.project.selectedAspectRatio.title)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(.secondary)
+                    StudioGlyph.image(.chevronDown, size: 11)
                 }
-                .font(.system(size: 11, weight: .semibold))
-                .padding(.horizontal, 9)
-                .frame(height: 28)
-                .background(Color.studioFaintFill)
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .stroke(Color.studioLine, lineWidth: 1)
-                }
+                .font(.studioLabelStrong)
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
-            .help("Frame ratio for preview and export")
+            .help("Frame shape for the preview and the export")
         }
-        .padding(.horizontal, 14)
-        .frame(height: 40)
+        .padding(.horizontal, 12)
+        .frame(height: TransportBarMetrics.height)
         .background(Color.panelBackground)
         .overlay(alignment: .top) {
             Rectangle().fill(Color.studioLine).frame(height: 1)
@@ -598,7 +574,7 @@ private struct FullScreenSeekBar: View {
             }
         )
         .controlSize(.small)
-        .tint(.yapperOrange)
+        .tint(Color.studioAccent)
         .disabled(duration <= 0)
         .accessibilityLabel("Preview position")
         .accessibilityValue(formatTimePrecise(draftTime ?? clock.currentTime))

@@ -19,7 +19,11 @@ struct TimelinePanel: View {
         leadingInset: 84,
         trailingInset: 160
     )
-    private let trackHeaderWidth = 71.0
+    /// The rail and the hairline beside it. The viewport is whatever is left;
+    /// measured against any other number, the ruler and the tracks under it
+    /// are laid out at different widths and the playhead's knob drifts off
+    /// its own line.
+    private let trackHeaderWidth = TimelineTrackRail.width + 1
     private let leadingTimelineInset = 84.0
     private let trailingTimelineInset = 160.0
 
@@ -27,91 +31,7 @@ struct TimelinePanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                Text("Timeline")
-                    .font(.studioBodyStrong)
-                Text("\(session.project.clips.count) clips")
-                    .font(.studioCaption)
-                    .foregroundStyle(.secondary)
-                Button {
-                    session.toggleTimelineSnapping()
-                } label: {
-                    AdaptiveControlLabel(
-                        title: session.isTimelineSnappingEnabled ? "Snap on" : "Snap off",
-                        systemImage: session.isTimelineSnappingEnabled ? "magnet" : "magnet.slash",
-                        compactTitle: "Snap"
-                    )
-                        .font(.studioCaptionStrong)
-                        .foregroundStyle(session.isTimelineSnappingEnabled ? Color.yapperOrange : Color.secondary)
-                        .padding(.horizontal, 8)
-                        .frame(height: 26)
-                        .background(session.isTimelineSnappingEnabled ? Color.yapperOrange.opacity(0.12) : Color.clear)
-                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .stroke(session.isTimelineSnappingEnabled ? Color.yapperOrange.opacity(0.32) : Color.studioLine, lineWidth: 1)
-                        }
-                }
-                .buttonStyle(.studioPlain)
-                .help("Snap to the playhead, edges, seconds, and audio transients · hold Option to bypass")
-                .accessibilityHint("Snap to the playhead, edges, seconds, and audio transients. Hold Option to bypass.")
-                Divider()
-                    .frame(height: 18)
-                TimelineActionButton(
-                    title: "Split",
-                    systemImage: "scissors",
-                    shortcut: "S",
-                    help: "Split the selected item at the playhead"
-                ) {
-                    Task { await session.splitAtPlayhead() }
-                }
-                .disabled(session.project.clips.isEmpty)
-                TimelineActionButton(
-                    title: "Trim Start",
-                    systemImage: "arrow.right.to.line",
-                    shortcut: "[",
-                    help: "Pull the selected item's left edge to the playhead"
-                ) {
-                    Task { await session.trimTimelineSelection(toPlayhead: .leading) }
-                }
-                .disabled(!session.hasPlayheadCommandTarget)
-                TimelineActionButton(
-                    title: "Trim End",
-                    systemImage: "arrow.left.to.line",
-                    shortcut: "]",
-                    help: "Pull the selected item's right edge to the playhead"
-                ) {
-                    Task { await session.trimTimelineSelection(toPlayhead: .trailing) }
-                }
-                .disabled(!session.hasPlayheadCommandTarget)
-                TimelineActionButton(
-                    title: "Delete",
-                    systemImage: "trash",
-                    shortcut: "⌫",
-                    help: "Delete the selected timeline items"
-                ) {
-                    Task { await session.deleteTimelineSelection() }
-                }
-                .disabled(!session.hasTimelineSelection)
-                TimelineActionButton(
-                    title: "Auto-trim",
-                    systemImage: "waveform",
-                    shortcut: "⇧⌘T",
-                    help: "Remove silent gaps in the selected clips, or everywhere when nothing is selected"
-                ) {
-                    Task { await session.autoTrimSilences(clipIDs: session.selectedClipIDs.isEmpty ? nil : session.selectedClipIDs) }
-                }
-                .disabled(session.project.clips.isEmpty || session.isBusy)
-                Spacer()
-                Image(systemName: "minus.magnifyingglass")
-                    .foregroundStyle(.secondary)
-                TimelineZoomSlider(viewport: viewport, layout: layoutSnapshot)
-                Image(systemName: "plus.magnifyingglass")
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 14)
-            .frame(height: 38)
-            .background(Color.panelBackground)
+            TimelineToolbar(session: session, viewport: viewport, layout: layoutSnapshot)
 
             GeometryReader { proxy in
                 let layout = timelineLayout(panelWidth: proxy.size.width)
@@ -250,35 +170,6 @@ struct TimelinePanel: View {
         case .togglePreviewFullScreen:
             session.previewPresentation.toggleFullScreen()
         }
-    }
-}
-
-/// The only toolbar control that follows viewport scale. Horizontal panning no
-/// longer asks SwiftUI to rebuild every fixed action button beside it.
-private struct TimelineZoomSlider: View {
-    @ObservedObject var viewport: TimelineViewportState
-    let layout: TimelineViewportLayout
-
-    var body: some View {
-        Slider(value: zoom, in: TimelineZoomGeometry.scaleRange)
-            .frame(width: 130)
-            .controlSize(.mini)
-            .help("Pinch or ⌘-scroll over the timeline to zoom")
-    }
-
-    /// The slider has no pointer to anchor to, so it zooms about the middle of
-    /// the viewport the way the zoom control in any editor does.
-    private var zoom: Binding<Double> {
-        Binding(
-            get: { viewport.pointsPerSecond },
-            set: { value in
-                viewport.setPointsPerSecond(
-                    value,
-                    anchorX: layout.viewportWidth / 2,
-                    layout: layout
-                )
-            }
-        )
     }
 }
 
@@ -841,10 +732,10 @@ private struct TimelineVideoTrack: View {
     }
 
     private func dropGap(duration: Double) -> some View {
-        RoundedRectangle(cornerRadius: 5, style: .continuous)
+        RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
             .fill(Color.yapperOrange.opacity(0.22))
             .overlay {
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
                     .stroke(Color.yapperOrange, lineWidth: 1.5)
             }
             .frame(width: width(of: duration), height: 88)
@@ -944,9 +835,9 @@ private struct TimelineVideoClipItem: View {
                         if clip.resolvedPlaybackRate != 1 { Text(ClipSpeed.label(clip.resolvedPlaybackRate)) }
                         if clip.locked { Image(systemName: "lock.fill") }
                     }
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.studioMicro)
                     .padding(4)
-                    .background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 4))
+                    .background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: StudioRadius.tag))
                     .padding(4)
                     .allowsHitTesting(false)
                 }
@@ -1249,14 +1140,14 @@ struct TimelineTrimHandle: View {
         .overlay(alignment: .top) {
             if let readout {
                 Text(readout)
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .font(.studioTimecodeMicro)
                     .foregroundStyle(Color.white)
                     .padding(.horizontal, 7)
                     .frame(height: 22)
                     .background(Color.black.opacity(0.88))
-                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous))
                     .overlay {
-                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
                             .stroke(Color.white.opacity(0.34), lineWidth: 0.7)
                     }
                     .fixedSize()
@@ -1366,7 +1257,7 @@ private struct TimelineOverlayItem: View {
             Button {
                 session.beginCropping(overlayID: overlay.id)
             } label: {
-                Label("Crop…", systemImage: "crop")
+                Label("Crop", systemImage: "crop")
             }
             Button {
                 session.setOverlayHidden(overlay, hidden: overlay.isVisible)
@@ -1397,7 +1288,7 @@ private struct TimelineOverlayItem: View {
         .overlay(alignment: .top) {
             if isMoving {
                 Text(TimelineDropInsertionLine.clock(displayed.timelineStart))
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .font(.studioTimecodeMicro)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 5)
                     .frame(height: 15)
@@ -1900,7 +1791,7 @@ struct TimelineAudioItem: View {
         .overlay(alignment: .top) {
             if isMoving {
                 Text(TimelineDropInsertionLine.clock(displayed.timelineStart))
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .font(.studioTimecodeMicro)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 5)
                     .frame(height: 15)
@@ -2302,7 +2193,7 @@ private struct TimelineTextLayerCell: View {
         let displayed = trimDraft ?? moveDraft ?? layer
         let startX = contentWidth * displayed.timelineStart / max(0.001, projectDuration)
         let width = max(1, contentWidth * displayed.duration / max(0.001, projectDuration))
-        RoundedRectangle(cornerRadius: 5, style: .continuous)
+        RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
             .fill(Color(red: 0.42, green: 0.20, blue: 0.12).opacity(0.88))
             .overlay(alignment: .leading) {
                 HStack(spacing: 5) {
@@ -2314,7 +2205,7 @@ private struct TimelineTextLayerCell: View {
                 .padding(.horizontal, selected ? 11 : 7)
             }
             .overlay {
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
                     .stroke(
                         selected ? Color.yapperOrange.opacity(0.92) : Color.secondary.opacity(0.42),
                         lineWidth: selected ? 1.15 : 0.7
@@ -2566,14 +2457,14 @@ struct TimelineRuler: View {
                 path.addLine(to: CGPoint(x: x, y: 30))
                 context.stroke(
                     path,
-                    with: .color(Color.primary.opacity(tick.isMajor ? 0.32 : 0.14)),
+                    with: .color(Color.primary.opacity(tick.isMajor ? 0.24 : 0.12)),
                     lineWidth: 1
                 )
                 if tick.isMajor {
                     context.draw(
                         Text(formatTime(tick.time))
-                            .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(Color.primary.opacity(0.84)),
+                            .font(.studioTimecode)
+                            .foregroundStyle(Color.studioTextMuted),
                         // Keep the ascenders inside the Canvas at every display
                         // scale; the old baseline could clip the time labels.
                         at: CGPoint(x: x + 3, y: 13),

@@ -322,6 +322,9 @@ export interface OverlayPropertiesInput {
   all?: boolean;
   hidden?: boolean;
   behindSpeaker?: boolean;
+  backdrop?: string;
+  backdropColors?: Array<string>;
+  backdropMediaID?: string;
   sourceStart?: number;
   timelineStart?: number;
   duration?: number;
@@ -346,7 +349,9 @@ export interface OverlayTrackInput {
 }
 
 export interface ProjectBackdropInput {
-  color: string;
+  color?: string;
+  preset?: string;
+  presetColors?: Array<string>;
 }
 
 export type ProjectAspectInput = "original" | "portrait" | "feedPortrait" | "square" | "landscape";
@@ -366,6 +371,8 @@ export type MediaEditOperation = "append" | "remove" | "resetToSource";
 export interface MediaEditInput {
   mediaIDs: Array<string>;
   operation: MediaEditOperation;
+  sourceStart?: number;
+  sourceEnd?: number;
 }
 
 export interface PropertiesPasteInput {

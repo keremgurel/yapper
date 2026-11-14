@@ -14,10 +14,10 @@ struct PosterVideoRail: View {
             if source == .uploads {
                 Button { upload.choose() } label: {
                     HStack(spacing: 10) {
-                        Image(systemName: "plus").font(.system(size: 12))
+                        Image(systemName: "plus").font(.studioLabel)
                             .frame(width: 24, height: 36)
                             .background(RoundedRectangle(cornerRadius: 6).fill(Color.studioInputBackground))
-                        Text("Add a finished video").font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary)
+                        Text("Add a finished video").font(.studioBodyStrong).foregroundStyle(.secondary)
                         Spacer(minLength: 0)
                     }
                     .padding(.horizontal, 12).padding(.vertical, 8)

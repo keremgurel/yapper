@@ -97,8 +97,8 @@ struct OverlayLaneFitPlanTests {
         let at = TimelineAnchorInput(kind: .time, time: 1, phrase: nil, occurrence: nil, eventID: nil, offset: nil)
         let plan = [
             try call(OverlayAddInput(mediaID: broll.id, at: at, duration: 2, until: nil, sourceStart: nil)),
-            try call(OverlayPropertiesInput(overlayIDs: [liveCall.id], all: false, hidden: nil, behindSpeaker: nil,
-                                            sourceStart: nil, timelineStart: 1.5, duration: nil, track: nil)),
+            try call(OverlayPropertiesInput(overlayIDs: [liveCall.id], all: false, hidden: nil, behindSpeaker: nil, backdrop: nil,
+                                            backdropColors: nil, backdropMediaID: nil, sourceStart: nil, timelineStart: 1.5, duration: nil, track: nil)),
         ]
 
         let receipts = await session.appActions.executeBatch(plan, projectID: session.project.id,

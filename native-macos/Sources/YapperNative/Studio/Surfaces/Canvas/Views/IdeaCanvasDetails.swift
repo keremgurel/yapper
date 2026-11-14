@@ -53,9 +53,9 @@ struct IdeaCanvasPillarMenu: View {
             HStack(spacing: 6) {
                 if let tone { Circle().fill(tone).frame(width: 6, height: 6) }
                 Text(linked?.name ?? none).lineLimit(1)
-                Image(systemName: "chevron.down").font(.system(size: 11)).foregroundStyle(.secondary)
+                Image(systemName: "chevron.down").font(.studioCaption).foregroundStyle(.secondary)
             }
-            .font(.system(size: 12, weight: .medium))
+            .font(.studioLabelStrong)
             .padding(.horizontal, 12)
             .frame(height: 28)
             .frame(maxWidth: 220)

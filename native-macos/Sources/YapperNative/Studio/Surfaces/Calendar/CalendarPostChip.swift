@@ -14,7 +14,7 @@ struct CalendarPostChip: View {
             Circle().fill(item.status.tone.color).frame(width: 6, height: 6)
             if let date = item.scheduledDate {
                 Text(date.formatted(date: .omitted, time: .shortened))
-                    .font(.system(size: 11, weight: .medium).monospacedDigit())
+                    .font(.studioCaptionStrong.monospacedDigit())
                     .foregroundStyle(.secondary)
                     .fixedSize()
             }
@@ -24,7 +24,7 @@ struct CalendarPostChip: View {
                     .foregroundStyle(.secondary)
             }
             Text(item.displayTitle)
-                .font(.system(size: 11, weight: .medium))
+                .font(.studioCaptionStrong)
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .truncationMode(.tail)
@@ -45,7 +45,7 @@ struct CalendarPostChip: View {
         .onTapGesture(perform: onOpen)
         .draggable(item.id) {
             Text(item.displayTitle)
-                .font(.system(size: 11, weight: .medium))
+                .font(.studioCaptionStrong)
                 .padding(.horizontal, 8).padding(.vertical, 4)
                 .background(RoundedRectangle(cornerRadius: 6).fill(Color.raisedBackground))
         }

@@ -16,8 +16,8 @@ struct BrandColorPicker: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(role.title).font(.system(size: 13, weight: .semibold))
-                Text(role.hint).font(.system(size: 11)).foregroundStyle(.secondary)
+                Text(role.title).font(.studioBodyStrong)
+                Text(role.hint).font(.studioCaption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             BrandSaturationSquare(value: $hsb)
@@ -28,7 +28,7 @@ struct BrandColorPicker: View {
                     .frame(width: 28, height: 28)
                 TextField("#RRGGBB", text: $hexText)
                     .textFieldStyle(.native)
-                    .font(.system(size: 13).monospaced())
+                    .font(.studioBody.monospaced())
                     .onSubmit { apply(hexText) }
                 Button { sample() } label: { Image(systemName: "eyedropper") }
                     .buttonStyle(EditorGhostButtonStyle(size: .small))
@@ -62,7 +62,7 @@ struct BrandColorPicker: View {
             ForEach(BrandLimits.suggestions, id: \.self) { preset in
                 Button { apply(preset) } label: {
                     Circle().fill(BrandHex.color(preset))
-                        .overlay(Circle().strokeBorder(preset == hex ? Color.yapperOrange : Color.studioLine, lineWidth: preset == hex ? 2 : 1))
+                        .overlay(Circle().strokeBorder(preset == hex ? Color.studioAccent : Color.studioLine, lineWidth: preset == hex ? 2 : 1))
                         .frame(width: 20, height: 20)
                 }
                 .buttonStyle(.studioPlain)

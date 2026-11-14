@@ -14,46 +14,35 @@ struct PosterVideoCard: View {
 
     var body: some View {
         Button(action: onOpen) {
-            VStack(alignment: .leading, spacing: 0) {
-                PosterVideoStill(video: video)
-                    .aspectRatio(9 / 16, contentMode: .fit)
-                    .overlay {
-                        if importing {
-                            ZStack {
-                                Color.black.opacity(0.45)
-                                ProgressView().controlSize(.small)
-                            }
-                        }
-                    }
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(video.title)
-                        .font(.system(size: 13, weight: .semibold))
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                    if video.needsOriginal {
-                        Text("Attach original video").font(.system(size: 12)).foregroundStyle(.secondary)
-                    }
-                    meta
+            HStack(spacing: 12) {
+                PosterVideoStill(video: video, iconSize: 12)
+                    .frame(width: 32, height: 48)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .overlay { if importing { ProgressView().controlSize(.mini) } }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(video.title).font(.studioBodyStrong)
+                        .lineLimit(2).multilineTextAlignment(.leading)
+                    if case .project = video.origin { meta }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
+                Spacer(minLength: 8)
+                Text(video.needsOriginal ? "Attach original" : "Use video")
+                    .font(.studioLabel).foregroundStyle(.secondary)
             }
-            .background(Color.panelBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.studioLine, lineWidth: 1))
+            .padding(.vertical, 8)
+            .padding(.trailing, canRemove ? 40 : 0)
+            .contentShape(Rectangle())
             .opacity(video.canOpen ? 1 : 0.6)
         }
         .buttonStyle(.studioPlain)
         .disabled(!video.canOpen || importing)
         .accessibilityHint(video.needsOriginal ? "Opens the step to attach this post's original video" : "")
-        .overlay(alignment: .topTrailing) {
-            if case let .yapper(_, id, _, _, _) = video.origin,
-               PosterLibraryStore.shared.items?.first(where: { $0.id == id })?.sourceUrl == "yapper://poster-upload" {
+        .overlay(alignment: .trailing) {
+            if canRemove {
                 Button { confirmRemoval = true } label: {
-                    Image(systemName: "xmark").font(.system(size: 13, weight: .semibold))
+                    Image(systemName: "xmark").font(.studioBodyStrong)
                         .foregroundStyle(Color.studioDanger).frame(width: 32, height: 32)
                         .background(Circle().fill(Color.panelBackground))
-                }.buttonStyle(.studioPlain).padding(8).disabled(removing).help("Remove upload")
+                }.buttonStyle(.studioPlain).disabled(removing).help("Remove upload")
                     .accessibilityLabel("Remove \(video.title)")
             }
         }
@@ -83,6 +72,11 @@ struct PosterVideoCard: View {
         .help(video.canOpen ? "" : "Only videos posted through Yapper can be reposted from here")
     }
 
+    private var canRemove: Bool {
+        guard case let .yapper(_, id, _, _, _) = video.origin else { return false }
+        return PosterLibraryStore.shared.items?.first(where: { $0.id == id })?.sourceUrl == "yapper://poster-upload"
+    }
+
     @ViewBuilder
     private var meta: some View {
         switch video.origin {
@@ -91,21 +85,21 @@ struct PosterVideoCard: View {
                 Text("Latest edit · \(Int(listing.summary.duration))s")
                 if let status = sync.status[listing.summary.id] { Text(status) }
                 else if sync.errors[listing.summary.id] != nil { Text("Preview needs attention").foregroundStyle(NativeChip.Tone.yellow.color) }
-            }.font(.system(size: 12)).foregroundStyle(.secondary)
+            }.font(.studioLabel).foregroundStyle(.secondary)
         case .file:
-            Text("Uploading…").font(.system(size: 12)).foregroundStyle(.secondary)
+            Text("Uploading…").font(.studioLabel).foregroundStyle(.secondary)
         case let .yapper(_, _, status, scheduledFor, _):
             HStack(spacing: 8) {
-                Text(PosterFormat.scheduled(scheduledFor)).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+                Text(PosterFormat.scheduled(scheduledFor)).font(.studioCaption).foregroundStyle(.secondary).lineLimit(1)
                 Spacer(minLength: 0)
                 NativeChip(text: status.capitalized, tone: PosterFormat.statusTone(status))
             }
         case let .platform(_, _, _, _, views, publishedAt, _, _, _):
             HStack(spacing: 8) {
-                Text(PosterFormat.day(publishedAt)).font(.system(size: 11)).foregroundStyle(.secondary)
+                Text(PosterFormat.day(publishedAt)).font(.studioCaption).foregroundStyle(.secondary)
                 Spacer(minLength: 0)
                 Label(PosterFormat.views(views), systemImage: "eye")
-                    .font(.system(size: 11).monospacedDigit())
+                    .font(.studioCaption.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
         }

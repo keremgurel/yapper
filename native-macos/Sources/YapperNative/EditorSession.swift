@@ -21,7 +21,7 @@ enum OneClickEditStage: Int, CaseIterable, Sendable {
         switch self {
         case .preparing: "Preparing your video"
         case .transcribing: "Transcribing your audio"
-        case .removingRetakes: "Removing mistakes & retakes"
+        case .removingRetakes: "Removing mistakes and retakes"
         case .cuttingPauses: "Cutting pauses"
         case .trimmingSilence: "Trimming silence"
         case .addingCaptions: "Adding captions"
@@ -35,7 +35,7 @@ typealias TranscriptionRunner = @Sendable (
     (@MainActor @Sendable (Double) -> Void)?
 ) async throws -> [TranscriptWord]
 
-typealias NativeExportRunner = @Sendable (EditorProject, URL) async throws -> Void
+typealias NativeExportRunner = @Sendable (EditorProject, URL, @escaping ExportProgressHandler) async throws -> Void
 
 @MainActor
 final class EditorSession: ObservableObject {
@@ -99,7 +99,6 @@ final class EditorSession: ObservableObject {
     var assistantUsesStudioBrain = false
     private var captionOperationWaiters: [CheckedContinuation<Bool, Never>] = []
     var isBusy: Bool { activeOperation != nil }
-    var isExporting: Bool { activeOperation?.operation.isExport == true }
     var isAIEditing: Bool { activeOperation?.operation.isAI == true }
     @Published private(set) var canUndo = false
     @Published private(set) var canRedo = false
@@ -208,7 +207,10 @@ final class EditorSession: ObservableObject {
     private let thumbnailService = ThumbnailService()
     private let aiEditService = AIEditService()
     private let transcriptionRunner: TranscriptionRunner?
-    private let exportRunner: NativeExportRunner
+    let exportRunner: NativeExportRunner
+    /// Exports run here, beside the editor rather than inside it: see
+    /// `EditorSession+Export`.
+    let exportJobs = ExportJobCenter()
     let overlayPlacementService: any OverlayPlacementPlanning
     /// Where the speaker is on screen, found on this machine so a cutaway can
     /// be put somewhere else.
@@ -274,7 +276,9 @@ final class EditorSession: ObservableObject {
         store: (any ProjectPersisting)? = nil,
         overlayPlacementService: any OverlayPlacementPlanning = OverlayPlacementService(),
         transcriptionRunner: TranscriptionRunner? = nil,
-        exportRunner: @escaping NativeExportRunner = ExportService.export,
+        exportRunner: @escaping NativeExportRunner = { project, url, progress in
+            try await ExportService.export(project: project, to: url, progress: progress)
+        },
         generatedAssetRoot: URL? = nil,
         audioLibraryVolumes: AudioLibraryVolumes = .shared,
         generatedOverlayRequest: @escaping @MainActor (String, [String: Any]) async throws -> [String: Any] = GeneratedOverlayService.request
@@ -291,6 +295,7 @@ final class EditorSession: ObservableObject {
         audioWaveforms = AudioWaveformStore(service: waveformService)
         player.automaticallyWaitsToMinimizeStalling = false
         installObservers()
+        exportJobs.onFinish = { [weak self] job in self?.exportJobFinished(job) }
         restorationTask = Task { [weak self] in
             if restoresProjectLibrary {
                 await self?.restoreLastProject()
@@ -1155,112 +1160,6 @@ final class EditorSession: ObservableObject {
         return []
     }
 
-    @discardableResult
-    func export(to url: URL) async -> Bool {
-        guard !project.clips.isEmpty else { return false }
-        await commitTyping()
-        return await runTrackedLongOperation(.exporting) { [weak self] operation in
-            _ = await self?.performExport(to: url, owner: operation, revealInFinder: true)
-        }
-    }
-
-    @discardableResult
-    func exportForPosting(to url: URL) async -> Bool {
-        guard !project.clips.isEmpty else { return false }
-        await commitTyping()
-        return await runTrackedLongOperation(.exporting) { [weak self] operation in
-            guard let self else { return }
-            guard await performExport(
-                to: url,
-                owner: operation,
-                revealInFinder: false
-            ) else { return }
-            statusMessage = "Uploading the final edit to Poster…"
-            do {
-                let itemID = try await PosterHandoffService.prepare(
-                    exportURL: url,
-                    title: project.name
-                ) { [weak self] stage in
-                    switch stage {
-                    case .uploading:
-                        self?.statusMessage = "Uploading the final edit to Poster…"
-                    case .registering:
-                        self?.statusMessage = "Saving the final edit in Poster…"
-                    case .transcribing:
-                        self?.statusMessage = "Reading the final edit for smart copy…"
-                    }
-                }
-                guard !Task.isCancelled else {
-                    markCurrentLongOperationCanceled()
-                    statusMessage = "Export and post canceled"
-                    return
-                }
-                statusMessage = "Ready to write and cross-post"
-                StudioWebCommands.shared.openPoster(itemID: itemID)
-            } catch is CancellationError {
-                markCurrentLongOperationCanceled()
-                errorMessage = nil
-                statusMessage = "Export and post canceled"
-            } catch {
-                show(error)
-            }
-        }
-    }
-
-    private func performExport(
-        to url: URL,
-        owner _: LongOperationLease,
-        revealInFinder: Bool
-    ) async -> Bool {
-        guard await beginPreparedTimelineEdit() != nil else { return false }
-        guard !Task.isCancelled else {
-            endPreparedTimelineEdit()
-            markCurrentLongOperationCanceled()
-            statusMessage = "Export canceled"
-            return false
-        }
-        repairBuiltInAudioURLs()
-        mediaAvailability.refresh(notifyRestored: false)
-        guard mediaAvailability.requiredOffline.isEmpty else {
-            endPreparedTimelineEdit()
-            errorMessage = "Reconnect the required offline media before exporting."
-            return false
-        }
-        do {
-            try await validateAvailableMediaIdentity()
-        } catch {
-            mediaAvailability.refresh(notifyRestored: false)
-            endPreparedTimelineEdit()
-            show(error)
-            return false
-        }
-        let exportProject = project
-        endPreparedTimelineEdit()
-        errorMessage = nil
-        statusMessage = "Exporting native composition…"
-        let analyticsID = UUID().uuidString
-        let analyticsStart = Date()
-        NativeAnalytics.shared.capture("native_export_started", ["operation_id": analyticsID, "duration_seconds": exportProject.duration])
-        do {
-            try await exportRunner(exportProject, url)
-            NativeAnalytics.shared.capture("native_export_completed", ["operation_id": analyticsID, "elapsed_seconds": Date().timeIntervalSince(analyticsStart), "duration_seconds": exportProject.duration])
-            lastExportURL = url
-            statusMessage = "Exported \(url.lastPathComponent)"
-            if revealInFinder { NSWorkspace.shared.activateFileViewerSelecting([url]) }
-            return true
-        } catch is CancellationError {
-            NativeAnalytics.shared.capture("native_export_canceled", ["operation_id": analyticsID])
-            markCurrentLongOperationCanceled()
-            errorMessage = nil
-            statusMessage = "Export canceled"
-            return false
-        } catch {
-            NativeAnalytics.shared.capture("native_export_failed", ["operation_id": analyticsID])
-            show(error)
-            return false
-        }
-    }
-
     func select(_ clipID: UUID) {
         selectTimelineItem(.clip(clipID))
     }
@@ -1288,13 +1187,16 @@ final class EditorSession: ObservableObject {
     /// Lays media onto the end of the main track, through the media action
     /// Chirpy uses. A still gets the same default hold an image overlay gets
     /// and is trimmed from there like any other clip.
-    func appendMediaToTimeline(_ mediaID: UUID) async {
-        await appendMediaToTimeline([mediaID])
+    /// - Parameter range: the part of the file to add. Left out, the whole
+    ///   file goes on.
+    func appendMediaToTimeline(_ mediaID: UUID, range: MediaTrimRange? = nil) async {
+        await appendMediaToTimeline([mediaID], range: range)
     }
 
-    func appendMediaToTimeline(_ mediaIDs: [UUID]) async {
+    func appendMediaToTimeline(_ mediaIDs: [UUID], range: MediaTrimRange? = nil) async {
         guard !mediaIDs.isEmpty else { return }
-        let result = await performAppAction(MediaEditInput(mediaIDs: mediaIDs, operation: .append))
+        let result = await performAppAction(MediaEditInput(mediaIDs: mediaIDs, operation: .append,
+                                                           sourceStart: range?.start, sourceEnd: range?.end))
         if result.status == .applied, let clip = result.changes.last?.targetID { selectedClipID = clip }
     }
 
@@ -1324,8 +1226,16 @@ final class EditorSession: ObservableObject {
         setStatus("Removed \(removed.count == 1 ? removed[0] : "\(removed.count) files") from this project · \(removed.count == 1 ? "source file kept" : "source files kept") · ⌘Z to undo")
     }
 
-    func addOverlay(_ mediaID: UUID) async {
-        await performAppAction(OverlayAddInput(mediaID: mediaID, at: .playhead, duration: nil, until: nil, sourceStart: nil))
+    /// - Parameter range: the part of the file to lay over the video. Left
+    ///   out, the overlay starts at the top of the file with its usual length.
+    func addOverlay(_ mediaID: UUID, range: MediaTrimRange? = nil) async {
+        await performAppAction(OverlayAddInput(
+            mediaID: mediaID,
+            at: .playhead,
+            duration: range?.length,
+            until: nil,
+            sourceStart: range?.start
+        ))
     }
 
     /// An overlay sized to its media before it ever reaches the frame: media
@@ -1375,7 +1285,10 @@ final class EditorSession: ObservableObject {
             y: box.y,
             width: box.width,
             height: box.height,
-            track: track == 0 ? nil : track
+            track: track == 0 ? nil : track,
+            // The look picked last, so every cutaway in a video gets the same
+            // backdrop without being asked for it again.
+            backdrop: OverlayBackdropDefault.current
         )
     }
 
@@ -1679,8 +1592,11 @@ final class EditorSession: ObservableObject {
         let original = rollbackState.project
         aiProgress = 0
         oneClickEditStage = .preparing
+        oneClickLatency = EditLatencyLog.Run("one-click")
         errorMessage = nil
         defer {
+            oneClickLatency?.mark("finished")
+            oneClickLatency = nil
             oneClickEditStage = nil
         }
 
@@ -2036,7 +1952,7 @@ final class EditorSession: ObservableObject {
     }
 
     private func restoreHistorySnapshot(direction: HistoryDirection) async {
-        guard !isBusy, !isExporting else { return }
+        guard !isBusy else { return }
         await acquireEditCommitSlot()
         defer { releaseEditCommitSlot() }
         guard await flushPendingEdit() else { return }
@@ -2161,7 +2077,13 @@ final class EditorSession: ObservableObject {
         releaseEditCommitSlot()
     }
 
+    /// The stopwatch for the 1-Click Edit in flight, if there is one.
+    private var oneClickLatency: EditLatencyLog.Run?
+
     private func setOneClickEditStage(_ stage: OneClickEditStage) {
+        // One line per step in the latency log, so a slow run says which step
+        // was slow: `log stream --predicate 'category == "latency"'`.
+        oneClickLatency?.mark("reached \(stage.title)")
         oneClickEditStage = stage
         aiProgress = Double(stage.rawValue) / Double(max(1, OneClickEditStage.allCases.count - 1))
         statusMessage = stage.title
@@ -2973,7 +2895,7 @@ final class EditorSession: ObservableObject {
     /// Switch the live player as well as persistence to the owned source. Wait
     /// for an in-progress edit, then use its latest timeline under the commit lock.
     func adoptManagedMedia(in package: ProjectPackage, projectID: UUID) async throws {
-        while isBusy || isExporting {
+        while isBusy {
             try Task.checkCancellation()
             try await Task.sleep(for: .milliseconds(50))
         }

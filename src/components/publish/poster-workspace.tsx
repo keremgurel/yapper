@@ -3,33 +3,40 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { LayoutGrid, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
-import { EmptyState, PageHeader, Section } from "@/components/studio-ui";
+import { EmptyState, PageHeader } from "@/components/studio-ui";
 import CrossPostSheet from "@/components/publish/cross-post-sheet";
 import ScheduleIntentNote from "@/components/publish/schedule/schedule-intent-note";
 import {
+  blankCaption,
   captionFor,
-  copyCaptionToOthers,
 } from "@/components/publish/captions/caption-draft";
+import { renderCaption } from "@/lib/publish/caption-format";
+import { useCaptionGeneration } from "@/components/publish/captions/use-caption-generation";
+import AttachOriginal from "@/components/publish/poster/attach-original";
+import { type CoverDraft } from "@/components/publish/poster/cover-draft";
+import {
+  sourceCover,
+  originalThumbnail,
+} from "@/components/publish/poster/source-defaults";
 import {
   evaluateDestination,
   publishSummary,
 } from "@/lib/publish/destination-readiness";
-import { renderCaption } from "@/lib/publish/caption-format";
-import { useCaptionDrafts } from "@/components/publish/captions/use-caption-drafts";
-import { useCaptionGeneration } from "@/components/publish/captions/use-caption-generation";
-import CaptionBriefDisclosure from "@/components/publish/poster/caption-brief-disclosure";
-import AttachOriginal from "@/components/publish/poster/attach-original";
-import CoverStudio from "@/components/publish/poster/cover/cover-studio";
-import { type CoverDraft } from "@/components/publish/poster/cover-draft";
 import {
-  originalThumbnail,
-  sourceCaptions,
-  sourceCover,
-} from "@/components/publish/poster/source-defaults";
-import DestinationColumn from "@/components/publish/poster/destination-column";
-import PosterActions from "@/components/publish/poster/poster-actions";
+  applyPosterGeneration,
+  posterCaptions,
+  type PosterCopy,
+} from "@/components/publish/poster/poster-copy";
+import {
+  PosterProgress,
+  PosterRow,
+  posterField,
+} from "@/components/publish/poster/poster-layout";
+import PosterMediaRow from "@/components/publish/poster/poster-media-row";
+import DestinationToggles from "@/components/publish/poster/destination-toggles";
 import {
   currentPosterVideo,
   fromPostable,
@@ -37,8 +44,9 @@ import {
   needsOriginal,
   type PosterVideo,
 } from "@/components/publish/poster/poster-video";
-import { downloadCover } from "@/components/publish/poster/render-cover";
 import SourceOptions from "@/components/publish/poster/sources/source-options";
+import ConnectTile from "@/components/publish/poster/sources/connect-tile";
+import { isPlatformEnabled } from "@/lib/publish/availability";
 import { PLATFORMS } from "@/lib/publish/platforms";
 import { useOpenVideo } from "@/components/publish/poster/sources/use-open-video";
 import { useRequestedVideo } from "@/components/publish/poster/sources/use-requested-video";
@@ -50,29 +58,26 @@ import UploadProgress from "@/components/publish/poster/upload-progress";
 import { usePublishPrep } from "@/components/publish/poster/use-publish-prep";
 import { useVideoFiles } from "@/components/publish/poster/use-video-files";
 import VideoDropzone from "@/components/publish/poster/video-dropzone";
-import VideoGrid from "@/components/publish/poster/video-grid";
 import VideoRail from "@/components/publish/poster/video-rail";
 import { useConnections } from "@/hooks/use-connections";
 import { useContentList } from "@/hooks/use-content-list";
 import type { PublishPlatform } from "@/lib/db/schema";
 import { beginConnect } from "@/lib/publish/begin-connect";
 import { DEFAULT_CAPTION_BRIEF } from "@/lib/publish/caption-prompt";
+import type { CaptionSet } from "@/components/publish/captions/caption-draft";
+import type { PlatformCaption } from "@/lib/publish/caption-format";
 import {
   postableVideos,
   posterLibraryVideos,
 } from "@/lib/publish/postable-videos";
 import type { ContentDetail } from "@/lib/content/client";
 
-/**
- * The Poster: pick a video, prepare it, send it everywhere.
- *
- * One source strip on top: what you made in Yapper, or what you already posted
- * on a connected channel, so reposting an Instagram Reel to YouTube starts by
- * clicking Instagram. Below it, either the grid of that source's videos or, once
- * one is open, the bench: the videos as a rail, the thumbnail in the middle,
- * the destinations on the right with the one publish button. Connecting a
- * channel happens in place, wherever a channel is missing.
- */
+const CoverEditor = dynamic(
+  () => import("@/components/publish/poster/cover/cover-editor"),
+);
+const NO_DESTINATIONS = new Set<PublishPlatform>();
+const NO_COPY: PosterCopy = {};
+
 export default function PosterWorkspace() {
   const { isSignedIn } = useUser();
   const params = useSearchParams();
@@ -92,7 +97,12 @@ export default function PosterWorkspace() {
     [connections],
   );
 
-  const [source, setSource] = useState<PosterSource>("uploads");
+  const [source, setSource] = useState<PosterSource>(() => {
+    const requestedSource = params.get("source");
+    return requestedSource && isPlatformEnabled(requestedSource)
+      ? requestedSource
+      : "uploads";
+  });
   const sourceVideos = useSourceVideos(
     source,
     {
@@ -117,21 +127,48 @@ export default function PosterWorkspace() {
   );
 
   const [covers, setCovers] = useState<Record<string, CoverDraft>>({});
-  const [, setFramePending] = useState(false);
+  const [editingCover, setEditingCover] = useState<string>();
   // Per video, because two videos genuinely go to different places and one
   // shared Set could never say so.
   const [destinationsByVideo, setDestinationsByVideo] = useState<
     Record<string, Set<PublishPlatform>>
   >({});
-  const [briefsByVideo, setBriefsByVideo] = useState<Record<string, string>>(
+  const [copyByVideo, setCopyByVideo] = useState<Record<string, PosterCopy>>(
     {},
   );
-
-  const { byVideo, setCaption, applyGenerated } = useCaptionDrafts();
+  const [originalByVideo, setOriginalByVideo] = useState<
+    Record<string, string>
+  >({});
   const [descriptions, setDescriptions] = useState<Record<string, string>>({});
+  const receiveCopy = useCallback(
+    (
+      id: string,
+      results: PlatformCaption[],
+      _titleOnly?: boolean,
+      original = "",
+      initial?: CaptionSet,
+    ) => {
+      const result = results[0];
+      if (!result || !initial) return;
+      const snapshot = captionFor(initial, result.platform);
+      setCopyByVideo((all) => ({
+        ...all,
+        [id]: applyPosterGeneration(
+          all[id] ?? NO_COPY,
+          original,
+          { caption: snapshot.body, title: snapshot.title },
+          {
+            caption: renderCaption(result),
+            title: result.platform === "youtube" ? result.title : undefined,
+          },
+        ),
+      }));
+    },
+    [],
+  );
   const { generating, reading, error, errorVideoId, noSpeech, generate } =
     useCaptionGeneration(
-      applyGenerated,
+      receiveCopy,
       useCallback((item: ContentDetail) => patchRow(item.id, item), [patchRow]),
     );
   const prep = usePublishPrep();
@@ -217,27 +254,12 @@ export default function PosterWorkspace() {
       bench.setActive((current) =>
         current?.id === original.id ? attached : current,
       );
-      applyGenerated(
-        original.id,
-        Object.values(sourceCaptions(original)),
-        false,
-        "",
-        {},
-      );
-      setDestinationsByVideo((current) =>
-        current[original.id]
-          ? current
-          : {
-              ...current,
-              [original.id]: new Set(
-                connectedPlatforms.filter(
-                  (platform) => platform !== original.platform,
-                ),
-              ),
-            },
-      );
+      setOriginalByVideo((all) => ({
+        ...all,
+        [original.id]: original.caption ?? "",
+      }));
     },
-    [prependRow, bench, applyGenerated, connectedPlatforms],
+    [prependRow, bench],
   );
 
   // The editor hands a finished cut over by linking to /studio/poster?item=<id>.
@@ -245,111 +267,97 @@ export default function PosterWorkspace() {
   useRequestedVideo(requested, library, bench.setActive);
 
   const cover = active ? (covers[active.id] ?? sourceCover(active)) : null;
-  // Default destinations: every connected channel except the one the video is
-  // already on. That is the whole point of reposting.
-  const destinations = useMemo(() => {
-    if (!active) return new Set<PublishPlatform>();
-    const chosen = destinationsByVideo[active.id];
-    if (chosen) return chosen;
-    return new Set(
-      connectedPlatforms.filter(
-        (platform) =>
-          !(active.kind === "platform" && active.platform === platform),
-      ),
-    );
-  }, [active, connectedPlatforms, destinationsByVideo]);
-  const brief = active
-    ? (briefsByVideo[active.id] ?? DEFAULT_CAPTION_BRIEF)
-    : DEFAULT_CAPTION_BRIEF;
-
-  const toggleDestination = useCallback(
-    (platform: PublishPlatform) => {
-      if (!active) return;
-      setDestinationsByVideo((current) => {
-        const next = new Set(current[active.id] ?? destinations);
-        if (next.has(platform)) next.delete(platform);
-        else next.add(platform);
-        return { ...current, [active.id]: next };
-      });
-    },
-    [active, destinations],
+  const destinations = active
+    ? (destinationsByVideo[active.id] ?? NO_DESTINATIONS)
+    : NO_DESTINATIONS;
+  const copy = active ? (copyByVideo[active.id] ?? NO_COPY) : NO_COPY;
+  const original = active
+    ? (originalByVideo[active.id] ??
+      (active.kind === "platform" ? (active.caption ?? "") : ""))
+    : "";
+  const shared = copy.caption ?? original;
+  const captions = posterCaptions(copy, original);
+  const readiness = [...destinations].map((platform) =>
+    evaluateDestination({
+      platform,
+      connected: connectedPlatforms.includes(platform),
+      caption: captionFor(captions, platform),
+      hasCover: Boolean(cover?.image),
+    }),
   );
-
-  const captions = active
-    ? { ...sourceCaptions(active), ...byVideo[active.id] }
-    : {};
-
-  const draftCaptions = (titleOnly = false, reference?: PublishPlatform) => {
+  const updateCopy = (update: (draft: PosterCopy) => PosterCopy) => {
     if (!active) return;
-    const referenceCaption = reference
-      ? captionFor(captions, reference)
-      : Object.values(captions).find((caption) => caption.body.trim());
+    setCopyByVideo((all) => ({
+      ...all,
+      [active.id]: update(all[active.id] ?? NO_COPY),
+    }));
+  };
+  const toggleDestination = (platform: PublishPlatform) => {
+    if (!active) return;
+    setDestinationsByVideo((current) => {
+      const next = new Set(current[active.id]);
+      if (next.has(platform)) next.delete(platform);
+      else next.add(platform);
+      return { ...current, [active.id]: next };
+    });
+  };
+  const mediaReady = Boolean(
+    active &&
+    (active.kind === "platform" ? active.mediaKey : active.submissionId),
+  );
+  const draftCaptions = () => {
+    const platform = destinations.has("youtube")
+      ? "youtube"
+      : [...destinations][0];
+    if (!active || !platform) return;
     void generate(
       [
         {
           id: active.id,
           title: active.title,
           videoDescription: descriptions[active.id],
-          captionReference: referenceCaption
-            ? renderCaption(referenceCaption)
-            : undefined,
+          captionReference: shared,
           noSpeech: active.kind === "yapper" && active.noSpeech,
-          initialCaptions: byVideo[active.id] ?? {},
+          initialCaptions: {
+            [platform]: {
+              ...blankCaption(platform),
+              body: shared,
+              title: copy.title ?? "",
+            },
+          },
           submissionId:
             active.kind === "yapper" ? active.submissionId : undefined,
           transcriptStatus:
             active.kind === "yapper" ? active.transcriptStatus : undefined,
           mediaKey: active.kind === "platform" ? active.mediaKey : undefined,
-          sourceCaption:
-            active.kind === "platform" ? active.caption : undefined,
-          // Present for a library take; it lets the server read the script
-          // instead of writing from the title alone.
+          sourceCaption: original,
           contentItemId:
             active.kind === "yapper" ? active.contentItemId : undefined,
         },
       ],
-      titleOnly
-        ? ["youtube"]
-        : [...destinations].filter((platform) => platform !== reference),
+      [platform],
       true,
-      brief,
-      titleOnly,
+      DEFAULT_CAPTION_BRIEF,
     );
   };
-
-  const changeSource = (next: PosterSource) => {
-    setSource(next);
+  const closeVideo = () => {
+    prep.clear();
     bench.close();
   };
 
   return (
-    <VideoDropzone onFiles={addFiles}>
-      <div className="w-full space-y-6">
+    <VideoDropzone onFiles={publishLocked ? () => undefined : addFiles}>
+      <div className="w-full max-w-4xl">
         <PageHeader
           title="Poster"
-          description="Pick a video, choose its thumbnail and captions, and send it to every channel at once."
-          actions={
-            <div className="flex flex-wrap items-center gap-2">
-              {active && (
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    bench.close();
-                  }}
-                >
-                  Post another video
-                </Button>
-              )}
-              <PosterActions
-                uploadState={uploadState}
-                progress={uploadProgress}
-                onAdd={openFilePicker}
-              />
-            </div>
-          }
+          actions={<PosterProgress composing={Boolean(active)} />}
         />
         <ScheduleIntentNote />
-
+        {params.has("connect_error") && (
+          <p role="status" className="text-muted-foreground mb-4 text-sm">
+            The account wasn’t connected. Choose the source to try again.
+          </p>
+        )}
         <input
           ref={fileInputRef}
           type="file"
@@ -365,28 +373,12 @@ export default function PosterWorkspace() {
           error={uploadError}
           notice={uploadNotice}
         />
-        {bench.importingId && active?.kind === "platform" ? (
-          <p role="status" className="text-muted-foreground text-sm">
-            Importing your {PLATFORMS[active.platform].label} video…
-          </p>
-        ) : null}
-        {bench.error ? (
-          <p role="alert" className="text-foreground text-sm">
-            {bench.error}
-          </p>
-        ) : null}
-        {prep.warning ? (
-          <p className="text-sm text-[color:var(--sg-yellow-500)]">
-            {prep.warning}
-          </p>
-        ) : null}
-
         {connectionsError && (
           <div
             role="alert"
-            className="text-destructive flex items-center gap-3 text-sm"
+            className="text-destructive mb-4 flex flex-wrap items-center gap-2 text-sm"
           >
-            <p>Your connected accounts couldn’t be refreshed.</p>
+            Your connected accounts couldn’t be refreshed.
             <Button
               variant="outline"
               size="sm"
@@ -396,306 +388,355 @@ export default function PosterWorkspace() {
             </Button>
           </div>
         )}
-        {!active ? (
-          <SourceOptions
-            selected={source}
-            connected={connectedPlatforms}
-            onChoose={changeSource}
-          />
-        ) : (
-          <Button variant="ghost" onClick={bench.close}>
-            All videos
-          </Button>
-        )}
-        {!active && (
-          <h2 className="text-lg font-semibold">
-            {source === "uploads" ? "Ready to post" : PLATFORMS[source].label}
-          </h2>
-        )}
 
-        {sourceVideos.error ? (
-          <EmptyState
-            icon={RefreshCw}
-            title="This channel couldn’t be loaded"
-            description="Check the connection and try loading its videos again."
-            action={
-              <Button
-                variant="outline"
-                onClick={() => void sourceVideos.refresh()}
-              >
-                Try again
-              </Button>
-            }
-          />
-        ) : source === "uploads" && items === null && loadFailed ? (
-          <EmptyState
-            icon={RefreshCw}
-            title="Your videos could not be loaded"
-            description="The library did not answer. Try again, or add a new export and it will open here."
-            action={
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => void refresh()}
-              >
-                <RefreshCw aria-hidden />
-                Try again
-              </Button>
-            }
-          />
-        ) : !active || !cover ? (
-          <VideoGrid
-            source={source}
-            videos={sourceVideos.videos}
-            loading={sourceVideos.loading}
-            connected={sourceVideos.connected}
-            activeId={null}
-            importingId={bench.importingId}
-            uploadState={uploadState}
-            uploadProgress={uploadProgress}
-            onAdd={openFilePicker}
-            onOpen={openVideo}
-            onRemoved={removeRow}
-          />
-        ) : (
-          <div className="grid grid-cols-1 gap-8 xl:grid-cols-[240px_minmax(0,1fr)_400px] [&>section]:min-w-0">
-            <Section
-              title="Videos"
-              meta={String(sourceVideos.videos.length)}
-              action={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={bench.close}
-                >
-                  <LayoutGrid aria-hidden />
-                  All videos
-                </Button>
+        {!active || !cover ? (
+          <section
+            aria-labelledby="poster-source-heading"
+            className="space-y-4"
+          >
+            <h2 id="poster-source-heading" className="text-lg font-semibold">
+              Choose a source
+            </h2>
+            <SourceOptions
+              selected={source}
+              connected={connectedPlatforms}
+              uploadBusy={
+                uploadState === "uploading" || uploadState === "preparing"
               }
-            >
-              <VideoRail
-                source={source}
-                videos={sourceVideos.videos}
-                activeId={active.id}
-                importingId={bench.importingId}
-                onOpen={openVideo}
-                onAdd={openFilePicker}
+              onUpload={() => {
+                setSource("uploads");
+                openFilePicker();
+              }}
+              onChoose={setSource}
+            />
+            {source !== "uploads" &&
+            connections !== null &&
+            !connectedPlatforms.includes(source) ? (
+              <ConnectTile platform={source} />
+            ) : sourceVideos.error ||
+              (source === "uploads" && items === null && loadFailed) ? (
+              <EmptyState
+                icon={RefreshCw}
+                title="Videos couldn’t be loaded"
+                description="Try loading this source again."
+                action={
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      void (source === "uploads"
+                        ? refresh()
+                        : sourceVideos.refresh())
+                    }
+                  >
+                    Try again
+                  </Button>
+                }
               />
-            </Section>
-
-            <Section
-              title={
-                needsOriginal(active) ? "Attach original video" : "Thumbnail"
-              }
-              meta={
-                active.title.length > 120 ? (
-                  <details>
-                    <summary className="cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2">
-                      View original post title
-                    </summary>
-                    <p className="mt-2">{active.title}</p>
-                  </details>
-                ) : (
-                  active.title
-                )
-              }
+            ) : sourceVideos.loading ? (
+              <p
+                role="status"
+                className="border-border text-muted-foreground border-t py-4 text-sm"
+              >
+                Loading videos…
+              </p>
+            ) : sourceVideos.videos.length ? (
+              <div className="border-border border-t pt-3">
+                <h3 className="mb-2 text-sm font-semibold">
+                  {source === "uploads"
+                    ? "Ready to post"
+                    : `Recent ${PLATFORMS[source].label} posts`}
+                </h3>
+                <VideoRail
+                  videos={sourceVideos.videos}
+                  onOpen={openVideo}
+                  onRemoved={source === "uploads" ? removeRow : undefined}
+                />
+              </div>
+            ) : (
+              <p className="border-border text-muted-foreground border-t py-4 text-sm">
+                {source === "uploads"
+                  ? "Upload a video or pick a platform to reuse one of your posts."
+                  : "Your recent videos will appear here."}
+              </p>
+            )}
+          </section>
+        ) : (
+          <section aria-labelledby="poster-post-heading">
+            <h2
+              id="poster-post-heading"
+              className="border-border border-b pb-4 text-lg font-semibold"
             >
-              {active.kind === "platform" && needsOriginal(active) ? (
+              Create your post
+            </h2>
+            <PosterMediaRow
+              video={active}
+              cover={cover}
+              locked={publishLocked}
+              coverAvailable={
+                !needsOriginal(active) &&
+                Boolean(mediaReady || active.previewUrl || cover.image)
+              }
+              onBack={closeVideo}
+              onCover={() => setEditingCover(active.id)}
+            />
+            {active.kind === "platform" && needsOriginal(active) ? (
+              <PosterRow label="Original file">
                 <AttachOriginal
                   key={active.id}
                   video={active}
                   onAttached={attachOriginal}
                   onUpdated={(item) => patchRow(item.id, item)}
                 />
-              ) : active.kind === "platform" &&
-                bench.error &&
-                !active.mediaKey ? (
-                <div className="space-y-3">
-                  <p className="text-muted-foreground text-sm">
-                    The video could not be imported. Your selection and captions
-                    are still here.
+              </PosterRow>
+            ) : bench.importingId || bench.error ? (
+              <PosterRow label="Original file">
+                {bench.error ? (
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <p role="alert">{bench.error}</p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void bench.open(active)}
+                    >
+                      Try again
+                    </Button>
+                  </div>
+                ) : (
+                  <p role="status" className="text-muted-foreground text-sm">
+                    Importing your video…
                   </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => void bench.open(active)}
-                  >
-                    Try importing again
-                  </Button>
-                </div>
-              ) : (
-                <CoverStudio
-                  key={active.id}
-                  draft={cover}
-                  media={mediaOf(active)}
-                  originalImage={originalThumbnail(active)}
-                  onChange={(next) =>
-                    setCovers((current) => ({ ...current, [active.id]: next }))
-                  }
-                  onDownload={() => void downloadCover(cover)}
-                  onFramePendingChange={setFramePending}
-                />
-              )}
-            </Section>
-
-            <Section title="Send to">
-              <div className="space-y-4">
-                <fieldset disabled={publishLocked} className="min-w-0">
-                  <DestinationColumn
-                    captions={captions}
-                    hasOriginalCaption={
-                      active.kind === "platform" && Boolean(active.caption)
-                    }
-                    onUseOriginalCaption={() =>
-                      applyGenerated(
-                        active.id,
-                        Object.values(sourceCaptions(active)).map(
-                          (caption) => ({
-                            ...caption,
-                            title: captions[caption.platform]?.title ?? "",
-                          }),
-                        ),
-                      )
-                    }
-                    onGenerateTitle={() =>
-                      draftCaptions(
-                        true,
-                        [...destinations].find((platform) =>
-                          captionFor(captions, platform).body.trim(),
-                        ),
-                      )
-                    }
-                    reading={reading}
+                )}
+              </PosterRow>
+            ) : null}
+            <CrossPostSheet
+              key={`post:${active.id}`}
+              embedded
+              onBusy={setPublishLocked}
+              disabled={
+                prep.preparing ||
+                !mediaReady ||
+                !publishSummary(readiness).canPublish
+              }
+              poster={{
+                coverNote: cover.image
+                  ? cover.frameImage
+                    ? cover.showHeadline || cover.source !== "frame"
+                      ? "TikTok uses the selected video frame without custom cover art or text."
+                      : "TikTok uses the selected video frame."
+                    : "TikTok uses the video’s default frame."
+                  : undefined,
+                blockers: readiness.flatMap((item) =>
+                  item.state === "empty"
+                    ? [
+                        item.platform === "youtube"
+                          ? "Add a YouTube title to publish."
+                          : `Add a caption for ${item.label}.`,
+                      ]
+                    : item.blockers.map(
+                        (message) => `${item.label}: ${message}`,
+                      ),
+                ),
+                destinations: (
+                  <DestinationToggles
                     chosen={destinations}
                     connected={connectedPlatforms}
-                    hasCover={Boolean(cover.image)}
-                    generating={generating}
-                    captionError={errorVideoId === active.id ? error : ""}
-                    noSpeech={Boolean(
-                      noSpeech[active.id] ||
-                      (active.kind === "yapper" && active.noSpeech),
-                    )}
-                    description={descriptions[active.id] ?? ""}
-                    onDescriptionChange={(value) =>
-                      setDescriptions((current) => ({
-                        ...current,
-                        [active.id]: value,
-                      }))
-                    }
-                    onGenerateOthers={(platform) =>
-                      draftCaptions(false, platform)
-                    }
-                    onCopyOthers={(platform) =>
-                      applyGenerated(
-                        active.id,
-                        copyCaptionToOthers(captions, platform, [
-                          ...destinations,
-                        ]),
-                      )
-                    }
-                    mediaPending={
-                      active.kind === "platform"
-                        ? !active.mediaKey
-                        : !active.submissionId
-                    }
-                    transcriptStatus={
-                      active.kind === "yapper" ? active.transcriptStatus : null
-                    }
                     onToggle={toggleDestination}
-                    onConnect={beginConnect}
-                    onCaptionChange={(caption) =>
-                      setCaption(active.id, caption)
+                    onConnect={(platform) =>
+                      beginConnect(platform, "poster-draft")
                     }
-                    onGenerate={() => draftCaptions()}
                   />
-                </fieldset>
-                {active && cover && (
-                  <CrossPostSheet
-                    key={active.id}
-                    embedded
-                    onBusy={setPublishLocked}
-                    disabled={
-                      prep.preparing ||
-                      !(active.kind === "platform"
-                        ? active.mediaKey
-                        : active.submissionId) ||
-                      !publishSummary(
-                        [...destinations].map((platform) =>
-                          evaluateDestination({
-                            platform,
-                            connected: connectedPlatforms.includes(platform),
-                            caption: captionFor(captions, platform),
-                            hasCover: Boolean(cover.image),
-                          }),
-                        ),
-                      ).canPublish
-                    }
-                    beforePublish={() =>
-                      prep.prepare(
-                        [active],
-                        { ...covers, [active.id]: cover },
-                        { ...byVideo, [active.id]: captions },
-                      )
-                    }
-                    item={{
-                      id: active.id,
-                      title: active.title,
-                      captions,
-                      submissionId:
-                        active.kind === "yapper"
-                          ? active.submissionId
-                          : undefined,
-                      mediaKey:
-                        active.kind === "platform"
-                          ? active.mediaKey
-                          : undefined,
-                      contentItemId:
-                        active.kind === "yapper"
-                          ? active.contentItemId
-                          : undefined,
-                    }}
-                    initialPlatforms={[...destinations]}
-                    onCompleted={(target) => {
-                      const item = items?.find(
-                        (row) => row.id === target.contentItemId,
-                      );
-                      if (item?.sourceUrl !== "yapper://poster-upload") return;
-                      void fetch(`/api/content/${item.id}`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          sourceUrl: "yapper://poster-upload/completed",
-                        }),
-                      })
-                        .then((response) => {
-                          if (response.ok) removeRow(item.id);
-                        })
-                        .catch(() => {
-                          // Keep the upload available if completion could not be saved.
-                        });
-                    }}
-                    onClose={prep.clear}
-                    onNext={() => {
-                      prep.clear();
-                      bench.close();
-
-                      void refresh();
-                    }}
-                  />
-                )}
-                <CaptionBriefDisclosure
-                  value={brief}
-                  disabled={generating}
-                  onChange={(value) =>
-                    setBriefsByVideo((current) => ({
-                      ...current,
-                      [active.id]: value,
-                    }))
-                  }
-                />
-              </div>
-            </Section>
-          </div>
+                ),
+                overrideFor: (platform) => copy.overrides?.[platform],
+                setOverride: (platform, value) =>
+                  updateCopy((draft) => ({
+                    ...draft,
+                    overrides: { ...draft.overrides, [platform]: value },
+                  })),
+                fields: (
+                  <>
+                    <PosterRow label="Caption" htmlFor="poster-caption">
+                      <textarea
+                        id="poster-caption"
+                        rows={4}
+                        className={posterField}
+                        value={shared}
+                        placeholder="Write a caption…"
+                        onChange={(event) =>
+                          updateCopy((draft) => ({
+                            ...draft,
+                            caption: event.target.value,
+                            before: undefined,
+                          }))
+                        }
+                      />
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {copy.before ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                updateCopy((draft) =>
+                                  draft.before
+                                    ? {
+                                        ...draft,
+                                        ...draft.before,
+                                        before: undefined,
+                                      }
+                                    : draft,
+                                )
+                              }
+                            >
+                              Undo generation
+                            </Button>
+                          ) : original && copy.caption === undefined ? (
+                            <span className="text-muted-foreground text-xs">
+                              From your original post
+                            </span>
+                          ) : null}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={draftCaptions}
+                          disabled={
+                            generating ||
+                            reading ||
+                            !destinations.size ||
+                            (!mediaReady &&
+                              !shared.trim() &&
+                              !descriptions[active.id]?.trim())
+                          }
+                        >
+                          {reading
+                            ? "Reading video…"
+                            : generating
+                              ? "Writing…"
+                              : destinations.has("youtube")
+                                ? "Generate title and captions"
+                                : "Generate captions"}
+                        </Button>
+                      </div>
+                      {errorVideoId === active.id && error ? (
+                        <p
+                          role="alert"
+                          className="text-destructive mt-2 text-sm"
+                        >
+                          {error}
+                        </p>
+                      ) : null}
+                      {(noSpeech[active.id] ||
+                        (active.kind === "yapper" && active.noSpeech)) && (
+                        <label className="mt-3 block space-y-1 text-sm">
+                          <span>
+                            No speech detected. Describe the video to generate
+                            copy.
+                          </span>
+                          <textarea
+                            className={posterField}
+                            rows={2}
+                            maxLength={2000}
+                            value={descriptions[active.id] ?? ""}
+                            onChange={(event) =>
+                              setDescriptions((all) => ({
+                                ...all,
+                                [active.id]: event.target.value,
+                              }))
+                            }
+                          />
+                        </label>
+                      )}
+                    </PosterRow>
+                    {destinations.has("youtube") && (
+                      <PosterRow
+                        label="YouTube title"
+                        htmlFor="poster-youtube-title"
+                      >
+                        <input
+                          id="poster-youtube-title"
+                          className={posterField}
+                          maxLength={100}
+                          aria-required="true"
+                          placeholder="Add a title"
+                          value={copy.title ?? ""}
+                          onChange={(event) =>
+                            updateCopy((draft) => ({
+                              ...draft,
+                              title: event.target.value,
+                              before: undefined,
+                            }))
+                          }
+                        />
+                      </PosterRow>
+                    )}
+                  </>
+                ),
+              }}
+              beforePublish={() =>
+                prep.prepare(
+                  [active],
+                  { ...covers, [active.id]: cover },
+                  { [active.id]: captions },
+                  [...destinations],
+                )
+              }
+              item={{
+                id: active.id,
+                title: active.title,
+                captions,
+                submissionId:
+                  active.kind === "yapper" ? active.submissionId : undefined,
+                mediaKey:
+                  active.kind === "platform" ? active.mediaKey : undefined,
+                contentItemId:
+                  active.kind === "yapper" ? active.contentItemId : undefined,
+              }}
+              initialPlatforms={[...destinations]}
+              onCompleted={(target) => {
+                const item = items?.find(
+                  (row) => row.id === target.contentItemId,
+                );
+                if (item?.sourceUrl !== "yapper://poster-upload") return;
+                void fetch(`/api/content/${item.id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    sourceUrl: "yapper://poster-upload/completed",
+                  }),
+                })
+                  .then((response) => {
+                    if (response.ok) removeRow(item.id);
+                  })
+                  .catch(() => {});
+              }}
+              onClose={prep.clear}
+              onNext={() => {
+                closeVideo();
+                void refresh();
+              }}
+            />
+            {prep.warning ? (
+              <p role="status" className="text-muted-foreground mt-3 text-sm">
+                {prep.warning}
+              </p>
+            ) : null}
+            {editingCover === active.id && (
+              <CoverEditor
+                key={`cover:${active.id}`}
+                initial={cover}
+                media={mediaOf(active)}
+                originalImage={originalThumbnail(active)}
+                onCancel={() => setEditingCover(undefined)}
+                onApply={(next) => {
+                  setCovers((all) => ({ ...all, [active.id]: next }));
+                  setEditingCover(undefined);
+                }}
+              />
+            )}
+          </section>
         )}
       </div>
     </VideoDropzone>

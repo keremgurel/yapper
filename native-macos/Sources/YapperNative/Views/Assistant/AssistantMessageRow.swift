@@ -22,7 +22,7 @@ struct AssistantMessageRow: View {
         HStack {
             Spacer(minLength: 40)
             Text(message.text)
-                .font(.system(size: 12))
+                .font(.studioLabel)
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(.leading)
                 .textSelection(.enabled)
