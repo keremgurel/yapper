@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { createHash } from "node:crypto";
 import { and, desc, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
@@ -70,7 +71,7 @@ export async function enrichRecording(
       item.memoryPillarManual ||
       item.pillarId ||
       item.pillar?.trim() ||
-      !process.env.SURPLUS_API_KEY
+      !surplusKey("brain")
     )
       return;
     const project = await getActiveProject(userId);

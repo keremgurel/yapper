@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { fetchBoundedJson } from "@/lib/http/outbound";
 import type { BrainBlockUsage } from "@/lib/db/schema";
 import { brainBlockUsages } from "@/lib/db/schema";
@@ -109,7 +110,7 @@ export async function proposeIngest(
   subject: IngestSubject,
   signal?: AbortSignal,
 ): Promise<IngestProposal> {
-  const key = process.env.SURPLUS_API_KEY;
+  const key = surplusKey("brain");
   if (!key) throw new Error("no_provider");
   const base =
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";

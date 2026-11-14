@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import type { DeliveryMetrics } from "./metrics";
 import { fetchBoundedJson } from "@/lib/http/outbound";
 
@@ -83,7 +84,7 @@ export async function coachDelivery(
   metrics: DeliveryMetrics,
   signal?: AbortSignal,
 ): Promise<Coaching> {
-  const key = process.env.SURPLUS_API_KEY;
+  const key = surplusKey("feedback");
   if (!key) throw new Error("no_provider");
   const base =
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";

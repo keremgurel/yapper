@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { TEACHING_RULES } from "@/lib/ideas/teaching-rules";
 import type { VersionFormat } from "@/lib/content/formats";
 import type { ContentBlock } from "@/lib/db/schema";
@@ -191,7 +192,7 @@ export async function askCanvas(
   input: CanvasAskInput,
   signal?: AbortSignal,
 ): Promise<CanvasAskResult> {
-  const key = process.env.SURPLUS_API_KEY;
+  const key = surplusKey("ideas");
   if (!key) throw new Error("no_provider");
   const base =
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";

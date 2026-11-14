@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import { getBrainContextSafe } from "@/lib/brain/context/server";
@@ -56,7 +57,7 @@ async function trackedPOST(req: NextRequest): Promise<Response> {
       { status: 400 },
     );
   }
-  if (!process.env.SURPLUS_API_KEY) {
+  if (!surplusKey("ideas")) {
     return Response.json({ error: "no_provider" }, { status: 501 });
   }
 
