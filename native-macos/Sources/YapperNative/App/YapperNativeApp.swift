@@ -82,12 +82,16 @@ struct YapperNativeApp: App {
         .commands {
             CommandGroup(replacing: .undoRedo) {
                 Button("Undo") {
+                    // A caption or text field being typed in lets go first, so
+                    // what it holds is saved and is what Undo takes back.
+                    NSApp.keyWindow?.makeFirstResponder(nil)
                     Task { await session.undo() }
                 }
                 .keyboardShortcut("z", modifiers: [.command])
                 .disabled(!session.canUndo || session.isBusy || session.isExporting)
 
                 Button("Redo") {
+                    NSApp.keyWindow?.makeFirstResponder(nil)
                     Task { await session.redo() }
                 }
                 .keyboardShortcut("z", modifiers: [.command, .shift])

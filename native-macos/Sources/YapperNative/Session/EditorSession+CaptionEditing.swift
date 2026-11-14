@@ -14,23 +14,28 @@ extension EditorSession {
     /// uses. Emptied, the card goes, the way it always has. The draft stays
     /// on screen until the edit lands, so the card never shows the old text.
     @discardableResult
-    func commitCaptionText(for id: UUID) async -> AppActionResult? {
+    func commitCaptionText(for id: UUID, owner: LongOperationLease? = nil) async -> AppActionResult? {
         guard let typed = typingPreview.captionText[id] else { return nil }
         defer { typingPreview.releaseCaption(id, ifStill: typed) }
         guard let saved = project.caption(withID: id)?.text else { return nil }
         if typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return await performAppAction(CaptionRemoveInput(captionIDs: [id]))
+            return await performAppAction(CaptionRemoveInput(captionIDs: [id]), owner: owner)
         }
         guard typed != saved else { return nil }
-        return await performAppAction(CaptionTextInput(captionID: id, text: String(typed.prefix(300))))
+        return await performAppAction(CaptionTextInput(captionID: id, text: String(typed.prefix(300))), owner: owner)
     }
 
-    /// Saves every caption and text layer still being typed into. Edits that
-    /// restructure a card (split, merge, a new one after it) run this first,
-    /// so what was typed lands before the card changes shape.
-    func commitTyping() async {
-        for id in typingPreview.captionText.keys.sorted(by: { $0.uuidString < $1.uuidString }) { await commitCaptionText(for: id) }
-        for id in typingPreview.textLayerText.keys.sorted(by: { $0.uuidString < $1.uuidString }) { await commitTextLayerText(for: id) }
+    /// Saves every caption and text layer still being typed into. Every other
+    /// action runs this first (see `AppActionRegistry.typingActions`), as do
+    /// export, opening another project and a Chirpy turn, so what was typed
+    /// lands as its own step before anything reads or changes the project.
+    func commitTyping(owner: LongOperationLease? = nil) async {
+        for id in typingPreview.captionText.keys.sorted(by: { $0.uuidString < $1.uuidString }) {
+            await commitCaptionText(for: id, owner: owner)
+        }
+        for id in typingPreview.textLayerText.keys.sorted(by: { $0.uuidString < $1.uuidString }) {
+            await commitTextLayerText(for: id, owner: owner)
+        }
     }
 
     func addCaptionAtPlayhead() async {

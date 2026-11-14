@@ -1158,6 +1158,7 @@ final class EditorSession: ObservableObject {
     @discardableResult
     func export(to url: URL) async -> Bool {
         guard !project.clips.isEmpty else { return false }
+        await commitTyping()
         return await runTrackedLongOperation(.exporting) { [weak self] operation in
             _ = await self?.performExport(to: url, owner: operation, revealInFinder: true)
         }
@@ -1166,6 +1167,7 @@ final class EditorSession: ObservableObject {
     @discardableResult
     func exportForPosting(to url: URL) async -> Bool {
         guard !project.clips.isEmpty else { return false }
+        await commitTyping()
         return await runTrackedLongOperation(.exporting) { [weak self] operation in
             guard let self else { return }
             guard await performExport(
@@ -2010,7 +2012,8 @@ final class EditorSession: ObservableObject {
         errorMessage = nil
     }
 
-    /// ⌘Z and ⇧⌘Z, through the history action Chirpy uses.
+    /// ⌘Z and ⇧⌘Z, through the history action Chirpy uses. The action saves
+    /// any typing first, so typing is the step ⌘Z takes back.
     func undo() async {
         await performAppAction(HistoryInput(direction: .undo))
     }
@@ -2019,7 +2022,9 @@ final class EditorSession: ObservableObject {
         await performAppAction(HistoryInput(direction: .redo))
     }
 
-    /// Steps through history. Only the history action calls this.
+    /// Steps through history. Only the history action calls this, after the
+    /// registry has saved any typing; a draft typed since then no longer
+    /// belongs on the project history puts back.
     func restoreHistory(_ direction: HistoryDirectionInput) async {
         typingPreview.forgetAll()
         await restoreHistorySnapshot(direction: direction == .undo ? .undo : .redo)

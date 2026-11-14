@@ -37,12 +37,13 @@ extension EditorSession {
     /// Saves what was typed into a text layer through the update action
     /// Chirpy uses. A layer emptied of text keeps what it said before.
     @discardableResult
-    func commitTextLayerText(for id: UUID) async -> AppActionResult? {
+    func commitTextLayerText(for id: UUID, owner: LongOperationLease? = nil) async -> AppActionResult? {
         guard let typed = typingPreview.textLayerText[id] else { return nil }
         defer { typingPreview.releaseTextLayer(id, ifStill: typed) }
         guard let saved = project.textLayers?.first(where: { $0.id == id })?.text,
               typed != saved, !typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
-        return await performAppAction(TextLayerUpdateInput(textLayerID: id, text: String(typed.prefix(300)), timelineStart: nil, duration: nil))
+        return await performAppAction(TextLayerUpdateInput(textLayerID: id, text: String(typed.prefix(300)), timelineStart: nil, duration: nil),
+                                      owner: owner)
     }
 
     /// Layer edits always coalesce — the canvas draws them directly and the

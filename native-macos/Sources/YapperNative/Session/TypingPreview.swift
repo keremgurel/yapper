@@ -11,6 +11,8 @@ final class TypingPreviewState: ObservableObject {
     @Published private(set) var captionText: [UUID: String] = [:]
     @Published private(set) var textLayerText: [UUID: String] = [:]
 
+    var isEmpty: Bool { captionText.isEmpty && textLayerText.isEmpty }
+
     func typeCaption(_ id: UUID, _ text: String) {
         guard captionText[id] != text else { return }
         captionText[id] = text

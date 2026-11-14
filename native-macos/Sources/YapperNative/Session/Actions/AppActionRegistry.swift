@@ -120,6 +120,9 @@ final class AppActionRegistry {
         let entryPoint = fromControl ? "direct" : "assistant"
         func isCurrent() -> Bool { session.project.id == projectID && (fromControl || session.actionRevision == revision) }
         guard !calls.isEmpty else { return [] }
+        if !session.typingPreview.isEmpty, !calls.allSatisfy({ Self.typingActions.contains($0.action) }) {
+            await session.commitTyping()
+        }
         let invocationIDs = suppliedIDs ?? calls.map { _ in UUID() }
         precondition(invocationIDs.count == calls.count)
         // `failedAt` names the one step a failure belongs to. The plan is
@@ -239,8 +242,16 @@ final class AppActionRegistry {
         return replies.isEmpty ? receipts(.canceled, "Request canceled.") : replies
     }
 
+    /// The actions that save typing. Every other action saves any typing
+    /// first, so it never acts on, or under, text that is not in the project.
+    static let typingActions: Set<String> = [AppActionID.captionText.rawValue, AppActionID.captionRemove.rawValue,
+                                             AppActionID.textLayerUpdate.rawValue]
+
     func execute(_ request: AppActionRequest, in session: EditorSession, owner: LongOperationLease? = nil,
                  control: AppActionControl? = nil) async -> AppActionResult {
+        if !session.typingPreview.isEmpty, !Self.typingActions.contains(request.action) {
+            await session.commitTyping(owner: owner)
+        }
         func result(_ status: AppActionStatus, _ message: String, mutation: AppActionMutation? = nil) -> AppActionResult {
             let result = AppActionResult(protocolVersion: AppActionContract.version, invocationID: request.id,
                 projectID: request.projectID, revision: session.actionRevision, action: request.action, status: status,
