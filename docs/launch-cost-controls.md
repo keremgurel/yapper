@@ -121,6 +121,25 @@ event. A call made outside a wrapped route reports itself with
 node scripts/posthog-query.mjs "select properties.action, count(), avg(properties.ai_list_cost_microusd), avg(properties.ai_buyer_cost_microusd) from events where event = 'product_action_completed' and properties.ai_calls > 0 and timestamp > now() - interval 7 day group by 1 order by 3 desc"
 ```
 
+## Provider keys by area
+
+Surplus reports spend per key. Each product area reads its own key and falls back to `SURPLUS_API_KEY` when that area has none, so an unset variable changes nothing. The mapping is in `src/lib/providers/surplus-key.ts`.
+
+| Area            | Variable                     | Key name in the Surplus dashboard                                  | What spends from it                                                                                                       |
+| --------------- | ---------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| Editing         | `SURPLUS_API_KEY_EDITING`    | `yapper-studio-editing`                                            | 1-Click Edit cleanup, overlay placement                                                                                   |
+| Overlays        | `SURPLUS_API_KEY_OVERLAYS`   | `yapper-studio-overlays`                                           | Overlay planning, design, revision, retiming, render review                                                               |
+| Ideas           | `SURPLUS_API_KEY_IDEAS`      | `yapper-studio-ideas`                                              | Idea capture, brainstorm, scripts, hooks, canvas, idea versions                                                           |
+| Brain           | `SURPLUS_API_KEY_BRAIN`      | `yapper-studio-brain`                                              | Brain setup, ingest, spin, memory, voice, saved references, and the model router that runs ahead of most generation calls |
+| Chirpy          | `SURPLUS_API_KEY_CHIRPY`     | `yapper-studio-chirpy`                                             | Chirpy action planning in the editor and in Studio                                                                        |
+| Publishing      | `SURPLUS_API_KEY_PUBLISHING` | `yapper-studio-publishing`                                         | Publish copy, AI thumbnails                                                                                               |
+| Feedback        | `SURPLUS_API_KEY_FEEDBACK`   | `yapper-studio-feedback`                                           | Recorded take coaching                                                                                                    |
+| Everything else | `SURPLUS_API_KEY`            | `yapper-studio-shared` in production, `yapper-development` locally | Any area without its own key                                                                                              |
+
+Set the area variables in Vercel for production only. Local development and the eval scripts keep one key, `yapper-development`, in `SURPLUS_API_KEY`, so test traffic never lands on a production key.
+
+Deepgram, Groq and Gemini are each used for one job here, so one key per environment is enough: name them `yapper-transcription-production` and `yapper-transcription-development` in Deepgram and Groq, and `yapper-studio-production` and `yapper-development` in Google AI Studio.
+
 ## Storage, database and analytics backstops
 
 The daily cleanup also reconciles physical R2 inventory with application

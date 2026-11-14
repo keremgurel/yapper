@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import type { SpinCombination } from "@/lib/brain/reels";
 import { fetchBoundedJson } from "@/lib/http/outbound";
 
@@ -94,7 +95,7 @@ export async function spinIdea(
   input: SpinInput,
   signal?: AbortSignal,
 ): Promise<SpunIdea> {
-  const key = process.env.SURPLUS_API_KEY;
+  const key = surplusKey("brain");
   if (!key) throw new Error("no_provider");
   const base =
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";

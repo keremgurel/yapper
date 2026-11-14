@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
@@ -97,7 +98,7 @@ async function trackedPOST(req: NextRequest): Promise<Response> {
     },
     format: isVersionFormat(body.format) ? body.format : "short",
   };
-  if (!process.env.SURPLUS_API_KEY) {
+  if (!surplusKey("ideas")) {
     return Response.json({ error: "no_provider" }, { status: 501 });
   }
 

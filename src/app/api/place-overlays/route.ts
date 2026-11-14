@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import {
@@ -164,7 +165,7 @@ async function trackedPOST(req: Request): Promise<Response> {
   const ingressLimited = await guardProviderIngress(req);
   if (ingressLimited) return ingressLimited;
 
-  const key = process.env.SURPLUS_API_KEY;
+  const key = surplusKey("editing");
   if (!key) return Response.json({ error: "no_provider" }, { status: 501 });
   const base =
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";

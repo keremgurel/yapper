@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
@@ -53,7 +54,7 @@ async function trackedPOST(req: NextRequest): Promise<Response> {
       )
     : [];
   const messages = asMessages(body.messages);
-  if (!process.env.SURPLUS_API_KEY) {
+  if (!surplusKey("ideas")) {
     return Response.json({ error: "no_provider" }, { status: 501 });
   }
   const billing = await preflightPaidActionOrResponse(userId, "brainstorm");
