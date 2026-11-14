@@ -10,11 +10,13 @@ struct ProjectMoverDriveTests {
     private struct DiskImage {
         let mount: URL
 
+        /// exFAT volume names stop at 11 characters; a longer one makes
+        /// `hdiutil create` fail with "Operation not permitted".
         static func attach(format: String, in root: URL) throws -> DiskImage {
             let image = root.appending(path: "stick.dmg")
             let mount = root.appending(path: "mount", directoryHint: .isDirectory)
             try FileManager.default.createDirectory(at: mount, withIntermediateDirectories: true)
-            try hdiutil(["create", "-size", "24m", "-fs", format, "-volname", "YapperTestStick", image.path, "-quiet"])
+            try hdiutil(["create", "-size", "24m", "-fs", format, "-volname", "YapperStick", image.path, "-quiet"])
             try hdiutil(["attach", image.path, "-nobrowse", "-mountpoint", mount.path, "-quiet"])
             return DiskImage(mount: mount)
         }
@@ -25,12 +27,17 @@ struct ProjectMoverDriveTests {
 
         private static func hdiutil(_ arguments: [String]) throws {
             let process = Process()
+            let errors = Pipe()
             process.executableURL = URL(filePath: "/usr/bin/hdiutil")
             process.arguments = arguments
+            process.standardError = errors
             try process.run()
             process.waitUntilExit()
             guard process.terminationStatus == 0 else {
-                throw CocoaError(.fileWriteUnknown, userInfo: [NSLocalizedDescriptionKey: "hdiutil \(arguments.first ?? "") failed"])
+                let message = String(decoding: errors.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+                throw CocoaError(.fileWriteUnknown, userInfo: [
+                    NSLocalizedDescriptionKey: "hdiutil \(arguments.first ?? "") failed: \(message)",
+                ])
             }
         }
     }
