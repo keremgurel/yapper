@@ -30,7 +30,7 @@ describe("readAudioUsage", () => {
       ).toBe(5_600);
   });
 
-  it("prices a Scribe reply, a fifth more with keyterms", () => {
+  it("prices a Scribe reply, a quarter more with keyterms", () => {
     const url = new URL("https://api.elevenlabs.io/v1/speech-to-text");
     const reply = bytes({ audio_duration_secs: 90 });
     expect(
@@ -53,7 +53,7 @@ describe("readAudioUsage", () => {
         },
         reply,
       )?.listCostMicrousd,
-    ).toBe(6_000);
+    ).toBe(6_250);
   });
 
   it("prices Groq's whisper and never below its ten second minimum", () => {

@@ -81,9 +81,28 @@ Before production moved to it, these would need checking. The takes here run to 
 
 Left to detect the language, Scribe judged each piece on its own and wrote the same sentence two ways, "2026" in one piece and "twenty twenty-six" in the next. The merge could not match them across the seam and interleaved both, and the edit model then preferred an earlier clean attempt over the garbled final one. Pinning English, which is also Deepgram's default, removed it.
 
-Per minute of footage under the flag, Scribe costs $0.0033 times the 1.2 to 1.33 the overlap adds, plus 20% for keyterms: about $0.005. Deepgram on the same pieces with keyterms is about $0.007, before its recovery passes. The rest of the saving, down to $0.0033 to $0.004, needs the app to upload a take as one file.
+Per minute of footage under the flag, Scribe costs $0.0033 times the 1.2 to 1.33 the overlap adds, plus a quarter for keyterms: about $0.005. Deepgram on the same pieces with keyterms is about $0.007, before its recovery passes. The rest of the saving, down to $0.0033 to $0.004, needs the app to upload a take as one file.
 
 Poster's video masters stay on Deepgram under the flag. Scribe takes the audio in the request body here, and a master can be hundreds of megabytes.
+
+### Scribe on a long take
+
+The five takes were joined into one of 21.6 minutes and 2,150 words, with the five finished cuts as its ground truth. Scribe took it as one request and answered in 7.5 seconds.
+
+| Transcript of the 21.6 minute take | Usable answers | Cut F1 | Words wrongly cut | Mistakes left in |
+| ---------------------------------- | -------------: | -----: | ----------------: | ---------------: |
+| Scribe v2, one request             |         6 of 6 |  0.998 |                 0 |               36 |
+| Production pipeline                |         3 of 6 |  0.989 |                53 |               46 |
+
+Six runs each, three on gemini-3.7-flash and three on gemini-3.8-flash; counts are totals over the usable answers. On the production transcript half the answers were ones the route would reject and retry.
+
+Ten minute pieces through the route's merge were not tested. The ElevenLabs account ran out of quota first.
+
+### What ElevenLabs charges, and the free plan
+
+The account behind `ELEVENLABS_API_KEY` is on the free plan, which allows 10,000 credits a month. The API reported a ten minute piece as 667 credits, or 800 with keyterms, so the free plan covers about two and a half hours of audio a month. This eval used nearly all of it on November 13: 355 credits were left.
+
+ElevenLabs' API pricing page says API usage is billed in dollars and lists Scribe v2 at $0.20 an hour, with keyterms $0.05 an hour more, on six tiers that include 4.5, 30, 110, 495, 1,495 and 4,950 hours. The page does not name the plan each tier belongs to. Thirty hours at $0.20 is $6, which is the price of the Starter plan, so the tiers look like the paid plans' monthly fee spent at $0.20 an hour. Production use needs a paid plan either way. The page does not state a limit on parallel batch requests.
 
 ### List prices, read from the vendors' pages on November 13
 
@@ -91,7 +110,7 @@ Poster's video masters stay on Deepgram under the flag. Scribe takes the audio i
 | ---------------------------- | -----------------------------------------------------------------: | ------------------------------ | ------------------- |
 | xAI speech to text           |                                            $0.0017 ($0.10 an hour) | yes, returned by default       | no                  |
 | AssemblyAI Universal-2       |                                            $0.0025 ($0.15 an hour) | not stated on the pricing page | no                  |
-| ElevenLabs Scribe v2         |                         $0.0033 ($0.20 an hour), keyterms 20% more | yes, tested                    | yes                 |
+| ElevenLabs Scribe v2         |     $0.0033 ($0.20 an hour), keyterms $0.0008 more ($0.05 an hour) | yes, tested                    | yes, free plan      |
 | AssemblyAI Universal-3.5 Pro |                                            $0.0035 ($0.21 an hour) | not stated on the pricing page | no                  |
 | Deepgram Nova-3              | $0.0043, keyterms $0.0013 more. The page labels this promo pricing | yes                            | yes                 |
 | Scribe v2 through Surplus    |                                $0.0100 list, about $0.0037 settled | no                             | yes                 |
@@ -163,7 +182,7 @@ Yapper sends every Surplus call through one key, named `yapper-ai-cleanup` in th
 ## Not tested
 
 - xAI's word times, for want of a key.
-- Scribe on a take longer than 6.4 minutes, and with a creator's own dictionary terms. The route test sent only the two default terms.
+- Scribe on a real take longer than 6.4 minutes (the 21.6 minute take is five takes joined), on ten minute pieces, and with a creator's own dictionary terms. The route test sent only the two default terms.
 - The route itself against a running server. The module and the merge were run on real audio; the request handling around them is covered by unit tests.
 - The same comparisons on a phone recording, a lavalier or a noisy room.
 - What production really bills Deepgram per minute of footage. That needs Deepgram's usage export set against `edit_runs`.

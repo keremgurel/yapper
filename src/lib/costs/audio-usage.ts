@@ -15,8 +15,8 @@ const DEEPGRAM_PER_MINUTE = 4_300;
 const DEEPGRAM_KEYTERMS_PER_MINUTE = 1_300;
 /** $0.20 an hour. */
 const SCRIBE_PER_MINUTE = 200_000 / 60;
-/** Scribe adds a fifth to the base price when keyterms are sent. */
-const SCRIBE_KEYTERMS_FACTOR = 1.2;
+/** Keyterms add $0.05 an hour, a quarter of the base price. */
+const SCRIBE_KEYTERMS_FACTOR = 1.25;
 /** whisper-large-v3 at $0.111 an hour. */
 const GROQ_WHISPER_PER_MINUTE = 111_000 / 60;
 /** Groq bills at least this much audio for any request. */
