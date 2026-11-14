@@ -16,6 +16,10 @@ extension AppActionRegistry {
                 return false
             }
         }
+        registerWorkflow(OverlayBackdropGenerateInput.self) { session, input in
+            try await session.generateOverlayBackdropWorkflow(overlayID: input.overlayID, prompt: input.prompt)
+            return Task.isCancelled
+        }
         register(SavedAudioAddInput.self, availability: { _ in .available }) { session, input in
             let store = session.audioLibrary
             guard session.duration > 0, let item = store.items.first(where: { $0.id == input.savedAudioID }), store.ownsAvailable(item) else {

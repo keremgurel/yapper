@@ -187,6 +187,9 @@ final class EditorSession: ObservableObject {
     let actionSessionID = UUID()
     var assistantTask: Task<Void, Never>?
     var chirpyPlanner: (([String: ActionJSON]) async throws -> ChirpyPlanReply)?
+    /// Turns a sentence into a backdrop picture on disk. Tests answer with a
+    /// file of their own instead of spending a credit.
+    var backdropImageGenerator: (String) async throws -> URL = BackdropImageGenerator.generate
     /// Asks the creator before Chirpy runs an action the contract marks
     /// `confirm`. Tests answer for the creator.
     var confirmAssistantAction: @MainActor (AppActionConfirmation) async -> Bool = AppActionConfirmation.askWithAlert

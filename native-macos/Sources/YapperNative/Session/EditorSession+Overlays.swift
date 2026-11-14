@@ -151,9 +151,7 @@ extension EditorSession {
         OverlayBackdropDefault.remember(backdrop)
         let id = overlay.id
         LatestActionQueue.shared.request("overlay.backdrop.\(id)") { [self] in
-            await performAppAction(OverlayPropertiesInput(overlayIDs: [id], all: nil, hidden: nil, behindSpeaker: nil,
-                backdrop: backdrop?.token ?? "none", backdropColors: backdrop?.colors, backdropMediaID: backdrop?.mediaID, sourceStart: nil,
-                timelineStart: nil, duration: nil, track: nil))
+            await performAppAction(OverlayPropertiesInput(backdrop: backdrop, on: id))
         }
     }
 
@@ -382,19 +380,46 @@ extension EditorSession {
 extension EditorSession {
     /// Imports a picture into Media and puts it behind this card.
     func setOverlayBackdropImage(_ overlay: ProjectOverlay, from url: URL) async {
-        let before = Set(project.media.map(\.id))
-        await importMedia([url])
-        let canonical = url.resolvingSymlinksInPath()
-        guard let picture = project.media.first(where: { !before.contains($0.id) && $0.isImage })
-            ?? project.media.first(where: { $0.isImage && $0.url == canonical })
-        else { return }
+        guard let picture = await importedBackdropPicture(from: url) else { return }
         setOverlayBackdrop(overlay, to: .image(picture.id))
     }
 
-    /// Generates a picture from a sentence and puts it behind this card.
-    /// Throws with a message worth showing when generation fails.
+    /// Generates a picture from a sentence and puts it behind this card,
+    /// through the workflow action Chirpy runs. Throws with a message worth
+    /// showing when it did not happen.
     func generateOverlayBackdrop(_ overlay: ProjectOverlay, prompt: String) async throws {
-        let url = try await BackdropImageGenerator.generate(prompt)
-        await setOverlayBackdropImage(overlay, from: url)
+        let result = await performAppAction(OverlayBackdropGenerateInput(overlayID: overlay.id, prompt: prompt))
+        guard result.status == .applied else { throw BackdropImageGenerator.Failure(message: result.message) }
+    }
+
+    /// What `editor.overlays.generateBackdrop` runs. The picture is one edit
+    /// and putting it behind the card is the next, as they are when a picture
+    /// is chosen from a file.
+    func generateOverlayBackdropWorkflow(overlayID: UUID, prompt: String) async throws {
+        let startedIn = project.id
+        guard overlays.contains(where: { $0.id == overlayID }) else { throw AppActionError("That overlay no longer exists.") }
+        let url = try await backdropImageGenerator(prompt)
+        try Task.checkCancellation()
+        // Generation takes a while and does not hold the editor, so the
+        // project may have been closed or the overlay deleted since.
+        guard project.id == startedIn, overlays.contains(where: { $0.id == overlayID }) else {
+            throw AppActionError("The overlay was gone by the time its background was ready, so the picture was not added.")
+        }
+        guard let picture = await importedBackdropPicture(from: url) else {
+            throw AppActionError(errorMessage ?? "The generated picture could not be added to this project.")
+        }
+        let backdrop = OverlayBackdrop.image(picture.id)
+        OverlayBackdropDefault.remember(backdrop)
+        let result = await performAppAction(OverlayPropertiesInput(backdrop: backdrop, on: overlayID))
+        guard result.status == .applied || result.status == .unchanged else { throw AppActionError(result.message) }
+    }
+
+    /// The picture at `url` as project media, importing it when it is new.
+    private func importedBackdropPicture(from url: URL) async -> ProjectMedia? {
+        let before = Set(project.media.map(\.id))
+        await importMedia([url])
+        let canonical = url.resolvingSymlinksInPath()
+        return project.media.first(where: { !before.contains($0.id) && $0.isImage })
+            ?? project.media.first(where: { $0.isImage && $0.url == canonical })
     }
 }

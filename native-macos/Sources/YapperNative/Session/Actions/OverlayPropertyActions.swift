@@ -226,6 +226,13 @@ extension OverlayPropertiesInput {
                   timelineStart: timelineStart, duration: duration, track: track, leadingTrim: nil)
     }
 
+    /// What fills the frame behind one card, and nothing else about it.
+    init(backdrop: OverlayBackdrop?, on overlayID: UUID) {
+        self.init(overlayIDs: [overlayID], all: nil, hidden: nil, behindSpeaker: nil, backdrop: backdrop?.token ?? "none",
+                  backdropColors: backdrop?.colors, backdropMediaID: backdrop?.mediaID, sourceStart: nil,
+                  timelineStart: nil, duration: nil, track: nil, leadingTrim: nil)
+    }
+
     /// What a timeline drag or the lane menu changed on an overlay, or nil
     /// when it changed none of these. `leadingTrim` is the drag on its left
     /// edge, which keeps keyframes where they were on the timeline.

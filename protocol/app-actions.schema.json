@@ -349,6 +349,15 @@
       "runtime": "client"
     },
     {
+      "id": "editor.overlays.generateBackdrop",
+      "symbol": "overlayBackdropGenerate",
+      "description": "Generate a picture from a sentence and put it behind one overlay's card, as Generate in the backdrop picker does. The picture is added to the project's media and becomes that overlay's image backdrop. Costs one AI thumbnail credit, so use it only when the creator asks for a generated or AI background. Runs alone and can take a few minutes. A preset, frosted or a picture already in the project's media is editor.overlays.setProperties.",
+      "input": "OverlayBackdropGenerateInput",
+      "effect": "workflow",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
       "id": "editor.overlays.keyframe",
       "symbol": "overlayKeyframe",
       "input": "OverlayKeyframeInput",
@@ -2169,6 +2178,26 @@
           "type": "number",
           "minimum": 0,
           "maximum": 86400
+        }
+      }
+    },
+    "OverlayBackdropGenerateInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overlayID",
+        "prompt"
+      ],
+      "properties": {
+        "overlayID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1200,
+          "description": "What the picture shows, in the creator's words. The app adds the rest: dark, soft, no text, room for captions."
         }
       }
     },
