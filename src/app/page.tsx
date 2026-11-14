@@ -38,9 +38,6 @@ export default function HomePage() {
               <div className="marketing-actions">
                 <StudioCtaButton size="lg" />
               </div>
-              <p className="marketing-note">
-                7 days free. $24.99 monthly or $199.99 yearly. Cancel anytime.
-              </p>
             </div>
             <StudioPreview initialStep="Edit" />
           </div>
