@@ -30,7 +30,8 @@ struct InspectorCommitSlider: View {
             )
             .accessibilityLabel(controlLabel)
             .controlSize(.small)
-            .tint(Color.yapperOrange)
+            .tint(Color.studioAccent)
+            .frame(minWidth: 90, maxWidth: 260)
 
             InspectorNumberField(
                 value: draft.value ?? value,
@@ -38,6 +39,7 @@ struct InspectorCommitSlider: View {
                 decimals: decimals,
                 onCommit: { typed in draft.type(typed, commit: onCommit) }
             )
+            .fixedSize()
         }
     }
 }
