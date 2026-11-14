@@ -25,15 +25,15 @@ export default function HomePage() {
         <div className="marketing-container">
           <div className="marketing-hero-grid">
             <div className="marketing-hero-centered">
+              <p className="marketing-hero-name">Yapper Studio</p>
               <h1 className="type-display">
                 Everything you need
                 <br />
                 to create content.
               </h1>
               <p className="marketing-lede">
-                Ideas that sound like you. A teleprompter that keeps you
-                natural. One click to cut the retakes. Post to your channels
-                from one place, and get back to creating.
+                Ideas that sound like you, a teleprompter, one-click editing and
+                posting to every channel, in one place.
               </p>
               <div className="marketing-actions">
                 <StudioCtaButton size="lg" />

@@ -187,8 +187,8 @@
 }
 .site-product-link {
   font-size: 24px;
-  font-weight: 300;
-  letter-spacing: -0.02em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   text-decoration: none;
   color: var(--sg-text);
 }
@@ -625,9 +625,9 @@
   margin-block: auto;
   padding-block: 32px;
   font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
-  font-weight: 300;
-  line-height: 1.15;
-  letter-spacing: -0.025em;
+  font-weight: 600;
+  line-height: 1.14;
+  letter-spacing: -0.012em;
   text-align: center;
   text-wrap: balance;
 }
@@ -4916,41 +4916,38 @@ button.publisher-remix-glass {
 .home-showcase {
   margin-top: 36px;
 }
-/* The page opener: headline and action on the left, the explanation on the
-   right, on one baseline. Stacks in reading order below 900px. */
+/* The page opener, centred: the product's name, the promise it makes, one
+   paragraph, the action. The name is deliberately smaller than the promise. */
 .marketing-hero-centered {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  column-gap: 64px;
-  align-items: start;
-  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
-.marketing-hero-centered > :is(h1, .marketing-actions, .marketing-note) {
-  grid-column: 1;
-}
-.marketing-hero-centered > .marketing-lede {
-  grid-column: 2;
-  grid-row: 1 / span 3;
-  margin-top: 0;
-  padding-top: 0.6em;
-  font-size: 18px;
-  line-height: 1.5;
+.marketing-hero-name {
+  margin-bottom: 14px;
+  color: var(--sg-text);
+  font-size: clamp(1.25rem, 1.05rem + 0.9vw, 2rem);
+  font-weight: 600;
+  line-height: 1.125;
   letter-spacing: 0;
 }
-.marketing-hero-centered .marketing-actions {
-  margin-top: 28px;
+.marketing-hero-centered > .marketing-lede {
+  max-width: 30em;
+  margin-top: 20px;
+  color: var(--sg-text-muted);
+  font-size: clamp(1.0625rem, 0.98rem + 0.38vw, 1.3125rem);
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: -0.005em;
+  text-wrap: balance;
 }
-@media (max-width: 900px) {
-  .marketing-hero-centered {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .marketing-hero-centered > .marketing-lede {
-    grid-column: 1;
-    grid-row: auto;
-    margin-top: 20px;
-    padding-top: 0;
-    font-size: 16px;
-  }
+.marketing-hero-centered .marketing-actions {
+  justify-content: center;
+  margin-top: 30px;
+}
+.marketing-hero-centered .marketing-note {
+  margin-top: 14px;
 }
 
 /* The homepage product switch uses the same capsule with two wider slots. */
@@ -5009,9 +5006,9 @@ button.publisher-remix-glass {
 .studio-showcase-screen .publisher-demo-heading h3,
 .studio-showcase-screen .captions-demo-settings h2 {
   font-size: clamp(1.25rem, 1.05rem + 0.6vw, 1.625rem);
-  font-weight: 300;
+  font-weight: 600;
   line-height: 1.2;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 .studio-screen-heading {
   border-bottom: var(--sg-hairline) solid var(--sg-border-strong);
