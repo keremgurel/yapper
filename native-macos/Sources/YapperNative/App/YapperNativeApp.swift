@@ -14,6 +14,7 @@ final class YapperNativeAppDelegate: NSObject, NSApplicationDelegate {
         // launches behave like the packaged application.
         NativeAnalytics.shared.start()
         Task.detached(priority: .utility) { await PosterProjectRender.shared.removeStaleRenders() }
+        Task.detached(priority: .utility) { StaleExportScratchSweeper.sweep() }
         // Taken now, before any export can start and record a file of its own.
         let leftovers = StagedExportLedger.shared.takeLeftovers()
         Task.detached(priority: .utility) { StagedExportLedger.remove(leftovers) }

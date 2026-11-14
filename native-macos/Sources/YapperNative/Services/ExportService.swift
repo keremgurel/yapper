@@ -29,16 +29,26 @@ enum ExportService {
 
     /// `progress` first fires with 0 once every source has its private copy,
     /// which is the point after which the project can move or close safely.
+    ///
+    /// Everything the export writes besides `outputURL` lives in one snapshot
+    /// folder under `scratchRoot`, removed however the export ends.
     static func export(
         project: EditorProject,
         to outputURL: URL,
         maximumRenderDimension: Double?,
         range: CMTimeRange? = nil,
+        scratchRoot: URL = FileManager.default.temporaryDirectory,
         progress: ExportProgressHandler? = nil
     ) async throws {
         let progress = progress.map { MonotonicExportProgress($0).handler }
-        let snapshot = try await ExportSourceSnapshot.create(project: project)
-        defer { snapshot.discard() }
+        let snapshot = try await ExportSourceSnapshot.create(project: project, root: scratchRoot)
+        defer {
+            // The build below caches an open asset for every snapshot file.
+            // Left there, they would keep the deleted copies on disk until
+            // the project closes.
+            CompositionSourceCache.shared.forget(filesIn: snapshot.directory)
+            snapshot.discard()
+        }
         progress?(0)
 
         // Everything, including the captions and the text: this is the one that
@@ -73,6 +83,7 @@ enum ExportService {
                             built: built,
                             animationTool: animationTool,
                             range: range,
+                            intermediateURL: snapshot.scratchURL(prefix: "yapper-composited-", pathExtension: "mp4"),
                             to: stagedURL,
                             cancellation: cancellation,
                             progress: progress
@@ -142,12 +153,13 @@ enum ExportService {
         built: BuiltComposition,
         animationTool: AVVideoCompositionCoreAnimationTool,
         range: CMTimeRange?,
+        intermediateURL: URL,
         to outputURL: URL,
         cancellation: ExportSessionCancellation,
         progress: ExportProgressHandler?
     ) async throws {
-        let intermediateURL = FileManager.default.temporaryDirectory
-            .appending(path: "yapper-composited-\(UUID().uuidString).mp4")
+        // Removed as soon as the second pass is done, to give its space back
+        // early. Anything AVFoundation leaves beside it goes with the folder.
         StagedExportLedger.shared.record(intermediateURL)
         defer {
             try? FileManager.default.removeItem(at: intermediateURL)
