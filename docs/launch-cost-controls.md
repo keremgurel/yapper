@@ -140,6 +140,10 @@ Set the area variables in Vercel for production only. Local development and the 
 
 Deepgram, Groq and Gemini are each used for one job here, so one key per environment is enough: name them `yapper-transcription-production` and `yapper-transcription-development` in Deepgram and Groq, and `yapper-studio-production` and `yapper-development` in Google AI Studio.
 
+## Transcriber choice
+
+Deepgram transcribes every take unless `TRANSCRIPTION_PRIMARY=elevenlabs` and `ELEVENLABS_API_KEY` are both set. Then ElevenLabs Scribe is offered the take first, and Deepgram and Groq stay behind it as fallbacks. Unset the variable to go back. `ELEVENLABS_STT_MODEL` picks the model and defaults to `scribe_v2`. Scribe calls count against the company-wide provider ceiling the same way Deepgram calls do. The measurements behind this are in `transcription-and-edit-eval-2026-11.md`.
+
 ## Storage, database and analytics backstops
 
 The daily cleanup also reconciles physical R2 inventory with application

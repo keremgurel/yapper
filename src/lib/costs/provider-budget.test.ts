@@ -86,6 +86,7 @@ it("covers each paid provider and leaves ordinary storage/social reads alone", (
   for (const url of [
     "https://api.deepgram.com/v1/listen",
     "https://api.groq.com/openai/v1/audio/transcriptions",
+    "https://api.elevenlabs.io/v1/speech-to-text",
     "https://generativelanguage.googleapis.com/v1/models/image:generateContent",
     "https://api.surplusintelligence.ai/v1/images/edits",
     "https://api.surplusintelligence.ai/v1/images/generations",
