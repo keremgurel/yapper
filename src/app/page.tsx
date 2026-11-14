@@ -5,6 +5,7 @@ import FeaturePreview from "@/components/marketing/feature-preview";
 import layout from "@/components/marketing/home/project-stack.module.css";
 import ProjectStack from "@/components/marketing/home/project-stack";
 import HomeGuides from "@/components/marketing/home/home-guides";
+import StudioBento from "@/components/marketing/home/studio-bento/studio-bento";
 import { StudioStart } from "@/components/marketing/product-sections";
 import StudioCtaButton from "@/components/marketing/studio-cta-button";
 import { marketingMetadata } from "@/lib/marketing-metadata";
@@ -43,7 +44,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-      <section className="marketing-section marketing-rule">
+      <StudioBento />
+      <section className="marketing-section">
         <div className={`marketing-container marketing-split ${layout.split}`}>
           <FeaturePreview slug="transcript-video-editor" />
           <div>

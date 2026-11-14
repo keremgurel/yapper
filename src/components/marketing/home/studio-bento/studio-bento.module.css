@@ -1,0 +1,296 @@
+/* The band under the hero. Stone, so it reads as its own room between the
+   hero's product screen and the first feature section. */
+.band {
+  padding-block: 104px;
+  background: var(--sg-surface-tray);
+}
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 46rem;
+  margin: 0 auto 56px;
+  text-align: center;
+}
+.intro :global(.type-description) {
+  max-width: 34em;
+  color: var(--sg-text-muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
+}
+.cell {
+  position: relative;
+  grid-column: span 2;
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
+  background: var(--sg-surface);
+  box-shadow: var(--sg-shadow-raised);
+  overflow: hidden;
+  transition: transform 180ms ease-out;
+}
+.cell:hover {
+  transform: translateY(-2px);
+}
+.wide {
+  grid-column: span 4;
+}
+.visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 190px;
+  padding: 28px 28px 8px;
+}
+.copy {
+  margin-top: auto;
+  padding: 16px 28px 26px;
+}
+.copy h3 {
+  color: var(--sg-text);
+  font-size: 1.3125rem;
+  font-weight: 600;
+  line-height: 1.19;
+  letter-spacing: -0.008em;
+}
+.copy p {
+  margin-top: 8px;
+  color: var(--sg-text-muted);
+  font-size: 1.0625rem;
+  line-height: 1.41;
+  letter-spacing: -0.01em;
+}
+.link {
+  display: inline-block;
+  margin-top: 14px;
+  color: var(--sg-text);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--sg-border-strong);
+  text-underline-offset: 4px;
+}
+/* The whole cell is the target; the words stay the accessible name. */
+.link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+}
+.link:focus-visible {
+  outline: none;
+}
+.link:focus-visible::after {
+  outline: 2px solid var(--sg-text);
+  outline-offset: -2px;
+}
+
+/* One-click edit: the take, and what is left of it. */
+.take {
+  width: 100%;
+  max-width: 560px;
+}
+.takeRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  color: var(--sg-text-muted);
+  font-size: 0.9375rem;
+}
+.takeRow b {
+  color: var(--sg-text);
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  font-variant-numeric: tabular-nums;
+}
+.takeRow + .takeTrack {
+  margin-top: 8px;
+}
+.takeTrack {
+  position: relative;
+  height: 16px;
+  margin-bottom: 20px;
+  border-radius: 5px;
+  background: var(--sg-surface-tray);
+  overflow: hidden;
+}
+.takeTrack i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 3px;
+  background: var(--sg-text);
+}
+.takeNote {
+  color: var(--sg-text-muted);
+  font-size: 0.875rem;
+}
+
+/* Captions: the four looks. */
+.looks {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  width: 100%;
+}
+.look {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.look span {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1.25;
+  border-radius: 10px;
+  background: #2b2b30;
+  color: #fff;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+.look small {
+  color: var(--sg-text-muted);
+  font-size: 0.8125rem;
+}
+.look .lookOutline {
+  -webkit-text-stroke: 3px #000;
+  paint-order: stroke fill;
+}
+.look .lookPop {
+  color: #ffd84a;
+}
+.look .lookBrand {
+  position: relative;
+  isolation: isolate;
+}
+.look .lookBrand::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 62%;
+  height: 58%;
+  border-radius: 6px;
+  background: #e8793a;
+}
+
+/* Teleprompter: the script, with one line being read. */
+.prompter {
+  width: 100%;
+  padding: 18px 20px;
+  border-radius: 14px;
+  background: #17171a;
+  color: rgb(255 255 255 / 0.38);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.prompter .prompterNow {
+  color: #fff;
+}
+.prompterSpeed {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.12);
+  color: rgb(255 255 255 / 0.8);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+/* Ideas and channels: rows from the product's own lists. */
+.ideas,
+.channels {
+  width: 100%;
+  border-radius: 14px;
+  background: var(--sg-surface-tray);
+  padding: 4px 14px;
+}
+.ideas li,
+.channels li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-block: 11px;
+  color: var(--sg-text);
+  font-size: 0.9375rem;
+}
+.ideas li + li,
+.channels li + li {
+  border-top: var(--sg-hairline) solid var(--sg-border-strong);
+}
+.ideas span,
+.channels span {
+  flex: 1;
+  min-width: 0;
+}
+.ideas em,
+.channels em {
+  flex: none;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--sg-surface);
+  box-shadow: var(--sg-shadow-inset);
+  color: var(--sg-text-muted);
+  font-size: 0.75rem;
+  font-style: normal;
+}
+.ideas em[data-status="Posted"] {
+  color: #2f8f4e;
+}
+.channelIcon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--sg-text);
+}
+
+@media (max-width: 1000px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cell {
+    grid-column: span 1;
+  }
+  .wide {
+    grid-column: span 2;
+  }
+}
+@media (max-width: 640px) {
+  .band {
+    padding-block: 56px;
+  }
+  .intro {
+    margin-bottom: 32px;
+  }
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cell,
+  .wide {
+    grid-column: auto;
+  }
+  .visual {
+    min-height: 0;
+    padding: 22px 20px 4px;
+  }
+  .copy {
+    padding: 14px 20px 22px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cell {
+    transition: none;
+  }
+  .cell:hover {
+    transform: none;
+  }
+}
