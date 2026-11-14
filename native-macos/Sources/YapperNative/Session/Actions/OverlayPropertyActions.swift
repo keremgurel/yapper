@@ -64,6 +64,13 @@ extension AppActionRegistry {
                 if let duration = input.duration { copy.duration = duration }
                 if let start = input.sourceStart { copy.sourceStart = start }
                 if let track = input.track { copy.track = track == 0 ? nil : track }
+                // The left edge moved rather than the overlay: keyframes stay at
+                // the same moments on the timeline, as they do when the edge is
+                // dragged. Asked for, never inferred, so a start typed into the
+                // inspector still moves the overlay with its keys.
+                if input.leadingTrim == true, copy.timelineStart != overlay.timelineStart {
+                    copy = OverlayKeyTrack.rebased(copy, by: copy.timelineStart - overlay.timelineStart)
+                }
                 if input.timelineStart != nil || input.duration != nil || input.sourceStart != nil {
                     guard let fitted = OverlaySpanBounds.fitted(duration: copy.duration, start: copy.timelineStart,
                         sourceStart: copy.sourceStart, mediaDuration: media.isImage ? nil : media.duration,
@@ -158,6 +165,22 @@ extension EditorSession {
 }
 
 extension OverlayFrameInput {
+    /// The box and angle of `overlay`, onto `ids`: a drag on the canvas, the
+    /// inspector, or Apply to all. With `time`, a key on one keyed overlay.
+    init(ids: [UUID], frameOf overlay: ProjectOverlay, time: Double?) {
+        self.init(overlayIDs: ids, all: nil, fit: nil,
+                  x: min(2, max(-2, overlay.x)), y: min(2, max(-2, overlay.y)),
+                  width: min(4, max(0.01, overlay.width)), height: min(4, max(0.01, overlay.height)),
+                  rotation: time == nil ? min(180, max(-180, overlay.resolvedRotation)) : nil,
+                  time: time.map { min(86_400, max(0, $0)) })
+    }
+
+    /// Only the angle, which leaves a keyed overlay's move alone.
+    init(ids: [UUID], rotation: Double) {
+        self.init(overlayIDs: ids, all: nil, fit: nil, x: nil, y: nil, width: nil, height: nil,
+                  rotation: min(180, max(-180, rotation)), time: nil)
+    }
+
     /// Whole-span framing changes placement only. Crop keys and their easing
     /// remain byte-for-byte intact, including keys beyond trimmed edges.
     func applying(to overlay: ProjectOverlay, mediaAspect: Double, frameAspect: Double) -> ProjectOverlay {
@@ -182,6 +205,50 @@ extension OverlayFrameInput {
         }
         if let rotation { updated.rotation = rotation == 0 ? nil : rotation }
         return updated
+    }
+}
+
+extension OverlayPropertiesInput {
+    /// Visibility, depth, timing and lane, leaving the backdrop alone. A plain
+    /// move or edit unless `leadingTrim` says the left edge was dragged.
+    init(overlayIDs: [UUID], all: Bool?, hidden: Bool?, behindSpeaker: Bool?, sourceStart: Double?,
+         timelineStart: Double?, duration: Double?, track: Int?, leadingTrim: Bool? = nil) {
+        self.init(overlayIDs: overlayIDs, all: all, hidden: hidden, behindSpeaker: behindSpeaker, backdrop: nil,
+                  backdropColors: nil, backdropMediaID: nil, sourceStart: sourceStart, timelineStart: timelineStart,
+                  duration: duration, track: track, leadingTrim: leadingTrim)
+    }
+
+    /// Every field but `leadingTrim`: the overlay moves with its keyframes.
+    init(overlayIDs: [UUID], all: Bool?, hidden: Bool?, behindSpeaker: Bool?, backdrop: String?, backdropColors: [String]?,
+         backdropMediaID: UUID?, sourceStart: Double?, timelineStart: Double?, duration: Double?, track: Int?) {
+        self.init(overlayIDs: overlayIDs, all: all, hidden: hidden, behindSpeaker: behindSpeaker, backdrop: backdrop,
+                  backdropColors: backdropColors, backdropMediaID: backdropMediaID, sourceStart: sourceStart,
+                  timelineStart: timelineStart, duration: duration, track: track, leadingTrim: nil)
+    }
+
+    /// What fills the frame behind one card, and nothing else about it.
+    init(backdrop: OverlayBackdrop?, on overlayID: UUID) {
+        self.init(overlayIDs: [overlayID], all: nil, hidden: nil, behindSpeaker: nil, backdrop: backdrop?.token ?? "none",
+                  backdropColors: backdrop?.colors, backdropMediaID: backdrop?.mediaID, sourceStart: nil,
+                  timelineStart: nil, duration: nil, track: nil, leadingTrim: nil)
+    }
+
+    /// What a timeline drag or the lane menu changed on an overlay, or nil
+    /// when it changed none of these. `leadingTrim` is the drag on its left
+    /// edge, which keeps keyframes where they were on the timeline.
+    init?(timingOf updated: ProjectOverlay, from existing: ProjectOverlay, leadingTrim: Bool = false) {
+        func changed(_ value: Double, _ old: Double, _ range: ClosedRange<Double>) -> Double? {
+            value == old ? nil : min(range.upperBound, max(range.lowerBound, value))
+        }
+        let hidden = updated.isVisible == existing.isVisible ? nil : !updated.isVisible
+        let track = updated.lane == existing.lane ? nil : min(5_000, max(0, updated.lane))
+        let sourceStart = changed(updated.sourceStart, existing.sourceStart, 0 ... 86_400)
+        let timelineStart = changed(updated.timelineStart, existing.timelineStart, 0 ... 86_400)
+        let duration = changed(updated.duration, existing.duration, 0.1 ... 86_400)
+        guard hidden != nil || track != nil || sourceStart != nil || timelineStart != nil || duration != nil else { return nil }
+        self.init(overlayIDs: [existing.id], all: nil, hidden: hidden, behindSpeaker: nil, sourceStart: sourceStart,
+                  timelineStart: timelineStart, duration: duration, track: track,
+                  leadingTrim: leadingTrim && timelineStart != nil ? true : nil)
     }
 }
 

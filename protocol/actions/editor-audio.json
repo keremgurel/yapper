@@ -47,7 +47,7 @@
       "id": "editor.audio.trim",
       "symbol": "audioTrim",
       "input": "AudioTrimInput",
-      "description": "Set source in point and/or duration of existing audio layers. Preserve timeline position, volume and speed. SourceStart is recording seconds; duration is timeline seconds.",
+      "description": "Set source in point and/or duration of existing audio layers. Preserve volume and speed. SourceStart is recording seconds; duration is timeline seconds.",
       "effect": "reversibleEdit",
       "requiresRebuild": true
     },
@@ -56,6 +56,14 @@
       "symbol": "savedAudioAdd",
       "input": "SavedAudioAddInput",
       "description": "Place existing audio from savedAudioLibrary at a timeline anchor. Keeps the library default volume and adds the actual saved source; no paths are accepted.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.audio.paste",
+      "symbol": "audioPaste",
+      "input": "AudioPasteInput",
+      "description": "Paste the sound last copied from this project's timeline (Copy on a selected sound) at a timeline anchor, as ⌘V does at the playhead. The copy keeps the source, trim, volume and speed it had when it was copied.",
       "effect": "reversibleEdit",
       "requiresRebuild": true
     }
@@ -199,6 +207,12 @@
           "type": "number",
           "minimum": 0.02,
           "maximum": 86400
+        },
+        "timelineStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400,
+          "description": "Timeline seconds where the sounds start. Alone it moves them; with sourceStart and duration it trims their leading edge, as dragging a sound's left edge does. Leave it out to keep their timeline position."
         }
       }
     },
@@ -211,6 +225,16 @@
           "type": "string",
           "format": "uuid"
         },
+        "at": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        }
+      }
+    },
+    "AudioPasteInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at"],
+      "properties": {
         "at": {
           "$ref": "#/$defs/TimelineAnchorInput"
         }

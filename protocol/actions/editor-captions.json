@@ -99,6 +99,10 @@
       "properties": {
         "visible": {
           "type": "boolean"
+        },
+        "regenerate": {
+          "type": "boolean",
+          "description": "With visible=true, rebuild every card from the current transcript and cut, transcribing first if needed. Discards hand edits to caption text; send it only when the creator asks to regenerate."
         }
       }
     },

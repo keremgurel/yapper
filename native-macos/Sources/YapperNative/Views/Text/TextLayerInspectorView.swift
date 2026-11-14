@@ -45,6 +45,8 @@ struct TextLayerInspectorView: View {
         VStack(alignment: .leading, spacing: 9) {
             TextLayerContentEditor(text: layer.text) {
                 session.setTextLayerText($0, for: layer.id)
+            } onCommit: { [id = layer.id] in
+                Task { await session.commitTextLayerText(for: id) }
             }
             .id(layer.id)
             .font(.system(size: 14, weight: .semibold))

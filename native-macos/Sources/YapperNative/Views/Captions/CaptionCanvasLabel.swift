@@ -9,11 +9,14 @@ struct CaptionCanvasLabel: View {
     let canvasSize: CGSize
     /// A width being dragged right now, which wins over the saved one.
     var width: Double?
+    /// Text being typed into the card's row, which wins over the saved text
+    /// until it is saved.
+    var typed: String?
 
     var body: some View {
         let style = cue.style
         AppearanceText(
-            text: cue.text,
+            text: typed ?? cue.text,
             appearance: style.appearance,
             fontSize: max(9, canvasSize.height * style.fontScale)
         )

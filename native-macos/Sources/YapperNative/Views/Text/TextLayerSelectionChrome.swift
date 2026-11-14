@@ -8,8 +8,14 @@ struct TextLayerSelectionChrome: View {
     let layer: ProjectTextLayer
     let canvasSize: CGSize
     @ObservedObject var drag: CanvasDragState
+    /// Typing in the inspector, so the outline fits the text being typed.
+    @ObservedObject var typing: TypingPreviewState
 
-    private var displayed: ProjectTextLayer { drag.textDraft(for: layer.id) ?? layer }
+    private var displayed: ProjectTextLayer {
+        var shown = drag.textDraft(for: layer.id) ?? layer
+        if let typed = typing.textLayerText[layer.id] { shown.text = typed }
+        return shown
+    }
 
     var body: some View {
         let displayed = displayed

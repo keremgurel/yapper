@@ -227,3 +227,56 @@ it("keeps to the fields the client's own build knows", () => {
   expect(parsePlanReply(plain, older)).toEqual(plain);
   expect(parsePlanReply(styled, newer)).toEqual(styled);
 });
+
+it("hides the native control fields from builds that predate them", () => {
+  const older: PlanInput = {
+    ...input,
+    catalog: [
+      {
+        id: "editor.audio.trim",
+        parameters: {
+          type: "object",
+          additionalProperties: false,
+          required: ["layerIDs"],
+          properties: { layerIDs: {}, sourceStart: {}, duration: {} },
+        },
+      },
+      {
+        id: "editor.captions.setVisible",
+        parameters: {
+          type: "object",
+          additionalProperties: false,
+          required: ["visible"],
+          properties: { visible: {} },
+        },
+      },
+    ],
+  };
+  const catalog = discoveredCatalog(older);
+  const trim = catalog.find((action) => action.id === "editor.audio.trim")!;
+  const setVisible = catalog.find(
+    (action) => action.id === "editor.captions.setVisible",
+  )!;
+  expect(Object.keys(trim.parameters.properties ?? {})).toEqual([
+    "layerIDs",
+    "sourceStart",
+    "duration",
+  ]);
+  expect(Object.keys(setVisible.parameters.properties ?? {})).toEqual([
+    "visible",
+  ]);
+  // What moving and regenerating mean lives on the fields, so an older build
+  // is never told about either.
+  expect(trim.description).not.toMatch(/timelineStart|move/i);
+  expect(setVisible.description).not.toMatch(/regenerate/i);
+  const moved = {
+    message: "Moving it.",
+    actions: [
+      {
+        action: "editor.audio.trim",
+        arguments: { layerIDs: [crypto.randomUUID()], timelineStart: 5 },
+      },
+    ],
+  };
+  expect(parsePlanReply(moved, older)).toBeNull();
+});

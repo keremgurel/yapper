@@ -40,32 +40,21 @@ extension EditorSession {
     /// framed at, so pressing this never changes the picture. That matters more
     /// than it sounds: the whole gesture is "mark here, move there, change it",
     /// and a diamond that moved something would break the first half.
-    func toggleFramingKey() {
-        guard let clip = framingClip else { return }
+    @discardableResult
+    func toggleFramingKey() -> Task<AppActionResult?, Never> {
+        guard let clip = framingClip else { return Task { nil } }
         let time = framingSourceTime
-        let updated: TimelineClip
-        let successStatus: String
         if VideoFramingTrack.key(of: clip, atSource: time) != nil {
-            updated = VideoFramingTrack.removingKey(atSource: time, in: clip)
-            successStatus = "Keyframe removed"
-        } else {
-            updated = VideoFramingTrack.setting(
-                displayedFraming,
-                atSource: time,
-                in: clip
-            )
-            successStatus = "Keyframe added at \(formatTime(currentTime))"
+            return framingKeyAction(.remove, clip: clip, at: time)
         }
-        replaceFramingClip(updated, successStatus: successStatus)
+        return framingKeyAction(.set, clip: clip, at: time, framing: displayedFraming)
     }
 
     /// Drops every key on this clip, leaving it framed as it is right now.
-    func clearFramingKeys() {
-        guard let clip = framingClip, VideoFramingTrack.isKeyed(clip) else { return }
-        replaceFramingClip(
-            VideoFramingTrack.clearingKeys(atSource: framingSourceTime, in: clip),
-            successStatus: "Keyframes cleared"
-        )
+    @discardableResult
+    func clearFramingKeys() -> Task<AppActionResult?, Never> {
+        guard let clip = framingClip, VideoFramingTrack.isKeyed(clip) else { return Task { nil } }
+        return framingKeyAction(.clear, clip: clip, at: framingSourceTime)
     }
 
     // MARK: - The arrows
@@ -112,26 +101,22 @@ extension EditorSession {
             operation: .move, destination: toSource, scale: nil, x: nil, y: nil, rotation: nil)) }
     }
 
-    func removeFramingKey(in clip: TimelineClip, atSource time: Double) {
-        let updated = VideoFramingTrack.removingKey(atSource: time, in: clip)
-        guard updated != clip else { return }
-        replaceFramingClip(updated, successStatus: "Keyframe removed")
+    @discardableResult
+    func removeFramingKey(in clip: TimelineClip, atSource time: Double) -> Task<AppActionResult?, Never> {
+        guard VideoFramingTrack.removingKey(atSource: time, in: clip) != clip else { return Task { nil } }
+        return framingKeyAction(.remove, clip: clip, at: time)
     }
 
     // MARK: - Writing
 
-    /// Saves a clip that only differs in how it is framed.
-    func replaceFramingClip(_ clip: TimelineClip, successStatus: String = "Ready") {
-        scheduleCompositionCommit(
-            settleFor: .milliseconds(50),
-            successStatus: successStatus
-        ) { [self] in
-            guard let index = project.clips.firstIndex(where: { $0.id == clip.id }) else { return false }
-            updateProject { project in
-                project.clips[index] = clip
-                project.updatedAt = Date()
-            }
-            return true
-        }
+    /// Every key edit goes through the keyframe action Chirpy uses, so the
+    /// diamond, the timeline marker and a request write the same keys.
+    @discardableResult
+    func framingKeyAction(_ operation: OverlayKeyOperation, clip: TimelineClip, at time: Double,
+                          framing: VideoFraming? = nil) -> Task<AppActionResult?, Never> {
+        let input = VideoFramingKeyInput(clipID: clip.id, sourceTime: min(86_400, max(0, time)), operation: operation,
+                                         destination: nil, scale: framing?.scale, x: framing?.x, y: framing?.y,
+                                         rotation: framing.map { min(180, max(-180, $0.rotation)) })
+        return Task { await performAppAction(input) }
     }
 }

@@ -150,6 +150,8 @@ final class ProjectFolderMove: ObservableObject {
         guard let open = session.projectNavigation.currentPackage,
               let moving = packages.first(where: { $0 == open || FolderIdentity.same($0.url, open.url) })
         else { return nil }
+        // Text still being typed is part of the project that is about to move.
+        await session.commitTyping()
         do {
             try await session.persist()
         } catch {

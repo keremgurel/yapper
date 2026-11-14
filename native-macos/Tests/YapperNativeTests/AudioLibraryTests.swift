@@ -363,10 +363,11 @@ struct AudioLibraryTests {
         #expect(store.errorMessage?.contains("undo history") == true)
     }
 
-    @Test("Delete after add probing cannot leave a dangling saved-audio layer")
-    func deleteWinsAgainstProbedAdd() async throws {
+    @Test("A delete and an add queued behind it cannot leave a dangling saved-audio layer")
+    func deleteWinsAgainstQueuedAdd() async throws {
         let (item, _, store) = try seededStore(named: "add-delete-race.m4a")
         let session = EditorSession()
+        session.audioLibrary = store
         let media = ProjectMedia(
             url: URL(filePath: "/tmp/unbuilt-race-video.mov"),
             name: "Race", duration: 2, width: 100, height: 100, hasAudio: false
@@ -375,21 +376,15 @@ struct AudioLibraryTests {
             $0.media = [media]
             $0.clips = [TimelineClip(mediaID: media.id, sourceStart: 0, sourceEnd: 2)]
         }
-        let gate = AsyncTestGate()
-        let addition = Task {
-            await session.addSavedAudio(item, from: store) {
-                await gate.arriveAndWait()
-            }
-        }
-        await gate.waitUntilArrived()
-
-        #expect(await session.removeSavedAudio(item, from: store))
-        await gate.release()
+        // The delete holds the edit slot while it checks references, so the
+        // add waits for it and then finds the sound gone.
+        let addition = Task { await session.addSavedAudio(item) }
+        #expect(await session.removeSavedAudio(item))
         await addition.value
 
         #expect(store.items.isEmpty)
         #expect(session.project.audioLayers?.isEmpty != false)
-        #expect(session.errorMessage?.contains("audio") == true)
+        #expect(session.statusMessage.contains("audio library"))
     }
 
     @Test("History reference matching covers id, exact hash, and legacy path")

@@ -43,10 +43,14 @@ struct OverlayCanvasPlacement {
 }
 
 /// The end of any overlay gesture, from the body or from a handle: the project
-/// hears about the drag once, here, and the guides go away.
+/// hears about the drag once, here, through the frame action Chirpy uses. The
+/// draft stays on screen until that edit lands, so the overlay never jumps
+/// back for the moment the save takes.
 @MainActor
 enum OverlayCanvasCommit {
     static func finish(session: EditorSession, drag: CanvasDragState) {
-        if let finished = drag.endOverlay() { session.commitOverlayEdit(finished) }
+        guard let finished = drag.holdOverlay() else { return }
+        let commit = session.commitOverlayEdit(finished)
+        Task { _ = await commit.value; drag.releaseOverlay(finished.id) }
     }
 }

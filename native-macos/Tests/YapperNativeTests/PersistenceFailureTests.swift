@@ -272,7 +272,7 @@ struct PersistenceFailureTests {
         #expect(!session.project.isVideoTrackHidden)
         #expect(!session.project.isVideoTrackMuted)
         #expect(session.project.overlays?.first?.isVisible == true)
-        #expect(session.statusMessage == "Overlay track shown")
+        #expect(session.statusMessage.hasPrefix("Overlay track shown"))
         let saved = await store.snapshot()
         #expect(saved.projects.last?.isVideoTrackHidden == false)
         #expect(saved.projects.last?.isVideoTrackMuted == false)

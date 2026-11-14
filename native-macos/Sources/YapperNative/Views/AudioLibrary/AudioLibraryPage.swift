@@ -226,7 +226,7 @@ struct AudioLibraryPage: View {
         Task {
             switch entry.source {
             case let .saved(item):
-                await session.addSavedAudio(item, from: store)
+                await session.addSavedAudio(item)
             case let .bundled(effect):
                 await session.addSoundEffect(effect)
             }
@@ -237,7 +237,7 @@ struct AudioLibraryPage: View {
     private func delete(_ entry: AudioEntry) {
         guard let item = entry.saved else { return }
         Task {
-            let removed = await session.removeSavedAudio(item, from: store)
+            let removed = await session.removeSavedAudio(item)
             if removed, preview.playingID == entry.id { preview.stop() }
         }
     }

@@ -163,12 +163,15 @@ struct TransformInspector: View {
     @ViewBuilder
     private var essentials: some View {
             InspectorRow("Scale") {
-                InspectorSlider(
+                // Saved once, when the handle is let go. Streaming it sent one
+                // edit per step of the drag, each its own Undo step and rebuild.
+                InspectorCommitSlider(
                     value: Double(framing.percent),
                     range: VideoFraming.minimumScale * 100 ... VideoFraming.maximumScale * 100,
-                    decimals: 0
+                    decimals: 0,
+                    onPreview: { session.previewFramingScale($0 / 100) }
                 ) { percent in
-                    session.setFramingScale(percent / 100)
+                    await session.commitFramingScale(percent / 100)
                 }
             }
 
