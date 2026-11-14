@@ -735,16 +735,33 @@
   color: var(--sg-text-muted);
 }
 .marketing-availability {
-  padding: 24px 28px;
-  background: var(--sg-surface-sunken);
-  border-radius: 8px;
-  font-size: 14px;
-  line-height: 1.7;
-  color: var(--sg-text-muted);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 64px;
+  align-items: start;
 }
-.marketing-availability strong {
-  color: var(--sg-text);
-  font-weight: 500;
+.marketing-availability > h2 {
+  max-width: 14ch;
+  text-wrap: pretty;
+}
+.marketing-platforms > div {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  gap: 16px;
+  padding-block: 16px;
+  border-bottom: var(--sg-hairline) solid var(--sg-border-strong);
+  font-size: 1.0625rem;
+  line-height: 1.47;
+}
+.marketing-platforms > div:first-child {
+  padding-top: 0;
+}
+.marketing-platforms dt {
+  font-weight: 600;
+}
+.marketing-platforms dd {
+  max-width: 50ch;
+  color: var(--sg-text-muted);
 }
 .marketing-form-message {
   margin-top: 12px;
@@ -941,7 +958,11 @@
     gap: 16px;
   }
   .marketing-availability {
-    padding: 22px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+  .marketing-availability > h2 {
+    max-width: none;
   }
   .practice-start {
     grid-template-columns: 1fr;
@@ -975,6 +996,10 @@
   }
 }
 @media (max-width: 400px) {
+  .marketing-platforms > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
   .marketing-workflow,
   .marketing-feature-list {
     grid-template-columns: 1fr;
@@ -1026,43 +1051,45 @@
   margin-top: 24px;
   gap: 24px;
 }
-/* Each workflow stage has its own static Grainient artwork. */
-.demo-field {
-  --ink: #262331;
-  --subtle: #65606f;
-  padding: 56px 48px 0;
-  border-radius: 16px;
+/* Let the page be the ground for the hero window. Leave space around the
+   mask so it preserves the lit rim and the shadow along the sides. */
+.studio-preview-stage {
+  --preview-fade: clamp(80px, 14vw, 192px);
+  padding: 12px 16px 0;
+  margin: -12px -16px 0;
+  mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - var(--preview-fade)),
+    transparent
+  );
 }
-/* A stage: the artwork, a fine inner edge, and the product screen standing on
-   it with its foot running off the bottom. */
-.demo-field,
+.studio-preview-stage > .studio-showcase-screen {
+  --ink: var(--sg-text);
+  --subtle: var(--sg-text-muted);
+  color: var(--sg-text);
+  border-radius: var(--sg-radius-md) var(--sg-radius-md) 0 0;
+}
+/* The recording and publishing previews have working controls at the foot.
+   Fade a continuation of the window surface below them. */
+.studio-preview-stage[data-interactive] {
+  --preview-fade: clamp(64px, 9vw, 128px);
+}
+.studio-preview-stage[data-interactive] > .studio-showcase-screen {
+  padding-bottom: var(--preview-fade);
+}
+@media (forced-colors: active) {
+  .studio-preview-stage {
+    mask-image: none;
+  }
+  .studio-preview-stage[data-interactive] > .studio-showcase-screen {
+    padding-bottom: 0;
+  }
+}
 .feature-focused-preview {
   position: relative;
   overflow: hidden;
   isolation: isolate;
   box-shadow: inset 0 0 0 var(--sg-hairline) rgb(255 255 255 / 0.18);
-}
-.demo-field > .studio-showcase-screen {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-}
-.demo-field:not([data-palette]) {
-  background:
-    radial-gradient(ellipse at 95% 0%, #c4cedb 0%, transparent 62%),
-    radial-gradient(ellipse at 0% 100%, #c1b7e4 0%, transparent 60%), #e1dced;
-}
-/* An app window on the field follows the site theme, so it resets the
-   field's dark ink for everything inside it. */
-.demo-field .studio-showcase-screen {
-  --ink: var(--sg-text);
-  --subtle: var(--sg-text-muted);
-  color: var(--sg-text);
-}
-@media (max-width: 700px) {
-  .demo-field {
-    padding: 24px 14px 0;
-    border-radius: 16px;
-  }
 }
 .studio-showcase {
   min-width: 0;
@@ -4528,12 +4555,29 @@ button.publisher-remix-glass {
   font-size: 20px;
 }
 .studio-signup {
-  max-width: 680px;
-  margin-inline: auto;
-  padding-bottom: 70px;
+  padding: clamp(40px, 6vw, 88px) clamp(20px, 4vw, 48px);
+  border-radius: var(--sg-radius-lg);
+  background: var(--sg-surface-sunken);
+  text-align: center;
 }
-.studio-signup > .type-description {
-  margin: 16px 0 28px;
+.studio-signup > h2 {
+  max-width: 21ch;
+  margin-inline: auto;
+}
+.marketing-site .studio-signup > .type-description {
+  max-width: 38ch;
+  margin: 16px auto 0;
+  text-wrap: balance;
+}
+.studio-signup > :is(.type-description, .type-caption) {
+  color: color-mix(in srgb, var(--sg-text-muted) 88%, var(--sg-text));
+}
+.studio-signup > .marketing-actions {
+  justify-content: center;
+  margin-top: 28px;
+}
+.studio-signup > .type-caption {
+  margin-top: 12px;
 }
 .train-hub-hero {
   display: grid;

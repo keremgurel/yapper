@@ -103,13 +103,15 @@ keeps its width when a pane starts to scroll.
 
 ### Product imagery
 
-A product screen is never shown bare. It stands on a **stage**: one of the five
-stage backdrops in `public/images/grainient` (diagonal light streaks, a shaft
+Feature previews stand on a **stage**: one of the five backdrops in
+`public/images/grainient` (diagonal light streaks, a shaft
 of light from the top right, film grain), rendered by
 `scripts/generate-backdrops.py`. The screen is lit from the same corner: a
 bright top edge, a fine rim, a soft ray across its top-right corner and a long
-shadow falling down and left (`.studio-showcase-screen`). On the hero the
-screen's foot runs off the bottom of the stage. Stages are 16px, screens 12px.
+shadow falling down and left (`.studio-showcase-screen`). The homepage hero
+keeps that screen lighting and sits directly on the page canvas. Its bottom
+fades into the page; the interactive previews keep their controls above the
+fade. Feature stages are 16px and screens are 12px.
 Do not add a second light direction, a glow colour, or a border to a screen.
 
 ### Demo interiors
@@ -202,7 +204,7 @@ play/pause button. Reduced motion disables automatic rotation. Each slide has a
 static Grainient background: blue for ideas, plum for scripts, teal for recording,
 peach for editing and violet for publishing. White copy sits over a contrast scrim.
 
-Reuse these five palettes behind the homepage tab demos, feature previews and
+Reuse these five palettes behind feature previews and
 content-library illustration. The backgrounds are pre-rendered WebP assets in
 `public/images/grainient`, with no runtime WebGL or background animation. Keep
 product interfaces on readable semantic surfaces and section copy on the page

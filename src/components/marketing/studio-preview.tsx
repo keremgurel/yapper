@@ -8,8 +8,6 @@ import IdeaPreview from "./idea-preview";
 import WritingPreview from "./writing-preview";
 import TeleprompterPreview from "./teleprompter-preview";
 
-import backdrops from "./grainient-background.module.css";
-
 export type PreviewStep = "Idea" | "Script" | "Record" | "Edit" | "Publish";
 /** Shipped Studio components, with isolated sample state. No account or media APIs. */
 export default function StudioPreview({
@@ -28,8 +26,8 @@ export default function StudioPreview({
         id={id}
       />
       <div
-        className={`demo-field ${backdrops.background} ${backdrops.wide}`}
-        data-palette={step === "Idea" ? "ideas" : step.toLowerCase()}
+        className="studio-preview-stage"
+        data-interactive={step === "Record" || step === "Publish" || undefined}
       >
         <div
           className="studio-showcase-screen"
