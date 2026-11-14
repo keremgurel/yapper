@@ -17,7 +17,7 @@ struct InspectorCheckbox: View {
             } label: {
                 HStack(spacing: 7) {
                     Image(systemName: isOn ? "checkmark.square.fill" : "square")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.studioBodyStrong)
                         .foregroundStyle(isOn ? Color.studioAccent : Color.studioTextMuted)
                     Text(title)
                         .font(.studioLabel)

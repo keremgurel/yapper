@@ -43,18 +43,3 @@ struct PosterFramePlayer: View {
         player.seek(to: CMTime(seconds: time, preferredTimescale: 60_000), toleranceBefore: .zero, toleranceAfter: .zero)
     }
 }
-
-/// A plain player for a signed preview URL, made once per URL.
-struct PosterPreviewPlayer: View {
-    let url: URL
-    @State private var player: AVPlayer?
-
-    var body: some View {
-        ZStack {
-            Rectangle().fill(Color.black)
-            if let player { NativeVideoPlayer(player: player) } else { ProgressView().controlSize(.small) }
-        }
-        .task(id: url) { player = AVPlayer(url: url) }
-        .onDisappear { player?.pause() }
-    }
-}

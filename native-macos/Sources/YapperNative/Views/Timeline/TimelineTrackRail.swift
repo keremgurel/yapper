@@ -216,12 +216,10 @@ private struct TrackVolumeMenu: View {
                     onChange: { session.previewVideoTrackVolume($0) },
                     onCommit: { session.commitVideoTrackVolume() }
                 )
-                Toggle("Mute", isOn: Binding(
+                InspectorCheckbox(title: "Mute the video track", isOn: Binding(
                     get: { isMuted },
                     set: { _ in session.toggleVideoTrackMuted() }
                 ))
-                .toggleStyle(.checkbox)
-                .font(.studioCaption)
             }
             .padding(14)
             .frame(width: 320)

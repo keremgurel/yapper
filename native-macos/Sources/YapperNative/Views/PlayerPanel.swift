@@ -47,7 +47,7 @@ struct PlayerPanel: View {
                                 Text("Native preview")
                                     .font(.system(size: 14, weight: .bold))
                                 Text("Import one or several videos. The editor opens directly here.")
-                                    .font(.system(size: 11))
+                                    .font(.studioCaption)
                                     .foregroundStyle(.secondary)
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal, 24)

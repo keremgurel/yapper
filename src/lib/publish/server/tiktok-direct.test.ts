@@ -154,6 +154,37 @@ describe("TikTok Direct Post delivery", () => {
       externalUrl: "https://www.tiktok.com/@creator/video/7698419574521351445",
     });
   });
+  it("links the creator's profile while TikTok has not named the post", async () => {
+    mocks.status.mockResolvedValue({ status: "PUBLISH_COMPLETE" });
+    const body = await (await run()).json();
+    expect(body).toMatchObject({
+      draft: false,
+      profileUrl: "https://www.tiktok.com/@creator",
+    });
+    expect(body.url).toBeUndefined();
+    // The profile is a stand-in for the screen only, never the post's address.
+    expect(mocks.complete).toHaveBeenCalledWith("job-1", {
+      externalPostId: "publish-1",
+      externalUrl: "",
+    });
+  });
+  it("replays the profile link for a published post with no stored address", async () => {
+    mocks.prior.mockResolvedValue({
+      kind: "existing",
+      jobId: "job-1",
+      status: "published",
+      externalUrl: "",
+      providerState: {
+        mode: "direct",
+        accountId: "account-1",
+        username: "creator",
+      },
+    });
+    expect(await (await run()).json()).toMatchObject({
+      replayed: true,
+      profileUrl: "https://www.tiktok.com/@creator",
+    });
+  });
   it("does not reinterpret an inbox attempt as a direct post", async () => {
     mocks.prior.mockResolvedValue({
       kind: "existing",

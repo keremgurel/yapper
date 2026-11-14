@@ -11,7 +11,6 @@ const plural = (count: number, word: string) =>
 export default function PublishButton({
   videos,
   platforms,
-  postedSoFar,
   posting,
   done,
   disabled,
@@ -21,7 +20,6 @@ export default function PublishButton({
   label?: string;
   videos: number;
   platforms: number;
-  postedSoFar: number;
   posting: boolean;
   done: boolean;
   disabled: boolean;
@@ -37,7 +35,7 @@ export default function PublishButton({
         <Send aria-hidden />
       )}
       {posting
-        ? `Publishing ${Math.min(postedSoFar + 1, videos * platforms)} of ${videos * platforms}…`
+        ? "Publishing…"
         : done
           ? "Check publish status"
           : (label ??

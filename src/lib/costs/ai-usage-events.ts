@@ -18,6 +18,9 @@ export function aiGenerationProperties(
     $ai_total_cost_usd: call.listCostMicrousd / 1_000_000,
     ai_list_cost_microusd: call.listCostMicrousd,
     ai_buyer_cost_microusd: call.buyerCostMicrousd,
+    ...(call.audioSeconds === undefined
+      ? {}
+      : { ai_audio_seconds: call.audioSeconds }),
   };
 }
 
@@ -31,8 +34,10 @@ export function aiUsageSummary(calls: readonly AiCall[]) {
     ai_output_tokens: 0,
     ai_reasoning_tokens: 0,
     ai_list_cost_microusd: 0,
+    ai_audio_seconds: 0,
   };
   for (const call of calls) {
+    totals.ai_audio_seconds += call.audioSeconds ?? 0;
     totals.ai_input_tokens += call.inputTokens;
     totals.ai_cached_input_tokens += call.cachedInputTokens;
     totals.ai_output_tokens += call.outputTokens;

@@ -79,6 +79,7 @@ export async function planChirpy(input: PlanInput, signal?: AbortSignal) {
     maxCompletionTokens: 6000,
     timeoutMs: 40_000,
     signal,
+    keyScope: "chirpy" as const,
   };
   // Repair a malformed plan before anything can execute. Both calls share the
   // original deadline and the ledger still charges only one successful plan.

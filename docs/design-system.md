@@ -17,13 +17,26 @@ mobile app.
 The whole product shares one quiet, editorial system. Where an older section
 below disagrees with this one, this one wins.
 
-- **Type**: Inter everywhere, loaded once in `src/app/layout.tsx` with its
-  optical-size axis. Display type is light (300) with tight tracking; text is
-  400; emphasis is 500. 600 is the ceiling, so `font-semibold` resolves to 500
-  and `font-bold` to 600. Hierarchy comes from size, not weight.
-- **Scale**: `.type-display`/`.type-h1` 36–48px, `.type-h2` 28–36px,
-  `.type-h3` 20–24px, body 16px at 1.5, secondary copy 15px, small print 14px.
-  Studio page titles are 24px regular through `PageHeader`.
+- **Type**: San Francisco on Apple devices and Inter everywhere else. SF Pro
+  cannot be served as a web font, so the stack asks the system for it first
+  (`-apple-system`, `BlinkMacSystemFont`) and falls back to Inter, loaded once
+  in `src/app/layout.tsx`. Headings are semibold (600) and text is regular
+  (400). Nothing is lighter than regular, and 600 is the ceiling, so
+  `font-semibold` and `font-bold` both resolve to it.
+- **Scale**, after Apple's marketing pages: `.type-display` 34 to 80px for the
+  one opening promise on a page, `.type-h1` 36 to 56px, `.type-h2` 30 to 48px,
+  `.type-h3` 22 to 28px, body 17px at 1.47, small print 14px. `.type-label`,
+  the line above a heading, is 17 to 21px semibold in the muted colour.
+- **Tracking** tightens as type grows: about -0.022em at display size down to
+  -0.008em at `.type-h3`, and close to zero for text. These are milder than
+  Apple's published values because the system already tracks San Francisco by
+  size; Apple's numbers are written for an untracked web font.
+- **Hero**: centred. The product's name sits above the promise and is smaller
+  than it (20 to 32px over 34 to 80px). The promise is sized to hold two lines
+  at phone width. One short paragraph follows, regular weight in the muted
+  colour and one tone throughout: a paragraph that is half bold and half grey
+  reads as noise at phone width.
+- Studio page titles are 24px regular through `PageHeader`.
 - **Colour**: warm neutrals. Eggshell page (`--sg-bg`), white objects
   (`--sg-surface`), stone wells (`--sg-surface-sunken`) and a deeper stone
   tray under segmented controls (`--sg-surface-tray`). Text is ink, with
@@ -52,8 +65,8 @@ The homepage glass tab capsule is kept as it is.
 The Mac app follows the same foundation through
 `native-macos/Sources/YapperNative/Design`. `StudioDesignSystem.swift` carries
 the web's surface, line, text and accent values one for one; the system face
-stands in for Inter with the same weights (light titles, regular text, medium
-emphasis). Buttons are the same ink and raised white pills, segmented controls
+is San Francisco, with the same two weights as the web (regular text, semibold
+titles and emphasis). Buttons are the same ink and raised white pills, segmented controls
 are a stone tray with a raised selection, and the rail draws the same glyph
 family from `StudioNavGlyph.swift`.
 
@@ -90,13 +103,15 @@ keeps its width when a pane starts to scroll.
 
 ### Product imagery
 
-A product screen is never shown bare. It stands on a **stage**: one of the five
-stage backdrops in `public/images/grainient` (diagonal light streaks, a shaft
+Feature previews stand on a **stage**: one of the five backdrops in
+`public/images/grainient` (diagonal light streaks, a shaft
 of light from the top right, film grain), rendered by
 `scripts/generate-backdrops.py`. The screen is lit from the same corner: a
 bright top edge, a fine rim, a soft ray across its top-right corner and a long
-shadow falling down and left (`.studio-showcase-screen`). On the hero the
-screen's foot runs off the bottom of the stage. Stages are 16px, screens 12px.
+shadow falling down and left (`.studio-showcase-screen`). The homepage hero
+keeps that screen lighting and sits directly on the page canvas. Its bottom
+fades into the page; the interactive previews keep their controls above the
+fade. Feature stages are 16px and screens are 12px.
 Do not add a second light direction, a glow colour, or a border to a screen.
 
 ### Demo interiors
@@ -124,7 +139,7 @@ importing a stock icon.
 
 ## Typography
 
-Inter is the single family; see Foundation above. `--sg-font-mono` is reserved
+San Francisco with Inter as the fallback; see Foundation above. `--sg-font-mono` is reserved
 for code, timecodes and tabular figures.
 
 ## Public website direction
@@ -189,7 +204,7 @@ play/pause button. Reduced motion disables automatic rotation. Each slide has a
 static Grainient background: blue for ideas, plum for scripts, teal for recording,
 peach for editing and violet for publishing. White copy sits over a contrast scrim.
 
-Reuse these five palettes behind the homepage tab demos, feature previews and
+Reuse these five palettes behind feature previews and
 content-library illustration. The backgrounds are pre-rendered WebP assets in
 `public/images/grainient`, with no runtime WebGL or background animation. Keep
 product interfaces on readable semantic surfaces and section copy on the page
@@ -261,7 +276,7 @@ the active theme.
 - Uses the correct shared container
 - Uses semantic type classes
 - Uses the shared Button component for standard actions
-- Uses Inter only, unless showing code or time data
+- Uses the system stack only, unless showing code or time data
 - Uses ink for actions and raised hairline surfaces instead of borders
 - Works in light and dark mode
 - Has visible keyboard focus and accessible labels

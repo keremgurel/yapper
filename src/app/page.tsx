@@ -25,22 +25,19 @@ export default function HomePage() {
         <div className="marketing-container">
           <div className="marketing-hero-grid">
             <div className="marketing-hero-centered">
+              <p className="marketing-hero-name">Yapper Studio</p>
               <h1 className="type-display">
                 Everything you need
                 <br />
                 to create content.
               </h1>
               <p className="marketing-lede">
-                Ideas that sound like you. A teleprompter that keeps you
-                natural. One click to cut the retakes. Post to your channels
-                from one place, and get back to creating.
+                Ideas that sound like you, a teleprompter, one-click editing and
+                posting to every channel, in one place.
               </p>
               <div className="marketing-actions">
                 <StudioCtaButton size="lg" />
               </div>
-              <p className="marketing-note">
-                7 days free. $24.99 monthly or $199.99 yearly. Cancel anytime.
-              </p>
             </div>
             <StudioPreview initialStep="Edit" />
           </div>
@@ -155,42 +152,43 @@ export default function HomePage() {
           <FeaturePreview slug="social-publishing" />
         </div>
       </section>
-      <section className="marketing-section marketing-rule">
-        <div className="marketing-container">
-          <div className="marketing-availability">
-            <strong>Your studio, from idea to post.</strong> Plan on the web;
-            record and edit with the native Mac editor. Publishing and
-            scheduling work with supported connected accounts. Coming soon: scan
-            a code to continue on your phone, record with a teleprompter, or use
-            the full Studio—including the editor—in the mobile app. Windows is
-            not available yet.
-          </div>
+      <section
+        className="marketing-section marketing-rule"
+        aria-labelledby="studio-availability-title"
+      >
+        <div className="marketing-container marketing-availability">
+          <h2 id="studio-availability-title" className="type-h2">
+            Where you can use Studio
+          </h2>
+          <dl className="marketing-platforms">
+            <div>
+              <dt>Web</dt>
+              <dd>
+                Plan ideas, write scripts, and schedule or publish to supported
+                social accounts.
+              </dd>
+            </div>
+            <div>
+              <dt>Mac</dt>
+              <dd>Record and edit video in the native Studio app.</dd>
+            </div>
+            <div>
+              <dt>Mobile</dt>
+              <dd>
+                Coming soon: scan a code to pick up on your phone, record with a
+                teleprompter, and edit in the mobile app.
+              </dd>
+            </div>
+            <div>
+              <dt>Windows</dt>
+              <dd>Not available yet.</dd>
+            </div>
+          </dl>
         </div>
       </section>
       <ProjectStack />
       <HomeGuides />
       <StudioStart />
-      <div className="marketing-container pb-8">
-        <a
-          href="https://altern.ai/ai/yapper-studio"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Yapper Studio on Altern (opens in a new tab)"
-          className="inline-flex min-h-11 items-center rounded focus-visible:outline-2 focus-visible:outline-offset-4"
-        >
-          {/* Preserve Altern's original badge URL for its submission verifier. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="https://data.altern.ai/alternbadge.png"
-            alt="Featured on Altern"
-            width={200}
-            height={70}
-            loading="lazy"
-            decoding="async"
-            className="h-auto max-w-full"
-          />
-        </a>
-      </div>
     </MarketingLayout>
   );
 }

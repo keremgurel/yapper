@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import {
@@ -33,7 +34,7 @@ async function trackedPOST(req: Request): Promise<Response> {
     const reply = await withPlanLedger(userId, input, async () => {
       if (!(await canUsePremium(userId)))
         throw Response.json({ error: "not_entitled" }, { status: 402 });
-      if (!process.env.SURPLUS_API_KEY)
+      if (!surplusKey("chirpy"))
         throw Response.json({ error: "no_provider" }, { status: 501 });
       const limited = await guardProviderSpend(req, userId, "chirpy-plan");
       if (limited) throw limited;

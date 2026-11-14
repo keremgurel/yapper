@@ -358,7 +358,7 @@ private struct EditorHeader: View {
                 Text("Yapper Studio")
                     .font(.system(size: 13, weight: .bold))
                 Text(session.project.name)
-                    .font(.system(size: 11))
+                    .font(.studioCaption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
@@ -371,7 +371,7 @@ private struct EditorHeader: View {
             }
             ManagedMediaNotice(session: session)
             Text(session.statusMessage)
-                .font(.system(size: 11, weight: .medium))
+                .font(.studioCaptionStrong)
                 .foregroundStyle(.secondary)
 
             if session.canCancelCurrentOperation,

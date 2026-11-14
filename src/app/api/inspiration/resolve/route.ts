@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
@@ -71,7 +72,7 @@ async function trackedPOST(req: Request) {
   const kind = detectKind(url);
   const handle = extractHandle(url) ?? undefined;
   const isWebResource = platform === "unknown";
-  if (isWebResource && !process.env.SURPLUS_API_KEY) {
+  if (isWebResource && !surplusKey("brain")) {
     return NextResponse.json({ error: "no_provider" }, { status: 501 });
   }
   if (

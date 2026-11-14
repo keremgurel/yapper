@@ -135,7 +135,7 @@ struct CaptionListView: View {
                 .accessibilityHidden(true)
 
             Image(systemName: "play.circle")
-                .font(.system(size: 11))
+                .font(.studioCaption)
                 .foregroundStyle(.secondary)
                 .frame(width: 20, height: 24)
                 .contentShape(Rectangle())
@@ -291,7 +291,7 @@ private struct CaptionInsertionHandle: View {
                 .fill(isHovered ? Color.studioAccent.opacity(0.75) : Color.clear)
                 .frame(height: 1)
             Image(systemName: "plus.circle.fill")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.studioBodyStrong)
                 .symbolRenderingMode(.palette)
                 .foregroundStyle(
                     isHovered ? Color.studioAccentForeground : Color.clear,

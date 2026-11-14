@@ -53,7 +53,11 @@ export async function readYouTubePublishRequest(request: Request) {
     }
     tags = body.tags as string[];
   }
-  for (const field of ["selfDeclaredMadeForKids", "containsSyntheticMedia"]) {
+  for (const field of [
+    "selfDeclaredMadeForKids",
+    "containsSyntheticMedia",
+    "deferCover",
+  ]) {
     if (body[field] !== undefined && typeof body[field] !== "boolean")
       throw new RequestBodyError("invalid_body");
   }
@@ -78,7 +82,17 @@ export async function readYouTubePublishRequest(request: Request) {
       | undefined,
     containsSyntheticMedia: body.containsSyntheticMedia as boolean | undefined,
     privacyStatus: privacy as "private" | "unlisted" | "public" | undefined,
+    /** The caller will set the cover in a second request, so this one can
+     * answer as soon as the upload lands. */
+    deferCover: body.deferCover === true,
   };
+}
+
+export async function readYouTubeCoverRequest(request: Request) {
+  const body = await read(request);
+  const thumbnailKey = optionalString(body.thumbnailKey, 512);
+  if (!thumbnailKey) throw new RequestBodyError("invalid_body");
+  return { thumbnailKey };
 }
 
 export async function readInstagramPublishRequest(request: Request) {

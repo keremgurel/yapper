@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { createHash } from "node:crypto";
 import { listPillars } from "@/lib/db/project-pillars";
 import { readPublishedMemory } from "@/lib/db/published-memory";
@@ -42,7 +43,7 @@ export async function publishedMemoryContext(
         : memoryPlanByRules(request, pillars);
     if (
       (!cached || cached.expires <= Date.now()) &&
-      process.env.SURPLUS_API_KEY &&
+      surplusKey("brain") &&
       (await guardRouterSpend(userId))
     ) {
       try {

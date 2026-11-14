@@ -83,9 +83,9 @@ private struct WorkspaceProfileMenu: View {
             HStack(spacing: 10) {
                 CreditAvatar(name: name, imageURL: imageURL, meter: snapshot?.creditMeter, diameter: 48)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(name).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                    Text(name).font(.studioBodyStrong).lineLimit(1)
                     Text(snapshot?.creditMeter?.planLabel ?? "Account")
-                        .font(.system(size: 11)).foregroundStyle(.secondary)
+                        .font(.studioCaption).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
             }.padding(12)
@@ -96,7 +96,7 @@ private struct WorkspaceProfileMenu: View {
                     Spacer()
                     Text(snapshot.map { "\($0.balance.formatted()) left" } ?? "Balance unavailable")
                         .foregroundStyle(.secondary).monospacedDigit()
-                }.font(.system(size: 12))
+                }.font(.studioLabel)
                 GeometryReader { proxy in
                     Capsule().fill(Color.primary.opacity(0.1))
                         .overlay(alignment: .leading) {
@@ -116,7 +116,7 @@ private struct WorkspaceProfileMenu: View {
                         openURL(URL(string: "https://ypr.app/pricing")!)
                     }
                     .buttonStyle(.plain)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.studioCaptionStrong)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
                 } else {
@@ -174,7 +174,7 @@ private struct QuickTopUpRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Add credits").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
+            Text("Add credits").font(.studioMicro).foregroundStyle(.secondary)
             HStack(spacing: 6) {
                 ForEach(packs) { pack in
                     Button {
@@ -182,7 +182,7 @@ private struct QuickTopUpRow: View {
                     } label: {
                         VStack(spacing: 1) {
                             Text("+\(pack.credits.formatted())")
-                                .font(.system(size: 12, weight: .semibold)).monospacedDigit()
+                                .font(.studioLabelStrong).monospacedDigit()
                             Text(pack.priceLabel)
                                 .font(.system(size: 10)).foregroundStyle(.secondary).monospacedDigit()
                         }
@@ -227,11 +227,11 @@ private struct WorkspaceMenuRow: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: icon)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.studioCaptionStrong)
                     .foregroundStyle(isHovering ? Color.white : Color.secondary)
                     .frame(width: 16)
                 Text(title)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.studioLabelStrong)
                     .foregroundStyle(isHovering ? Color.white : Color.primary)
                 Spacer(minLength: 0)
             }

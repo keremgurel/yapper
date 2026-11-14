@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { fetchBoundedJson } from "@/lib/http/outbound";
 import type { RecordingPillar } from "@/lib/content/classify-recording";
 
@@ -77,7 +78,7 @@ export async function planPublishedMemory(
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.SURPLUS_API_KEY}`,
+        Authorization: `Bearer ${surplusKey("brain")}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

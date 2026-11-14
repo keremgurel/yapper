@@ -54,7 +54,11 @@ struct ExportQuitTests {
         let stoppedInTime = await center.cancelAll(waitingAtMost: .milliseconds(150))
 
         #expect(!stoppedInTime)
-        #expect(ContinuousClock.now - started < .seconds(2))
+        // "Does not hang" means it comes back at all: the export above never
+        // finishes until it is released below. The bound is wide because this
+        // suite runs beside a thousand other tests, and a 150 ms wait took
+        // 3.6 s on a loaded machine, which failed a 2 s bound for no reason.
+        #expect(ContinuousClock.now - started < .seconds(20))
         await release.open()
     }
 

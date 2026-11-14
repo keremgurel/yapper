@@ -283,7 +283,7 @@ private struct StudioSidebar: View {
                 YapperMark(size: 27)
                 if expanded {
                     Text("Yapper Studio")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.studioSectionTitle)
                         .lineLimit(1)
                         .transition(.opacity.combined(with: .offset(x: -4)))
                 }
@@ -299,7 +299,7 @@ private struct StudioSidebar: View {
                     ForEach(visibleGroups, id: \.0) { group, items in
                         if !group.isEmpty, expanded {
                             Text(group)
-                                .font(.system(size: 12, weight: .regular))
+                                .font(.studioLabel)
                                 .foregroundStyle(Color.studioTextMuted)
                                 .padding(.top, 14)
                                 .padding(.bottom, 2)
@@ -318,7 +318,7 @@ private struct StudioSidebar: View {
                                         .frame(width: 22, height: 22)
                                     if expanded {
                                         Text(item.title)
-                                            .font(.system(size: 13, weight: .medium))
+                                            .font(.studioBodyStrong)
                                             .lineLimit(1)
                                     }
                                     Spacer(minLength: 0)
@@ -356,14 +356,14 @@ private struct StudioSidebar: View {
                     .fill(Color.studioAccent)
                     .overlay(
                         Text(auth.accountInitial)
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.studioLabelStrong)
                             .foregroundStyle(Color.studioAccentForeground)
                     )
                     .frame(width: 30, height: 30)
                 if expanded {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(auth.accountName)
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.studioLabelStrong)
                             .lineLimit(1)
                         Text(auth.account?.email ?? "Account")
                             .font(.system(size: 10))

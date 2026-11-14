@@ -86,12 +86,12 @@ struct MentionSuggestionList: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: file.isScene ? "sparkles" : file.isImage ? "photo" : "film")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.studioCaptionStrong)
                     .foregroundStyle(isActive ? Color.primary : Color.studioTextMuted)
                     .frame(width: 16)
 
                 Text(file.name)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.studioLabelStrong)
                     .foregroundStyle(isActive ? Color.white : Color.primary)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -101,7 +101,7 @@ struct MentionSuggestionList: View {
                 // The same secondary line the file picker in an editor shows:
                 // enough to tell two similarly named files apart.
                 Text(detail(for: file))
-                    .font(.system(size: 10.5))
+                    .font(.studioCaption)
                     .monospacedDigit()
                     .foregroundStyle(Color.studioTextMuted)
                     .lineLimit(1)

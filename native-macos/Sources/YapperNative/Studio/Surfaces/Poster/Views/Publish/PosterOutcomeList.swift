@@ -1,52 +1,52 @@
 import SwiftUI
 
-/// What happened, per video and destination. Failures stay beside successes.
+/// What is going out and what happened, one line per destination under a
+/// headline. Every destination is listed from the moment the press starts,
+/// so it is plain they go out together, and a failure stays beside the
+/// successes.
 struct PosterOutcomeList: View {
-    let outcomes: [PosterOutcome]
+    let rows: [PosterOutcomeRow]
+    /// True once a destination was seen going out. Only a result that lands
+    /// while the list is on screen draws its check; one that was already
+    /// there when the list appeared is shown finished.
+    @State private var sawSending = false
 
     var body: some View {
-        if !outcomes.isEmpty {
+        if let headline = PosterOutcomeHeadline(rows: rows) {
             VStack(spacing: 0) {
-                ForEach(Array(outcomes.enumerated()), id: \.element.id) { index, outcome in
-                    if index > 0 { Rectangle().fill(Color.studioLine).frame(height: 1) }
-                    row(outcome)
+                HStack(spacing: 8) {
+                    mark(headline.mark).frame(width: 18, height: 18)
+                    Text(headline.text).font(.studioSectionTitle)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 12).padding(.vertical, 12)
+                .accessibilityElement(children: .combine)
+                ForEach(rows) { row in
+                    Rectangle().fill(Color.studioLine).frame(height: 1)
+                    PosterOutcomeRowView(row: row, animated: sawSending)
                 }
             }
-            .background(NativeCardBackground(radius: 10))
+            .background(NativeCardBackground(radius: StudioRadius.panel))
+            .onAppear { noteSending(rows) }
+            .onChange(of: rows) { _, rows in noteSending(rows) }
+            .onChange(of: headline) { _, headline in
+                // The result is announced, since the drawn check says nothing to VoiceOver.
+                if headline.mark != .sending { AccessibilityNotification.Announcement(headline.text).post() }
+            }
         }
     }
 
-    private func row(_ outcome: PosterOutcome) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(outcome.videoTitle).font(.studioBodyStrong).lineLimit(1)
-                Text(outcome.platform.label).font(.studioLabel).foregroundStyle(.secondary)
-                if let error = outcome.error {
-                    Text(PosterErrorCopy.publish(error)).font(.studioLabel).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if outcome.coverApplied == false {
-                    Text("YouTube didn’t apply the cover. You can add it in YouTube Studio.")
-                        .font(.studioLabel).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if outcome.status == .draft {
-                    Text("Open TikTok, go to your inbox and tap \"Your content from Yapper is ready\" to finish posting.")
-                        .font(.studioLabel).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            Spacer()
-            if let url = outcome.url {
-                Link(destination: url) { Label("Posted", systemImage: "arrow.up.right") }
-                    .font(.studioLabelStrong)
-                    .clickableCursor()
-            } else {
-                Text(outcome.label).font(.studioLabelStrong)
-                    .foregroundStyle(outcome.status == .failed ? Color.studioDanger
-                                     : outcome.status == .pending ? Color.secondary : NativeChip.Tone.green.color)
-            }
+    @ViewBuilder private func mark(_ mark: PosterOutcomeHeadline.Mark) -> some View {
+        switch mark {
+        case .sending: ProgressView().controlSize(.small)
+        case .done: PosterDrawnCheck(size: 18, animated: sawSending)
+        case .waiting: Image(systemName: "clock").font(.studioBody).foregroundStyle(.secondary)
+        case .failed: Image(systemName: "exclamationmark.circle").font(.studioBody).foregroundStyle(Color.studioDanger)
         }
-        .padding(.horizontal, 12).padding(.vertical, 10)
+    }
+
+    private func noteSending(_ rows: [PosterOutcomeRow]) {
+        if rows.contains(where: \.isSending) { sawSending = true }
     }
 }
