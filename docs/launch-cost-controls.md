@@ -147,6 +147,8 @@ Deepgram, Groq and Gemini are each used for one job here, so one key per environ
 
 Deepgram transcribes every take unless `TRANSCRIPTION_PRIMARY=elevenlabs` and `ELEVENLABS_API_KEY` are both set. Then ElevenLabs Scribe is offered the take first, and Deepgram and Groq stay behind it as fallbacks. Unset the variable to go back. `ELEVENLABS_STT_MODEL` picks the model and defaults to `scribe_v2`. Scribe calls count against the company-wide provider ceiling the same way Deepgram calls do. The measurements behind this are in `transcription-and-edit-eval-2026-11.md`.
 
+The Mac app asks `GET /api/transcribe/plan` how to cut a take before it uploads. With Scribe first the answer is pieces of up to ten minutes joined by five seconds; otherwise it is 120 second pieces with 30 seconds of overlap. An app from before this endpoint, or one that gets no answer, uses the overlapping pieces, which every transcriber can work with.
+
 ## Storage, database and analytics backstops
 
 The daily cleanup also reconciles physical R2 inventory with application

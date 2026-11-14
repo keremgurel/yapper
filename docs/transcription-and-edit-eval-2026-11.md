@@ -96,7 +96,36 @@ The five takes were joined into one of 21.6 minutes and 2,150 words, with the fi
 
 Six runs each, three on gemini-3.7-flash and three on gemini-3.8-flash; counts are totals over the usable answers. On the production transcript half the answers were ones the route would reject and retry.
 
-Ten minute pieces through the route's merge were not tested. The ElevenLabs account ran out of quota first.
+### Long pieces instead of overlapping ones
+
+With Scribe first, the Mac app now uploads pieces of up to ten minutes joined by five seconds, so a take of ten minutes or less is one request. The service tells the app which plan to use (`GET /api/transcribe/plan`); with Deepgram first it still answers 120 second pieces with 30 seconds of overlap, and an app that gets no answer uses those.
+
+The pieces below were produced by the app's own PCM conversion and AAC encoder, sent through the route's Scribe module and joined by the route's merge.
+
+| Take                                         | Pieces | Cut F1 | Words wrongly cut | Mistakes left in |
+| -------------------------------------------- | -----: | -----: | ----------------: | ---------------: |
+| 6.4 minutes, long plan                       |      1 |  1.000 |                 0 |                0 |
+| 21.6 minutes, long plan (600 s, 5 s overlap) |      3 |  0.998 |                 0 |               24 |
+| 21.6 minutes, 600 s pieces with 30 s overlap |      3 |  0.992 |                78 |               81 |
+| 21.6 minutes, one request                    |      1 |  0.998 |                 0 |               36 |
+
+Four runs each on the first two rows, six on the others. The wider overlap is worse: it gives the merge more of two renderings of the same speech to interleave.
+
+On the long plan Scribe bills the audio once instead of 1.2 to 1.33 times, about $0.004 a minute with keyterms. A ten minute take is one request instead of seven, which matters on an ElevenLabs account limited to a few requests at a time.
+
+### Scribe and the speech coverage check
+
+The app runs an independent speech detector over each take, and the route treats detected speech with no words on it as missing: it retries those moments with Deepgram on short windows, and refuses the transcript if they stay uncovered. Scribe ends its words earlier than Deepgram, so the check was run against Scribe's transcripts to see whether it would start flagging them.
+
+| Transcript                             | Uncovered ranges over the five takes | Seconds uncovered |
+| -------------------------------------- | -----------------------------------: | ----------------: |
+| Scribe, one request                    |                                    0 |               0.0 |
+| Scribe, 120 s pieces through the route |                                    0 |               0.0 |
+| Deepgram, 15 s pieces                  |                                    2 |               0.7 |
+| Production pipeline                    |                                    2 |               0.6 |
+| Deepgram, one file                     |                                   21 |              22.4 |
+
+Scribe leaves nothing for the recovery passes to do on these takes. The app still uploads the short recovery windows for every stretch of speech, which is more audio than the take itself. With Scribe first they are spent only if Scribe fails and the take falls back to Deepgram. Not uploading them would cut the upload by more than half; it would also leave a fallback take with no way to repair what Deepgram drops, so that was left as it is.
 
 ### What ElevenLabs charges, and the free plan
 
@@ -182,7 +211,8 @@ Yapper sends every Surplus call through one key, named `yapper-ai-cleanup` in th
 ## Not tested
 
 - xAI's word times, for want of a key.
-- Scribe on a real take longer than 6.4 minutes (the 21.6 minute take is five takes joined), on ten minute pieces, and with a creator's own dictionary terms. The route test sent only the two default terms.
+- Scribe on a real take longer than 6.4 minutes (the 21.6 minute take is five takes joined), and with a creator's own dictionary terms. The route test sent only the two default terms.
+- The Mac app end to end against a service with the flag on. The app's encoder output, the route's module and merge, and the plan endpoint were each tested; the request between the app and a live service was not.
 - The route itself against a running server. The module and the merge were run on real audio; the request handling around them is covered by unit tests.
 - The same comparisons on a phone recording, a lavalier or a noisy room.
 - What production really bills Deepgram per minute of footage. That needs Deepgram's usage export set against `edit_runs`.

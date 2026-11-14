@@ -177,8 +177,7 @@ actor AIEditService {
 
     // Broad context supplies vocabulary. Independent acoustic coverage and
     // short recovery windows catch restarts that broad ASR context suppresses.
-    private let chunkSeconds = 120.0
-    private let overlapSeconds = 30.0
+    // How long the main pieces are comes from the service: TranscriptionPiecePlan.
     private let maximumConcurrentUploads = 3
 
     /// How loud each take was, moment by moment, kept from the decode the
@@ -241,15 +240,18 @@ actor AIEditService {
                 try TranscriptionSpeechCoverage.measure(url: mediaURL)
             }
             defer { speechTask.cancel() }
+            // Asked while the take decodes, so the answer costs no time.
+            let piecePlanTask = Task { await TranscriptionPiecePlan.current(baseURL: YapperAPI.baseURL) }
             let decoded = try await decodeAudio(
                 url: media.url, output: temporaryURL, progress: progress
             )
             run.mark("decoded")
+            let piecePlan = await piecePlanTask.value
             let chunks = TranscriptionChunkPlan.make(
                 byteCount: decoded.byteCount,
                 sampleRate: decoded.sampleRate,
-                chunkSeconds: chunkSeconds,
-                overlapSeconds: overlapSeconds
+                chunkSeconds: piecePlan.pieceSeconds,
+                overlapSeconds: piecePlan.overlapSeconds
             )
             let speech = try await speechTask.value
             run.mark("speech found")
