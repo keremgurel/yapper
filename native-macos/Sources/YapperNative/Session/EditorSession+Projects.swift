@@ -11,6 +11,8 @@ extension EditorSession {
     /// so a creator upgrading finds their work as the first project rather than
     /// an empty grid.
     func restoreLastProject() async {
+        let folders = StorageFolders.standard
+        Task.detached(priority: .utility) { ProjectMoveStaging.sweepAfterLaunch(folders: folders) }
         do {
             if let migrated = try await library.migrateLegacyProject(from: ProjectStore.directory) {
                 await openProject(migrated)
@@ -29,6 +31,7 @@ extension EditorSession {
     }
 
     func openProject(_ package: ProjectPackage) async {
+        guard !projectsAreMoving() else { return }
         // Typing belongs to the project it was typed into.
         await commitTyping()
         assistantTask?.cancel()
@@ -54,30 +57,40 @@ extension EditorSession {
         }
     }
 
-    func createProject(named name: String) async {
+    /// False when the project couldn't be made, for example because the
+    /// projects folder is on a drive that isn't plugged in.
+    @discardableResult
+    func createProject(named name: String) async -> Bool {
+        guard !projectsAreMoving() else { return false }
         do {
             let package = try await library.create(named: name)
             NativeAnalytics.shared.capture("native_project_created")
             projectNavigation.noteLibraryChanged()
             await openProject(package)
+            return true
         } catch {
             show(error)
+            return false
         }
     }
 
     /// Screen Studio's "Create project from video": one drop, a project named
     /// after the file, with the file already on the timeline.
-    func createProject(fromVideos urls: [URL]) async {
-        guard let first = urls.first else { return }
+    /// The videos go in only when the project was made, so they never land in
+    /// whatever project was open before.
+    @discardableResult
+    func createProject(fromVideos urls: [URL]) async -> Bool {
+        guard let first = urls.first else { return false }
         do {
             for url in urls { _ = try await MediaProbe.inspect(url: url) }
-        } catch { show(error); return }
-        await createProject(named: first.deletingPathExtension().lastPathComponent)
+        } catch { show(error); return false }
+        guard await createProject(named: first.deletingPathExtension().lastPathComponent) else { return false }
         await importMedia(urls)
+        return true
     }
 
     func renameCurrentProject(to name: String) async {
-        guard let package = projectNavigation.currentPackage else { return }
+        guard !projectsAreMoving(), let package = projectNavigation.currentPackage else { return }
         await stopManagedMedia(for: projectNavigation.currentPackage)
         if refusesWhileExportReadsFootage(of: project.id, Self.renameRefusal) { return }
         do {
@@ -102,6 +115,7 @@ extension EditorSession {
     }
 
     func duplicateProject(_ package: ProjectPackage) async {
+        guard !projectsAreMoving() else { return }
         await stopManagedMedia(for: package)
         do {
             let copy = try await library.duplicate(package)
@@ -114,6 +128,7 @@ extension EditorSession {
 
     /// Into the Trash. Trashing the open project leaves the grid showing.
     func trashProject(_ package: ProjectPackage) async {
+        guard !projectsAreMoving() else { return }
         let projectID = await projectID(in: package)
         if refusesWhileExportReadsFootage(of: projectID, Self.trashRefusal) { return }
         do {
@@ -124,13 +139,7 @@ extension EditorSession {
             }
             await stopManagedMedia(for: package)
             if projectNavigation.currentPackage == package {
-                await leaveCurrentProject()
-                await stopManagedMedia(for: package)
-                store = ProjectStore(directory: FileManager.default.temporaryDirectory
-                    .appending(path: "yapper-detached-\(UUID().uuidString)", directoryHint: .isDirectory))
-                projectNavigation.currentPackage = nil
-                resetProject(to: EditorProject())
-                projectNavigation.showsProjectsHome = true
+                await closeCurrentProject()
             }
             if let listing = try await library.listings().first(where: { $0.package == package }) {
                 await PosterProjectSync.shared.cancel(projectID: listing.summary.id)
@@ -150,6 +159,7 @@ extension EditorSession {
     /// The same project written to a second package, which then becomes the
     /// open one. What Cmd+S means in an app that already saves everything.
     func saveCopy(to url: URL) async {
+        guard !projectsAreMoving() else { return }
         let destination = ProjectPackage(url: url)
         await stopManagedMedia(for: projectNavigation.currentPackage)
         do {
@@ -180,6 +190,29 @@ extension EditorSession {
     func hideProjectsHome() {
         guard projectNavigation.currentPackage != nil else { return }
         projectNavigation.showsProjectsHome = false
+    }
+
+    /// Saves and closes the open project, leaving the grid showing and the
+    /// editor writing to nothing, before its package goes to the Trash or to
+    /// another folder. Returns the package that was open.
+    @discardableResult
+    func closeCurrentProject() async -> ProjectPackage? {
+        guard let package = projectNavigation.currentPackage else { return nil }
+        await leaveCurrentProject()
+        await stopManagedMedia(for: package)
+        store = ProjectStore(directory: FileManager.default.temporaryDirectory
+            .appending(path: "yapper-detached-\(UUID().uuidString)", directoryHint: .isDirectory))
+        projectNavigation.currentPackage = nil
+        resetProject(to: EditorProject())
+        projectNavigation.showsProjectsHome = true
+        return package
+    }
+
+    /// True, with a note saying so, while projects move to another folder.
+    func projectsAreMoving() -> Bool {
+        guard projectNavigation.isMovingProjects else { return false }
+        showMessage("Wait for your projects to finish moving.")
+        return true
     }
 
     /// Everything the open project needs before another takes its place: a

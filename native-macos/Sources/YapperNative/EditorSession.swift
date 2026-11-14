@@ -2114,6 +2114,7 @@ final class EditorSession: ObservableObject {
     /// downloads, or saves leave the current timeline intact.
     func openStudioRecording(_ itemID: UUID) async throws {
         await restorationTask?.value
+        if projectsAreMoving() { throw StudioEditorError.busy }
         guard let operation = beginLongOperation(.importingMedia) else { throw StudioEditorError.busy }
         defer { endLongOperation(operation) }
         guard await beginPreparedTimelineEdit() != nil else { throw StudioEditorError.busy }
