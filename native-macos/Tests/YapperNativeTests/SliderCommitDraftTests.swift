@@ -40,6 +40,25 @@ struct SliderCommitDraftTests {
         #expect(saved.values == [0.6])
     }
 
+    @Test func aSliderThatGoesAwaySavesWhatItWasHolding() async {
+        let draft = SliderCommitDraft(settle: .seconds(30)), saved = SavedValues()
+        draft.change(to: 0.42, commit: saved.commit)
+        draft.flush(commit: saved.commit)
+        await settle()
+        #expect(saved.values == [0.42])
+
+        draft.beginDrag()
+        draft.change(to: 0.8, commit: saved.commit)
+        draft.flush(commit: saved.commit)
+        await settle()
+        #expect(saved.values == [0.42, 0.8])
+
+        // Nothing unsaved, nothing to do.
+        draft.flush(commit: saved.commit)
+        await settle()
+        #expect(saved.values == [0.42, 0.8])
+    }
+
     @Test func aTypedNumberSavesAtOnceAndCancelsAPendingPause() async {
         let draft = SliderCommitDraft(settle: .milliseconds(60)), saved = SavedValues()
         draft.change(to: 0.2, commit: saved.commit)

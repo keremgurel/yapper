@@ -45,6 +45,15 @@ final class SliderCommitDraft: ObservableObject {
         save(typed, commit: commit)
     }
 
+    /// The slider went away holding a change it has not saved: a pause still
+    /// running, or a drag cut short. It is saved now, so a preview drawn
+    /// elsewhere never outlives the control that was going to save it.
+    func flush(commit: @escaping (Double) async -> Void) {
+        guard let unsaved = value, dragging || pause != nil else { return }
+        dragging = false
+        save(unsaved, commit: commit)
+    }
+
     private func save(_ saved: Double, commit: @escaping (Double) async -> Void) {
         pause?.cancel()
         pause = nil

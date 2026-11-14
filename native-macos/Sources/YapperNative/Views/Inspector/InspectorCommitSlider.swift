@@ -41,5 +41,6 @@ struct InspectorCommitSlider: View {
             )
             .fixedSize()
         }
+        .onDisappear { draft.flush(commit: onCommit) }
     }
 }
