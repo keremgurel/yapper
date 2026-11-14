@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { blockFrom } from "@/lib/content/canvas-doc";
 import { updateOwnContentItem } from "@/lib/content/operations/update-item";
 import { saveContentVersion } from "@/lib/db/content-versions";
-import { saveCanvasDocument, type CanvasDocument } from "./canvas-document";
+import {
+  readCanvasDocument,
+  saveCanvasDocument,
+  type CanvasDocument,
+} from "./canvas-document";
 
 vi.mock("@/lib/content/operations/update-item", () => ({
   updateOwnContentItem: vi.fn(),
@@ -104,6 +108,84 @@ describe("saveCanvasDocument", () => {
       ok: false,
       status: 409,
       error: "changed_while_working",
+    });
+  });
+});
+
+// An idea last saved before the flexible body: no blocks, its key points,
+// example and call to action still in their old columns.
+const legacyRow = {
+  id: "idea",
+  title: "Gym myths",
+  leadFormat: "short",
+  hooks: ["Stop doing this"],
+  blocks: [],
+  script: "Old.",
+  points: ["Spot reduction is a myth"],
+  example: "My client Sam",
+  cta: "Follow for more",
+};
+
+describe("an idea whose body is still in the old columns", () => {
+  beforeEach(() => {
+    vi.mocked(updateOwnContentItem).mockReset();
+  });
+
+  it("is read with the blocks the canvas shows for it", async () => {
+    const document = await readCanvasDocument(
+      "user_1",
+      legacyRow as never,
+      "short",
+    );
+    expect(document.blocks.map(({ label, kind }) => ({ label, kind }))).toEqual(
+      [
+        { label: "Script", kind: "script" },
+        { label: "Key points", kind: "bullets" },
+        { label: "Example", kind: "paragraph" },
+        { label: "Call to action", kind: "paragraph" },
+      ],
+    );
+  });
+
+  it("saves an edit with those blocks, and only conflicts on a real change", async () => {
+    const document = await readCanvasDocument(
+      "user_1",
+      legacyRow as never,
+      "short",
+    );
+    const after = {
+      ...document,
+      blocks: [
+        ...document.blocks,
+        blockFrom({ label: "Objections", kind: "paragraph", text: "But…" }),
+      ],
+    };
+    let row: unknown = legacyRow;
+    vi.mocked(updateOwnContentItem).mockImplementation(
+      async (_user, _id, body, reconcile) => {
+        reconcile!(row as never, body as never);
+        return { ok: true, value: {} as never };
+      },
+    );
+    expect((await saveCanvasDocument("user_1", document, after)).ok).toBe(true);
+    expect(
+      (
+        vi.mocked(updateOwnContentItem).mock.calls[0][2].blocks as {
+          label: string;
+        }[]
+      ).map((block) => block.label),
+    ).toEqual([
+      "Script",
+      "Key points",
+      "Example",
+      "Call to action",
+      "Objections",
+    ]);
+
+    row = { ...legacyRow, cta: "Subscribe" };
+    expect(await saveCanvasDocument("user_1", document, after)).toMatchObject({
+      ok: false,
+      status: 409,
     });
   });
 });

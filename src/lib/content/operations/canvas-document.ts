@@ -5,11 +5,12 @@ import {
   type CanvasBlock,
 } from "@/lib/content/canvas-doc";
 import type { VersionFormat } from "@/lib/content/formats";
-import type { ContentBlock } from "@/lib/db/schema";
 import {
   hookTexts,
   normalizeBlocks,
+  normalizeBody,
   normalizeHooks,
+  type LegacyBody,
 } from "@/lib/content/normalize";
 import { updateOwnContentItem } from "@/lib/content/operations/update-item";
 import type { getContentItem } from "@/lib/db/content";
@@ -36,6 +37,19 @@ export interface CanvasDocument extends CanvasState {
 }
 
 /**
+ * A stored row's blocks as the canvas shows them. An idea last saved before
+ * the flexible body keeps its key points, example and call to action in
+ * their old columns; GET /api/content/[id] folds them into blocks for the
+ * client, so the server's copy of the document has to as well, or the writer
+ * would miss them and its block numbers would not match the canvas.
+ */
+function shownBlocks(
+  row: LegacyBody & { script: string | null },
+): CanvasBlock[] {
+  return docFromItem({ blocks: normalizeBody(row).blocks, script: row.script });
+}
+
+/**
  * The stored document for one version: the lead lives on the item, any
  * other version in its own row, which is empty until something is written.
  */
@@ -50,7 +64,7 @@ export async function readCanvasDocument(
       format,
       lead: true,
       title: item.title,
-      blocks: docFromItem(item),
+      blocks: shownBlocks(item),
       hooks: hookTexts(item.hooks),
     };
   const version = (await listContentVersions(userId, item.id)).find(
@@ -77,10 +91,10 @@ const storedBlocks = (blocks: CanvasBlock[]) =>
  * edit was made on. */
 function unchangedSince(
   before: CanvasDocument,
-  current: { blocks: ContentBlock[]; script: string | null; hooks: unknown },
+  current: LegacyBody & { script: string | null },
 ): void {
   if (
-    !same(storedBlocks(docFromItem(current)), storedBlocks(before.blocks)) ||
+    !same(storedBlocks(shownBlocks(current)), storedBlocks(before.blocks)) ||
     !same(hookTexts(current.hooks), before.hooks)
   )
     throw new ContentConflict();

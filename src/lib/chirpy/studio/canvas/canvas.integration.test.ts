@@ -343,3 +343,68 @@ it("lets an older client apply the reply itself and saves only the thread", asyn
   );
   expect(rows[0].n).toBe(2);
 });
+
+// An idea last saved before the flexible body: its key points, example and
+// call to action are still in their old columns, and GET /api/content/[id]
+// shows them as blocks.
+const OLD_BODY = [
+  { label: "Key points", kind: "bullets", items: ["Spot reduction is a myth"] },
+  { label: "Example", kind: "paragraph", text: "My client Sam" },
+  { label: "Call to action", kind: "paragraph", text: "Follow for more" },
+];
+async function olderIdea(): Promise<string> {
+  const id = randomUUID();
+  const project = await getActiveProject(user);
+  await pool.query(
+    `insert into content_items(id, user_id, project_id, title, status, hooks, blocks, script, points, example, cta)
+     values ($1, $2, $3, 'Gym myths', 'drafting', '[]', '[]', $4, $5, 'My client Sam', 'Follow for more')`,
+    [
+      id,
+      user,
+      project.id,
+      SCRIPT,
+      JSON.stringify(["Spot reduction is a myth"]),
+    ],
+  );
+  return id;
+}
+
+it("keeps an older idea's body when its canvas saves typing in the script", async () => {
+  const id = await olderIdea();
+  const typed = { label: "Script", kind: "script", text: "Typed." };
+  const saved = await updateOwnContentItem(user, id, {
+    blocks: [typed, ...OLD_BODY],
+    script: "Typed.",
+    base: { blocks: OLD_BODY, script: SCRIPT },
+  });
+  expect(saved).toMatchObject({ ok: true, value: { rebased: false } });
+  expect((await stored(id)).blocks).toEqual([typed, ...OLD_BODY]);
+});
+
+it("shows the writer an older idea's body and saves an ask with it", async () => {
+  const id = await olderIdea();
+  vi.mocked(askCanvas).mockResolvedValue({
+    actions: [
+      {
+        type: "append",
+        block: { label: "Protein", kind: "bullets", items: ["Eat more"] },
+      },
+    ],
+    note: null,
+  });
+  const answer = await askIdeaCanvas(request, user, {
+    ideaID: id,
+    instruction: "add a protein beat",
+  });
+  expect(answer.ok).toBe(true);
+  const old = { label: "Script", kind: "script", text: SCRIPT };
+  expect(vi.mocked(askCanvas).mock.calls[0][0].blocks).toEqual([
+    old,
+    ...OLD_BODY,
+  ]);
+  expect((await stored(id)).blocks).toEqual([
+    old,
+    ...OLD_BODY,
+    { label: "Protein", kind: "bullets", items: ["Eat more"] },
+  ]);
+});
