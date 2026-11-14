@@ -57,6 +57,9 @@ cleanup() {
   rm -rf "$staging"
 }
 trap cleanup EXIT
+# zsh skips the EXIT trap when a signal ends the script, so Ctrl-C mid-swap
+# would leave the staging folder behind, or no app in place at all.
+trap 'exit 130' INT TERM
 
 ditto "$source_app" "$staged_app"
 if [[ -e $target_app ]]; then
