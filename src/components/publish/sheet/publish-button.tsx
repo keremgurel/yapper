@@ -11,15 +11,15 @@ const plural = (count: number, word: string) =>
 export default function PublishButton({
   videos,
   platforms,
-  postedSoFar,
   posting,
   done,
   disabled,
   onPublish,
+  label,
 }: {
+  label?: string;
   videos: number;
   platforms: number;
-  postedSoFar: number;
   posting: boolean;
   done: boolean;
   disabled: boolean;
@@ -35,10 +35,11 @@ export default function PublishButton({
         <Send aria-hidden />
       )}
       {posting
-        ? `Publishing ${postedSoFar + 1} of ${videos * platforms}…`
+        ? "Publishing…"
         : done
           ? "Check publish status"
-          : `Publish ${plural(videos, "video")} to ${plural(platforms, "platform")}`}
+          : (label ??
+            `Publish ${plural(videos, "video")} to ${plural(platforms, "platform")}`)}
     </Button>
   );
 }

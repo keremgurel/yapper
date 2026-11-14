@@ -80,7 +80,7 @@ struct AppearancePositionSection: View {
             editor.set(TextStylePatch(rotation: VideoFraming.wrap(editor.rotation + degrees)))
         } label: {
             Image(systemName: icon)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.studioCaptionStrong)
                 .frame(width: 24, height: 22)
                 .contentShape(Rectangle())
         }

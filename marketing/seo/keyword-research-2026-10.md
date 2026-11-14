@@ -204,7 +204,7 @@ Every row is brand or speakingpractice.ai overlap. There is no creator-workflow 
 | 27  | auto captions youtube                                             | Captions & subtitles          |  1,000 |  27 |  3.38 | informational |   +81% |    730 |
 | 28  | how teleprompter work **(covered)** (+8 variants)                 | Teleprompter                  |    720 |   0 |  0.91 | informational |   -55% |    720 |
 | 29  | speakflow teleprompter                                            | Teleprompter                  |    720 |   0 |  2.59 | informational |   -80% |    720 |
-| 30  | marketing video script example                                    | Video scripts & templates     |    720 |   0 |       | informational |  +400% |    720 |
+| 30  | marketing video script example **(covered)**                      | Video scripts & templates     |    720 |   0 |       | informational |  +400% |    720 |
 | 31  | how to quickly memorize a script **(covered)**                    | Video scripts & templates     |    720 |   0 |       | informational |   +23% |    720 |
 | 32  | how to memorize a script fast **(covered)** (+1 variants)         | Video scripts & templates     |    720 |   0 |  2.12 | informational |   +50% |    720 |
 | 33  | canva auto captions                                               | Captions & subtitles          |    720 |   0 |       | transactional |   -19% |    720 |
@@ -529,7 +529,7 @@ US desktop, top results:
 | #   | Topic                                                          | Primary keyword (vol / KD)                | Secondary                                                                                                          | Why                                                                                                                      | Status                                             |
 | --- | -------------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
 | 1   | How to write a video script for talking to camera              | how to write a video script (2,900 / 1)   | write a video script, how to make a video script, video script template, video script example                      | Largest easy cluster, +440% YoY, weak SERP, directly feeds AI script writer + teleprompter                               | **Covered** 2026-10-24 ([log](./blog-post-log.md)) |
-| 2   | Video script examples for Reels, Shorts and YouTube            | marketing video script example (720 / 0)  | video tutorial script (1,300 / 0), video script examples (390 / 3), youtube script (1,900 / 18)                    | Example-led follow-up; links to #1                                                                                       | Planned                                            |
+| 2   | Video script examples for Reels, Shorts and YouTube            | marketing video script example (720 / 0)  | video tutorial script (1,300 / 0), video script examples (390 / 3), youtube script (1,900 / 18)                    | Example-led follow-up; links to #1                                                                                       | **Covered** 2026-11-13 ([log](./blog-post-log.md)) |
 | 3   | Teleprompter app for Mac: how to set one up and read naturally | teleprompter app for mac (720 / 19)       | teleprompter for mac (1,000 / 55), free teleprompter for mac (170 / 21), does capcut have a teleprompter (140 / 0) | Product page target; needs a fair comparison including free options                                                      | Planned                                            |
 | 4   | What is a teleprompter and how does it work (for creators)     | what is a teleprompter (2,400 / 0)        | how teleprompter works (720 / 0), teleprompter meaning (590 / 0), what does a teleprompter look like (210 / 4)     | Easy informational volume; top of funnel                                                                                 | **Covered** 2026-10-26 ([log](./blog-post-log.md)) |
 | 5   | Hook ideas for talking-head videos                             | hook ideas (3,600 / 11)                   | video hooks (210 / 4), good hook ideas (320 / 11), viral video hooks for reels (90 / 3)                            | Answer "7 types of hooks" PAA with video examples                                                                        | Planned                                            |
@@ -553,6 +553,69 @@ Not planned: faceless content (Yapper is for appearing on camera), transcript ex
 - **SERPs:** `serp/google/organic/live/advanced` for 12 queries, US desktop, People Also Ask depth 1, plus Google search in the browser and reading the top pages for the chosen post.
 - **Spend:** about $1.12 of DataForSEO credit for this research (suggestions, related, ranked, SERP).
 - **Limits:** volumes are Google Ads ranges and close variants share a figure; KD is DataForSEO's estimate. GSC positions are averages across countries and devices.
+
+## November 8, 2026 update: talking-head-video post
+
+Research date: November 8, 2026, Pacific. Fresh GSC pull, 28 days October 10–November 6, 2026, and 90 days August 9–November 6, 2026, inclusive.
+
+**Post:** [What Is a Talking Head Video? A Simple Recording Workflow](https://ypr.app/blog/talking-head-video), published 2026-11-08.
+
+**Keywords covered (conservative dedup):**
+
+| Keyword                          | Vol |  KD |
+| -------------------------------- | --: | --: |
+| talking head video               | 390 |   0 |
+| what is a talking head video     | 260 |   0 |
+| how to make a talking head video |  40 |   0 |
+| how to film yourself             |  90 |   0 |
+
+Deduplicated total: 780 monthly searches. Mean KD: 0.0 across 4 counted terms. "video talking head" (320, KD 0) excluded as inversion phrase volume per brief; not added to total.
+
+**Why:** October queue #8, creator Studio intent only. No speech practice, impromptu, random-topic or public-speaking material. Fresh GSC (28 days to Nov 6): /blog/what-is-a-teleprompter 0 clicks/240 impressions/19.375 pos; /features/teleprompter-recorder 0/35/7.43 (90-day 2/45/7.13); /blog/how-to-write-a-video-script 1/18/53.44. Site 155 clicks/14,210 impressions 28 days; 503/35,060 90 days; much of that is legacy speech traffic, NOT evidence of creator demand.
+
+**Competition:** DataForSEO broad US SERP is mixed: stock video (#1, #4), videography agency (#2), tips (#3), creation content (#5, #6). Not a clean thin how-to SERP. A definition-and-workflow title resolves intent and matches the 260-volume explicit question. Read pages: teleprompter.com (definition, gear, lighting, script, editing, FAQs; overclaims prompter eliminates pauses/builds trust with no measured support); baldrhino.com (strong current guide with interactive framing/light checks, mic tests, spoken-script separation, pickups); W3C (primary authority: captions contain speech and meaningful non-speech audio; automatic captions require accuracy review, not assumed accessibility compliance). Product facts verified 2026-11-08: ypr.app/features/teleprompter-recorder — native Mac recording/editing, script in recorder, text size/scroll speed, camera/mic choice, portrait-first guides, takes in project. Windows unavailable; mobile coming soon, NOT available now. Recorder in memberships and 7-day trial, recording uses no AI credits.
+
+**Content:** Definition-first (40–60 words): real person speaks toward camera, generally head/shoulders/chest; one-person tutorial/update/review. Compares talking head vs screen recording vs interview vs AI avatar in concise table. Does not imply avatar generation is a Yapper feature. Minimum setup: current phone or Mac webcam, stable eye-level support, quiet soft-furnished room, window/front-side light; buy nothing before recording 20-second test. No unverified product/hardware reviews. Recording checklist: frame for actual aspect ratio, headroom and gestures; background; test for glare/focus; put mic near mouth and listen through headphones; keep script close to lens. Safe practical advice, not "every mic is better than built-in". No expensive gear recommendations. Original 60-second script for a creator explaining a two-step desk reset, clearly a fictional demonstration, not a real customer performance story. Includes hook→problem→two actions→one closing instruction. Example hook "If your desk is tidy but you still lose your notes, try a two-minute reset before you close your laptop." Actions: one capture place; write next action before closing. No invented productivity statistic. Separate shot sheet with time estimates, spoken line and visual action. A-roll speaker, close-up tray/notebook, screen showing a made-up task list, return to face. Stage directions out of teleprompter script. Word count accurately measured (128 spoken words excluding [pause] markers), duration calculated from pace (51s at 150 wpm / 64s at 120 wpm before pauses). Script vs bullets vs memorization decision: full wording for precise explanation, bullets for familiar material, mixed for demo. Links prior script and memorization posts; doesn't re-teach their whole content. Continuous take or segments: one complete take for natural continuity, sections for exact wording/demos; on stumble pause and restart complete sentence, leave handles before/after. Preserves best complete take. Answers real X question. Natural teleprompter use: small thought units, readable size, narrow line width near lens, pause-aware pace and 20-second test. Never claims app fixes eye contact or anxiety automatically. Links actual Mac feature. Editing and captions: choose best take, cut repetition not every breath, insert only relevant evidence/B-roll, review automatic captions (names, numbers, negation, line breaks), ensure overlays don't hide them. Cites W3C. Verifies actual Yapper editor/caption feature pages before product instructions; no invented support for exports/platforms. Troubleshooting table: dark face→reorient to window; echo→quieter furnished room/closer mic; reading eyes→narrower near-lens text; robotic→spoken rewrite and pauses; tedious edit→shorter sections; inaccurate captions→manual correction. Binary final QA checklist: message, sound, face, visuals, captions, ending. FAQs: can phone work? need teleprompter? best length depends on message? portrait/landscape? one take vs clips? Mac/Windows availability? No universal platform max lengths unless rechecked in official platform docs. 1,600–2,100 useful words plus copyable script+shot sheet in accessible HTML; no unrequested video/image production required. Qualified device capabilities and aperture advice. Removed unsupported platform length/performance claims.
+
+**Real community and question sources:**
+
+- reddit.com/r/videography/comments/1bxlcez/best_mic_setup_for_talking_heads_style_indoor/ — mic distance, room and framing constraints; no endorsement of every gear suggestion.
+- reddit.com/r/Filmmakers/comments/1gscfkw/how_is_this_setup_for_a_talking_head_video/ — framing/light/audio feedback; don't reuse the poster's recording as ours.
+- quora.com/How-do-I-record-video-of-myself-for-youtube — eye line, format, notes, light. Search-visible content discovery, not research authority.
+- x.com/astackhouseUGC/status/2118739182717923461 — genuine question whether one long continuous talking-head recording or individual sections is better. Address trade-offs, not a universal rule.
+- x.com/justedyme/status/2119418601547399291 — suggestion to support face-to-camera claims with visual evidence; commentary, not statistical proof.
+
+No public replies posted or drafted in an external app.
+
+**Internal links / boundaries:** Links /blog/how-to-write-a-video-script, /blog/what-is-a-teleprompter, /blog/how-to-memorize-a-script, /features/teleprompter-recorder, /features/transcript-video-editor, /features/automatic-captions (last two verified live before linking). Adds inbound from script and teleprompter posts. Keeps this strictly recording/creator Studio; no new speech practice guides or edits to old impromptu posts.
+
+**JSON update:** Set `covered: "2026-11-08 talking-head-video"` on `talking head video`, `what is a talking head video`, `how to make a talking head video`, `how to film yourself`. Do not mark `video talking head` (inversion) as covered.
+
+## November 13, 2026 update: video-script-examples post
+
+Research date: November 13, 2026, Pacific. Extra mid-week post. GSC 90 days to November 11, 2026; DataForSEO Labs keyword overview, US, pulled November 13.
+
+**Post:** [Video script examples: 6 short scripts you can copy](https://ypr.app/blog/video-script-examples), published 2026-11-13.
+
+**Keywords covered (one per variant group):**
+
+| Keyword                        | Vol |  KD |
+| ------------------------------ | --: | --: |
+| marketing video script example | 880 |   0 |
+| video script examples          | 480 |   3 |
+| corporate video script example | 170 |   0 |
+| promo video script             |  70 |   0 |
+| training video script example  |  70 |   0 |
+| explainer video script example |  50 |   0 |
+| youtube video script example   |  50 |   0 |
+
+Deduplicated total: 1,770. Mean KD 0.4. Also marked covered in the JSON: video script example, corporate video script examples, explainer video script examples (same variant groups). The examples terms move from /blog/how-to-write-a-video-script to this page. Not marked: video tutorial script (1,300, KD 7), which needs its own template page.
+
+**Why:** Queue #2. GSC shows the examples intent reaching the how-to post at position 90 to 100, where it has only one example. Top pages each cover one video type; this one covers six with measured word counts.
+
+**Content:** Six original, illustrative scripts with placeholder products, beat tables, word counts and times at 150 wpm (NCVS), stage notes for the tutorial, YouTube Shorts 3-minute maximum (YouTube Blog), adaptation steps, mistakes, FAQ. Links to the script writer, teleprompter recorder, transcript editor and captions pages.
+
+**Community sources:** reddit.com/r/digital_marketing/comments/14navm3/, reddit.com/r/UGCcreators/comments/1rkq2en/, reddit.com/r/marketing/comments/5p76zl/. No public replies posted.
 
 ## Related docs
 

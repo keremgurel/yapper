@@ -18,7 +18,6 @@ struct ExportJobCenterTests {
         let job = try #require(center.job(id))
         #expect(job.projectID == snapshot.project.id)
         #expect(job.projectName == "Talking head")
-        #expect(job.package == snapshot.package)
         #expect(job.state == .preparing)
 
         let ended = try #require(await center.completion(of: id))
@@ -50,7 +49,7 @@ struct ExportJobCenterTests {
         #expect(center.job(id)?.state == .finished(.file(destination)))
     }
 
-    @Test("The package counts as in use only while its footage is being copied")
+    @Test("The project counts as in use only while its footage is being copied")
     func readingSourcesWindow() async throws {
         let center = ExportJobCenter()
         let gate = Gate()
@@ -60,14 +59,13 @@ struct ExportJobCenterTests {
             await gate.wait()
             return .file(destination)
         }
-        let package = try #require(snapshot.package)
-        #expect(center.isReadingSources(of: package))
-        #expect(!center.isReadingSources(of: ProjectPackage(url: URL(filePath: "/tmp/Other.yapperproj"))))
+        #expect(center.isReadingSources(projectID: snapshot.projectID))
+        #expect(!center.isReadingSources(projectID: UUID()))
         #expect(center.isExporting(to: destination))
 
         try await eventually { reporter != nil }
         reporter?.rendered(0)
-        #expect(!center.isReadingSources(of: package))
+        #expect(!center.isReadingSources(projectID: snapshot.projectID))
         #expect(center.isExporting(to: destination))
 
         await gate.open()
@@ -121,10 +119,48 @@ struct ExportJobCenterTests {
         #expect(ended.state == .finished(.poster(itemID: "item-42")))
     }
 
+    @Test("One file is one key, however its URL is spelled")
+    func destinationKeys() throws {
+        let folder = FileManager.default.temporaryDirectory
+            .appending(path: "yapper-destination-key-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let key = ExportDestinationKey.of(folder.appending(path: "Export.mp4"))
+
+        #expect(ExportDestinationKey.of(folder.appending(path: "export.MP4")) == key)
+        #expect(ExportDestinationKey.of(URL(filePath: "/private/tmp/a.mp4")) == ExportDestinationKey.of(URL(filePath: "/tmp/a.mp4")))
+        #expect(ExportDestinationKey.of(folder.appending(path: "sub/../Export.mp4")) == key)
+        // Precomposed and decomposed é name one file on APFS.
+        #expect(ExportDestinationKey.of(folder.appending(path: "Caf\u{E9}.mp4"))
+            == ExportDestinationKey.of(folder.appending(path: "Cafe\u{301}.mp4")))
+        #expect(ExportDestinationKey.of(folder.appending(path: "Other.mp4")) != key)
+    }
+
+    @Test("A reserved file is taken until it is released or a job takes it over")
+    func reservations() async throws {
+        let center = ExportJobCenter()
+        let gate = Gate()
+        #expect(center.reserve(URL(filePath: "/tmp/Clip.mp4")))
+        #expect(!center.reserve(URL(filePath: "/private/tmp/clip.mp4")))
+        #expect(center.isExporting(to: URL(filePath: "/tmp/CLIP.mp4")))
+        center.releaseReservation(URL(filePath: "/tmp/Clip.mp4"))
+        #expect(!center.isExporting(to: URL(filePath: "/tmp/Clip.mp4")))
+
+        #expect(center.reserve(destination))
+        let id = center.start(snapshot, kind: .file, to: destination) { _ in
+            await gate.wait()
+            return .file(URL(filePath: "/tmp/talking-head.mp4"))
+        }
+        #expect(!center.reserve(destination))
+        await gate.open()
+        _ = await center.completion(of: id)
+        #expect(center.reserve(destination))
+    }
+
     @Test("The badge sums up running, failed and finished jobs")
     func summary() {
         func job(_ state: ExportJobState) -> ExportJob {
-            ExportJob(id: UUID(), kind: .file, projectID: UUID(), projectName: "P", package: nil,
+            ExportJob(id: UUID(), kind: .file, projectID: UUID(), projectName: "P",
                       destination: destination, startedAt: Date(), state: state)
         }
         #expect(ExportJobsSummary(jobs: []) == nil)
@@ -137,7 +173,7 @@ struct ExportJobCenterTests {
         #expect(ExportJobsSummary(jobs: [job(.finished(.file(destination))), job(.failed("No"))])?.tone == .failed)
         #expect(ExportJobsSummary(jobs: [job(.finished(.file(destination)))])?.label == "Exported")
         var saved = job(.finished(.file(destination)))
-        saved = ExportJob(id: saved.id, kind: .file, projectID: saved.projectID, projectName: "P", package: nil,
+        saved = ExportJob(id: saved.id, kind: .file, projectID: saved.projectID, projectName: "P",
                           destination: URL(filePath: "/Users/someone/Exports folder/p.mp4"),
                           startedAt: saved.startedAt, state: saved.state)
         #expect(ExportJobCopy.status(saved) == "Saved to Exports folder")

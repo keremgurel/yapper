@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import PlatformIcon from "@/components/publish/platform-icon";
 import type { PublishPlatform } from "@/lib/db/schema";
 import { beginConnect } from "@/lib/publish/begin-connect";
 import { PLATFORMS } from "@/lib/publish/platforms";
@@ -14,22 +13,17 @@ export default function ConnectTile({
 }) {
   const label = PLATFORMS[platform].label;
   return (
-    <div className="bg-muted flex flex-col items-center px-6 py-14 text-center">
-      <span className="bg-card mb-3 grid h-10 w-10 place-items-center rounded-full">
-        <PlatformIcon platform={platform} className="h-5 w-5" />
-      </span>
-      <p className="text-foreground text-sm font-semibold">
-        Connect {label} to repost from it
-      </p>
-      <p className="text-muted-foreground mt-1 max-w-[36ch] text-[13px] leading-relaxed">
-        Your published videos show up here, and {label} becomes a place this
-        Poster can send to.
-      </p>
+    <div className="border-border flex flex-wrap items-center justify-between gap-3 border-t py-4">
+      <div>
+        <p className="text-sm font-semibold">Bring over your {label} videos</p>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Connect your account to reuse posts and publish new ones.
+        </p>
+      </div>
       <Button
         type="button"
         variant="outline"
-        className="mt-4"
-        onClick={() => beginConnect(platform)}
+        onClick={() => beginConnect(platform, "poster-source")}
       >
         Connect {label}
       </Button>

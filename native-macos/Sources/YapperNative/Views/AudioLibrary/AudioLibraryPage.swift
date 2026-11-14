@@ -53,7 +53,7 @@ struct AudioLibraryPage: View {
         .overlay {
             if isDropTargeted {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(Color.yapperOrange, style: StrokeStyle(lineWidth: 2, dash: [7, 5]))
+                    .strokeBorder(Color.studioAccent.opacity(0.7), style: StrokeStyle(lineWidth: 2, dash: [7, 5]))
                     .padding(10)
                     .allowsHitTesting(false)
             }
@@ -95,7 +95,7 @@ struct AudioLibraryPage: View {
                 }
                 .buttonStyle(EditorSecondaryButtonStyle())
                 Button(action: importAudio) {
-                    Label("Import audio", systemImage: "square.and.arrow.down")
+                    StudioGlyphLabel("Import audio", glyph: .plus, size: 13)
                 }
                 .buttonStyle(EditorSecondaryButtonStyle())
                 .disabled(store.isRecovering)

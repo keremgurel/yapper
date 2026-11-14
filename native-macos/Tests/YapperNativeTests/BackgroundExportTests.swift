@@ -178,6 +178,95 @@ struct BackgroundExportTests {
         #expect(await runner.startedCount() == 0)
         session.endLongOperation(lease)
     }
+
+    @Test("Opening another project while an export is being captured exports nothing")
+    func projectSwitchDuringCapture() async throws {
+        let fixture = try ExportFixture()
+        defer { fixture.remove() }
+        let runner = GatedExportRunner()
+        let session = EditorSession(store: MemoryProjectStore(), exportRunner: runner.run)
+        await Task.yield()
+        await session.openProject(ProjectPackage(url: fixture.directory.appending(path: "Talk.yapperproj")))
+        fixture.load(into: session, named: "Talk")
+
+        // A trim still saving holds the edit slot, so the capture waits.
+        _ = try #require(await session.beginPreparedTimelineEdit())
+        let export = Task { @MainActor in await session.export(to: fixture.destination) }
+        try await Task.sleep(for: .milliseconds(50))
+        await session.openProject(ProjectPackage(url: fixture.directory.appending(path: "Next idea.yapperproj")))
+        session.endPreparedTimelineEdit()
+        let id = await export.value
+
+        #expect(id == nil)
+        #expect(session.exportJobs.jobs.isEmpty)
+        #expect(await runner.startedCount() == 0)
+        #expect(session.statusMessage == "Nothing was exported because the project changed while the export was starting. Export again.")
+        #expect(!session.exportJobs.isExporting(to: fixture.destination))
+    }
+
+    @Test("A second export to the same file is refused while the first is still being captured")
+    func sameFileDuringCapture() async throws {
+        let fixture = try ExportFixture()
+        defer { fixture.remove() }
+        let runner = GatedExportRunner()
+        let session = EditorSession(store: MemoryProjectStore(), exportRunner: runner.run)
+        await Task.yield()
+        fixture.load(into: session, named: "Twice")
+
+        _ = try #require(await session.beginPreparedTimelineEdit())
+        let first = Task { @MainActor in await session.export(to: fixture.destination) }
+        try await Task.sleep(for: .milliseconds(50))
+        // Same file: another case, and the folder reached through a symlink.
+        let folder = fixture.directory.path
+        let otherSpelling = folder.hasPrefix("/private/") ? String(folder.dropFirst("/private".count)) : "/private" + folder
+        let sameFile = URL(filePath: otherSpelling, directoryHint: .isDirectory).appending(path: "EXPORT.MP4")
+        // Its own task: without the claim it would queue behind the edit slot
+        // this test holds, and the test would hang instead of failing.
+        let second = Task { @MainActor in await session.export(to: sameFile) }
+        try await eventually { session.statusMessage == "That file is still exporting. Choose another name." }
+        session.endPreparedTimelineEdit()
+        #expect(await second.value == nil)
+
+        let id = try #require(await first.value)
+        await runner.release()
+        #expect(await session.exportJobs.completion(of: id)?.state == .finished(.file(fixture.destination)))
+        #expect(await runner.startedCount() == 1)
+    }
+
+    @Test("Renaming or trashing a project is refused while an export copies its footage")
+    func moveGuardsWhilePreparing() async throws {
+        let fixture = try ExportFixture()
+        defer { fixture.remove() }
+        let runner = PreparingExportRunner()
+        let session = EditorSession(store: MemoryProjectStore(), exportRunner: runner.run)
+        await Task.yield()
+        let package = ProjectPackage(url: fixture.directory.appending(path: "Talk.yapperproj"))
+        await session.openProject(package)
+        fixture.load(into: session, named: "Talk")
+
+        let id = try #require(await session.export(to: fixture.destination))
+        try await eventually { await runner.startedCount() == 1 }
+        #expect(session.exportJobs.job(id)?.state == .preparing)
+
+        await session.renameCurrentProject(to: "Renamed talk")
+        #expect(session.statusMessage == EditorSession.renameRefusal)
+        #expect(session.projectNavigation.currentPackage == package)
+
+        await session.trashProject(package)
+        #expect(session.statusMessage == EditorSession.trashRefusal)
+        #expect(session.projectNavigation.currentPackage == package)
+        #expect(FileManager.default.fileExists(atPath: package.url.path))
+
+        await runner.release()
+        _ = await session.exportJobs.completion(of: id)
+        // A rename moves the package into the library folder, which a test run
+        // only has once some test has created it.
+        try FileManager.default.createDirectory(at: session.library.directory, withIntermediateDirectories: true)
+        await session.renameCurrentProject(to: "Renamed talk")
+        let renamed = try #require(session.projectNavigation.currentPackage)
+        defer { try? FileManager.default.removeItem(at: renamed.url) }
+        #expect(renamed.displayName == "Renamed talk")
+    }
 }
 
 /// A source file and a destination in a private folder, plus the one-clip
@@ -249,4 +338,26 @@ private actor GatedExportRunner {
     func startedCount() -> Int { started.count }
     func projects() -> [EditorProject] { started }
     func cancellationCount() -> Int { cancellations }
+}
+
+/// Holds the job in "Preparing footage" until the test lets it go, the way
+/// a slow copy of camera footage would.
+private actor PreparingExportRunner {
+    private var started = 0
+    private var released = false
+
+    nonisolated var run: NativeExportRunner {
+        { project, url, progress in try await self.render(project, to: url, progress: progress) }
+    }
+
+    func render(_ project: EditorProject, to url: URL, progress: ExportProgressHandler) async throws {
+        started += 1
+        while !released { try await Task.sleep(for: .milliseconds(5)) }
+        progress(0)
+        try Data("rendered \(project.name)".utf8).write(to: url)
+        progress(1)
+    }
+
+    func release() { released = true }
+    func startedCount() -> Int { started }
 }

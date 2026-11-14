@@ -27,18 +27,18 @@ struct OfflineMediaBanner: View {
                     .font(.system(size: 14, weight: .bold))
 
                 Text(summary)
-                    .font(.system(size: 11))
+                    .font(.studioCaption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Text("Your edit is safe. Reconnect the drive and it picks up by itself.")
-                    .font(.system(size: 11))
+                    .font(.studioCaption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Button(first.policy == .builtInAudio ? "Built-in audio unavailable" : "Locate \(first.name)…") {
+                Button(first.policy == .builtInAudio ? "Built-in audio unavailable" : "Locate \(first.name)") {
                     if let media = first.media {
                         RelinkPanel.locate(media, for: session)
                     } else if let layer = first.audioLayer {

@@ -40,7 +40,7 @@ struct DictionaryWordRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 TextField("Preferred spelling", text: $term)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.studioSectionTitle)
                     .focused($termFocused)
                     .disabled(editor.saving)
                     .onSubmit(commitTerm)
@@ -48,7 +48,7 @@ struct DictionaryWordRow: View {
                         if !focused { commitTerm() }
                     }
                 Text("Preferred spelling sent to the transcriber")
-                    .font(.system(size: 12))
+                    .font(.studioLabel)
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 12)
@@ -66,7 +66,7 @@ struct DictionaryWordRow: View {
     private func failure(_ message: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text(message)
-                .font(.system(size: 12, weight: .medium))
+                .font(.studioLabelStrong)
                 .foregroundStyle(Color.studioDanger)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)

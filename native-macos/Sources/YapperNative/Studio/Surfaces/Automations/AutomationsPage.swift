@@ -82,7 +82,7 @@ private struct AutomationNotices: View {
             .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.studioFaintFill))
             HStack {
                 Text("Saving changes updates your rule; it does not restart server checks. Review waiting deliveries in Activity below.")
-                    .font(.system(size: 12)).foregroundStyle(.secondary)
+                    .font(.studioLabel).foregroundStyle(.secondary)
                 Button("Check availability") { Task { await store.refresh() } }
                     .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                 Button("Review scheduled posts") { StudioNavigation.shared.goTo(.calendar) }

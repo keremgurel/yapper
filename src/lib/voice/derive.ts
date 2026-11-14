@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { fetchBoundedJson } from "@/lib/http/outbound";
 import { undash } from "@/lib/text/undash";
 import {
@@ -55,7 +56,7 @@ export async function deriveVoice(
   samples: DeriveSample[],
   signal?: AbortSignal,
 ): Promise<DerivedVoice> {
-  const key = process.env.SURPLUS_API_KEY;
+  const key = surplusKey("brain");
   if (!key) throw new Error("no_provider");
   const base =
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";

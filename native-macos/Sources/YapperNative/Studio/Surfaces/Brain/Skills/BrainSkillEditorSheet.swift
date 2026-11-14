@@ -42,7 +42,7 @@ struct BrainSkillEditorSheet: View {
             }
         } else {
             BrainEditorPanel(title: "Edit skill", onClose: onClose) {
-                Text("This skill isn't here anymore.").font(.system(size: 13)).foregroundStyle(.secondary)
+                Text("This skill isn't here anymore.").font(.studioBody).foregroundStyle(.secondary)
             } main: { EmptyView() }
         }
     }
@@ -58,7 +58,7 @@ struct BrainSkillEditorSheet: View {
                 TextField("The idea is a personal story or a case study", text: Binding(get: { skill.whenToUse }, set: { store.edit(skill.id, .whenToUse($0)) }))
                     .textFieldStyle(.native)
                 Text("This line decides whether the skill gets pulled into a piece of writing. Say what has to be true, not what the skill does.")
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    .font(.studioCaption).foregroundStyle(.secondary)
             }
         }
         NativeField(label: "Use for") {
@@ -71,7 +71,7 @@ struct BrainSkillEditorSheet: View {
                     }
                 }
                 Text(skill.versionFormats.isEmpty ? "Nothing picked, so it shapes every format." : "Only shapes these formats.")
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    .font(.studioCaption).foregroundStyle(.secondary)
             }
         }
         NativeField(label: "Where it applies") {
@@ -84,7 +84,7 @@ struct BrainSkillEditorSheet: View {
                     }
                 }
                 Text(skill.surfaces.isEmpty ? "Nothing picked, so it is considered everywhere." : "Only considered on these.")
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    .font(.studioCaption).foregroundStyle(.secondary)
             }
         }
     }
@@ -92,11 +92,11 @@ struct BrainSkillEditorSheet: View {
     private func origin(_ skill: BrainSkill) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(skill.isStarter ? "Included by Yapper" : "Installed from Skills").font(.system(size: 13, weight: .semibold))
+                Text(skill.isStarter ? "Included by Yapper" : "Installed from Skills").font(.studioBodyStrong)
                 Text(skill.customized
                      ? "You've customized this copy. Reset restores the latest official version."
                      : "This matches the official version. You can edit it freely.")
-                    .font(.system(size: 12)).foregroundStyle(.secondary)
+                    .font(.studioLabel).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Button { confirmingReset = true } label: {

@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { fetchBoundedJson } from "@/lib/http/outbound";
 
 const PROVIDER_TIMEOUT_MS = 35_000;
@@ -82,7 +83,7 @@ export async function brainstorm(
   input: BrainstormInput,
   signal?: AbortSignal,
 ): Promise<string> {
-  const key = process.env.SURPLUS_API_KEY;
+  const key = surplusKey("ideas");
   if (!key) throw new Error("no_provider");
   const base =
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";

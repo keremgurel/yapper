@@ -11,17 +11,17 @@ struct IdeaBulkBar: View {
         VStack(spacing: 8) {
             if selection.failed {
                 Text("The change couldn't be confirmed. Your selection is kept; check the items and try again.")
-                    .font(.system(size: 12))
+                    .font(.studioLabel)
                     .foregroundStyle(Color.studioDanger)
                     .padding(.horizontal, 14).padding(.vertical, 8)
                     .background(NativeCardBackground(radius: 10))
             }
             HStack(spacing: 6) {
-                Text("\(selection.count) selected").font(.system(size: 13, weight: .semibold)).padding(.horizontal, 6)
+                Text("\(selection.count) selected").font(.studioBodyStrong).padding(.horizontal, 6)
                 pillarMenu
                 statusMenu
                 deleteControl
-                Button { selection.clear() } label: { Image(systemName: "xmark").font(.system(size: 12)) }
+                Button { selection.clear() } label: { Image(systemName: "xmark").font(.studioLabel) }
                     .buttonStyle(EditorGhostButtonStyle(size: .small))
                     .help("Clear selection")
             }
@@ -45,7 +45,7 @@ struct IdeaBulkBar: View {
             Divider()
             Button("Clear pillar") { selection.run(.pillar(nil)) }
         } label: {
-            Label("Pillar", systemImage: "tag").font(.system(size: 13, weight: .medium))
+            Label("Pillar", systemImage: "tag").font(.studioBodyStrong)
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
@@ -59,7 +59,7 @@ struct IdeaBulkBar: View {
                 Button(status.label) { selection.run(.status(status)) }
             }
         } label: {
-            Text("Status").font(.system(size: 13, weight: .medium))
+            Text("Status").font(.studioBodyStrong)
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
@@ -78,7 +78,7 @@ struct IdeaBulkBar: View {
             Button("Cancel") { confirmDelete = false }
                 .buttonStyle(EditorGhostButtonStyle(size: .small))
         } else {
-            Button { confirmDelete = true } label: { Image(systemName: "trash").font(.system(size: 12)) }
+            Button { confirmDelete = true } label: { Image(systemName: "trash").font(.studioLabel) }
                 .buttonStyle(EditorGhostButtonStyle(size: .small))
                 .help("Delete selected")
         }

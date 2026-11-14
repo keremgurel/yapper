@@ -22,7 +22,7 @@ struct TimelineAudioCell: View {
 
     var body: some View {
         ZStack(alignment: .leading) {
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
+            RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
                 .fill(Color(red: 0.07, green: 0.25, blue: 0.27).opacity(0.96))
 
             waveform
@@ -56,14 +56,14 @@ struct TimelineAudioCell: View {
             .allowsHitTesting(false)
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
+            RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
                 .stroke(
                     selected ? Color.cyan.opacity(0.9) : Color.secondary.opacity(0.34),
                     lineWidth: selected ? 1.1 : 0.7
                 )
         }
         .frame(height: height)
-        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous))
     }
 
     @ViewBuilder

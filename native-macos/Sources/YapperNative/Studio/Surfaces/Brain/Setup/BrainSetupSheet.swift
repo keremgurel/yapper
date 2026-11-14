@@ -71,7 +71,7 @@ struct BrainSetupSheet: View {
         NativeTextArea(
             text: $setup.document,
             placeholder: "Paste the whole thing here…",
-            font: .system(size: 13),
+            font: .studioBody,
             minHeight: 280
         )
         .disabled(setup.extracting)

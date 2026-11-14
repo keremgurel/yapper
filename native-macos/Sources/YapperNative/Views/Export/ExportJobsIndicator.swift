@@ -38,7 +38,7 @@ private struct ExportJobsBadge: View {
         HStack(spacing: 7) {
             ExportProgressRing(tone: summary.tone, fraction: summary.fraction)
             Text(summary.label)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.studioLabelStrong)
                 .monospacedDigit()
                 .lineLimit(1)
                 .fixedSize()

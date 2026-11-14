@@ -7,6 +7,7 @@ import { type CoverDraft } from "@/components/publish/poster/cover-draft";
 import { sourceCover, sourceCaptions } from "./source-defaults";
 import type { PosterVideo } from "@/components/publish/poster/poster-video";
 import { renderCover } from "@/components/publish/poster/render-cover";
+import type { PublishPlatform } from "@/lib/db/schema";
 import { uploadThumbnailFile } from "@/hooks/use-thumbnail-upload";
 
 /**
@@ -25,15 +26,17 @@ export function usePublishPrep() {
       videos: PosterVideo[],
       covers: Record<string, CoverDraft>,
       captions: Record<string, CaptionSet>,
+      destinations: readonly PublishPlatform[],
     ) => {
       if (!videos.length) return;
       setPreparing(true);
       setWarning("");
+      const usesImage = destinations.some((platform) => platform !== "tiktok");
       const prepared = await Promise.all(
         videos.map(async (video) => {
           const cover = covers[video.id] ?? sourceCover(video);
           let thumbnail: { key: string; previewUrl: string } | undefined;
-          if (cover.image) {
+          if (cover.image && usesImage) {
             try {
               thumbnail = await uploadThumbnailFile(
                 await renderCover(cover, "image/jpeg"),
@@ -54,11 +57,15 @@ export function usePublishPrep() {
             contentItemId:
               video.kind === "yapper" ? video.contentItemId : undefined,
             thumbnailKey: thumbnail?.key,
+            coverTimestampMs: cover.frameImage
+              ? Math.floor(cover.frameTime * 1000)
+              : undefined,
             thumbnailPreviewUrl: thumbnail?.previewUrl,
           } satisfies CrossPostTarget;
         }),
       );
       if (
+        usesImage &&
         videos.some(
           (video) => (covers[video.id] ?? sourceCover(video)).image,
         ) &&

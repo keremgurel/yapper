@@ -31,7 +31,7 @@ struct TimelineTrackRail: View {
             Color.panelBackground.frame(height: TimelineRowLayout.rulerHeight)
 
             if layout.hasText {
-                TrackRailRow(glyph: "textformat", height: TimelineRowLayout.textRowHeight)
+                TrackRailRow(glyph: .text, height: TimelineRowLayout.textRowHeight)
             }
 
             // Highest lane first: the rail reads the way the lanes composite.
@@ -49,12 +49,12 @@ struct TimelineTrackRail: View {
             // beside the tracks it labels. Sounds stack when they overlap: see
             // AudioTracks.
             ForEach(0 ..< layout.audioTrackCount, id: \.self) { _ in
-                TrackRailRow(glyph: "waveform", height: TimelineRowLayout.audioRowHeight)
+                TrackRailRow(glyph: .audio, height: TimelineRowLayout.audioRowHeight)
             }
 
             Spacer(minLength: 0)
         }
-        .background(Color.panelBackground.opacity(0.72))
+        .background(Color.panelBackground)
     }
 
     private var overlayTracks: [Int] {
@@ -66,11 +66,11 @@ struct TimelineTrackRail: View {
         let hidden = session.isOverlayTrackHidden(track)
         let isEmpty = OverlayTracks.on(track, in: session.overlays).isEmpty
         return TrackRailRow(
-            glyph: "photo.on.rectangle",
+            glyph: .overlays,
             height: TimelineRowLayout.overlayRowHeight
         ) {
             TrackControlButton(
-                icon: hidden ? "eye.slash" : "eye",
+                icon: hidden ? .eyeOff : .eye,
                 help: hidden ? "Show overlay lane \(track + 1)" : "Hide overlay lane \(track + 1)",
                 isOn: !hidden
             ) {
@@ -92,11 +92,11 @@ struct TimelineTrackRail: View {
 
     private var captionRow: some View {
         TrackRailRow(
-            glyph: "captions.bubble",
+            glyph: .captions,
             height: TimelineRowLayout.captionRowHeight
         ) {
             TrackControlButton(
-                icon: session.captionsVisible ? "eye" : "eye.slash",
+                icon: session.captionsVisible ? .eye : .eyeOff,
                 help: session.captionsVisible ? "Hide the captions" : "Show the captions",
                 isOn: session.captionsVisible
             ) {
@@ -108,12 +108,12 @@ struct TimelineTrackRail: View {
 
     private var videoRow: some View {
         TrackRailRow(
-            glyph: "film",
+            glyph: .media,
             height: TimelineRowLayout.videoRowHeight,
             background: Color.studioFaintFill.opacity(0.55)
         ) {
             TrackControlButton(
-                icon: session.project.isVideoTrackHidden ? "eye.slash" : "eye",
+                icon: session.project.isVideoTrackHidden ? .eyeOff : .eye,
                 help: session.project.isVideoTrackHidden ? "Show the video" : "Hide the video",
                 isOn: !session.project.isVideoTrackHidden
             ) {
@@ -142,13 +142,13 @@ struct TimelineTrackRail: View {
 /// Fixed height and a hairline underneath, so the rail reads as a column of
 /// equals rather than a stack of differently sized cards.
 private struct TrackRailRow<Controls: View>: View {
-    let glyph: String
+    let glyph: StudioGlyphKind
     let height: Double
     var background: Color = .clear
     @ViewBuilder var controls: Controls
 
     init(
-        glyph: String,
+        glyph: StudioGlyphKind,
         height: Double,
         background: Color = .clear,
         @ViewBuilder controls: () -> Controls = { EmptyView() }
@@ -160,15 +160,14 @@ private struct TrackRailRow<Controls: View>: View {
     }
 
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: glyph)
-                .font(.system(size: 11, weight: .semibold))
+        HStack(spacing: 2) {
+            StudioGlyph(glyph, size: 15)
                 .foregroundStyle(.tertiary)
-                .frame(width: 16)
+                .frame(width: 18)
             controls
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 6)
+        .padding(.horizontal, 8)
         .frame(maxWidth: .infinity, minHeight: height, alignment: .leading)
         .background(background)
         .overlay(alignment: .bottom) {
@@ -197,10 +196,9 @@ private struct TrackVolumeMenu: View {
         Button {
             isOpen.toggle()
         } label: {
-            Image(systemName: icon)
-                .font(.system(size: 10.5, weight: .semibold))
+            StudioGlyph(icon, size: 15)
                 .foregroundStyle(tint)
-                .frame(width: 16, height: 18)
+                .frame(width: 20, height: 22)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.studioPlain)
@@ -218,38 +216,37 @@ private struct TrackVolumeMenu: View {
                     onChange: { session.previewVideoTrackVolume($0) },
                     onCommit: { session.commitVideoTrackVolume() }
                 )
-                Toggle("Mute", isOn: Binding(
+                InspectorCheckbox(title: "Mute the video track", isOn: Binding(
                     get: { isMuted },
                     set: { _ in session.toggleVideoTrackMuted() }
                 ))
-                .toggleStyle(.checkbox)
-                .font(.studioCaption)
             }
             .padding(14)
             .frame(width: 320)
         }
     }
 
-    private var icon: String {
-        if isMuted { return "speaker.slash" }
+    private var icon: StudioGlyphKind {
+        if isMuted { return .speakerMuted }
         return switch AudioLevel.percent(volume) {
-        case 0: "speaker.slash"
-        case ..<60: "speaker.fill"
-        case ..<110: "speaker.wave.2"
-        default: "speaker.wave.3"
+        case 0: .speakerMuted
+        case ..<60: .speakerLow
+        case ..<110: .speakerMid
+        default: .speakerHigh
         }
     }
 
     private var tint: Color {
         // Anything but untouched is worth seeing at a glance: a track quietly
-        // sitting at 30% is the reason a video sounds wrong.
-        if isMuted || abs(volume - AudioLevel.unity) > 0.005 { return Color.yapperOrange }
-        return isHovering ? Color.primary.opacity(0.85) : .secondary
+        // sitting at 30% is the reason a video sounds wrong. Full ink against
+        // a rail of muted glyphs, with the glyph itself saying which way.
+        if isMuted || abs(volume - AudioLevel.unity) > 0.005 { return .primary }
+        return isHovering ? .primary : Color.studioTextMuted
     }
 }
 
 private struct TrackControlButton: View {
-    let icon: String
+    let icon: StudioGlyphKind
     let help: String
     var isOn = true
     let action: () -> Void
@@ -258,10 +255,9 @@ private struct TrackControlButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 10.5, weight: .semibold))
+            StudioGlyph(icon, size: 15)
                 .foregroundStyle(tint)
-                .frame(width: 16, height: 18)
+                .frame(width: 20, height: 22)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.studioPlain)
@@ -273,9 +269,10 @@ private struct TrackControlButton: View {
 
     private var tint: Color {
         // Off is the state worth seeing at a glance: a hidden track is the
-        // reason something is missing from the picture.
-        if !isOn { return Color.yapperOrange }
-        return isHovering ? Color.primary.opacity(0.85) : .secondary
+        // reason something is missing from the picture. Full ink and a struck
+        // glyph against a rail of muted ones.
+        if !isOn { return .primary }
+        return isHovering ? .primary : Color.studioTextMuted
     }
 }
 
@@ -293,10 +290,9 @@ private struct TrackOverflowMenu<Content: View>: View {
         Menu {
             content
         } label: {
-            Image(systemName: "ellipsis")
-                .font(.system(size: 10.5, weight: .semibold))
-                .foregroundStyle(isHovering ? Color.primary.opacity(0.85) : .secondary)
-                .frame(width: 16, height: 18)
+            StudioGlyph.image(.more, size: 15)
+                .foregroundStyle(isHovering ? Color.primary : Color.studioTextMuted)
+                .frame(width: 20, height: 22)
                 .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)

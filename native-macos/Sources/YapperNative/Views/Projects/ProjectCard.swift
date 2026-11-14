@@ -35,7 +35,7 @@ struct ProjectCard: View {
                     }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(listing.summary.name)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.studioBodyStrong)
                         .lineLimit(1)
                         .foregroundStyle(.primary)
                     Text("\(duration) · \(Self.relative.localizedString(for: listing.summary.updatedAt, relativeTo: Date()))")
@@ -43,7 +43,7 @@ struct ProjectCard: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
-                Text("\(ProjectDiskUsage.label(storedBytes)) in project").font(.system(size: 11)).foregroundStyle(.secondary)
+                Text("\(ProjectDiskUsage.label(storedBytes)) in project").font(.studioCaption).foregroundStyle(.secondary)
                 .padding(.horizontal, 2)
             }
         }
@@ -51,7 +51,7 @@ struct ProjectCard: View {
         .clickableCursor()
         .contextMenu {
             Button("Open") { onOpen() }
-            Button("Rename…") { onRename() }
+            Button("Rename") { onRename() }
             Button("Duplicate") { onDuplicate() }
             Divider()
             Button("Show in Finder") { onReveal() }

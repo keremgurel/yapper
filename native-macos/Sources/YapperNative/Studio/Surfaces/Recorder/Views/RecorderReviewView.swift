@@ -32,7 +32,7 @@ struct RecorderReviewView: View {
         NativeSection(title: "Your take", meta: title, card: true) {
             VStack(alignment: .leading, spacing: 12) {
                 Text(take.hasVideo ? "Edit this video or download it. The take stays on this Mac." : "Your audio take is ready to play or download. The video editor needs a video track.")
-                    .font(.system(size: 13)).foregroundStyle(.secondary)
+                    .font(.studioBody).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 if take.hasVideo {
                 Button(action: openInEditor) {
@@ -59,7 +59,7 @@ struct RecorderReviewView: View {
                 }
                 if let warning = take.warning { Text(warning).font(.caption).foregroundStyle(Color.studioDanger) }
                 if let message {
-                    Text(message).font(.system(size: 12, weight: .medium)).foregroundStyle(Color.studioDanger)
+                    Text(message).font(.studioLabelStrong).foregroundStyle(Color.studioDanger)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }

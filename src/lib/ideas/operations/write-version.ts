@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import {
   preflightPaidActionOrResponse,
   refundCreditReservation,
@@ -61,7 +62,7 @@ export async function writeIdeaVersion(
     return refused(409, "empty_source_version");
   }
 
-  if (!process.env.SURPLUS_API_KEY) return refused(501, "no_provider");
+  if (!surplusKey("ideas")) return refused(501, "no_provider");
   const billing = await preflightPaidActionOrResponse(userId, "expand_idea");
   if (billing) return refusedBy(billing);
   const spendLimited = await guardProviderSpend(

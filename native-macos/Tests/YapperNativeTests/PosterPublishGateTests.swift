@@ -14,9 +14,11 @@ struct PosterPublishGateTests {
     }
 
     private func gate(_ remaining: [PublishPlatform], _ readiness: [PosterReadiness], youtube: PosterYouTubeSettings = .init(),
-                      description: String = "Body", tiktokReady: Bool = true, videoReady: Bool = true) -> PosterPublishGate {
+                      description: String = "Body", tiktokReady: Bool = true, tiktokAwaitingConsent: Bool = false,
+                      videoReady: Bool = true) -> PosterPublishGate {
         PosterPublishGate(remaining: remaining, readiness: readiness, publishable: PublishPlatform.enabledCases,
-                          videoReady: videoReady, youtube: youtube, youtubeDescription: description, tiktokReady: tiktokReady)
+                          videoReady: videoReady, youtube: youtube, youtubeDescription: description, tiktokReady: tiktokReady,
+                          tiktokAwaitingConsent: tiktokAwaitingConsent)
     }
 
     @Test func opensOnlyWhenEveryChosenDestinationIsReady() {
@@ -51,6 +53,25 @@ struct PosterPublishGateTests {
         #expect(gate([.tiktok], [ready(.tiktok, caption)], tiktokReady: true).canSend)
     }
 
+    @Test func anUncheckedDeclarationAsksForTheBoxNotForTikTok() {
+        let caption = PosterCaption(platform: "tiktok", title: "", body: "Body", hashtags: [])
+        let box = gate([.tiktok], [ready(.tiktok, caption)], tiktokReady: false, tiktokAwaitingConsent: true)
+        #expect(!box.canSend && box.waiting == [.tiktok])
+        #expect(box.finishing.isEmpty && box.needsConsentOnly)
+        // Settings that need a fix still name TikTok.
+        let settings = gate([.tiktok], [ready(.tiktok, caption)], tiktokReady: false)
+        #expect(settings.finishing == [.tiktok] && !settings.needsConsentOnly)
+        // Another destination with work left is named first; the box comes after.
+        let missingTitle = PosterCaption(platform: "youtube", title: "", body: "Body", hashtags: [])
+        let both = gate([.youtube, .tiktok], [ready(.youtube, missingTitle), ready(.tiktok, caption)],
+                        tiktokReady: false, tiktokAwaitingConsent: true)
+        #expect(both.finishing == [.youtube] && !both.needsConsentOnly)
+        // A caption TikTok will not take is a fix, even with the box unchecked.
+        let long = PosterCaption(platform: "tiktok", title: "", body: String(repeating: "a", count: 2201), hashtags: [])
+        let over = gate([.tiktok], [ready(.tiktok, long)], tiktokReady: false, tiktokAwaitingConsent: true)
+        #expect(over.finishing == [.tiktok] && !over.needsConsentOnly)
+    }
+
     @Test func aFailedDestinationCanBeSentAgain() {
         let failed = PosterOutcome(videoID: "v", videoTitle: "Video", platform: .instagram, status: .failed, error: "publish_failed")
         #expect(gate([.instagram], [ready(.instagram, instagramCaption, outcome: failed)]).canSend)
@@ -68,16 +89,4 @@ struct PosterPublishGateTests {
         #expect(calendar.component(.hour, from: options[0].date) == 9 && calendar.isDate(options[0].date, inSameDayAs: tuesday.addingTimeInterval(86_400)))
     }
 
-    @Test func tiktokDefaultsToEveryoneOnlyOnceApproved() {
-        func context(audited: Bool, options: [String]) -> PosterTikTokContext {
-            PosterTikTokContext(creator: PosterTikTokCreator(
-                creator_nickname: "Kerem", creator_username: "kerem", creator_avatar_url: nil, privacy_level_options: options,
-                comment_disabled: false, duet_disabled: false, stitch_disabled: false, max_video_post_duration_sec: 600
-            ), accountId: "a", audited: audited)
-        }
-        let all = ["PUBLIC_TO_EVERYONE", "FOLLOWER_OF_CREATOR", "SELF_ONLY"]
-        #expect(PosterTikTokReviewModel.defaultPrivacy(context(audited: true, options: all)) == "PUBLIC_TO_EVERYONE")
-        #expect(PosterTikTokReviewModel.defaultPrivacy(context(audited: false, options: all)) == "SELF_ONLY")
-        #expect(PosterTikTokReviewModel.defaultPrivacy(context(audited: true, options: ["FOLLOWER_OF_CREATOR"])).isEmpty)
-    }
 }

@@ -27,59 +27,81 @@ struct VideoAnimationSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Animate framing").font(.title2.bold())
-            Text("Add scale, position and rotation keyframes relative to the current framing. Edit them later on the timeline.")
-                .foregroundStyle(.secondary)
+        StudioSheet(
+            title: "Animate framing",
+            detail: "Add keyframes that scale, move and rotate the shot from where it is framed now. You can edit them later on the timeline.",
+            width: 760,
+            confirmTitle: "Add keyframes",
+            isWorking: saving,
+            error: error,
+            onCancel: { dismiss() },
+            onConfirm: save
+        ) {
             AnimationAnchorEditor(kind: $anchor, time: $time, phrase: $phrase, occurrence: $occurrence)
-            Picker("Pivot", selection: $pivot) {
-                Text("Frame center").tag(AnimationPivot.frameCenter)
-                Text("Detected face").tag(AnimationPivot.face)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Zooms around")
+                    .font(.studioCaption)
+                    .foregroundStyle(Color.studioTextMuted)
+                InspectorSegmentedControl(
+                    options: [
+                        .init(value: AnimationPivot.frameCenter, label: "The centre of the frame"),
+                        .init(value: AnimationPivot.face, label: "The face in shot"),
+                    ],
+                    selection: pivot
+                ) { pivot = $0 }
+                if pivot == .face {
+                    Text("Uses the face found at the start of each clip, or the centre of the frame if there is none.")
+                        .font(.studioCaption)
+                        .foregroundStyle(Color.studioTextMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-            Text("Offsets are seconds after the timing cue. Position is a percentage of the frame; 100% scale keeps the current size.")
-                .font(.caption).foregroundStyle(.secondary)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach($keys) { $key in
-                        HStack {
-                            field("Time +", value: $key.offset)
-                            field("Scale %", value: $key.scale)
-                            field("X %", value: $key.x)
-                            field("Y %", value: $key.y)
-                            field("Rotate °", value: $key.rotation)
-                            Picker("Easing", selection: $key.easing) {
-                                Text("Linear").tag(AnimationEase.linear)
-                                Text("Smooth").tag(AnimationEase.smooth)
-                            }.labelsHidden().frame(width: 85)
-                            Button { keys.removeAll { $0.id == key.id } } label: { Image(systemName: "minus.circle") }
-                                .disabled(keys.count <= 2).help("Remove keyframe")
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Keyframes")
+                    .font(.studioLabelStrong)
+                Text("Time is seconds after the starting point. Position is a percentage of the frame, and 100% scale keeps the current size.")
+                    .font(.studioCaption)
+                    .foregroundStyle(Color.studioTextMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach($keys) { $key in
+                            HStack(alignment: .bottom, spacing: 10) {
+                                StudioSheetNumberField(label: "Time", value: $key.offset, unit: "s", showsLabel: key.id == keys.first?.id)
+                                StudioSheetNumberField(label: "Scale", value: $key.scale, decimals: 0, unit: "%", showsLabel: key.id == keys.first?.id)
+                                StudioSheetNumberField(label: "Across", value: $key.x, decimals: 0, unit: "%", showsLabel: key.id == keys.first?.id)
+                                StudioSheetNumberField(label: "Down", value: $key.y, decimals: 0, unit: "%", showsLabel: key.id == keys.first?.id)
+                                StudioSheetNumberField(label: "Rotate", value: $key.rotation, decimals: 0, unit: "°", showsLabel: key.id == keys.first?.id)
+                                StudioSheetEasingControl(easing: $key.easing)
+                                Spacer(minLength: 0)
+                                StudioSheetRemoveButton(help: "Remove this keyframe") {
+                                    keys.removeAll { $0.id == key.id }
+                                }
+                                .disabled(keys.count <= 2)
+                            }
                         }
                     }
                 }
-            }.frame(maxHeight: 240)
-            HStack {
-                Button("Add keyframe") { keys.append(.init(offset: (keys.last?.offset ?? 0) + 1, scale: keys.last?.scale ?? 100)) }
+                .frame(maxHeight: 240)
+                HStack(spacing: 8) {
+                    Button {
+                        keys.append(.init(offset: (keys.last?.offset ?? 0) + 1, scale: keys.last?.scale ?? 100))
+                    } label: {
+                        StudioGlyphLabel("Add keyframe", glyph: .plus, size: 12)
+                    }
+                    .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
                     .disabled(keys.count >= 32)
-                Button("Preset: quick zoom in and out") {
-                    keys = [.init(offset: 0, scale: 100), .init(offset: 0.16, scale: 120),
-                        .init(offset: 0.36, scale: 120), .init(offset: 0.56, scale: 100)]
-                    pivot = .face
+                    Button("Use a quick zoom in and out") {
+                        keys = [.init(offset: 0, scale: 100), .init(offset: 0.16, scale: 120),
+                            .init(offset: 0.36, scale: 120), .init(offset: 0.56, scale: 100)]
+                        pivot = .face
+                    }
+                    .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                    .help("Replace these keyframes with a half-second punch in on the face")
                 }
             }
-            if pivot == .face { Text("Uses a face detected at the start of each affected clip, or the frame center if none is found.").font(.caption).foregroundStyle(.secondary) }
-            if let error { Text(error).foregroundStyle(.red).font(.caption) }
-            HStack {
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Spacer()
-                Button(saving ? "Saving…" : "Add keyframes") { save() }.keyboardShortcut(.defaultAction).disabled(saving)
-            }
-        }.padding(24).frame(width: 760).interactiveDismissDisabled(saving)
-    }
-
-    private func field(_ label: String, value: Binding<Double>) -> some View {
-        VStack(alignment: .leading) {
-            Text(label).font(.caption)
-            TextField(label, value: value, format: .number.precision(.fractionLength(2))).frame(width: 70)
         }
     }
 

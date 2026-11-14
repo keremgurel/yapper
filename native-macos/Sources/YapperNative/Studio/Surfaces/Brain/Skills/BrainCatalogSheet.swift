@@ -18,11 +18,11 @@ struct BrainCatalogSheet: View {
             if store.loading {
                 NativeLoadingState(label: "Loading the shelf…")
             } else if store.groups.isEmpty, !store.failed {
-                Text("Nothing on the shelf yet.").font(.system(size: 13)).foregroundStyle(.secondary)
+                Text("Nothing on the shelf yet.").font(.studioBody).foregroundStyle(.secondary)
             }
             ForEach(store.groups, id: \.category) { group in
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(group.category).font(.system(size: 13, weight: .semibold))
+                    Text(group.category).font(.studioBodyStrong)
                     ForEach(group.entries) { entry in
                         BrainCatalogCard(entry: entry, installing: store.installing == entry.slug) {
                             Task { await store.install(entry) }
@@ -48,8 +48,8 @@ struct BrainCatalogCard: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(entry.name).font(.system(size: 13, weight: .semibold))
-                    Text(entry.tagline).font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text(entry.name).font(.studioBodyStrong)
+                    Text(entry.tagline).font(.studioLabel).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
@@ -62,10 +62,10 @@ struct BrainCatalogCard: View {
                     ForEach(entry.surfaces, id: \.self) { NativeChip(text: $0) }
                 }
                 if entry.updateAvailable && entry.customized {
-                    Text("Updating replaces your edits").font(.system(size: 12)).foregroundStyle(NativeChip.Tone.yellow.color)
+                    Text("Updating replaces your edits").font(.studioLabel).foregroundStyle(NativeChip.Tone.yellow.color)
                 }
                 if entry.resettable {
-                    Text("Reset restores Yapper's version").font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text("Reset restores Yapper's version").font(.studioLabel).foregroundStyle(.secondary)
                 }
             }
         }
@@ -85,7 +85,7 @@ struct BrainCatalogCard: View {
     @ViewBuilder
     private var action: some View {
         if entry.installed && !entry.updateAvailable && !entry.resettable {
-            Label("Added", systemImage: "checkmark").font(.system(size: 12)).foregroundStyle(.secondary)
+            Label("Added", systemImage: "checkmark").font(.studioLabel).foregroundStyle(.secondary)
         } else {
             Button {
                 if entry.customized { confirming = true } else { onInstall() }

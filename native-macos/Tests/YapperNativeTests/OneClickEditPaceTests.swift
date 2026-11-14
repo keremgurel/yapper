@@ -9,8 +9,9 @@ struct OneClickEditPaceTests {
     func retakeStepScalesWithWords() {
         let short = OneClickEditPace(words: 472, mediaSeconds: 311)
         #expect(short.expectedSeconds(for: .removingRetakes) < take.expectedSeconds(for: .removingRetakes))
-        // Measured: 1,888 words took about four minutes.
-        #expect(abs(take.expectedSeconds(for: .removingRetakes) - 245) < 30)
+        // Measured: 1,399 words took about twenty seconds.
+        let measured = OneClickEditPace(words: 1_399, mediaSeconds: 600)
+        #expect(abs(measured.expectedSeconds(for: .removingRetakes) - 20) < 4)
     }
 
     @Test("a take with no transcript yet still gets a moving bar")

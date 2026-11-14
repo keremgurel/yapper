@@ -1,5 +1,9 @@
 import type { PlatformCaption } from "@/lib/publish/caption-prompt";
 import type { PublishPlatform } from "@/lib/db/schema";
+import {
+  PUBLISH_POLL_ATTEMPTS,
+  publishPollDelayMs,
+} from "@/lib/publish/poll-schedule";
 
 /** A platform connection as the UI sees it (never any token). */
 export interface ConnectionSummary {
@@ -107,6 +111,9 @@ export interface CrossPostInput {
   privacyStatus?: "private" | "unlisted" | "public";
   selfDeclaredMadeForKids?: boolean;
   containsSyntheticMedia?: boolean;
+  /** Answer as soon as the video is up and leave the cover to
+   * `applyYouTubeCover`, instead of holding the post while YouTube processes. */
+  deferCover?: boolean;
 }
 
 export interface InstagramPostInput {
@@ -149,11 +156,17 @@ export async function importPlatformMedia(
 
 /** The shape every platform's post resolves to. `url` is present when the post
  * lands somewhere linkable (YouTube, Instagram); `draft` is true when it lands
- * in the app's drafts to finish there (TikTok), which has no URL yet. */
+ * in the app's drafts to finish there (TikTok), which has no URL yet.
+ * `profileUrl` stands in when TikTok has confirmed a post but not yet said
+ * where it lives. */
 export interface CrossPostResult {
   jobId: string;
   url?: string;
+  profileUrl?: string;
   draft?: boolean;
+  coverApplied?: boolean;
+  /** The video is live and its cover is still to be set (YouTube, deferred). */
+  coverPending?: boolean;
 }
 
 async function publishError(response: Response): Promise<Error> {
@@ -242,6 +255,32 @@ export async function crossPostToYouTube(
   return (await res.json()) as CrossPostResult;
 }
 
+/**
+ * Set the cover on a YouTube video whose publish deferred it. The key is the
+ * one the upload used, which is how the server knows which video. Resolves to
+ * whether YouTube took the cover; a lost connection counts as not.
+ */
+export async function applyYouTubeCover(
+  thumbnailKey: string,
+  idempotencyKey: string,
+): Promise<boolean> {
+  try {
+    const res = await fetch("/api/publish/youtube/cover", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({ thumbnailKey }),
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { coverApplied?: boolean };
+    return data.coverApplied === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function crossPostToInstagram(
   input: InstagramPostInput,
   idempotencyKey: string,
@@ -317,7 +356,7 @@ async function pollPublish(
   idempotencyKey: string,
   platform: string,
 ): Promise<CrossPostResult> {
-  for (let attempt = 0; attempt < 24; attempt++) {
+  for (let attempt = 0; attempt < PUBLISH_POLL_ATTEMPTS; attempt++) {
     let res: Response;
     try {
       res = await fetch(path, {
@@ -346,8 +385,10 @@ async function pollPublish(
       (data.error === "publish_state_pending" ||
         data.error === "publish_in_progress")
     ) {
-      if (attempt < 23)
-        await new Promise((resolve) => setTimeout(resolve, 5_000));
+      if (attempt < PUBLISH_POLL_ATTEMPTS - 1)
+        await new Promise((resolve) =>
+          setTimeout(resolve, publishPollDelayMs(attempt)),
+        );
       continue;
     }
     if (data.reason) throw new Error(`${platform}_${data.reason}`);

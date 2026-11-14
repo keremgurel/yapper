@@ -25,7 +25,7 @@ struct VideoFrameControlBar: View {
                 session.toggleFramingKey()
             } label: {
                 Image(systemName: session.framingKeyAtPlayhead != nil ? "diamond.fill" : "diamond")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.studioCaptionStrong)
                     .foregroundStyle(session.isFramingKeyed ? Color.yapperOrange : Color.primary)
                     .frame(width: 24, height: 24)
                     .contentShape(Rectangle())

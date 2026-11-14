@@ -1,48 +1,14 @@
 /* Public website. The product workspaces retain their own density and scale. */
 :root {
-  --site-header: 73px;
+  --site-header: 65px;
 }
 .marketing-site {
   min-height: 100vh;
   background: var(--sg-bg);
   color: var(--sg-text);
 }
-.marketing-site .type-display {
-  font-size: clamp(2.5rem, 4.8vw, 4rem);
-  line-height: 1.08;
-  font-weight: 500;
-  letter-spacing: -0.045em;
-  text-wrap: balance;
-}
-.marketing-site .type-h1 {
-  font-size: clamp(2.25rem, 4.4vw, 3.5rem);
-  line-height: 1.1;
-  font-weight: 500;
-  letter-spacing: -0.035em;
-  text-wrap: balance;
-}
-.marketing-site .type-h2 {
-  font-size: clamp(1.75rem, 3.1vw, 2.5rem);
-  line-height: 1.15;
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  text-wrap: balance;
-}
-.marketing-site .type-h3 {
-  font-size: clamp(1.25rem, 2vw, 1.5rem);
-  line-height: 1.25;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-}
 .marketing-site .type-description {
-  font-size: 1rem;
-  line-height: 1.65;
-  max-width: 65ch;
-}
-.marketing-site .type-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  letter-spacing: 0;
+  max-width: 60ch;
 }
 .marketing-site :is(a, button, input, summary):focus-visible,
 .site-header :is(a, button, summary):focus-visible,
@@ -67,24 +33,26 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  background: var(--sg-bg);
+  background: color-mix(in srgb, var(--sg-bg) 88%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   color: var(--sg-text);
-  border-bottom: 1px solid var(--sg-border);
+  border-bottom: var(--sg-hairline) solid var(--sg-border-strong);
 }
 .site-header-row {
   display: flex;
   align-items: center;
-  min-height: 72px;
-  gap: 32px;
+  min-height: 64px;
+  gap: 40px;
 }
 .site-wordmark {
   display: inline-flex;
   gap: 9px;
   align-items: center;
   color: var(--sg-text);
-  font-size: 24px;
-  letter-spacing: -0.04em;
-  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.035em;
+  font-weight: 500;
   text-decoration: none;
   flex-shrink: 0;
 }
@@ -145,13 +113,15 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 12px 10px;
-  color: var(--sg-text-muted);
-  font-size: 14px;
-  font-weight: 500;
+  height: 36px;
+  padding: 0 12px;
+  color: var(--sg-text);
+  font-size: 15px;
+  font-weight: 400;
   background: none;
   border: 0;
-  border-radius: 5px;
+  border-radius: 999px;
+  transition: background-color var(--sg-dur-fast) var(--sg-ease-in-out);
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
@@ -200,8 +170,8 @@
   padding: 32px 0 0;
   /* Same canvas as the header bar it drops from, in both themes. */
   background: var(--sg-bg);
-  border-bottom: 1px solid var(--sg-border);
-  box-shadow: 0 16px 30px -22px rgb(0 0 0 / 0.25);
+  border-bottom: var(--sg-hairline) solid var(--sg-border-strong);
+  box-shadow: 0 16px 30px -24px rgb(0 0 0 / 0.18);
 }
 .site-product-menu {
   display: grid;
@@ -217,8 +187,8 @@
 }
 .site-product-link {
   font-size: 24px;
-  font-weight: 500;
-  letter-spacing: -0.025em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   text-decoration: none;
   color: var(--sg-text);
 }
@@ -286,10 +256,10 @@
   font-weight: 400;
 }
 .site-footer {
-  border-top: 1px solid var(--sg-border);
+  border-top: var(--sg-hairline) solid var(--sg-border-strong);
   background: var(--sg-bg);
   color: var(--sg-text);
-  padding-top: 56px;
+  padding-top: 72px;
 }
 .site-footer-grid {
   display: grid;
@@ -304,8 +274,10 @@
   color: var(--sg-text-muted);
 }
 .site-footer-heading {
+  color: var(--sg-text-muted);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
+  letter-spacing: 0.01em;
   margin: 4px 0 18px;
 }
 .site-footer ul {
@@ -315,10 +287,11 @@
 }
 .site-footer li {
   margin: 0 0 12px;
-  font-size: 13px;
+  font-size: 14px;
+  letter-spacing: 0.01em;
 }
 .site-footer a:not(.site-wordmark) {
-  color: var(--sg-text-muted);
+  color: var(--sg-text);
   text-decoration: none;
 }
 .site-footer-bottom {
@@ -336,7 +309,7 @@
   gap: 20px;
 }
 .marketing-hero {
-  padding-block: 80px;
+  padding-block: 96px;
 }
 .marketing-hero-grid {
   display: grid;
@@ -353,10 +326,11 @@
   font-weight: 500;
 }
 .marketing-lede {
-  color: var(--sg-text-muted);
-  font-size: 18px;
-  line-height: 1.65;
-  max-width: 56ch;
+  color: var(--sg-text);
+  font-size: 16px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  max-width: 54ch;
   margin-top: 24px;
 }
 .marketing-actions {
@@ -368,28 +342,34 @@
 }
 .marketing-note {
   color: var(--sg-text-muted);
-  font-size: 13px;
-  line-height: 1.6;
-  margin-top: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  margin-top: 16px;
 }
 .marketing-text-link {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 999px;
+  background: var(--sg-surface);
+  box-shadow: var(--sg-shadow-raised);
   color: var(--sg-text);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 400;
   text-decoration: none;
+  transition: background-color var(--sg-dur-fast) var(--sg-ease-in-out);
 }
 .marketing-text-link:hover {
-  text-decoration: underline;
-  text-underline-offset: 4px;
+  background: var(--sg-surface-sunken);
 }
 .marketing-section {
-  padding-block: 80px;
+  padding-block: 112px;
 }
 .marketing-rule {
-  border-top: 1px solid var(--sg-border);
+  border-top: var(--sg-hairline) solid var(--sg-border-strong);
 }
 .marketing-section-intro {
   display: grid;
@@ -566,27 +546,141 @@
   display: grid;
   grid-template-columns: 1fr 2fr;
   gap: 64px;
-  padding-block: 40px;
-  border-top: 1px solid var(--sg-border);
+  padding-block: 56px;
+  border-top: var(--sg-hairline) solid var(--sg-border-strong);
   scroll-margin-top: 100px;
 }
 .marketing-feature-list {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 32px;
+  gap: 12px;
 }
-.marketing-feature-list a {
-  display: block;
+
+/* Reveal card: a quiet stone tile at rest. Hover or focus brings up its stage
+   backdrop, turns the copy white and shows where the card leads. */
+.reveal-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 320px;
+  padding: 24px;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 16px;
+  background: var(--sg-surface-sunken);
+  box-shadow: var(--sg-shadow-inset);
   color: var(--sg-text);
   text-decoration: none;
+  transition: color var(--sg-dur-slow) var(--sg-ease-in-out);
 }
-.marketing-feature-list a:hover h3 {
-  text-decoration: underline;
-  text-underline-offset: 4px;
+.reveal-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: #12162a;
+  background-image:
+    linear-gradient(rgb(0 0 0 / 0), rgb(0 0 0 / 0.3)), var(--reveal-image);
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transform: scale(1.06);
+  transition:
+    opacity var(--sg-dur-slow) var(--sg-ease-in-out),
+    transform 900ms var(--sg-ease-out);
 }
-.marketing-feature-list .type-description {
-  margin-top: 10px;
+.reveal-card[data-palette="ideas"] {
+  --reveal-image: url("/images/grainient/ideas.webp");
+}
+.reveal-card[data-palette="script"] {
+  --reveal-image: url("/images/grainient/script.webp");
+}
+.reveal-card[data-palette="record"] {
+  --reveal-image: url("/images/grainient/record.webp");
+}
+.reveal-card[data-palette="edit"] {
+  --reveal-image: url("/images/grainient/edit.webp");
+}
+.reveal-card[data-palette="publish"] {
+  --reveal-image: url("/images/grainient/publish.webp");
+}
+.reveal-card-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--sg-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  transition: color var(--sg-dur-slow) var(--sg-ease-in-out);
+}
+.reveal-card-tag::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+.reveal-card-title {
+  margin-block: auto;
+  padding-block: 32px;
+  font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+  font-weight: 600;
+  line-height: 1.14;
+  letter-spacing: -0.012em;
+  text-align: center;
+  text-wrap: balance;
+}
+.reveal-card-copy {
   font-size: 15px;
+  line-height: 1.47;
+  letter-spacing: 0.01em;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.reveal-card-arrow {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #fff;
+  color: #000;
+  opacity: 0;
+  transform: translate(-4px, 4px) scale(0.9);
+  transition:
+    opacity var(--sg-dur-base) var(--sg-ease-in-out),
+    transform var(--sg-dur-base) var(--sg-ease-out);
+}
+.reveal-card:is(:hover, :focus-visible) {
+  color: #fff;
+}
+.reveal-card:is(:hover, :focus-visible)::before {
+  opacity: 1;
+  transform: none;
+}
+.reveal-card:is(:hover, :focus-visible) .reveal-card-tag {
+  color: rgb(255 255 255 / 0.8);
+}
+.reveal-card:is(:hover, :focus-visible) .reveal-card-arrow {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-card,
+  .reveal-card::before,
+  .reveal-card-tag,
+  .reveal-card-arrow {
+    transition: none;
+  }
+  .reveal-card::before {
+    transform: none;
+  }
 }
 .marketing-benefits {
   display: grid;
@@ -641,16 +735,33 @@
   color: var(--sg-text-muted);
 }
 .marketing-availability {
-  padding: 24px 28px;
-  background: var(--sg-surface-sunken);
-  border-radius: 8px;
-  font-size: 14px;
-  line-height: 1.7;
-  color: var(--sg-text-muted);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 64px;
+  align-items: start;
 }
-.marketing-availability strong {
-  color: var(--sg-text);
-  font-weight: 500;
+.marketing-availability > h2 {
+  max-width: 14ch;
+  text-wrap: pretty;
+}
+.marketing-platforms > div {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  gap: 16px;
+  padding-block: 16px;
+  border-bottom: var(--sg-hairline) solid var(--sg-border-strong);
+  font-size: 1.0625rem;
+  line-height: 1.47;
+}
+.marketing-platforms > div:first-child {
+  padding-top: 0;
+}
+.marketing-platforms dt {
+  font-weight: 600;
+}
+.marketing-platforms dd {
+  max-width: 50ch;
+  color: var(--sg-text-muted);
 }
 .marketing-form-message {
   margin-top: 12px;
@@ -847,7 +958,11 @@
     gap: 16px;
   }
   .marketing-availability {
-    padding: 22px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+  .marketing-availability > h2 {
+    max-width: none;
   }
   .practice-start {
     grid-template-columns: 1fr;
@@ -881,6 +996,10 @@
   }
 }
 @media (max-width: 400px) {
+  .marketing-platforms > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
   .marketing-workflow,
   .marketing-feature-list {
     grid-template-columns: 1fr;
@@ -908,7 +1027,7 @@
 }
 .marketing-hero-copy .type-display {
   font-size: clamp(2.5rem, 5.4vw, 4.4rem);
-  font-weight: 550;
+  font-weight: 500;
   line-height: 1.06;
 }
 .marketing-hero-copy .marketing-product-label {
@@ -932,30 +1051,45 @@
   margin-top: 24px;
   gap: 24px;
 }
-/* Each workflow stage has its own static Grainient artwork. */
-.demo-field {
-  --ink: #262331;
-  --subtle: #65606f;
-  padding: 44px 28px;
-  border-radius: 24px;
+/* Let the page be the ground for the hero window. Leave space around the
+   mask so it preserves the lit rim and the shadow along the sides. */
+.studio-preview-stage {
+  --preview-fade: clamp(80px, 14vw, 192px);
+  padding: 12px 16px 0;
+  margin: -12px -16px 0;
+  mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - var(--preview-fade)),
+    transparent
+  );
 }
-.demo-field:not([data-palette]) {
-  background:
-    radial-gradient(ellipse at 95% 0%, #c4cedb 0%, transparent 62%),
-    radial-gradient(ellipse at 0% 100%, #c1b7e4 0%, transparent 60%), #e1dced;
-}
-/* An app window on the field follows the site theme, so it resets the
-   field's dark ink for everything inside it. */
-.demo-field .studio-showcase-screen {
+.studio-preview-stage > .studio-showcase-screen {
   --ink: var(--sg-text);
   --subtle: var(--sg-text-muted);
   color: var(--sg-text);
+  border-radius: var(--sg-radius-md) var(--sg-radius-md) 0 0;
 }
-@media (max-width: 700px) {
-  .demo-field {
-    padding: 22px 14px;
-    border-radius: 20px;
+/* The recording and publishing previews have working controls at the foot.
+   Fade a continuation of the window surface below them. */
+.studio-preview-stage[data-interactive] {
+  --preview-fade: clamp(64px, 9vw, 128px);
+}
+.studio-preview-stage[data-interactive] > .studio-showcase-screen {
+  padding-bottom: var(--preview-fade);
+}
+@media (forced-colors: active) {
+  .studio-preview-stage {
+    mask-image: none;
   }
+  .studio-preview-stage[data-interactive] > .studio-showcase-screen {
+    padding-bottom: 0;
+  }
+}
+.feature-focused-preview {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow: inset 0 0 0 var(--sg-hairline) rgb(255 255 255 / 0.18);
 }
 .studio-showcase {
   min-width: 0;
@@ -991,11 +1125,10 @@
   box-shadow: 0 0 0 1px var(--sg-border);
 }
 .studio-showcase-screen {
-  border: 1px solid var(--sg-border);
-  border-radius: 14px;
+  border: 0;
+  border-radius: 12px;
   overflow: hidden;
   background: var(--sg-surface);
-  box-shadow: 0 20px 50px -32px rgb(0 0 0 / 0.4);
 }
 .studio-screen-heading {
   display: flex;
@@ -1006,7 +1139,7 @@
 }
 .studio-screen-heading > span:first-child {
   font-size: 20px;
-  font-weight: 650;
+  font-weight: 500;
   letter-spacing: -0.04em;
 }
 .studio-screen-heading > span:first-child span {
@@ -1096,7 +1229,7 @@
 }
 .studio-panel-heading :is(h2, .demo-heading) {
   font-size: 20px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.02em;
 }
 .studio-panel-heading > span {
@@ -1370,10 +1503,7 @@
 }
 .marketing-hero-grid:has(> .studio-showcase) {
   grid-template-columns: minmax(0, 1fr);
-  gap: 40px;
-}
-.marketing-hero-grid:has(> .studio-showcase) > div:first-child {
-  max-width: 700px;
+  gap: 64px;
 }
 
 .feature-films {
@@ -1424,7 +1554,7 @@
 .feature-film-copy h3 {
   font-size: 23px;
   line-height: 1.3;
-  font-weight: 550;
+  font-weight: 500;
   letter-spacing: -0.025em;
 }
 .feature-film-copy p {
@@ -1508,7 +1638,7 @@
 }
 .feature-edit-heading strong {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
 }
 .feature-edit-heading div > span {
   display: block;
@@ -1536,7 +1666,7 @@
 }
 .feature-edit-stages > div[data-current="true"] {
   color: var(--sg-text);
-  font-weight: 600;
+  font-weight: 500;
 }
 .feature-stage-dot {
   width: 4px;
@@ -1695,7 +1825,7 @@
 .editor-demo-pane-title {
   display: flex;
   justify-content: space-between;
-  font-weight: 600;
+  font-weight: 500;
   margin-bottom: 20px;
 }
 .editor-demo-words {
@@ -1777,7 +1907,7 @@
   width: 100%;
   text-align: center;
   font-size: 17px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.025em;
   color: #fff;
@@ -2079,7 +2209,7 @@
 }
 .idea-demo-capture h2 {
   font-size: 16px;
-  font-weight: 550;
+  font-weight: 500;
   margin-bottom: 22px;
 }
 .idea-demo-library {
@@ -2195,7 +2325,7 @@
 }
 .writing-demo-chirpy strong {
   font-size: 13px;
-  font-weight: 550;
+  font-weight: 500;
 }
 .writing-demo-chirpy > span {
   font-size: 11px;
@@ -2430,11 +2560,60 @@
 }
 
 /* A quiet blue/lilac edge light, confined to the demonstration screen. */
+/* The screen is lit from the top right: a bright top edge, a fine rim, and a
+   long soft shadow falling away from the light. */
 .studio-showcase-screen {
   box-shadow:
-    -14px -8px 38px -27px #87aef066,
-    14px 12px 38px -26px #be96d866,
-    0 20px 50px -32px #0005;
+    0 0 0 var(--sg-hairline) rgb(255 255 255 / 0.5),
+    0 1px 0 rgb(255 255 255 / 0.6) inset,
+    -18px 28px 60px -20px rgb(0 0 0 / 0.45),
+    -4px 8px 18px -8px rgb(0 0 0 / 0.3);
+}
+/* The ray itself, glancing across the top-right corner of the glass. */
+.studio-showcase-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(
+      212deg,
+      rgb(255 255 255 / 0.5) 0%,
+      rgb(255 255 255 / 0.16) 9%,
+      rgb(255 255 255 / 0) 24%
+    ),
+    linear-gradient(
+      200deg,
+      rgb(255 255 255 / 0) 22%,
+      rgb(255 255 255 / 0.07) 30%,
+      rgb(255 255 255 / 0) 38%
+    );
+  mix-blend-mode: soft-light;
+}
+.dark .studio-showcase-screen {
+  box-shadow:
+    0 0 0 var(--sg-hairline) rgb(255 255 255 / 0.22),
+    0 1px 0 rgb(255 255 255 / 0.18) inset,
+    -18px 28px 60px -20px rgb(0 0 0 / 0.7),
+    -4px 8px 18px -8px rgb(0 0 0 / 0.5);
+}
+.dark .studio-showcase-screen::after {
+  background:
+    linear-gradient(
+      212deg,
+      rgb(255 255 255 / 0.2) 0%,
+      rgb(255 255 255 / 0.07) 10%,
+      rgb(255 255 255 / 0) 28%
+    ),
+    linear-gradient(
+      200deg,
+      rgb(255 255 255 / 0) 24%,
+      rgb(255 255 255 / 0.04) 33%,
+      rgb(255 255 255 / 0) 42%
+    );
+  mix-blend-mode: screen;
 }
 .prompter-demo {
   display: grid;
@@ -2449,7 +2628,7 @@
 }
 .prompter-demo-controls h2 {
   font-size: 22px;
-  font-weight: 550;
+  font-weight: 500;
   letter-spacing: -0.025em;
 }
 .prompter-demo-controls > p {
@@ -2680,7 +2859,7 @@
   align-items: center;
   gap: 9px;
   font-size: 16px;
-  font-weight: 550;
+  font-weight: 500;
   padding-bottom: 19px;
   margin-bottom: 22px;
   border-bottom: 1px solid var(--sg-border);
@@ -2830,7 +3009,7 @@
 }
 .publisher-destination-heading strong {
   font-size: 12px;
-  font-weight: 550;
+  font-weight: 500;
 }
 .publisher-destination-heading > span {
   margin-left: auto;
@@ -2851,7 +3030,7 @@
 .publisher-destination-copy > strong {
   display: block;
   font-size: 12px;
-  font-weight: 550;
+  font-weight: 500;
   margin-bottom: 4px;
 }
 .publisher-destination-copy p {
@@ -2969,14 +3148,14 @@
 }
 .publisher-cover-title > span {
   font-size: 12px;
-  font-weight: 550;
+  font-weight: 500;
   letter-spacing: 0.12em;
 }
 .publisher-cover-title strong {
   display: block;
   font-size: clamp(30px, 3.7vw, 48px);
   line-height: 1.05;
-  font-weight: 650;
+  font-weight: 500;
   letter-spacing: -0.055em;
 }
 .publisher-cover-title small {
@@ -3035,7 +3214,7 @@ button.publisher-remix-glass {
     inset 0 -2px 3px #a0a2aa,
     0 4px 12px rgb(0 0 0 / 0.12);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition:
     transform 220ms,
@@ -3495,7 +3674,7 @@ button.publisher-remix-glass {
   padding: 8px 10px;
 }
 .prompter-demo-frame p {
-  font-weight: 550;
+  font-weight: 500;
   line-height: 1.5;
 }
 @media (pointer: coarse) {
@@ -3604,7 +3783,7 @@ button.publisher-remix-glass {
   color: var(--sg-text);
 }
 .studio-showcase-tabs button[aria-selected="true"] {
-  font-weight: 600;
+  font-weight: 500;
 }
 .studio-showcase-tabs button svg {
   width: 15px;
@@ -3830,7 +4009,7 @@ button.publisher-remix-glass {
   padding: 0 12px;
   font-size: 13px;
   line-height: 28px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0;
   white-space: nowrap;
 }
@@ -3979,8 +4158,8 @@ button.publisher-remix-glass {
 .feature-focused-preview {
   margin-top: 40px;
   width: 100%;
-  padding: 32px 24px;
-  border-radius: 24px;
+  padding: 40px 32px;
+  border-radius: 16px;
 }
 @media (max-width: 700px) {
   .feature-focused-preview {
@@ -4065,7 +4244,7 @@ button.publisher-remix-glass {
 }
 .idea-library-scene .studio-panel-heading :is(h2, .demo-heading) {
   font-size: 18px;
-  font-weight: 550;
+  font-weight: 500;
 }
 .idea-library-desktop {
   overflow-x: auto;
@@ -4159,7 +4338,7 @@ button.publisher-remix-glass {
   color: #fff;
   text-align: center;
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.5;
   text-shadow: 0 2px 6px #000;
 }
@@ -4358,7 +4537,7 @@ button.publisher-remix-glass {
 }
 .training-steps h3 {
   font-size: 18px;
-  font-weight: 550;
+  font-weight: 500;
 }
 .training-steps p {
   font-size: 15px;
@@ -4376,12 +4555,29 @@ button.publisher-remix-glass {
   font-size: 20px;
 }
 .studio-signup {
-  max-width: 680px;
-  margin-inline: auto;
-  padding-bottom: 70px;
+  padding: clamp(40px, 6vw, 88px) clamp(20px, 4vw, 48px);
+  border-radius: var(--sg-radius-lg);
+  background: var(--sg-surface-sunken);
+  text-align: center;
 }
-.studio-signup > .type-description {
-  margin: 16px 0 28px;
+.studio-signup > h2 {
+  max-width: 21ch;
+  margin-inline: auto;
+}
+.marketing-site .studio-signup > .type-description {
+  max-width: 38ch;
+  margin: 16px auto 0;
+  text-wrap: balance;
+}
+.studio-signup > :is(.type-description, .type-caption) {
+  color: color-mix(in srgb, var(--sg-text-muted) 88%, var(--sg-text));
+}
+.studio-signup > .marketing-actions {
+  justify-content: center;
+  margin-top: 28px;
+}
+.studio-signup > .type-caption {
+  margin-top: 12px;
 }
 .train-hub-hero {
   display: grid;
@@ -4445,7 +4641,7 @@ button.publisher-remix-glass {
 .train-exercise strong {
   display: block;
   font-size: 18px;
-  font-weight: 550;
+  font-weight: 500;
 }
 .train-exercise > span:first-child > span {
   display: block;
@@ -4481,7 +4677,7 @@ button.publisher-remix-glass {
 }
 .train-guide-link h3 {
   font-size: 18px;
-  font-weight: 550;
+  font-weight: 500;
 }
 .train-guide-link p {
   font-size: 14px;
@@ -4544,7 +4740,7 @@ button.publisher-remix-glass {
 }
 .pricing-free strong {
   font-size: 16px;
-  font-weight: 550;
+  font-weight: 500;
 }
 .pricing-free span {
   display: block;
@@ -4576,7 +4772,7 @@ button.publisher-remix-glass {
 }
 .train-price-heading h2 {
   font-size: 19px;
-  font-weight: 550;
+  font-weight: 500;
 }
 .train-price-heading > span {
   color: var(--sg-text-muted);
@@ -4591,7 +4787,7 @@ button.publisher-remix-glass {
 .train-price-amount strong {
   font-size: 42px;
   line-height: 1.1;
-  font-weight: 550;
+  font-weight: 500;
   letter-spacing: -0.045em;
 }
 .train-price-amount span {
@@ -4653,7 +4849,7 @@ button.publisher-remix-glass {
 }
 .pricing-credit-costs strong {
   flex: none;
-  font-weight: 550;
+  font-weight: 500;
 }
 .pricing-credit-costs span {
   color: var(--sg-text-muted);
@@ -4759,25 +4955,43 @@ button.publisher-remix-glass {
 
 /* Homepage: headline, product tabs, then the selected product's demo. */
 .marketing-home-hero {
-  padding-block: 56px 80px;
+  padding-block: 96px 96px;
 }
 .home-showcase {
   margin-top: 36px;
 }
-/* A product page hero set on the center line, above a full-width demo. */
+/* The page opener, centred: the product's name, the promise it makes, one
+   paragraph, the action. The name is deliberately smaller than the promise. */
 .marketing-hero-centered {
-  max-width: 760px;
-  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
 }
-.marketing-hero-grid:has(> .studio-showcase) > .marketing-hero-centered {
-  max-width: 760px;
+.marketing-hero-name {
+  margin-bottom: 14px;
+  color: var(--sg-text);
+  font-size: clamp(1.25rem, 1.05rem + 0.9vw, 2rem);
+  font-weight: 600;
+  line-height: 1.125;
+  letter-spacing: 0;
 }
-.marketing-hero-centered .marketing-lede {
-  margin-inline: auto;
+.marketing-hero-centered > .marketing-lede {
+  max-width: 30em;
+  margin-top: 20px;
+  color: var(--sg-text-muted);
+  font-size: clamp(1.0625rem, 0.98rem + 0.38vw, 1.3125rem);
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: -0.005em;
+  text-wrap: balance;
 }
 .marketing-hero-centered .marketing-actions {
   justify-content: center;
+  margin-top: 30px;
+}
+.marketing-hero-centered .marketing-note {
+  margin-top: 14px;
 }
 
 /* The homepage product switch uses the same capsule with two wider slots. */
@@ -4787,14 +5001,6 @@ button.publisher-remix-glass {
 }
 .studio-showcase-tabs.product-tabs button {
   font-size: 15px;
-}
-
-/* The public site uses neutral greys for sunken surfaces in light mode. The
-   app's warm cream reads as yellow against the white demo screens. */
-:root:not(.dark)
-  :is(.marketing-site, .site-neutral, .site-header, .site-footer) {
-  --sg-surface-sunken: #f4f4f5;
-  --sg-bg-2: #ececee;
 }
 
 /* Keep all account/navigation controls reachable at narrow phone widths. */
@@ -4834,4 +5040,116 @@ button.publisher-remix-glass {
   flex-shrink: 0;
   width: 14px;
   height: 14px;
+}
+
+/* Demo interiors on the shared foundation. The scripted scenes keep their
+   content and timing; these rules give every tab the same light headings,
+   hairline objects, stone trays and pill controls as the rest of the site. */
+.studio-showcase-screen :is(.idea-demo-capture, .idea-capture-heading) h2,
+.studio-showcase-screen .prompter-demo-controls h2,
+.studio-showcase-screen .publisher-demo-heading h3,
+.studio-showcase-screen .captions-demo-settings h2 {
+  font-size: clamp(1.25rem, 1.05rem + 0.6vw, 1.625rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+.studio-screen-heading {
+  border-bottom: var(--sg-hairline) solid var(--sg-border-strong);
+}
+
+/* Objects inside a screen are raised with the hairline recipe, not outlined. */
+.demo-dictation,
+.writing-demo-assistant,
+.writing-demo-you,
+.writing-demo-options button[title="Use this hook"],
+.publisher-destination,
+.feature-edit {
+  border-color: transparent;
+  box-shadow: var(--sg-shadow-raised);
+}
+.demo-dictation,
+.writing-demo-assistant,
+.feature-edit {
+  border-radius: 16px;
+}
+.writing-demo-assistant,
+.feature-edit {
+  box-shadow: var(--sg-shadow-panel);
+}
+.writing-demo-you,
+.writing-demo-options button[title="Use this hook"],
+.publisher-destination {
+  border-radius: 12px;
+  background: var(--sg-surface);
+}
+.publisher-destination-heading {
+  border-bottom: var(--sg-hairline) solid var(--sg-border-strong);
+}
+.editor-demo-timeline {
+  border-color: transparent;
+  border-top: var(--sg-hairline) solid var(--sg-border-strong);
+}
+.editor-demo-caption {
+  font-weight: 500;
+}
+
+/* Teleprompter controls: a stone tray with a raised white selection, and
+   pill actions. */
+.prompter-segments {
+  border: 0;
+  border-radius: 999px;
+  background: var(--sg-surface-tray);
+}
+.prompter-segment-indicator {
+  border-radius: 999px;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.08));
+}
+.prompter-segment-buttons button {
+  border-radius: 999px;
+}
+.prompter-segment-buttons button[aria-pressed="true"] {
+  color: var(--sg-text);
+}
+.prompter-demo-actions button {
+  padding-inline: 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sg-surface);
+  box-shadow: var(--sg-shadow-raised);
+}
+.prompter-demo-actions button:first-child {
+  background: var(--sg-accent);
+  color: var(--sg-accent-fg);
+  box-shadow: none;
+}
+.prompter-demo-actions button:first-child:hover {
+  background: var(--sg-accent-strong);
+}
+.prompter-demo-frame,
+.publisher-cover {
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 var(--sg-hairline) rgb(0 0 0 / 0.2),
+    0 18px 40px -18px rgb(0 0 0 / 0.45);
+}
+
+/* Publishing: the send action is the same ink pill as every primary action,
+   and the cover controls are glass pills. */
+.publisher-send {
+  height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sg-accent);
+  color: var(--sg-accent-fg);
+  box-shadow: none;
+  font-size: 15px;
+  font-weight: 500;
+}
+.publisher-remix-glass {
+  border-radius: 999px;
+  border-color: rgb(255 255 255 / 0.22);
+}
+.publisher-cover-type {
+  border-color: rgb(255 255 255 / 0.22);
 }

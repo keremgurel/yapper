@@ -11,7 +11,7 @@ struct BrainFieldFit: View {
         let used = BrainFieldFit.length(text)
         HStack(spacing: 6) {
             if used > limit {
-                Image(systemName: "scissors").font(.system(size: 10, weight: .semibold))
+                Image(systemName: "scissors").font(.studioMicro)
                 Text("The last \(used - limit) characters aren't read")
                 Spacer(minLength: 8)
             } else {
@@ -19,7 +19,7 @@ struct BrainFieldFit: View {
             }
             Text("\(used) / \(limit)").monospacedDigit()
         }
-        .font(.system(size: 11))
+        .font(.studioCaption)
         .foregroundStyle(used > limit ? NativeChip.Tone.yellow.color : Color.secondary.opacity(used == 0 ? 0 : 1))
         .animation(.easeOut(duration: 0.15), value: used > limit)
     }
@@ -42,7 +42,7 @@ struct BrainEssentialsFitNote: View {
             Text(over.count == 1
                  ? "\u{201C}\(over[0].label)\u{201D} is longer than the AI reads. Keep it to a sentence or two and move the detail to Knowledge."
                  : "\(over.count) fields are longer than the AI reads. Keep each to a sentence or two and move the detail to Knowledge.")
-                .font(.system(size: 12))
+                .font(.studioLabel)
                 .foregroundStyle(NativeChip.Tone.yellow.color)
                 .fixedSize(horizontal: false, vertical: true)
         }

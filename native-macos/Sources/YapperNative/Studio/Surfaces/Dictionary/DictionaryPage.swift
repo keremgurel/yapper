@@ -17,7 +17,7 @@ struct DictionaryPage: View {
                 Text("Your words").font(.nativeSectionTitle)
                 Spacer(minLength: 0)
                 Text("\(store.entries.count) / \(DictionaryCopy.capacity)")
-                    .font(.system(size: 12).monospacedDigit())
+                    .font(.studioLabel.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
             .padding(.bottom, 12)

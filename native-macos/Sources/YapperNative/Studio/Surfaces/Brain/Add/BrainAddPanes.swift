@@ -23,12 +23,12 @@ struct BrainWritePane: View {
             }
             if !starters.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Or start from one of these").font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text("Or start from one of these").font(.studioLabel).foregroundStyle(.secondary)
                     BrainFlowLayout {
                         ForEach(starters, id: \.title) { starter in
                             Button { add(starter) } label: {
                                 Text(starter.title)
-                                    .font(.system(size: 12))
+                                    .font(.studioLabel)
                                     .padding(.horizontal, 10).padding(.vertical, 4)
                                     .overlay(Capsule().strokeBorder(Color.studioLine))
                             }
@@ -79,7 +79,7 @@ struct BrainPastePane: View {
             )
             .onChange(of: text) { _, value in onText(value) }
             Text("Read on this Mac, so nothing is uploaded until you save it.")
-                .font(.system(size: 11)).foregroundStyle(.secondary)
+                .font(.studioCaption).foregroundStyle(.secondary)
         }
     }
 }
@@ -97,9 +97,9 @@ struct BrainFilePane: View {
                 .font(.system(size: 17)).foregroundStyle(.secondary)
                 .frame(width: 40, height: 40)
                 .background(Circle().fill(Color.panelBackground))
-            Text(name ?? "Drop a file, or choose one").font(.system(size: 13, weight: .semibold))
+            Text(name ?? "Drop a file, or choose one").font(.studioBodyStrong)
             Text("\(BrainIngestStore.importableExtensions.map { ".\($0)" }.joined(separator: ", ")), up to 2 MB.")
-                .font(.system(size: 12)).foregroundStyle(.secondary)
+                .font(.studioLabel).foregroundStyle(.secondary)
             Button("Choose a file") {
                 if let url = BrainFilePicker.chooseTextFile() { take(url) }
             }

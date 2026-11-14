@@ -15,7 +15,7 @@ struct NativeSection<Content: View, Actions: View>: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(title).font(.nativeSectionTitle)
                 if let meta {
-                    Text(meta).font(.system(size: 13)).foregroundStyle(.secondary)
+                    Text(meta).font(.studioBody).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
                 HStack(spacing: 4) { actions() }

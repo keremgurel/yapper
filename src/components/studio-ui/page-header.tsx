@@ -15,7 +15,7 @@ export default function PageHeader({
   return (
     <header className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
       <div className="max-w-full min-w-0">
-        <h1 className="font-display text-foreground text-[22px] font-bold tracking-[-0.01em]">
+        <h1 className="font-display text-foreground text-2xl font-normal tracking-[-0.02em]">
           {title}
         </h1>
         {description && (

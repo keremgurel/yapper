@@ -127,13 +127,13 @@ struct OverlayPropertyActionTests {
         let session = await session(project)
         defer { session.player.replaceCurrentItem(with: nil) }
         let hidden = await session.performAppAction(OverlayPropertiesInput(overlayIDs: [], all: true,
-            hidden: true, behindSpeaker: nil, sourceStart: nil, timelineStart: nil, duration: nil, track: nil))
+            hidden: true, behindSpeaker: nil, backdrop: nil, backdropColors: nil, backdropMediaID: nil, sourceStart: nil, timelineStart: nil, duration: nil, track: nil))
         #expect(hidden.status == .applied)
         #expect(session.overlays.allSatisfy { !$0.isVisible })
         #expect(session.overlays[1].keys == project.overlays![1].keys)
         let before = session.project
         let collision = await session.performAppAction(OverlayPropertiesInput(overlayIDs: [session.overlays[1].id], all: false,
-            hidden: nil, behindSpeaker: nil, sourceStart: nil, timelineStart: 0, duration: nil, track: 0))
+            hidden: nil, behindSpeaker: nil, backdrop: nil, backdropColors: nil, backdropMediaID: nil, sourceStart: nil, timelineStart: 0, duration: nil, track: 0))
         #expect(collision.status == .rejected && session.project == before)
     }
 }

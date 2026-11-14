@@ -25,7 +25,7 @@ struct RecorderGuidesOverlay: View {
                 // The caption and handle along the bottom.
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Keep clear")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.studioCaptionStrong)
                         .foregroundStyle(Color.white.opacity(0.7))
                     zone.frame(width: w * 0.76, height: h * 0.16)
                 }

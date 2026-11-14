@@ -1,46 +1,46 @@
 import SwiftUI
 
-/// Compact library navigation keeps real videos on the first screen.
 struct PosterSourceOptions: View {
     let selected: PosterSource
     let connected: [PublishPlatform]
+    let uploadBusy: Bool
+    let onUpload: () -> Void
     let onChoose: (PosterSource) -> Void
-    @State private var availableWidth: CGFloat = 1_200
+    @State private var availableWidth: CGFloat = 896
 
-    /// Made in Yapper, Uploads, then each enabled platform.
-    private var sourceCount: Int { 2 + PublishPlatform.enabledCases.count }
-
-    /// One row of equal slots when there is room, so pausing a platform never
-    /// leaves a hole at the end; fewer columns as the window narrows.
-    private var columnCount: Int { min(sourceCount, max(1, Int(availableWidth / 200))) }
+    private let platforms: [PublishPlatform] = [.instagram, .youtube, .tiktok]
+    private var columnCount: Int { availableWidth >= 680 ? 5 : 3 }
 
     var body: some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: columnCount), spacing: 8) {
-            choice(.yapper, title: "Made in Yapper", detail: "Latest edited projects", icon: "film.stack")
-            choice(.uploads, title: "Uploads", detail: "Ready to post", icon: "square.and.arrow.up")
-            ForEach(PublishPlatform.enabledCases) { platform in
-                choice(.platform(platform), title: platform.label,
-                       detail: connected.contains(platform) ? "Connected" : "Connect account", icon: platform.symbol)
+            choice("Upload video", detail: "From device", selected: false, action: onUpload)
+                .disabled(uploadBusy)
+            ForEach(platforms) { platform in
+                let linked = connected.contains(platform)
+                choice(platform.label, detail: linked ? "Connected" : "Connect",
+                       selected: selected == .platform(platform), muted: !linked) { onChoose(.platform(platform)) }
             }
+            choice("Made in Yapper", detail: "Edited projects", selected: selected == .yapper) { onChoose(.yapper) }
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
     }
 
-    private func choice(_ source: PosterSource, title: String, detail: String, icon: String) -> some View {
-        Button { onChoose(source) } label: {
-            HStack(spacing: 10) {
-                Image(systemName: icon).font(.system(size: 17)).frame(width: 22)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title).font(.system(size: 13, weight: .semibold))
-                    Text(detail).font(.system(size: 11)).foregroundStyle(.secondary)
-                }.lineLimit(1)
-                Spacer(minLength: 0)
-                Image(systemName: "checkmark").font(.system(size: 11, weight: .semibold)).opacity(selected == source ? 1 : 0)
+    private func choice(_ title: String, detail: String, selected: Bool, muted: Bool = false,
+                        action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(.studioBodyStrong).foregroundStyle(muted ? .secondary : .primary)
+                Text(detail).font(.studioLabel).foregroundStyle(.secondary)
             }
-            .padding(12).frame(maxWidth: .infinity).frame(height: 64)
-            .background(RoundedRectangle(cornerRadius: 10).fill(selected == source ? Color.studioFaintFill : Color.clear))
-            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(selected == source ? Color.primary.opacity(0.5) : Color.studioLine))
+            .lineLimit(1)
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 68)
+            .background(RoundedRectangle(cornerRadius: 8).fill(selected || muted ? Color.studioInputBackground : Color.panelBackground))
+            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(selected ? Color.studioAccent : Color.studioLine))
             .contentShape(Rectangle())
-        }.buttonStyle(.studioPlain).accessibilityAddTraits(selected == source ? .isSelected : [])
+        }
+        .buttonStyle(.studioPlain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

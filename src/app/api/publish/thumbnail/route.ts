@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import { withProductAnalytics } from "@/lib/analytics/server";
 import { auth } from "@clerk/nextjs/server";
 import {
@@ -33,7 +34,7 @@ async function trackedPOST(req: Request): Promise<Response> {
   if (!prompt || prompt.length > 2000) {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
-  if (!process.env.SURPLUS_API_KEY) {
+  if (!surplusKey("publishing")) {
     return Response.json({ error: "no_provider" }, { status: 501 });
   }
   const billing = await preflightPaidActionOrResponse(

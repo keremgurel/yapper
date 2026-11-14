@@ -1,61 +1,46 @@
 import SwiftUI
 
-/// TikTok's choices for the open video, which TikTok requires before a Direct
-/// Post: who is posting, the audience, what others may do with it,
-/// commercial disclosure, and consent. The settings fold away; consent stays
-/// visible because posting needs it every time.
+/// TikTok's choices for the open video, behind the settings gear: how it is
+/// sent, who is posting, the audience, what others may do with it, and the
+/// disclosures. They start filled in, so a post can go out without opening
+/// this. The posting declaration is not here: it sits beside the publish
+/// button, where a press needs it.
 struct PosterTikTokSettingsView: View {
     @ObservedObject var model: PosterTikTokReviewModel
-    let video: PosterVideo
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            PosterDisclosure(title: "TikTok settings", meta: model.mode == .inbox ? "Inbox" : model.audienceLabel) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Picker("Posting method", selection: $model.mode) {
-                        Text("Post to TikTok").tag(PosterTikTokReview.Mode.direct)
-                        Text("Send to TikTok inbox to finish there").tag(PosterTikTokReview.Mode.inbox)
-                    }
-                    .font(.system(size: 13))
-                    .clickableCursor()
-                    if model.mode == .inbox {
-                        note("We'll confirm inbox delivery. Open \"Your content from Yapper is ready\" in TikTok to add the caption and finish posting.")
-                    } else if let context = model.context {
-                        PosterTikTokDirectForm(model: model, context: context)
-                    } else if let error = model.contextError {
-                        note(error)
-                        Button("Reconnect TikTok for Direct Post") { model.reconnect() }
-                            .buttonStyle(EditorGhostButtonStyle(size: .small))
-                    } else {
-                        NativeLoadingState(label: "Loading TikTok posting options")
-                    }
-                }
+        VStack(alignment: .leading, spacing: 12) {
+            Picker("Posting method", selection: $model.mode) {
+                Text("Post to TikTok").tag(PosterTikTokReview.Mode.direct)
+                Text("Send to TikTok inbox to finish there").tag(PosterTikTokReview.Mode.inbox)
+            }
+            .font(.studioBody)
+            .clickableCursor()
+            if model.mode == .inbox {
+                note("We’ll confirm inbox delivery. Open “Your content from Yapper is ready” in TikTok to add the caption and finish posting.")
+            } else if let context = model.context {
+                PosterTikTokDirectForm(model: model, context: context)
+            } else if let error = model.contextError {
+                note(error)
+                Button("Reconnect TikTok for Direct Post") { model.reconnect() }
+                    .buttonStyle(EditorGhostButtonStyle(size: .small))
+            } else {
+                NativeLoadingState(label: "Loading TikTok posting options")
             }
             if let error = model.durationError {
                 warning(error)
             } else if model.duration == nil {
                 note("Checking video…")
             }
-            if model.mode == .direct, model.context != nil {
-                PosterTikTokConsent(model: model)
-            }
         }
-        .task { if model.context == nil && model.contextError == nil { await model.loadCreator() } }
-        .task(id: durationSource) { await model.loadDuration(for: video) }
-    }
-
-    /// Changes when an upload or import finishes, so the length is read from
-    /// whatever the video has become.
-    private var durationSource: String {
-        [video.previewURL?.absoluteString, video.submissionID, video.mediaKey].map { $0 ?? "" }.joined(separator: "|")
     }
 
     private func note(_ text: String) -> some View {
-        Text(text).font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        Text(text).font(.studioLabel).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
     }
 
     private func warning(_ text: String) -> some View {
-        Text(text).font(.system(size: 12)).foregroundStyle(NativeChip.Tone.yellow.color).fixedSize(horizontal: false, vertical: true)
+        Text(text).font(.studioLabel).foregroundStyle(NativeChip.Tone.yellow.color).fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -66,17 +51,17 @@ private struct PosterTikTokDirectForm: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Posting as \(context.creator.creator_nickname) (@\(context.creator.creator_username))").font(.system(size: 13))
+            Text("Posting as \(context.creator.creator_nickname) (@\(context.creator.creator_username))").font(.studioBody)
             if !context.audited {
                 note("TikTok's review is pending. Test posts must use Only me and a private TikTok account. Public posting opens after approval.")
             }
             Picker("Who can see this video?", selection: $model.settings.privacy) {
-                Text("Choose an audience").tag("")
+                if model.settings.privacy.isEmpty { Text("Choose an audience").tag("") }
                 ForEach(model.privacyOptions, id: \.self) { option in
                     Text(PosterTikTokSettings.privacyLabels[option] ?? option).tag(option)
                 }
             }
-            .font(.system(size: 13))
+            .font(.studioBody)
             .clickableCursor()
             check("Allow comments", $model.settings.allowComment, blocked: context.creator.comment_disabled)
             check("Allow Duet", $model.settings.allowDuet, blocked: context.creator.duet_disabled)
@@ -86,7 +71,7 @@ private struct PosterTikTokDirectForm: View {
             check("Label this video as AI-generated", $model.settings.aiGenerated, blocked: false)
             if model.tooLong {
                 Text("This video is too long. This account supports up to \(Int(context.creator.max_video_post_duration_sec)) seconds.")
-                    .font(.system(size: 12)).foregroundStyle(Color.studioDanger)
+                    .font(.studioLabel).foregroundStyle(Color.studioDanger)
             }
             note("Processing may take a few minutes before the post appears on your profile.")
         }
@@ -108,41 +93,12 @@ private struct PosterTikTokDirectForm: View {
     private func check(_ label: String, _ value: Binding<Bool>, blocked: Bool) -> some View {
         Toggle(blocked ? "\(label) (turned off in TikTok)" : label, isOn: value)
             .toggleStyle(.checkbox)
-            .font(.system(size: 13))
+            .font(.studioBody)
             .disabled(blocked)
             .clickableCursor(enabled: !blocked)
     }
 
     private func note(_ text: String) -> some View {
-        Text(text).font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-    }
-}
-
-/// The consent TikTok requires on every Direct Post, and the policies it
-/// points to.
-private struct PosterTikTokConsent: View {
-    @ObservedObject var model: PosterTikTokReviewModel
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Toggle(consentText, isOn: $model.settings.consent)
-                .toggleStyle(.checkbox)
-                .font(.system(size: 13))
-                .fixedSize(horizontal: false, vertical: true)
-                .clickableCursor()
-            HStack(spacing: 12) {
-                if model.settings.brandedContent {
-                    Link("Branded Content Policy", destination: URL(string: "https://www.tiktok.com/legal/page/global/bc-policy/en")!)
-                }
-                Link("Music Usage Confirmation", destination: URL(string: "https://www.tiktok.com/legal/page/global/music-usage-confirmation/en")!)
-            }
-            .font(.system(size: 12))
-            .clickableCursor()
-        }
-    }
-
-    private var consentText: String {
-        "I reviewed this video and authorize posting. By posting, I agree to TikTok's "
-            + (model.settings.brandedContent ? "Branded Content Policy and " : "") + "Music Usage Confirmation."
+        Text(text).font(.studioLabel).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
     }
 }

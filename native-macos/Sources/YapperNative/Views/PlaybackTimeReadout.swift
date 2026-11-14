@@ -10,8 +10,11 @@ struct PlaybackTimeReadout: View {
 
     var body: some View {
         Text("\(formatTimePrecise(clock.currentTime)) / \(formatTimePrecise(duration))")
-            .font(.system(size: 11, weight: .medium, design: .monospaced))
-            .foregroundStyle(.secondary)
-            .monospacedDigit()
+            .font(.studioTimecode)
+            .foregroundStyle(Color.studioTextMuted)
+            // Never wrapped onto a second line or cut: a time that reads
+            // "0:00." is not a time.
+            .lineLimit(1)
+            .fixedSize()
     }
 }

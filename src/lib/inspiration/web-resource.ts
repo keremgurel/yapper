@@ -1,3 +1,4 @@
+import { surplusKey } from "@/lib/providers/surplus-key";
 import type { ReferenceContentType } from "./types";
 import { fetchBoundedJson, OutboundHttpError } from "@/lib/http/outbound";
 
@@ -153,7 +154,7 @@ export async function resolveWebResource(
   const content = reader.data?.content?.trim();
   if (!content) throw new Error("reader_empty");
 
-  const providerKey = process.env.SURPLUS_API_KEY;
+  const providerKey = surplusKey("brain");
   if (!providerKey) throw new Error("no_provider");
   const base =
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";

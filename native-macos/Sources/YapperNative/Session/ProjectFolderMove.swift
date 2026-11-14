@@ -44,13 +44,17 @@ final class ProjectFolderMove: ObservableObject {
     /// Why a move can't start now, or nil when it can. An export only reads
     /// a project's own files while it prepares; after that it renders from
     /// its own copy and the project can move.
-    func blocker(for session: EditorSession, moving packages: [ProjectPackage]) -> String? {
+    func blocker(for session: EditorSession, moving packages: [ProjectPackage]) async -> String? {
+        if let reason = startBlocker(for: session) { return reason }
+        return await exportBlocker(packages, session: session)
+    }
+
+    /// The checks that need no waiting, so a second move can't slip in
+    /// between passing them and taking the lock.
+    private func startBlocker(for session: EditorSession) -> String? {
         if isRunning || session.projectNavigation.isMovingProjects { return "Projects are already moving." }
         if session.isBusy {
             return "Wait for the current task in the editor to finish, then move your projects."
-        }
-        if let exporting = packages.first(where: session.exportJobs.isReadingSources(of:)) {
-            return "Wait for the export of “\(exporting.displayName)” to finish preparing its footage, then move your projects."
         }
         return nil
     }
@@ -58,7 +62,7 @@ final class ProjectFolderMove: ObservableObject {
     /// `folder` nil means the default folder.
     func moveProjects(choosing folder: URL?, moving packages: [ProjectPackage], session: EditorSession,
                       folders: StorageFolders = .standard) async {
-        if let blocker = blocker(for: session, moving: packages) { outcome = blocker; return }
+        if let blocker = startBlocker(for: session) { outcome = blocker; return }
         outcome = nil
         leftBehind = nil
         progress = Progress(done: 0, total: packages.count, name: packages.first?.displayName ?? "")
@@ -73,8 +77,12 @@ final class ProjectFolderMove: ObservableObject {
         do {
             let target = try folders.usableFolder(folder, for: .editorProjects)
             destination = target
+            if let reason = await exportBlocker(packages, session: session) { throw ProjectMoveStop(reason) }
             if let reason = await uploadBlocker(packages) { throw ProjectMoveStop(reason) }
             reopen = try await closeIfMoving(packages, session: session)
+            // Asked again: the checks above awaited with the project still
+            // open, and an export of it may have started in the meantime.
+            if let reason = await exportBlocker(packages, session: session) { throw ProjectMoveStop(reason) }
             await session.stopManagedMedia()
             ProjectMoveStaging.sweep(in: target)
             ProjectMoveStaging.noteMoving(into: target, preferences: folders.preferences)
@@ -141,6 +149,19 @@ final class ProjectFolderMove: ObservableObject {
             throw ProjectMoveStop("“\(open.displayName)” couldn’t be saved, so nothing was moved. \(error.localizedDescription)")
         }
         return await session.closeCurrentProject()
+    }
+
+    /// Exports know projects by ID, so each package is asked which project
+    /// it holds. Skipped when no export is preparing, which is nearly always.
+    private func exportBlocker(_ packages: [ProjectPackage], session: EditorSession) async -> String? {
+        guard session.exportJobs.jobs.contains(where: { $0.state == .preparing }) else { return nil }
+        for package in packages {
+            guard let projectID = await session.projectID(in: package),
+                  session.exportJobs.isReadingSources(projectID: projectID)
+            else { continue }
+            return "Wait for the export of “\(package.displayName)” to finish preparing its footage, then move your projects."
+        }
+        return nil
     }
 
     private func uploadBlocker(_ packages: [ProjectPackage]) async -> String? {

@@ -82,10 +82,12 @@ before network work. This applies to retries, internal QA and background work.
 Database transactions serialize the fixed UTC day/month counters across all
 serverless instances. If either counter is exhausted or unavailable, no new
 paid request starts. Failed attempts retain their reservation even when the
-customer gets a credit refund. A successful Chat Completions reply that reports
-its token usage settles its reservation down to that usage at list price
-(`settleProviderBudget`), because the worst-case allowance for one long Chirpy
-request is over a dollar. Unpaid HTTP metadata/storage reads do not consume
+customer gets a credit refund. A successful Chat Completions reply that reports its token usage settles its
+reservation down to that usage at list price (`settleProviderBudget`), because
+the worst-case allowance for one long Chirpy request is over a dollar. A
+successful transcription reply settles the same way, to the audio length the
+provider says it decoded at that provider's list price per minute
+(`src/lib/costs/audio-usage.ts`). Before that, an hour-long take sent as forty pieces was refused at its 26th piece on the default daily ceiling. Unpaid HTTP metadata/storage reads do not consume
 this allowance.
 
 Defaults are **$25/day and $250/calendar month of reserved allowances**, set by
@@ -99,7 +101,7 @@ timeout and a $0.50 maximum charge for each actor run.
 
 The counters are **not settled spend or provider-enforced dollar caps**. Text
 allowances use input bytes, a per-image token allowance, and bounded maximum
-output tokens, at the list rates in `src/lib/costs/model-prices.ts`. ASR and Gemini calls currently reserve $1 per attempt; Apify
+output tokens, at the list rates in `src/lib/costs/model-prices.ts`. ASR and Gemini calls reserve $1 per attempt, and a successful Deepgram, ElevenLabs or Groq transcription settles to its measured cost, so the dollar is held only while the call is in flight or when it fails; Apify
 $0.50; Reader $0.05. Model price changes, unusual media and provider billing
 semantics can differ. Reservations cover this application's outbound code, not
 other applications sharing a provider key. Query `provider_spend_windows` to
@@ -110,7 +112,8 @@ see admitted attempts and reservations; do not book those values as expenses.
 Every Chat Completions reply that passes through the outbound boundary is
 measured (`src/lib/costs/provider-usage.ts`): input, cached input, output and
 reasoning tokens, the list cost from `model-prices.ts`, and the cost Surplus
-actually settled (`usage.buyer_cost_micro`). Each call becomes a PostHog
+actually settled (`usage.buyer_cost_micro`). A transcription reply is measured
+too: its audio seconds (`ai_audio_seconds`) and its list cost, with no tokens. Each call becomes a PostHog
 `$ai_generation` event, and `withProductAnalytics` adds the totals
 (`ai_calls`, `ai_list_cost_microusd`, `ai_buyer_cost_microusd` and the token
 counts) to the action's `product_action_completed` or `product_action_failed`
@@ -120,6 +123,31 @@ event. A call made outside a wrapped route reports itself with
 ```bash
 node scripts/posthog-query.mjs "select properties.action, count(), avg(properties.ai_list_cost_microusd), avg(properties.ai_buyer_cost_microusd) from events where event = 'product_action_completed' and properties.ai_calls > 0 and timestamp > now() - interval 7 day group by 1 order by 3 desc"
 ```
+
+## Provider keys by area
+
+Surplus reports spend per key. Each product area reads its own key and falls back to `SURPLUS_API_KEY` when that area has none, so an unset variable changes nothing. The mapping is in `src/lib/providers/surplus-key.ts`.
+
+| Area            | Variable                     | Key name in the Surplus dashboard                                  | What spends from it                                                                                                       |
+| --------------- | ---------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| Editing         | `SURPLUS_API_KEY_EDITING`    | `yapper-studio-editing`                                            | 1-Click Edit cleanup, overlay placement                                                                                   |
+| Overlays        | `SURPLUS_API_KEY_OVERLAYS`   | `yapper-studio-overlays`                                           | Overlay planning, design, revision, retiming, render review                                                               |
+| Ideas           | `SURPLUS_API_KEY_IDEAS`      | `yapper-studio-ideas`                                              | Idea capture, brainstorm, scripts, hooks, canvas, idea versions                                                           |
+| Brain           | `SURPLUS_API_KEY_BRAIN`      | `yapper-studio-brain`                                              | Brain setup, ingest, spin, memory, voice, saved references, and the model router that runs ahead of most generation calls |
+| Chirpy          | `SURPLUS_API_KEY_CHIRPY`     | `yapper-studio-chirpy`                                             | Chirpy action planning in the editor and in Studio                                                                        |
+| Publishing      | `SURPLUS_API_KEY_PUBLISHING` | `yapper-studio-publishing`                                         | Publish copy, AI thumbnails                                                                                               |
+| Feedback        | `SURPLUS_API_KEY_FEEDBACK`   | `yapper-studio-feedback`                                           | Recorded take coaching                                                                                                    |
+| Everything else | `SURPLUS_API_KEY`            | `yapper-studio-shared` in production, `yapper-development` locally | Any area without its own key                                                                                              |
+
+Set the area variables in Vercel for production only. Local development and the eval scripts keep one key, `yapper-development`, in `SURPLUS_API_KEY`, so test traffic never lands on a production key.
+
+Deepgram, Groq and Gemini are each used for one job here, so one key per environment is enough: name them `yapper-transcription-production` and `yapper-transcription-development` in Deepgram and Groq, and `yapper-studio-production` and `yapper-development` in Google AI Studio.
+
+## Transcriber choice
+
+Deepgram transcribes every take unless `TRANSCRIPTION_PRIMARY=elevenlabs` and `ELEVENLABS_API_KEY` are both set. Then ElevenLabs Scribe is offered the take first, and Deepgram and Groq stay behind it as fallbacks. Unset the variable to go back. `ELEVENLABS_STT_MODEL` picks the model and defaults to `scribe_v2`. Scribe calls count against the company-wide provider ceiling the same way Deepgram calls do. The measurements behind this are in `transcription-and-edit-eval-2026-11.md`.
+
+The Mac app asks `GET /api/transcribe/plan` how to cut a take before it uploads. With Scribe first the answer is pieces of up to ten minutes joined by five seconds; otherwise it is 120 second pieces with 30 seconds of overlap. An app from before this endpoint, or one that gets no answer, uses the overlapping pieces, which every transcriber can work with.
 
 ## Storage, database and analytics backstops
 

@@ -31,7 +31,7 @@ struct BrainTableEditor: View {
                                 cell(Binding(get: { value(row, column) }, set: { setCell(row, column, $0) }), header: false)
                             }
                             Button { removeRow(row) } label: {
-                                Image(systemName: "xmark").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary).frame(width: 28, height: 28)
+                                Image(systemName: "xmark").font(.studioMicro).foregroundStyle(.secondary).frame(width: 28, height: 28)
                             }
                             .buttonStyle(.studioPlain)
                             .accessibilityLabel("Remove row \(row + 1)")

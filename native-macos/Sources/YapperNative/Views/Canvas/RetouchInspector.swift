@@ -11,7 +11,13 @@ struct RetouchInspector: View {
     private var retouch: ClipRetouch { session.retouch }
 
     var body: some View {
-        InspectorSection("Retouch", id: "video.retouch") {
+        InspectorSection(
+            "Retouch",
+            id: "video.retouch",
+            accessory: AnyView(ApplyToAllButton(what: "retouch", count: session.otherClipCount) {
+                session.applyRetouchToAllClips()
+            })
+        ) {
             InspectorRow("Clear blemishes") {
                 InspectorSlider(
                     value: retouch.clearBlemishes * 100,
@@ -22,7 +28,7 @@ struct RetouchInspector: View {
                 }
             }
 
-            InspectorRow("Whiten teeth") {
+            InspectorRow("Whiten teeth", detail: summary) {
                 InspectorSlider(
                     value: retouch.whitenTeeth * 100,
                     range: 0 ... 100,
@@ -31,22 +37,10 @@ struct RetouchInspector: View {
                     session.setWhitenTeeth(percent / 100)
                 }
             }
-
-            InspectorRow("") {
-                Text(summary)
-                    .font(.studioCaption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-
-                ApplyToAllButton(what: "retouch", count: session.otherClipCount) {
-                    session.applyRetouchToAllClips()
-                }
-            }
         }
     }
 
     private var summary: String {
-        guard !retouch.isNeutral else { return "Off" }
-        return "Applied to the largest face in shot"
+        "Works on the largest face in shot"
     }
 }

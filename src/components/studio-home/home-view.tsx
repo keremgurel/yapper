@@ -69,7 +69,7 @@ export default function HomeView({
   return (
     <div className="w-full space-y-8 pb-24">
       <header>
-        <h1 className="font-display text-foreground min-h-8 text-[22px] font-bold tracking-[-0.01em]">
+        <h1 className="font-display text-foreground min-h-8 text-2xl font-normal tracking-[-0.02em]">
           {title}
         </h1>
         {/* Blank while ideas load, so a returning creator is not greeted

@@ -14,6 +14,9 @@ final class YapperNativeAppDelegate: NSObject, NSApplicationDelegate {
         // launches behave like the packaged application.
         NativeAnalytics.shared.start()
         Task.detached(priority: .utility) { await PosterProjectRender.shared.removeStaleRenders() }
+        // Taken now, before any export can start and record a file of its own.
+        let leftovers = StagedExportLedger.shared.takeLeftovers()
+        Task.detached(priority: .utility) { StagedExportLedger.remove(leftovers) }
         NSApp.setActivationPolicy(.regular)
         DispatchQueue.main.async {
             NSApp.activate(ignoringOtherApps: true)
@@ -24,14 +27,19 @@ final class YapperNativeAppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard terminationTask == nil else { return .terminateLater }
         guard let session else { return .terminateNow }
-        guard ExportQuitConfirmation.allowsQuit(running: session.exportJobs.runningJobs.count) else {
+        guard ExportQuitConfirmation.allowsQuit(session.exportJobs.runningJobs) else {
             return .terminateCancel
         }
 
         terminationTask = Task { @MainActor [weak self] in
             let shouldTerminate = await session.prepareForTermination()
+            if shouldTerminate {
+                // A canceled export deletes its staged file and intermediate on
+                // the way out. Exiting first would leave both on disk.
+                await session.exportJobs.cancelAll(waitingAtMost: .seconds(5))
+                NativeAnalytics.shared.flush()
+            }
             self?.terminationTask = nil
-            if shouldTerminate { NativeAnalytics.shared.flush() }
             sender.reply(toApplicationShouldTerminate: shouldTerminate)
         }
         return .terminateLater
@@ -45,6 +53,7 @@ struct YapperNativeApp: App {
     @AppStorage("studioColorScheme") private var themeRaw = StudioTheme.dark.rawValue
 
     init() {
+        OverlayScrollers.enforce()
         let session = EditorSession()
         _session = StateObject(wrappedValue: session)
         appDelegate.session = session
@@ -63,6 +72,10 @@ struct YapperNativeApp: App {
             AppShellView(session: session)
                 .frame(minWidth: 1_100, minHeight: 700)
                 .preferredColorScheme(theme.colorScheme)
+                // System controls (sliders, progress bars, pop-up menus) take
+                // the app's ink rather than the Mac's accent colour, so they
+                // match the controls drawn by hand.
+                .tint(Color.studioAccent)
                 .onOpenURL { url in
                     // A project double-clicked in Finder, a video, image or
                     // sound opened with Yapper, or the sign-in ticket.

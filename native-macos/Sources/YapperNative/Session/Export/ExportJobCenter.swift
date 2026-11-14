@@ -17,6 +17,10 @@ final class ExportJobCenter: ObservableObject {
 
     private var tasks: [UUID: Task<Void, Never>] = [:]
     private var waiters: [UUID: [CheckedContinuation<ExportJob, Never>]] = [:]
+    /// Files promised to an export that is still being checked and captured.
+    /// The capture awaits, and a second export to the same file must not slip
+    /// in while it does.
+    private var reservedDestinations: Set<String> = []
 
     var runningJobs: [ExportJob] { jobs.filter(\.state.isRunning) }
 
@@ -36,12 +40,13 @@ final class ExportJobCenter: ObservableObject {
             kind: kind,
             projectID: snapshot.projectID,
             projectName: snapshot.projectName,
-            package: snapshot.package,
             destination: destination,
             startedAt: Date(),
             state: .preparing
         )
         jobs.append(job)
+        // The running job holds the file from here on.
+        reservedDestinations.remove(ExportDestinationKey.of(destination))
         let id = job.id
         let reporter = ExportJobReporter(
             rendered: { [weak self] fraction in
@@ -87,16 +92,32 @@ final class ExportJobCenter: ObservableObject {
         return await withCheckedContinuation { waiters[id, default: []].append($0) }
     }
 
-    /// True while an export is still copying this project's footage. Moving
-    /// or trashing the package then would take files out from under the copy.
-    func isReadingSources(of package: ProjectPackage) -> Bool {
-        jobs.contains { $0.package == package && $0.state == .preparing }
+    /// True while an export is still copying this project's footage. Moving,
+    /// renaming or trashing the package then would take files out from under
+    /// the copy. Matched by project, not package URL: a rename moves the
+    /// package, and the project inside is still the one being read.
+    func isReadingSources(projectID: UUID) -> Bool {
+        jobs.contains { $0.projectID == projectID && $0.state == .preparing }
     }
 
     /// Two jobs writing one file would each replace the other's result.
     func isExporting(to destination: URL) -> Bool {
-        let target = destination.standardizedFileURL
-        return runningJobs.contains { $0.destination.standardizedFileURL == target }
+        let target = ExportDestinationKey.of(destination)
+        return reservedDestinations.contains(target)
+            || runningJobs.contains { ExportDestinationKey.of($0.destination) == target }
+    }
+
+    /// Claims a file for an export that has not started yet. False when an
+    /// export already has it. `start` takes the claim over; release it when
+    /// the export never starts.
+    func reserve(_ destination: URL) -> Bool {
+        guard !isExporting(to: destination) else { return false }
+        reservedDestinations.insert(ExportDestinationKey.of(destination))
+        return true
+    }
+
+    func releaseReservation(_ destination: URL) {
+        reservedDestinations.remove(ExportDestinationKey.of(destination))
     }
 
     private func advance(_ id: UUID, to state: ExportJobState) {

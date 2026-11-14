@@ -57,6 +57,19 @@ describe("TikTok export consent", () => {
       ),
     ).toBe(reason);
   });
+  it("accepts an exact cover time only within the video", () => {
+    const validate = (coverTimestampMs: number) =>
+      validateTikTokDirectSettings(
+        { ...settings, coverTimestampMs },
+        creator,
+        30,
+        false,
+      );
+    expect(validate(1233)).toBeNull();
+    expect(validate(0)).toBeNull();
+    expect(validate(30_000)).toBe("cover_frame_invalid");
+    expect(validate(1.5)).toBe("cover_frame_invalid");
+  });
   it.each([0, -1, NaN, Infinity, 61])("rejects duration %s", (duration) => {
     expect(
       validateTikTokDirectSettings(settings, creator, duration, false),
