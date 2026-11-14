@@ -38,11 +38,11 @@ extension AppActionRegistry {
                 if let duration = input.duration { copy.duration = duration }
                 if let start = input.sourceStart { copy.sourceStart = start }
                 if let track = input.track { copy.track = track == 0 ? nil : track }
-                // The leading edge moved and the end stayed put: a trim, so the
-                // keyframes stay where they were on the timeline, as they do
-                // when the edge is dragged.
-                if copy.timelineStart != overlay.timelineStart,
-                   abs(copy.timelineStart + copy.duration - (overlay.timelineStart + overlay.duration)) < 0.000_001 {
+                // The left edge moved rather than the overlay: keyframes stay at
+                // the same moments on the timeline, as they do when the edge is
+                // dragged. Asked for, never inferred, so a start typed into the
+                // inspector still moves the overlay with its keys.
+                if input.leadingTrim == true, copy.timelineStart != overlay.timelineStart {
                     copy = OverlayKeyTrack.rebased(copy, by: copy.timelineStart - overlay.timelineStart)
                 }
                 if input.timelineStart != nil || input.duration != nil || input.sourceStart != nil {
@@ -183,9 +183,17 @@ extension OverlayFrameInput {
 }
 
 extension OverlayPropertiesInput {
+    /// Any of the fields before `leadingTrim` was added; a plain move or edit.
+    init(overlayIDs: [UUID], all: Bool?, hidden: Bool?, behindSpeaker: Bool?, sourceStart: Double?,
+         timelineStart: Double?, duration: Double?, track: Int?) {
+        self.init(overlayIDs: overlayIDs, all: all, hidden: hidden, behindSpeaker: behindSpeaker, sourceStart: sourceStart,
+                  timelineStart: timelineStart, duration: duration, track: track, leadingTrim: nil)
+    }
+
     /// What a timeline drag or the lane menu changed on an overlay, or nil
-    /// when it changed none of these.
-    init?(timingOf updated: ProjectOverlay, from existing: ProjectOverlay) {
+    /// when it changed none of these. `leadingTrim` is the drag on its left
+    /// edge, which keeps keyframes where they were on the timeline.
+    init?(timingOf updated: ProjectOverlay, from existing: ProjectOverlay, leadingTrim: Bool = false) {
         func changed(_ value: Double, _ old: Double, _ range: ClosedRange<Double>) -> Double? {
             value == old ? nil : min(range.upperBound, max(range.lowerBound, value))
         }
@@ -196,7 +204,8 @@ extension OverlayPropertiesInput {
         let duration = changed(updated.duration, existing.duration, 0.1 ... 86_400)
         guard hidden != nil || track != nil || sourceStart != nil || timelineStart != nil || duration != nil else { return nil }
         self.init(overlayIDs: [existing.id], all: nil, hidden: hidden, behindSpeaker: nil, sourceStart: sourceStart,
-                  timelineStart: timelineStart, duration: duration, track: track)
+                  timelineStart: timelineStart, duration: duration, track: track,
+                  leadingTrim: leadingTrim && timelineStart != nil ? true : nil)
     }
 }
 

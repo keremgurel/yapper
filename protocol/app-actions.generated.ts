@@ -326,6 +326,7 @@ export interface OverlayPropertiesInput {
   timelineStart?: number;
   duration?: number;
   track?: number;
+  leadingTrim?: boolean;
 }
 
 export interface OverlayAddInput {

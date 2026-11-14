@@ -428,6 +428,10 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 5000
+        },
+        "leadingTrim": {
+          "type": "boolean",
+          "description": "With timelineStart (and usually duration and sourceStart), the overlay's left edge moves rather than the whole overlay: keyframes stay at the same moments on the timeline, as dragging its left edge does. Leave it out to move the overlay with its keyframes."
         }
       }
     },

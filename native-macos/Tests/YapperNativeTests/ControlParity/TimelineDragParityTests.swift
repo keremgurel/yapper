@@ -93,14 +93,65 @@ struct TimelineDragParityTests {
         let draft = TimelineOverlayGeometry.trimmed(overlay: keyed, edge: .leading, translationX: 50, contentWidth: 600,
                                                     projectDuration: ui.project.duration, sourceDuration: h.video.duration)
         #expect(draft.timelineStart > keyed.timelineStart)
-        _ = await ui.commitOverlayEdit(draft).value
+        _ = await ui.commitOverlayEdit(draft, leadingTrim: true).value
         try await chat.chirpy(OverlayPropertiesInput(overlayIDs: [keyed.id], all: nil, hidden: nil, behindSpeaker: nil,
                                                      sourceStart: draft.sourceStart, timelineStart: draft.timelineStart,
-                                                     duration: draft.duration, track: nil))
+                                                     duration: draft.duration, track: nil, leadingTrim: true))
         let saved = try #require(ui.project.overlays?.first)
         #expect(saved.keys == draft.keys)
         #expect(saved.timelineStart == draft.timelineStart && saved.duration == draft.duration)
         #expect(parity(ui.project) == parity(chat.project))
+    }
+
+    /// A start typed into the inspector, or any change that keeps the end where
+    /// it was, moves the overlay with its keyframes. Only the left-edge drag
+    /// says otherwise, explicitly.
+    @Test func aStartThatKeepsTheEndStillMovesTheKeyframes() async throws {
+        let h = try await ControlParityHarness.make()
+        var project = h.project
+        var keyed = project.overlays![0]
+        keyed = OverlayKeyTrack.setting(OverlayBox(x: 0.1, y: 0.1, width: 0.4, height: 0.3), at: 0.2, in: keyed)
+        project.overlays = [keyed]
+        let (session, _) = try await h.session(project)
+        defer { h.cleanUp(session) }
+        let end = keyed.timelineStart + keyed.duration
+        await session.performAppAction(OverlayPropertiesInput(overlayIDs: [keyed.id], all: nil, hidden: nil, behindSpeaker: nil,
+                                                              sourceStart: nil, timelineStart: 1, duration: end - 1, track: nil))
+        let saved = try #require(session.project.overlays?.first)
+        #expect(saved.timelineStart == 1)
+        #expect(saved.keys == keyed.keys)
+    }
+
+    /// Sliding an overlay so it ends over a neighbour on its lane used to leave
+    /// the two overlapping. The drop now lands on the lowest free lane, the way
+    /// any retime does, rather than failing.
+    @Test func slidingOverANeighbourLandsOnAFreeLane() async throws {
+        let h = try await ControlParityHarness.make()
+        var project = h.project
+        let neighbour = ProjectOverlay(mediaID: h.video.id, timelineStart: 2.5, duration: 1)
+        project.overlays?.append(neighbour)
+        let (ui, _) = try await h.session(project), (chat, _) = try await h.session(project)
+        defer { h.cleanUp(ui, chat) }
+        let overlay = project.overlays![0]
+        var slid = overlay
+        slid.timelineStart = 2
+        _ = await ui.commitOverlayEdit(slid).value
+        try await chat.chirpy(OverlayPropertiesInput(overlayIDs: [overlay.id], all: nil, hidden: nil, behindSpeaker: nil,
+                                                     sourceStart: nil, timelineStart: 2, duration: nil, track: nil))
+        #expect(ui.lastReceipt?.status == .applied)
+        let landed = try #require(ui.project.overlays?.first { $0.id == overlay.id })
+        #expect(landed.timelineStart == 2 && landed.lane == 1)
+        #expect(ui.project.overlays?.first { $0.id == neighbour.id }?.lane == 0)
+        #expect(parity(ui.project) == parity(chat.project))
+
+        // A lane the drop asked for that turns out busy is dropped rather than
+        // refused, so the drag still lands.
+        var onBusyLane = landed
+        onBusyLane.timelineStart = 2.4
+        onBusyLane.track = 0
+        _ = await ui.commitOverlayEdit(onBusyLane).value
+        #expect(ui.lastReceipt?.status == .applied)
+        #expect(ui.project.overlays?.first { $0.id == overlay.id }?.timelineStart == 2.4)
     }
 
     @Test func selectionDragReordersAndSlidesAsOneUndoStep() async throws {

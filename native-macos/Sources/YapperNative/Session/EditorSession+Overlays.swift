@@ -205,11 +205,19 @@ extension EditorSession {
     }
 
     @discardableResult
-    func commitOverlayEdit(_ updated: ProjectOverlay) -> Task<AppActionResult?, Never> {
+    func commitOverlayEdit(_ updated: ProjectOverlay, leadingTrim: Bool = false) -> Task<AppActionResult?, Never> {
         guard let existing = overlays.first(where: { $0.id == updated.id }) else { return Task { nil } }
+        // A lane the drop asked for but that is busy at the new time is not
+        // worth refusing a drag over: without it, the action settles the
+        // overlay on the lowest free lane, as it does for any retime.
+        var updated = updated
+        if updated.lane != existing.lane,
+           OverlayTracks.isOccupied(updated.lane, by: (updated.id, updated.timelineStart, updated.duration), in: overlays) {
+            updated.track = existing.track
+        }
         // Timing, lane and visibility: a drag along the timeline, or the lane
         // menu. The overlay properties action takes exactly those fields.
-        if let timing = OverlayPropertiesInput(timingOf: updated, from: existing) {
+        if let timing = OverlayPropertiesInput(timingOf: updated, from: existing, leadingTrim: leadingTrim) {
             return Task { await performAppAction(timing) }
         }
 

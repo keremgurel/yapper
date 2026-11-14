@@ -1763,7 +1763,7 @@ private struct TimelineOverlayItem: View {
                     .onEnded { _ in
                         if let draft = trimDraft {
                             // Shown until the committed edit replaces it.
-                            let commit = session.commitOverlayEdit(draft)
+                            let commit = session.commitOverlayEdit(draft, leadingTrim: activeTrimEdge == .leading)
                             Task { _ = await commit.value; if trimDraft == draft { trimDraft = nil } }
                         }
                         trimOrigin = nil

@@ -136,7 +136,7 @@
       "id": "editor.audio.trim",
       "symbol": "audioTrim",
       "input": "AudioTrimInput",
-      "description": "Set the source in point, duration and/or timeline start of existing audio layers, as dragging an edge or the body of a sound on the timeline does. Only supplied fields change; volume and speed are kept. sourceStart is recording seconds; duration and timelineStart are timeline seconds.",
+      "description": "Set source in point and/or duration of existing audio layers. Preserve volume and speed. SourceStart is recording seconds; duration is timeline seconds.",
       "effect": "reversibleEdit",
       "requiresRebuild": true,
       "runtime": "client"
@@ -208,7 +208,7 @@
       "id": "editor.captions.setVisible",
       "symbol": "captionVisibility",
       "input": "CaptionVisibilityInput",
-      "description": "Show or hide existing captions, preserving their text and styling. If showing captions for the first time, generate them from speech using the caption workflow. regenerate=true (with visible=true) rebuilds every card from the current transcript and cut, transcribing first if needed, and discards hand edits to caption text.",
+      "description": "Show or hide existing captions, preserving their text and styling. If showing captions for the first time, generate them from speech using the caption workflow.",
       "effect": "reversibleEdit",
       "requiresRebuild": false,
       "runtime": "client"
@@ -1439,7 +1439,8 @@
         "timelineStart": {
           "type": "number",
           "minimum": 0,
-          "maximum": 86400
+          "maximum": 86400,
+          "description": "Timeline seconds where the sounds start. Alone it moves them; with sourceStart and duration it trims their leading edge, as dragging a sound's left edge does. Leave it out to keep their timeline position."
         }
       }
     },
@@ -1483,7 +1484,8 @@
           "type": "boolean"
         },
         "regenerate": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "With visible=true, rebuild every card from the current transcript and cut, transcribing first if needed. Discards hand edits to caption text; send it only when the creator asks to regenerate."
         }
       }
     },
@@ -2214,6 +2216,10 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 5000
+        },
+        "leadingTrim": {
+          "type": "boolean",
+          "description": "With timelineStart (and usually duration and sourceStart), the overlay's left edge moves rather than the whole overlay: keyframes stay at the same moments on the timeline, as dragging its left edge does. Leave it out to move the overlay with its keyframes."
         }
       }
     },
