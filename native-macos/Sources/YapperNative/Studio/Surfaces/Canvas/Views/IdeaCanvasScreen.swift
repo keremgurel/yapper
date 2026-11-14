@@ -49,6 +49,17 @@ struct IdeaCanvasScreen: View {
             await thread.load()
         }
         .onChange(of: store.item?.versions) { _, loaded in versions.load(loaded ?? []) }
+        .onReceive(NotificationCenter.default.publisher(for: .ideaCanvasChangedRemotely)) { _ in
+            Task {
+                // Saving first merges any pending typing into the change,
+                // so the reload below never skips it.
+                try? await store.autosave.flush()
+                try? await versions.flushAll()
+                await store.load()
+                if let item = store.item { versions.reload(item.versions) }
+                await thread.load()
+            }
+        }
         .onChange(of: current) { _, _ in runner.body = currentBody ?? store }
         .onDisappear {
             IdeaCanvasFocus.shared.detach(runner)

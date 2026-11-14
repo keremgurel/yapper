@@ -183,10 +183,16 @@ export async function createContentItem(
 
 /** Partial update of the caller's own item. Returns the updated row, or null
  * when the item doesn't exist / isn't theirs. */
+/**
+ * `reconcile` sees the locked row before the write and returns the input to
+ * write instead, or throws ContentConflict to write nothing; a save from a
+ * client that read an older row is merged or refused there, atomically.
+ */
 export async function updateContentItem(
   userId: string,
   id: string,
-  input: ContentItemInput,
+  requested: ContentItemInput,
+  reconcile?: (current: typeof contentItems.$inferSelect) => ContentItemInput,
 ) {
   return getDb().transaction(async (tx) => {
     const [current] = await tx
@@ -196,6 +202,7 @@ export async function updateContentItem(
       .for("update")
       .limit(1);
     if (!current) return null;
+    const input = reconcile ? reconcile(current) : requested;
     const changedScript =
       input.script !== undefined && input.script !== current.script;
     const changedScriptBlock =

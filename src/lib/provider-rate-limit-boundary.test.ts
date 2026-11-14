@@ -62,6 +62,7 @@ const SHARED_SOURCE: Record<string, string> = {
   "ideas/expand/route.ts": "src/lib/ideas/operations/expand.ts",
   "content/[id]/versions/[format]/write/route.ts":
     "src/lib/ideas/operations/write-version.ts",
+  "content/brainstorm/route.ts": "src/lib/content/operations/brainstorm.ts",
 };
 
 function routeSource(relativePath: string): string {

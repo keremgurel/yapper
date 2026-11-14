@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AddLinkDialog from "@/components/inspiration/add-link-dialog";
 import InspirationBoard from "@/components/inspiration/inspiration-board";
 import InspirationEmptyState from "@/components/inspiration/inspiration-empty-state";
@@ -10,6 +10,7 @@ import {
 } from "@/components/inspiration/inspiration-context";
 import PillarSidebar from "@/components/inspiration/pillar-sidebar";
 import StudioSetupPrompt from "@/components/onboarding/studio-setup-prompt";
+import { forgetInspirationFocus } from "@/lib/chirpy/studio/inspiration/focus-client";
 
 /** Switches between the clean first-run story (no items yet) and the full board
  * with its pillar rail. Keeping the blank state uncluttered is deliberate — a
@@ -36,6 +37,7 @@ function InspirationContent({ onAdd }: { onAdd: () => void }) {
  * and opens the full-screen flow themselves. */
 export default function InspirationPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  useEffect(() => () => forgetInspirationFocus(), []);
 
   return (
     <InspirationProvider>

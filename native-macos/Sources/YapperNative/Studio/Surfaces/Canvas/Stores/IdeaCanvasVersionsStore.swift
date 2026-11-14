@@ -23,6 +23,13 @@ final class IdeaCanvasVersionsStore: ObservableObject {
         }
     }
 
+    /// Like `load`, and versions already open take the server's copy too
+    /// unless they have unsaved edits.
+    func reload(_ versions: [IdeaCanvasVersion]) {
+        for version in versions { stores[version.format]?.reload(version) }
+        load(versions)
+    }
+
     func write(_ format: IdeaCanvasVersionFormat, from source: IdeaCanvasVersionFormat) async {
         guard writing == nil else { return }
         writing = format

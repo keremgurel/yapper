@@ -1,4 +1,5 @@
 import type { VersionFormat } from "./formats";
+import type { ContentBase } from "./rebase";
 import type {
   ContentBlock,
   ContentHook,
@@ -141,6 +142,26 @@ export async function patchContent(
     }),
   );
   return data.item;
+}
+
+/** A canvas autosave: the patch plus the stored copy each field started
+ * from, so the server merges it into a change made since (see rebaseOnto).
+ * `rebased` says the saved fields differ from what was sent. */
+export async function saveContentFields(
+  id: string,
+  patch: ContentPatch,
+  base: ContentBase,
+  opts: { keepalive?: boolean } = {},
+): Promise<{ item: ContentDetail; rebased: boolean }> {
+  const data = await json<{ item: ContentDetail; rebased?: boolean }>(
+    await fetch(`/api/content/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...patch, base }),
+      keepalive: opts.keepalive,
+    }),
+  );
+  return { item: data.item, rebased: data.rebased === true };
 }
 
 /** Talk-or-type capture: enrich a rough idea into a titled/classified item and

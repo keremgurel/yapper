@@ -29,6 +29,7 @@ import {
 } from "@/lib/content/canvas-actions";
 import {
   blockFrom,
+  patchFromDoc,
   type CanvasBlock as CanvasBlockDoc,
 } from "@/lib/content/canvas-doc";
 import { noteToBlock } from "@/lib/content/note-to-block";
@@ -69,8 +70,15 @@ export default function CanvasWorkbench({ id }: { id: string }) {
     saveState,
     update,
     flush,
+    markSaved,
   } = useContentItem(id);
   const { blocks, setBlocks, hooks, setHooks } = useCanvasDoc(item, update);
+  // What is on screen now, read after an ask returns: typing done while it
+  // ran must not be replaced by a reply written for the older text.
+  const shown = useRef({ blocks, hooks, title: item?.title ?? "" });
+  useEffect(() => {
+    shown.current = { blocks, hooks, title: item?.title ?? "" };
+  });
   const chirpy = useCanvasAsk();
   const studioChirpy = useStudioChirpy();
   const thread = useCanvasThread(item?.id ?? null);
@@ -144,8 +152,10 @@ export default function CanvasWorkbench({ id }: { id: string }) {
       router.push("/studio/ideas");
     }, "The delete couldn’t be confirmed. Your item is kept; try again.");
 
-  /** One ask about this piece, from the Chirpy panel. Applies what came back
-   * and tells Chirpy what changed, so the panel can say it. */
+  /** One ask about this piece, from the Chirpy panel. The server edits and
+   * saves the document it has, so pending edits are saved first. When the
+   * creator did not type meanwhile, the same actions are applied here; when
+   * they did, their copy stays and the next autosave merges the reply in. */
   const askFromChirpy = useCallback(
     async (instruction: string) => {
       if (!item) return null;
@@ -157,6 +167,14 @@ export default function CanvasWorkbench({ id }: { id: string }) {
       const targetIndex = target
         ? blocks.findIndex((block) => block.id === target)
         : -1;
+      try {
+        await flush();
+      } catch {
+        return {
+          text: "Your latest edits couldn’t be saved, so I didn’t change anything. Try again.",
+          tone: "trouble" as const,
+        };
+      }
       const pendingId = thread.pendingAsk(instruction);
       const reply = await chirpy.ask(
         instruction,
@@ -178,11 +196,33 @@ export default function CanvasWorkbench({ id }: { id: string }) {
         item.id,
       );
       setTarget(null);
-      if (!reply) {
+      if (!reply || "failed" in reply) {
         thread.settle(pendingId, null);
-        return null;
+        return reply?.failed === "changed"
+          ? {
+              text: "Your writing changed while I was working, so I didn’t change anything. Nothing was charged. Ask again.",
+              tone: "trouble" as const,
+            }
+          : null;
       }
       const before = { blocks, hooks, title: item.title };
+      const changed = reply.actions.length
+        ? describeCanvasActions(reply.actions)
+        : null;
+      const now = shown.current;
+      if (
+        now.title !== before.title ||
+        JSON.stringify(now.hooks) !== JSON.stringify(before.hooks) ||
+        JSON.stringify(patchFromDoc(now.blocks)) !==
+          JSON.stringify(patchFromDoc(before.blocks))
+      ) {
+        thread.settle(pendingId, reply.messages);
+        return {
+          text: "You edited while I was working. Your edits stay, and my change is merged in wherever it doesn’t touch what you changed.",
+          notes: changed ? [changed] : undefined,
+        };
+      }
+      if (reply.document) markSaved(reply.document);
       const next = applyCanvasActions(
         { title: item.title, blocks, hooks },
         reply.actions,
@@ -199,9 +239,6 @@ export default function CanvasWorkbench({ id }: { id: string }) {
           ? { messageId: said.id, ...before }
           : null,
       );
-      const changed = reply.actions.length
-        ? describeCanvasActions(reply.actions)
-        : null;
       return {
         text:
           (typeof said?.text === "string" && said.text) ||
@@ -216,8 +253,10 @@ export default function CanvasWorkbench({ id }: { id: string }) {
       activeVersion,
       blocks,
       chirpy,
+      flush,
       hooks,
       item,
+      markSaved,
       setBlocks,
       setHooks,
       target,

@@ -41,5 +41,8 @@ enum StudioChirpyEffects {
                 if !IdeaPillarsStore.shared.pillars.isEmpty { await IdeaPillarsStore.shared.refresh() }
             }
         }
+        if effects.contains("ideaCanvas") {
+            NotificationCenter.default.post(name: .ideaCanvasChangedRemotely, object: nil)
+        }
     }
 }

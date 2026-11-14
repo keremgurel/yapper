@@ -4,9 +4,12 @@ import {
   ownPillarIdByName,
   resolveOwnPillar,
 } from "@/lib/content/pillar-ownership";
+import { normalizeBody } from "@/lib/content/normalize";
+import { parseContentBase, rebaseOnto } from "@/lib/content/rebase";
 import { getDb } from "@/lib/db/client";
+import { ContentConflict } from "@/lib/db/content-conflict";
 import { updateContentItem, type ContentItemInput } from "@/lib/db/content";
-import { submissions } from "@/lib/db/schema";
+import { contentItems, submissions } from "@/lib/db/schema";
 import { parseIdeaFields } from "@/lib/ideas/input";
 import {
   refused,
@@ -21,7 +24,17 @@ export interface UpdatedItem {
   /** The saved recording changed, so its memory should be rebuilt after the
    * reply (the caller schedules it, since only it has the request). */
   enrichRecording: boolean;
+  /** The save was merged with a change made since the client read the row;
+   * the client should show the saved fields. */
+  rebased: boolean;
 }
+
+/** Sees the locked row and returns what to write, or throws
+ * ContentConflict. */
+export type ItemReconcile = (
+  current: typeof contentItems.$inferSelect,
+  input: ContentItemInput,
+) => ContentItemInput;
 
 /**
  * Partial update of one of the creator's items: workbench autosave, status,
@@ -29,11 +42,15 @@ export interface UpdatedItem {
  * and Chirpy's idea edits share it, so both apply the same ownership checks.
  * - submissionId must be the caller's own submission (or null to unlink).
  * - pillarId must be the caller's own pillar (or null to clear it).
+ * - With `base` (what the client last read of the fields it sends), the
+ *   save is merged into the row as stored now; without it, as before, the
+ *   newest write wins. `reconcile` lets a server caller check the row itself.
  */
 export async function updateOwnContentItem(
   userId: string,
   id: string,
   body: Record<string, unknown>,
+  reconcile?: ItemReconcile,
 ): Promise<OperationResult<UpdatedItem>> {
   const { input, badStatus } = parseContentInput(body);
   if (badStatus) return refused(400, "bad_status");
@@ -78,9 +95,34 @@ export async function updateOwnContentItem(
     input.pillarId = await ownPillarIdByName(userId, input.pillar);
   }
 
-  const item = await updateContentItem(userId, id, input);
+  const base = parseContentBase(body.base);
+  let rebased = false;
+  let item;
+  try {
+    item = await updateContentItem(userId, id, input, (current) => {
+      if (reconcile) return reconcile(current, input);
+      if (!base) return input;
+      // Merged against the row as the client read it: an idea last saved
+      // before the flexible body shows its old columns as blocks, and the
+      // empty `blocks` beside them would read as someone having deleted
+      // the whole body.
+      const merged = rebaseOnto(input, base, {
+        ...current,
+        blocks: normalizeBody(current).blocks,
+      });
+      rebased = merged.rebased;
+      return merged.patch;
+    });
+  } catch (error) {
+    if (error instanceof ContentConflict) return refused(409, "conflict");
+    throw error;
+  }
   if (!item) return refused(404, "not_found");
-  return succeeded({ item, enrichRecording: changesRecording(input) });
+  return succeeded({
+    item,
+    enrichRecording: changesRecording(input),
+    rebased,
+  });
 }
 
 function changesRecording(input: ContentItemInput): boolean {

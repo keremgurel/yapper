@@ -1,9 +1,12 @@
 import Foundation
 
 /// Runs one ask at a time against the canvas and applies what comes back,
-/// as the web canvas's `askFromChirpy` does: the reply's actions land on the
-/// document through the item's one writer, the exchange goes into the thread,
-/// and the newest change can be taken back.
+/// as the web canvas's `askFromChirpy` does. The server edits and saves the
+/// version it has, so pending edits are flushed first. When the creator did
+/// not type meanwhile, the reply's actions land on what is shown through the
+/// item's one writer; when they did, their copy stays and its next autosave
+/// merges the reply in. The exchange goes into the thread, and the newest
+/// change can be taken back.
 @MainActor
 final class IdeaCanvasAskRunner: ObservableObject {
     /// The canvas as it was before the newest reply that changed it.
@@ -22,15 +25,19 @@ final class IdeaCanvasAskRunner: ObservableObject {
     /// Replies already put on the page, so "Add to page" is offered once.
     @Published private(set) var addedIDs: Set<String> = []
 
+    typealias Ask = @MainActor (IdeaCanvasAskBody, Int) async -> Result<IdeaCanvasAskReply, IdeaCanvasAskError>
+
     private let store: IdeaCanvasItemStore
     private let thread: IdeaCanvasThreadStore
+    private let ask: Ask
     /// The version on screen. Asks read and change it, and only it, so an
     /// edit on the long-form tab never touches the short.
     var body: IdeaCanvasBody
 
-    init(store: IdeaCanvasItemStore, thread: IdeaCanvasThreadStore) {
+    init(store: IdeaCanvasItemStore, thread: IdeaCanvasThreadStore, ask: @escaping Ask = IdeaCanvasAskClient.ask) {
         self.store = store
         self.thread = thread
+        self.ask = ask
         body = store
     }
 
@@ -43,6 +50,12 @@ final class IdeaCanvasAskRunner: ObservableObject {
         defer { busy = false }
 
         let edited = self.body
+        do {
+            try await edited.autosave.flush()
+        } catch {
+            self.error = .failed
+            return
+        }
         let blocks = edited.blocks
         let before = IdeaCanvasState(title: item.title, blocks: blocks, hooks: edited.hooks)
         let target = targetID.flatMap { id in blocks.firstIndex { $0.id == id } }
@@ -55,7 +68,7 @@ final class IdeaCanvasAskRunner: ObservableObject {
         let pendingID = thread.pendingAsk(trimmed)
         let body = IdeaCanvasAskBody(instruction: trimmed, context: context, target: target, contentID: item.id)
 
-        switch await IdeaCanvasAskClient.ask(body, blockCount: blocks.count) {
+        switch await ask(body, blocks.count) {
         case .failure(let failure):
             thread.settle(pendingID, saved: nil)
             error = failure
@@ -63,10 +76,17 @@ final class IdeaCanvasAskRunner: ObservableObject {
             if trimmed == "Give me the key points as bullets" {
                 reply.actions = IdeaCanvasActions.keyPointsOnly(reply.actions)
             }
-            guard edited.blocks == before.blocks, edited.hooks == before.hooks else {
+            guard edited.blocks == before.blocks, edited.hooks == before.hooks, store.item?.title == before.title else {
+                // The server saved the reply over the flushed copy. The
+                // pending autosave still has that copy as its base, so the
+                // server merges the creator's newer typing into the reply.
                 thread.settle(pendingID, saved: reply.messages)
-                lastReply = "Your writing changed while I was working. The reply is in the conversation; your latest edits were kept."
+                lastReply = "You edited while I was working. Your edits stay, and my change is merged in wherever it doesn't touch what you changed."
                 return
+            }
+            if let document = reply.document {
+                edited.markSaved(document)
+                if edited !== store { store.markSaved(IdeaCanvasPatch(title: document.title)) }
             }
             apply(reply, before: before, to: edited)
             thread.settle(pendingID, saved: reply.messages)

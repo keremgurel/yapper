@@ -1,5 +1,6 @@
 import type { StudioActionInputs } from "../registry.generated";
 import type { StudioActionDefinition } from "../executor";
+import type { CanvasActionID } from "../canvas/actions";
 import { captureAction } from "./capture";
 import { deleteAction } from "./delete";
 import {
@@ -9,6 +10,7 @@ import {
   setStatusAction,
   unscheduleAction,
 } from "./edits";
+import { importAction } from "./import";
 import {
   draftAction,
   deleteVersionAction,
@@ -16,12 +18,12 @@ import {
 } from "./versions";
 import { createViewAction, deleteViewAction, updateViewAction } from "./views";
 
-type IdeasActionID = Extract<
-  keyof StudioActionInputs,
-  `studio.ideas.${string}`
+type IdeasActionID = Exclude<
+  Extract<keyof StudioActionInputs, `studio.ideas.${string}`>,
+  CanvasActionID
 >;
 
-/** Every studio.ideas.* action in the contract, by id. */
+/** Every studio.ideas.* action in the contract except the canvas's, by id. */
 export const IDEAS_ACTIONS: {
   [ID in IdeasActionID]: StudioActionDefinition<StudioActionInputs[ID]>;
 } = {
@@ -35,6 +37,7 @@ export const IDEAS_ACTIONS: {
   "studio.ideas.draft": draftAction,
   "studio.ideas.writeVersion": writeVersionAction,
   "studio.ideas.deleteVersion": deleteVersionAction,
+  "studio.ideas.import": importAction,
   "studio.ideas.views.create": createViewAction,
   "studio.ideas.views.update": updateViewAction,
   "studio.ideas.views.delete": deleteViewAction,

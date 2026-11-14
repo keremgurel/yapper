@@ -1,0 +1,20 @@
+{
+  "id": "studio-canvas-setscript-misroute",
+  "from": "review of #333: a rewrite request must go to the canvas writer, never replace the script with model text",
+  "planner": "studio",
+  "tags": ["studio", "canvas", "safety"],
+  "base": "studio-ideas",
+  "messages": [
+    { "role": "user", "content": "make my gym myths script punchier" }
+  ],
+  "expect": {
+    "actions": ["studio.ideas.canvasEdit"],
+    "forbid": ["studio.ideas.setScript"],
+    "args": [
+      {
+        "pointer": "/ideaID",
+        "equals": "6f1d1f5e-2b7a-4c39-9b8e-0a1c2d3e4f01"
+      }
+    ]
+  }
+}
