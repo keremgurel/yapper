@@ -47,14 +47,28 @@ Groq's whisper is a poor failover for this product. It drops a fifth to a quarte
 
 The production edit model was run on each transcript and scored against the finished cut.
 
-| Transcript            | Cut F1 | Words wrongly cut | Mistakes left in | Kept text differs from the shipped video by |
-| --------------------- | -----: | ----------------: | ---------------: | ------------------------------------------: |
-| Production pipeline   |  0.999 |                 6 |                0 |                                        0.7% |
-| Deepgram, 15 s pieces |  0.988 |                16 |               47 |                                        2.7% |
-| Deepgram, one file    |  0.956 |                65 |               91 |                                        3.0% |
-| Groq whisper turbo    |  0.942 |                97 |              205 |                                       12.5% |
+| Transcript                                | Cut F1 | Words wrongly cut | Mistakes left in | Kept text differs from the shipped video by |
+| ----------------------------------------- | -----: | ----------------: | ---------------: | ------------------------------------------: |
+| ElevenLabs Scribe v2, direct, one request |  1.000 |                 0 |                0 |                                        0.0% |
+| ElevenLabs Scribe v3, direct, one request |  1.000 |                 0 |                0 |                                        0.0% |
+| Production pipeline                       |  0.999 |                 6 |                0 |                                        0.7% |
+| Deepgram, 15 s pieces                     |  0.988 |                16 |               47 |                                        2.7% |
+| Deepgram, one file                        |  0.956 |                65 |               91 |                                        3.0% |
+| Groq whisper turbo                        |  0.942 |                97 |              205 |                                       12.5% |
 
-Totals are over ten runs (five takes, twice). The production row is the one with the home advantage.
+Totals are over ten runs (five takes, twice), and fifteen for the two Scribe rows. The production row is the one with the home advantage.
+
+### ElevenLabs Scribe, called directly
+
+Through Surplus, Scribe returns text only. Called directly at `api.elevenlabs.io/v1/speech-to-text` with `timestamps_granularity=word`, it returns a start and end for every word. The text is the same as the Surplus route gives (0.6% apart over the five takes).
+
+Each take went up as one request and came back in 2 to 5 seconds. The production edit model then cut all five takes exactly as the finished videos were cut, on every one of fifteen runs: no word wrongly cut and no mistake left in. That is a better score than the production pipeline gets on its own transcript, without the home advantage.
+
+Its word times agree with Deepgram's. Word starts are a median of 40 ms apart and 120 ms at the 90th percentile. Scribe ends each word about 80 ms earlier than Deepgram does, so its words are shorter (160 ms at the median against 240). Measured against the edges of the finished cuts, Scribe's word boundaries were the closest of any transcriber: within 160 ms at the 90th percentile and never more than 188 ms away, where Deepgram's were within 290 ms and up to 458.
+
+Scribe v2 lists at $0.0033 a minute in one request. Deepgram lists at $0.0043 a minute and production sends it at least 1.2 times the audio, so the same minute costs $0.0052 or more before keyterms. Scribe is about a third cheaper per minute of footage and needs no pieces, overlap or recovery passes. Scribe v3 scored the same; its price was not on the pricing page.
+
+Before production moved to it, these would need checking. The takes here run to 6.4 minutes, and nothing longer was tested. The Mac app's finishing passes were tuned on Deepgram's longer word ends, and Scribe's are 80 ms shorter. A request body over 4.5 MB cannot pass through Vercel, so the audio would go by link (`source_url`), the way the Deepgram link route does today.
 
 ### List prices, read from the vendors' pages on November 13
 
@@ -62,14 +76,14 @@ Totals are over ten runs (five takes, twice). The production row is the one with
 | ---------------------------- | -----------------------------------------------------------------: | ------------------------------ | ------------------- |
 | xAI speech to text           |                                            $0.0017 ($0.10 an hour) | yes, returned by default       | no                  |
 | AssemblyAI Universal-2       |                                            $0.0025 ($0.15 an hour) | not stated on the pricing page | no                  |
-| ElevenLabs Scribe v2         |                     $0.0033 ($0.20 an hour), keyterms $0.0008 more | not stated on the pricing page | no                  |
+| ElevenLabs Scribe v2         |                         $0.0033 ($0.20 an hour), keyterms 20% more | yes, tested                    | yes                 |
 | AssemblyAI Universal-3.5 Pro |                                            $0.0035 ($0.21 an hour) | not stated on the pricing page | no                  |
 | Deepgram Nova-3              | $0.0043, keyterms $0.0013 more. The page labels this promo pricing | yes                            | yes                 |
 | Scribe v2 through Surplus    |                                $0.0100 list, about $0.0037 settled | no                             | yes                 |
 
 Groq's pricing page shows no model prices and OpenAI's returned a 403, so neither is in the table. There is no OpenAI key in Yapper's `.env.local`.
 
-xAI is the one worth a key. It lists at 40% of Deepgram's price, its documentation says it returns word times with a confidence value, keeps filler words when `filler_words` is set and takes up to 100 keyterms. Its text, heard through Surplus on a single file, dropped about as few words as the production pipeline does with all of its passes. What is not known is how accurate its word times are, because Surplus strips them.
+xAI is still worth a key. It lists at half of Scribe's price and 40% of Deepgram's, its documentation says it returns word times with a confidence value, keeps filler words when `filler_words` is set and takes up to 100 keyterms. Its text, heard through Surplus on a single file, dropped about as few words as the production pipeline does with all of its passes. Its word times are untested, because Surplus strips them and there is no xAI key.
 
 ## 1-Click Edit model
 
@@ -133,7 +147,8 @@ Yapper sends every Surplus call through one key, named `yapper-ai-cleanup` in th
 
 ## Not tested
 
-- xAI and ElevenLabs word times, for want of keys.
+- xAI's word times, for want of a key.
+- Scribe on a take longer than 6.4 minutes, and with keyterms.
 - The same comparisons on a phone recording, a lavalier or a noisy room.
 - What production really bills Deepgram per minute of footage. That needs Deepgram's usage export set against `edit_runs`.
 - Overlay design on a cheaper model than claude-opus-4.7.

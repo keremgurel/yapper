@@ -63,9 +63,67 @@ async function openaiLike(bytes, base, key, model, verbose) {
     })),
   };
 }
+async function elevenlabs(bytes, model) {
+  const form = new FormData();
+  form.append("model_id", model);
+  form.append("language_code", "en");
+  form.append("timestamps_granularity", "word");
+  form.append("tag_audio_events", "false");
+  form.append("diarize", "false");
+  form.append("file", new File([bytes], "audio.m4a", { type: "audio/mp4" }));
+  const r = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+    method: "POST",
+    headers: { "xi-api-key": process.env.ELEVENLABS_API_KEY ?? "" },
+    body: form,
+  });
+  if (!r.ok)
+    throw new Error(`elevenlabs_${r.status} ${(await r.text()).slice(0, 200)}`);
+  const j = await r.json();
+  return {
+    heardSec: j.audio_duration_secs,
+    text: j.text,
+    words: (j.words ?? [])
+      .filter((w) => w.type === "word" && w.start != null && w.end != null)
+      .map((w) => ({
+        text: w.text,
+        start: w.start,
+        end: w.end,
+        logprob: w.logprob,
+      })),
+  };
+}
+async function xai(bytes) {
+  const form = new FormData();
+  form.append("model", "grok-voice-transcribe-2.0");
+  form.append("language", "en");
+  form.append("filler_words", "true");
+  // xAI requires the file to be the last field.
+  form.append("file", new File([bytes], "audio.m4a", { type: "audio/mp4" }));
+  const r = await fetch("https://api.x.ai/v1/stt", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${process.env.XAI_API_KEY ?? ""}` },
+    body: form,
+  });
+  if (!r.ok)
+    throw new Error(`xai_${r.status} ${(await r.text()).slice(0, 200)}`);
+  const j = await r.json();
+  return {
+    heardSec: j.duration,
+    text: j.text,
+    words: (j.words ?? []).map((w) => ({
+      text: w.text,
+      start: w.start,
+      end: w.end,
+      conf: w.confidence,
+    })),
+  };
+}
 const P = {
   "dg-nova3": (b) => deepgram(b, "nova-3"),
   "dg-nova2": (b) => deepgram(b, "nova-2"),
+  "el-scribe2": (b) => elevenlabs(b, "scribe_v2"),
+  "el-scribe3": (b) => elevenlabs(b, "scribe_v3"),
+  xai: (b) => xai(b),
   "groq-v3": (b) =>
     openaiLike(
       b,

@@ -22,7 +22,7 @@ def align(ref,hyp):
         else: ins+=1;j-=1
     return s,d,ins
 takes=['t3','t4','t5','ad1','ad2']
-provs=['app','dg-nova3','dg-c120o30','dg-c60o10','dg-c60o2','dg-c30o2','dg-c15o2','sp-xai','sp-scribe']
+provs=['app','dg-c15o2','dg-nova3','el-scribe2','el-scribe3','sp-xai','groq-turbo','sp-scribe']
 texts={}
 for t in takes:
     proj=json.load(open(f"{S}/fixtures/{t}.project.json"))
