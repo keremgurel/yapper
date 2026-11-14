@@ -6,6 +6,7 @@ import {
   type ProviderReservation,
 } from "./provider-budget";
 import { isChatCompletionsPath, readChatUsage } from "./chat-usage";
+import { readAudioUsage } from "./audio-usage";
 import { currentAiUsage, type AiCall } from "./ai-usage-scope";
 import { aiGenerationProperties } from "./ai-usage-events";
 
@@ -37,6 +38,21 @@ async function distinctIdOutsideScope(): Promise<string> {
   }
 }
 
+/** A transcription reply in the shape a model call is recorded in. These
+ * providers are paid directly, so what was settled is the list price. */
+function transcriptionCall(url: URL, reply: ProviderResponse) {
+  const audio = readAudioUsage(url, reply.init, reply.bytes);
+  if (!audio) return null;
+  return {
+    ...audio,
+    inputTokens: 0,
+    cachedInputTokens: 0,
+    outputTokens: 0,
+    reasoningTokens: 0,
+    buyerCostMicrousd: audio.listCostMicrousd,
+  };
+}
+
 function report(call: AiCall): void {
   const scope = currentAiUsage();
   if (scope && !scope.reported) {
@@ -61,9 +77,9 @@ function report(call: AiCall): void {
 
 /**
  * Account for one successful paid reply: settle its budget reservation down to
- * list cost and report its tokens and cost. Only Chat Completions report
- * usage today; other providers keep their fixed reservation. Never throws, so
- * accounting can never fail a product request.
+ * list cost and report what it used. Chat Completions report tokens and the
+ * transcribers report audio length; any other provider keeps its fixed
+ * reservation. Never throws, so accounting can never fail a product request.
  */
 export async function recordProviderResponse(
   reply: ProviderResponse,
@@ -74,8 +90,9 @@ export async function recordProviderResponse(
       reply.input instanceof Request ? reply.input.url : String(reply.input),
     );
     const model = chatCompletionsModel(url, reply.init);
-    if (!model) return;
-    const usage = readChatUsage(model, reply.bytes);
+    const usage = model
+      ? readChatUsage(model, reply.bytes)
+      : transcriptionCall(url, reply);
     if (!usage) return;
     await settleProviderBudget(reply.reservation, usage.listCostMicrousd);
     report({
