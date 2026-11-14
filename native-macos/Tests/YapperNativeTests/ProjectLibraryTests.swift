@@ -92,6 +92,22 @@ struct ProjectLibraryTests {
         }
     }
 
+    @Test("A project outside the projects folder is renamed where it is, not taken into the library")
+    func renameStaysInTheProjectsOwnFolder() async throws {
+        try await withLibrary { library, root in
+            let elsewhere = root.appending(path: "Old projects", directoryHint: .isDirectory)
+            let package = ProjectPackage(url: elsewhere.appending(path: "Draft.yapperproj", directoryHint: .isDirectory))
+            try FileManager.default.createDirectory(at: package.url, withIntermediateDirectories: true)
+            try await ProjectPackageStore(package: package).save(EditorProject(name: "Draft"))
+
+            let renamed = try await library.rename(package, to: "Final")
+            #expect(renamed.url.deletingLastPathComponent().standardizedFileURL.path == elsewhere.standardizedFileURL.path)
+            #expect(try await ProjectPackageStore(package: renamed).load()?.name == "Final")
+            #expect(!FileManager.default.fileExists(atPath: package.url.path))
+            #expect(!FileManager.default.fileExists(atPath: library.directory.appending(path: "Final.yapperproj").path))
+        }
+    }
+
     @Test("The legacy single project becomes the first package and is never migrated twice")
     func migratesLegacyProjectOnce() async throws {
         try await withLibrary { library, root in

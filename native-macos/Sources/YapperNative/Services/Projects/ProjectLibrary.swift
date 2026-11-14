@@ -87,8 +87,13 @@ actor ProjectLibrary {
         return nil
     }
 
+    /// Renamed where it is. A project left in an earlier projects folder, or
+    /// opened from anywhere else, keeps its folder: taking it into the
+    /// library's would be a plain move, across disks when the library is on
+    /// a drive, with none of the checks `ProjectMover` makes.
     func rename(_ package: ProjectPackage, to name: String) throws -> ProjectPackage {
-        let destination = uniqueURL(for: name, excluding: package.url)
+        let folder = package.url.deletingLastPathComponent()
+        let destination = ProjectPackage.uniqueURL(for: name, in: folder, excluding: package.url)
         guard destination != package.url else { return package }
         try FileManager.default.moveItem(at: package.url, to: destination)
         RecentProjects.replace(package.url, with: destination)
@@ -181,7 +186,7 @@ actor ProjectLibrary {
         }
     }
 
-    private func uniqueURL(for name: String, excluding: URL? = nil) -> URL {
-        ProjectPackage.uniqueURL(for: name, in: directory, excluding: excluding)
+    private func uniqueURL(for name: String) -> URL {
+        ProjectPackage.uniqueURL(for: name, in: directory)
     }
 }
