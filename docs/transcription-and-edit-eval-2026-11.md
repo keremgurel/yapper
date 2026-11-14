@@ -70,6 +70,21 @@ Scribe v2 lists at $0.0033 a minute in one request. Deepgram lists at $0.0043 a 
 
 Before production moved to it, these would need checking. The takes here run to 6.4 minutes, and nothing longer was tested. The Mac app's finishing passes were tuned on Deepgram's longer word ends, and Scribe's are 80 ms shorter. A request body over 4.5 MB cannot pass through Vercel, so the audio would go by link (`source_url`), the way the Deepgram link route does today.
 
+### Scribe through the transcribe route
+
+`TRANSCRIPTION_PRIMARY=elevenlabs` offers a take to Scribe first and leaves Deepgram and Groq behind it. The Mac app still uploads 120 second pieces with 30 seconds of overlap, so under the flag Scribe transcribes those pieces and the route merges them. That path was run on the five takes with the route's own module and merge, eight pieces at a time: 14 pieces came back in 5 seconds with no request refused.
+
+| Scribe through the route                        | Cut F1 over 15 runs | Words wrongly cut | Mistakes left in |
+| ----------------------------------------------- | ------------------: | ----------------: | ---------------: |
+| English pinned (`language_code=en`), as shipped |               1.000 |                 0 |                3 |
+| Language left to detect                         |               0.988 |                80 |               80 |
+
+Left to detect the language, Scribe judged each piece on its own and wrote the same sentence two ways, "2026" in one piece and "twenty twenty-six" in the next. The merge could not match them across the seam and interleaved both, and the edit model then preferred an earlier clean attempt over the garbled final one. Pinning English, which is also Deepgram's default, removed it.
+
+Per minute of footage under the flag, Scribe costs $0.0033 times the 1.2 to 1.33 the overlap adds, plus 20% for keyterms: about $0.005. Deepgram on the same pieces with keyterms is about $0.007, before its recovery passes. The rest of the saving, down to $0.0033 to $0.004, needs the app to upload a take as one file.
+
+Poster's video masters stay on Deepgram under the flag. Scribe takes the audio in the request body here, and a master can be hundreds of megabytes.
+
 ### List prices, read from the vendors' pages on November 13
 
 | Provider                     |                                             Batch price per minute | Word timings                   | Key in `.env.local` |
@@ -148,7 +163,8 @@ Yapper sends every Surplus call through one key, named `yapper-ai-cleanup` in th
 ## Not tested
 
 - xAI's word times, for want of a key.
-- Scribe on a take longer than 6.4 minutes, and with keyterms.
+- Scribe on a take longer than 6.4 minutes, and with a creator's own dictionary terms. The route test sent only the two default terms.
+- The route itself against a running server. The module and the merge were run on real audio; the request handling around them is covered by unit tests.
 - The same comparisons on a phone recording, a lavalier or a noisy room.
 - What production really bills Deepgram per minute of footage. That needs Deepgram's usage export set against `edit_runs`.
 - Overlay design on a cheaper model than claude-opus-4.7.

@@ -1035,3 +1035,131 @@ it("refuses unreadable media before charging or calling transcription", async ()
   expect(mocks.reservePaidActionOrResponse).not.toHaveBeenCalled();
   expect(mocks.fetchBoundedJson).not.toHaveBeenCalled();
 });
+
+describe("POST /api/transcribe with ElevenLabs offered first", () => {
+  const SCRIBE = "https://api.elevenlabs.io/v1/speech-to-text";
+  const scribeReply = {
+    response: new Response(null, { status: 200 }),
+    data: {
+      audio_duration_secs: 10,
+      words: [
+        { text: "Hello", start: 0, end: 0.4, type: "word" },
+        { text: " ", start: 0.4, end: 0.5, type: "spacing" },
+      ],
+    },
+  };
+  const deepgramReply = {
+    response: { ok: true },
+    data: {
+      metadata: { duration: 10 },
+      results: {
+        channels: [
+          {
+            alternatives: [
+              {
+                words: [
+                  { word: "hi", punctuated_word: "Hi.", start: 0, end: 0.3 },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    },
+  };
+  const urls = () =>
+    mocks.fetchBoundedJson.mock.calls.map(([url]) => String(url).split("?")[0]);
+  const stored = (body: Record<string, unknown>) =>
+    new Request("https://ypr.app/api/transcribe", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+  beforeEach(() => {
+    vi.stubEnv("DEEPGRAM_API_KEY", "dg_test");
+    vi.stubEnv("ELEVENLABS_API_KEY", "el_test");
+    vi.stubEnv("TRANSCRIPTION_PRIMARY", "elevenlabs");
+    vi.stubEnv("R2_ENDPOINT", "https://r2.test");
+    vi.stubEnv("R2_ACCESS_KEY_ID", "id");
+    vi.stubEnv("R2_SECRET_ACCESS_KEY", "secret");
+    r2.presignView.mockResolvedValue("https://r2.test/signed-get");
+    r2.discardTranscriptionAudio.mockResolvedValue(undefined);
+    r2.getObjectBytes.mockResolvedValue(new Uint8Array([1, 2, 3]).buffer);
+    mocks.duration.mockResolvedValue(10);
+    submissions.getOwnedMediaKey.mockResolvedValue(null);
+  });
+
+  it("transcribes a stored take with Scribe and never calls Deepgram", async () => {
+    mocks.fetchBoundedJson.mockResolvedValue(scribeReply);
+    const response = await POST(stored({ key: "u/user_test/asr/abc.m4a" }));
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      words: [{ text: "Hello", start: 0, end: 0.4 }],
+    });
+    expect(urls()).toEqual([SCRIBE]);
+    const init = mocks.fetchBoundedJson.mock.calls[0][1];
+    expect(init.headers).toEqual({ "xi-api-key": "el_test" });
+    expect((init.body as FormData).getAll("keyterms")).toEqual([
+      "CELPIP",
+      "Yapper",
+    ]);
+    expect(r2.discardTranscriptionAudio).toHaveBeenCalledWith(
+      "u/user_test/asr/abc.m4a",
+    );
+  });
+
+  it("falls back to Deepgram when Scribe fails, under one reservation", async () => {
+    mocks.fetchBoundedJson
+      .mockResolvedValueOnce({
+        response: new Response(null, { status: 429 }),
+        data: {},
+      })
+      .mockResolvedValueOnce(deepgramReply);
+    const response = await POST(stored({ key: "u/user_test/asr/abc.m4a" }));
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      words: [{ text: "Hi.", start: 0, end: 0.3 }],
+    });
+    expect(urls()).toEqual([SCRIBE, "https://api.deepgram.com/v1/listen"]);
+    expect(mocks.reservePaidActionOrResponse).toHaveBeenCalledTimes(1);
+    expect(mocks.refundCreditReservation).not.toHaveBeenCalled();
+  });
+
+  it("leaves a take on Deepgram while the flag is off, key or no key", async () => {
+    vi.stubEnv("TRANSCRIPTION_PRIMARY", "");
+    mocks.fetchBoundedJson.mockResolvedValue(deepgramReply);
+    const response = await POST(stored({ key: "u/user_test/asr/abc.m4a" }));
+    expect(response.status).toBe(200);
+    expect(urls()).toEqual(["https://api.deepgram.com/v1/listen"]);
+  });
+
+  it("keeps a Poster master on Deepgram's link route", async () => {
+    submissions.getOwnedMediaKey.mockResolvedValue(
+      "u/user_test/final-export.mp4",
+    );
+    mocks.fetchBoundedJson.mockResolvedValue(deepgramReply);
+    const response = await POST(stored({ submissionId: "submission-owned" }));
+    expect(response.status).toBe(200);
+    expect(urls()).toEqual(["https://api.deepgram.com/v1/listen"]);
+    expect(r2.getObjectBytes).not.toHaveBeenCalled();
+  });
+
+  it("refuses a Scribe reply that heard less audio than the piece holds", async () => {
+    vi.stubEnv("DEEPGRAM_API_KEY", "");
+    mocks.fetchBoundedJson.mockResolvedValue({
+      ...scribeReply,
+      data: { ...scribeReply.data, audio_duration_secs: 4 },
+    });
+    const response = await POST(
+      stored({
+        chunks: [{ key: "u/user_test/asr/a.m4a", offset: 0, duration: 10 }],
+      }),
+    );
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      error: "audio_truncated",
+    });
+    expect(mocks.refundCreditReservation).toHaveBeenCalledTimes(1);
+  });
+});

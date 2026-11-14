@@ -34,6 +34,8 @@ import {
   viaDeepgramURL,
   viaOpenAiCompatible,
 } from "@/lib/transcription/providers";
+import { viaElevenLabs } from "@/lib/transcription/elevenlabs";
+import { elevenLabsPrimaryKey } from "@/lib/transcription/primary-provider";
 import { getObjectBytes } from "@/lib/r2";
 import { captureMediaType } from "@/lib/voice/capture-media";
 import { resolveOwnedMediaKey } from "@/lib/publish/media";
@@ -103,7 +105,8 @@ const AUDIO_MEDIA_TYPES = [
  * chain: Deepgram (nova-3) is the transcriber of record; Groq (whisper-large-v3)
  * is the full-take backup when Deepgram errors. Short excerpts may also use
  * Groq to recover speech missing from a successful primary response. Both
- * return per-word timings.
+ * return per-word timings. With TRANSCRIPTION_PRIMARY=elevenlabs, ElevenLabs
+ * Scribe is offered the take first and the other two stay behind it.
  * Responds 501 when no provider key is configured.
  */
 async function trackedPOST(req: Request): Promise<Response> {
@@ -117,6 +120,7 @@ async function trackedPOST(req: Request): Promise<Response> {
 
   const deepgram = process.env.DEEPGRAM_API_KEY;
   const groq = process.env.GROQ_API_KEY;
+  const scribe = elevenLabsPrimaryKey();
   const keyterms = [
     ...DEFAULT_KEYTERMS,
     ...new URL(req.url).searchParams.getAll("keyterm"),
@@ -401,6 +405,35 @@ async function trackedPOST(req: Request): Promise<Response> {
     name: string;
     run: (timeoutMs: number) => Promise<AsrResult>;
   }[] = [];
+  // Scribe takes the audio in the request body, so like the Groq backup it is
+  // kept away from a Poster master that can be hundreds of megabytes.
+  if (scribe && !durableVideoMaster) {
+    providers.push({
+      name: "elevenlabs",
+      run: async (timeoutMs) =>
+        storedChunks.length > 0
+          ? transcribeStored(
+              async (chunk, chunkTimeoutMs) =>
+                viaElevenLabs(
+                  await bytes(chunk.key),
+                  scribe,
+                  contentType,
+                  keyterms,
+                  req.signal,
+                  chunkTimeoutMs,
+                ),
+              timeoutMs,
+            )
+          : viaElevenLabs(
+              await bytes(),
+              scribe,
+              contentType,
+              keyterms,
+              req.signal,
+              timeoutMs,
+            ),
+    });
+  }
   if (deepgram) {
     providers.push({
       name: "deepgram",
@@ -583,7 +616,9 @@ async function trackedPOST(req: Request): Promise<Response> {
         // Retry only windows containing independently detected missing speech.
         let missing = uncoveredSpeech(words, speech);
         const pending = new Set(recoveryChunks);
-        const rounds = deepgram && groq ? 3 : deepgram ? 2 : 1;
+        // Recovery reads short excerpts with Deepgram and then Whisper. With
+        // neither configured there is nothing to retry with.
+        const rounds = deepgram && groq ? 3 : deepgram ? 2 : groq ? 1 : 0;
         for (let round = 0; round < rounds && missing.length > 0; round++) {
           if (preserveUnresolvedSpeech && providerDeadline - Date.now() < 3_000)
             break;
