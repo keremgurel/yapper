@@ -20,12 +20,13 @@
 :root {
   color-scheme: light;
 
-  /* fonts: Inter everywhere, loaded in layout.tsx with its optical-size axis.
-     The platform face stays as the fallback so nothing reflows badly before
-     the font arrives. */
+  /* fonts: San Francisco where the system has it, Inter everywhere else.
+     SF Pro cannot be served as a web font, so Apple devices get it from the
+     system (which also picks the Display or Text cut by size) and every other
+     device gets Inter, loaded in layout.tsx with its optical-size axis. */
   --sg-font-system:
-    var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont,
-    "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    var(--font-inter), "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-body-sans: var(--sg-font-system);
   --font-display-sans: var(--sg-font-system);
   /* One family everywhere: headlines and body both set in the system font. */
@@ -104,7 +105,7 @@
   --sg-text-5xl: clamp(2.75rem, 1.8rem + 4.5vw, 4.5rem);
   --sg-text-6xl: clamp(3.25rem, 2rem + 6vw, 6rem);
 
-  --sg-tracking-tight: -0.025em;
+  --sg-tracking-tight: -0.018em;
   --sg-tracking-snug: -0.015em;
   --sg-tracking-normal: 0em;
   --sg-tracking-wide: 0.01em;
@@ -244,63 +245,73 @@
   padding-inline: 1.25rem;
 }
 
+/* Type follows Apple's marketing scale: semibold headings whose tracking
+   tightens as they grow, 17px text, and nothing lighter than regular. The
+   system already tracks San Francisco by size, so these values are milder
+   than Apple's own, which are written for an untracked web font. */
 .type-display,
 .type-h1,
 .type-h2,
 .type-h3 {
   color: var(--sg-text);
   font-family: var(--sg-font-display);
-  /* Light display type: the size carries the hierarchy, not the weight. */
-  font-weight: 300;
+  font-weight: 600;
   font-optical-sizing: auto;
   text-wrap: balance;
 }
 
-.type-display,
+/* The opening promise: one per page, on the homepage and product heroes. */
+.type-display {
+  /* 34px at phone width, so a four-word line still fits on one line. */
+  font-size: clamp(2.125rem, 0.75rem + 5.9vw, 5rem);
+  line-height: 1.05;
+  letter-spacing: -0.022em;
+}
+
 .type-h1 {
-  font-size: clamp(2.25rem, 1.5rem + 2.6vw, 3rem);
-  line-height: 1.08;
-  letter-spacing: -0.03em;
+  font-size: clamp(2.25rem, 1.4rem + 3.2vw, 3.5rem);
+  line-height: 1.07;
+  letter-spacing: -0.018em;
 }
 
 .type-h2 {
-  font-size: clamp(1.75rem, 1.3rem + 1.6vw, 2.25rem);
-  line-height: 1.16;
-  letter-spacing: -0.025em;
+  font-size: clamp(1.875rem, 1.3rem + 2.2vw, 3rem);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
 }
 
 .type-h3 {
-  font-size: clamp(1.25rem, 1.1rem + 0.5vw, 1.5rem);
-  line-height: 1.3;
-  font-weight: 400;
-  letter-spacing: -0.015em;
+  font-size: clamp(1.375rem, 1.2rem + 0.6vw, 1.75rem);
+  line-height: 1.14;
+  letter-spacing: -0.008em;
 }
 
 .type-description {
   color: var(--sg-text);
   font-family: var(--sg-font-body);
-  font-size: 1rem;
-  line-height: 1.5;
-  letter-spacing: 0.01em;
+  font-size: 1.0625rem;
+  line-height: 1.47;
+  letter-spacing: -0.01em;
 }
 
-/* The quiet line above a heading. Muted, sentence case, never uppercase. */
+/* The line above a heading: the chapter it belongs to. Semibold and muted,
+   sentence case, never uppercase. */
 .type-label {
   color: var(--sg-text-muted);
-  font-family: var(--sg-font-body);
-  font-size: 1rem;
-  font-weight: 400;
-  line-height: 1.5;
-  letter-spacing: 0.01em;
+  font-family: var(--sg-font-display);
+  font-size: clamp(1.0625rem, 1rem + 0.3vw, 1.3125rem);
+  font-weight: 600;
+  line-height: 1.19;
+  letter-spacing: 0;
 }
 
 /* Secondary copy inside cards and lists. */
 .type-caption {
   color: var(--sg-text-muted);
   font-family: var(--sg-font-body);
-  font-size: 0.9375rem;
-  line-height: 1.47;
-  letter-spacing: 0.01em;
+  font-size: 0.875rem;
+  line-height: 1.43;
+  letter-spacing: -0.006em;
 }
 
 @media (min-width: 640px) {
@@ -526,9 +537,9 @@
   --font-sans: var(--font-body-sans);
   --font-display: var(--font-display-sans);
   --font-mono: var(--font-geist-mono);
-  /* Weight ramp: 300 display, 400 text, 500 emphasis. 600 is the ceiling, so
-     the heavy utilities resolve one step lighter than Tailwind's defaults. */
-  --font-weight-semibold: 500;
+  /* Weight ramp: 400 text, 600 headings and emphasis. 600 is the ceiling, so
+     the heavier utilities resolve to it. */
+  --font-weight-semibold: 600;
   --font-weight-bold: 600;
   --font-weight-extrabold: 600;
   /* shadcn/ui color mappings, bridged to the brand tokens above */
@@ -804,7 +815,7 @@ select {
   font-family: var(--sg-font-display);
   letter-spacing: var(--sg-display-tracking);
   line-height: 1.08;
-  font-weight: 300;
+  font-weight: 600;
 }
 .sg-label {
   font-family: var(--sg-font-body);

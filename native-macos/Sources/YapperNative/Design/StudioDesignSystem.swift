@@ -14,22 +14,21 @@ enum StudioTheme: String, CaseIterable {
     }
 }
 
-/// The type ramp, matching the web's: light display type, regular text and
-/// medium emphasis. Hierarchy comes from size, not weight. The system face
-/// stands in for the web's Inter; the two share proportions closely enough
-/// that the apps read as one product.
+/// The type ramp, matching the web's: regular text, semibold titles and
+/// emphasis, nothing lighter than regular. The system face is San Francisco,
+/// the same face the website asks an Apple device for.
 extension Font {
     static let studioEyebrow = Font.system(size: 12, weight: .regular)
-    static let studioTitle = Font.system(size: 28, weight: .light)
-    static let studioSectionTitle = Font.system(size: 15, weight: .medium)
+    static let studioTitle = Font.system(size: 28, weight: .semibold)
+    static let studioSectionTitle = Font.system(size: 15, weight: .semibold)
     static let studioBody = Font.system(size: 13)
-    static let studioBodyStrong = Font.system(size: 13, weight: .medium)
+    static let studioBodyStrong = Font.system(size: 13, weight: .semibold)
     static let studioCaption = Font.system(size: 11)
-    static let studioCaptionStrong = Font.system(size: 11, weight: .medium)
+    static let studioCaptionStrong = Font.system(size: 11, weight: .semibold)
     /// 12pt, the step between a caption and body text: control labels and
     /// field values in the editor's panels.
     static let studioLabel = Font.system(size: 12)
-    static let studioLabelStrong = Font.system(size: 12, weight: .medium)
+    static let studioLabelStrong = Font.system(size: 12, weight: .semibold)
     /// 10pt, the floor. Names drawn on a timeline cell and badges only.
     static let studioMicro = Font.system(size: 10, weight: .medium)
     /// Times and other figures that have to hold their width as they change.
