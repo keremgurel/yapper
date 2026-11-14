@@ -10,6 +10,8 @@ struct CaptionSelectionChrome: View {
     let canvasSize: CGSize
     /// Held on the session: see CanvasDragState.
     @ObservedObject var drag: CanvasDragState
+    /// Typing in the card's row, so the outline fits the text being typed.
+    @ObservedObject var typing: TypingPreviewState
 
     private var style: TextStyle { cue.style }
     private var draft: CanvasDragState.CaptionDraft? { drag.captionDraft(for: cue.id) }
@@ -28,7 +30,7 @@ struct CaptionSelectionChrome: View {
     }
 
     var body: some View {
-        CaptionCanvasLabel(cue: cue, canvasSize: canvasSize, width: draft?.width)
+        CaptionCanvasLabel(cue: cue, canvasSize: canvasSize, width: draft?.width, typed: typing.captionText[cue.id])
             .hidden()
             .allowsHitTesting(false)
             .overlay {

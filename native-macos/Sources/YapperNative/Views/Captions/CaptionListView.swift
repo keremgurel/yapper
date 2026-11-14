@@ -144,7 +144,9 @@ struct CaptionListView: View {
 
             CaptionTextField(
                 text: Binding(
-                    get: { text },
+                    // Read, not observed: the field holds its own text while it
+                    // is edited, and the draft only matters as editing ends.
+                    get: { session.typingPreview.captionText[caption.id] ?? text },
                     set: { typed in
                         // The word that was there is the one the transcriber
                         // heard, so a one-word fix is worth remembering.
@@ -163,11 +165,10 @@ struct CaptionListView: View {
                 // editing here on their way somewhere else.
                 onEndEditing: { finalText in
                     if focusedCaptionID == caption.id { focusedCaptionID = nil }
-                    guard finalText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                        retainAcrossPendingCommit(caption.id)
-                        return
-                    }
-                    Task { await session.removeCaption(caption.id) }
+                    // The field editor can be a keystroke ahead of the binding.
+                    session.setCaptionText(finalText, for: caption.id)
+                    retainAcrossPendingCommit(caption.id)
+                    Task { await session.commitCaptionText(for: caption.id) }
                 },
                 onSplit: { wordsBefore in
                     Task {

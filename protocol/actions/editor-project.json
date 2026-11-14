@@ -116,6 +116,18 @@
         },
         "operation": {
           "$ref": "#/$defs/MediaEditOperation"
+        },
+        "sourceStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400,
+          "description": "With append, the recording second the new clip starts at, as the trim handles on a media row choose. Leave it out to start at the top of the file. Ignored for pictures."
+        },
+        "sourceEnd": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400,
+          "description": "With append, the recording second the new clip ends at. Leave it out to run to the end of the file. Ignored for pictures."
         }
       }
     }

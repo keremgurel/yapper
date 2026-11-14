@@ -32,6 +32,8 @@ extension EditorSession {
 
     func openProject(_ package: ProjectPackage) async {
         guard !projectsAreMoving() else { return }
+        // Typing belongs to the project it was typed into.
+        await commitTyping()
         assistantTask?.cancel()
         if projectNavigation.currentPackage == package {
             projectNavigation.showsProjectsHome = false

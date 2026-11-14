@@ -6,11 +6,15 @@ import SwiftUI
 struct TextLayerContentEditor: View {
     let text: String
     let onEdit: (String) -> Void
+    /// The edit is finished: the editor lost focus or went away.
+    let onCommit: () -> Void
     @State private var draft: String
+    @FocusState private var focused: Bool
 
-    init(text: String, onEdit: @escaping (String) -> Void) {
+    init(text: String, onEdit: @escaping (String) -> Void, onCommit: @escaping () -> Void) {
         self.text = text
         self.onEdit = onEdit
+        self.onCommit = onCommit
         _draft = State(initialValue: text)
     }
 
@@ -22,6 +26,11 @@ struct TextLayerContentEditor: View {
                 onEdit(value)
             }
         ))
+        .focused($focused)
+        .onChange(of: focused) { _, isFocused in
+            if !isFocused { onCommit() }
+        }
+        .onDisappear(perform: onCommit)
         .onChange(of: text) { _, value in
             // A typing echo is already present. Undo, redo and other external
             // changes still need to reach the field.

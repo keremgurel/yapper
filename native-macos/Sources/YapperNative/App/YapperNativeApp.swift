@@ -33,6 +33,8 @@ final class YapperNativeAppDelegate: NSObject, NSApplicationDelegate {
         }
 
         terminationTask = Task { @MainActor [weak self] in
+            // A caption or text layer still being typed into is saved first.
+            await session.commitTyping()
             let shouldTerminate = await session.prepareForTermination()
             if shouldTerminate {
                 // A canceled export deletes its staged file and intermediate on
@@ -97,12 +99,16 @@ struct YapperNativeApp: App {
         .commands {
             CommandGroup(replacing: .undoRedo) {
                 Button("Undo") {
+                    // A caption or text field being typed in lets go first, so
+                    // what it holds is saved and is what Undo takes back.
+                    NSApp.keyWindow?.makeFirstResponder(nil)
                     Task { await session.undo() }
                 }
                 .keyboardShortcut("z", modifiers: [.command])
                 .disabled(!session.canUndo || session.isBusy)
 
                 Button("Redo") {
+                    NSApp.keyWindow?.makeFirstResponder(nil)
                     Task { await session.redo() }
                 }
                 .keyboardShortcut("z", modifiers: [.command, .shift])

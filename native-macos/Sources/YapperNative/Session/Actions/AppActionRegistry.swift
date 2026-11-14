@@ -108,9 +108,21 @@ final class AppActionRegistry {
 
     /// One model plan is one edit: no intermediate saves or Undo entries.
     /// All mutations share the edit slot and a single outer operation lease.
+    ///
+    /// `fromControl` is a gesture of the editor's own that needs several
+    /// actions, such as a timeline drag that reorders clips and slides what
+    /// rides along. It is still one edit, but it shows no AI progress, reads
+    /// its status from the last action, and is not refused because another
+    /// edit landed while it waited.
     func executeBatch(_ calls: [ChirpyActionCall], projectID: UUID, revision: Int,
-                      in session: EditorSession, invocationIDs suppliedIDs: [UUID]? = nil) async -> [AppActionResult] {
+                      in session: EditorSession, invocationIDs suppliedIDs: [UUID]? = nil,
+                      fromControl: Bool = false) async -> [AppActionResult] {
+        let entryPoint = fromControl ? "direct" : "assistant"
+        func isCurrent() -> Bool { session.project.id == projectID && (fromControl || session.actionRevision == revision) }
         guard !calls.isEmpty else { return [] }
+        if !session.typingPreview.isEmpty, !calls.allSatisfy({ Self.typingActions.contains($0.action) }) {
+            await session.commitTyping()
+        }
         let invocationIDs = suppliedIDs ?? calls.map { _ in UUID() }
         precondition(invocationIDs.count == calls.count)
         // `failedAt` names the one step a failure belongs to. The plan is
@@ -129,7 +141,7 @@ final class AppActionRegistry {
                     skippedIDs: mutation?.skippedIDs ?? [], persisted: status == .applied && mutation?.changes.isEmpty == false)
             }
             for reply in replies {
-                NativeAnalytics.shared.capture("native_action_finished", ["action": reply.action, "outcome": reply.status.rawValue, "entry_point": "assistant"])
+                NativeAnalytics.shared.capture("native_action_finished", ["action": reply.action, "outcome": reply.status.rawValue, "entry_point": entryPoint])
             }
             recentResults = Array((recentResults + replies).suffix(64))
             return replies
@@ -157,7 +169,7 @@ final class AppActionRegistry {
             guard calls.count == 1, let call = calls.first, let workflow = workflows[call.action] else {
                 return receipts(.rejected, "Run generation or transcription as its own request before making other edits.")
             }
-            guard session.project.id == projectID, session.actionRevision == revision else {
+            guard isCurrent() else {
                 return receipts(.rejected, "The project changed while I was planning. Ask again using its current state.")
             }
             let before = session.project
@@ -174,12 +186,12 @@ final class AppActionRegistry {
             } catch { return receipts(.failed, error.localizedDescription) }
         }
         var replies: [AppActionResult] = []
-        _ = await session.runTrackedLongOperation(.overlayAI) { _ in
+        func edit() async {
             guard let rollback = await session.beginPreparedTimelineEdit() else {
                 replies = receipts(.failed, "The pending edit could not be saved."); return
             }
             defer { session.endPreparedTimelineEdit() }
-            guard session.project.id == projectID, session.actionRevision == revision else {
+            guard isCurrent() else {
                 replies = receipts(.rejected, "The project changed while I was planning. Ask again using its current state."); return
             }
             session.clearError()
@@ -201,7 +213,7 @@ final class AppActionRegistry {
                 }
                 let rebuild = calls.contains { self.entries[$0.action]!.descriptor.requiresRebuild }
                 guard await session.commitPreparedTimelineEdit(rollbackState: rollback, requiresRebuild: rebuild,
-                    successStatus: "Chirpy edit saved · ⌘Z to undo") else {
+                    successStatus: fromControl ? mutations.last?.message ?? "Saved" : "Chirpy edit saved · ⌘Z to undo") else {
                     replies = receipts(.failed, session.errorMessage ?? "The changes could not be saved."); return
                 }
                 for mutation in mutations { mutation.afterCommit() }
@@ -217,15 +229,29 @@ final class AppActionRegistry {
                 // A validation error is a rejection: nothing was mutated. Only
                 // a save that went wrong is a failure.
                 let status: AppActionStatus = error is CancellationError ? .canceled : error is AppActionError ? .rejected : .failed
+                let message = error is CancellationError ? "Request canceled. No changes were saved." : error.localizedDescription
                 replies = error is CancellationError
-                    ? receipts(status, "Request canceled. No changes were saved.")
-                    : receipts(status, error.localizedDescription, failedAt: calls.count > 1 ? failingStep : nil)
+                    ? receipts(status, message)
+                    : receipts(status, message, failedAt: calls.count > 1 ? failingStep : nil)
+                // A control has no conversation to answer in, so the status
+                // line says why the gesture did not land.
+                if fromControl { session.setStatus(message) }
             }
         }
+        if fromControl { await edit() } else { _ = await session.runTrackedLongOperation(.overlayAI) { _ in await edit() } }
         return replies.isEmpty ? receipts(.canceled, "Request canceled.") : replies
     }
 
-    func execute(_ request: AppActionRequest, in session: EditorSession, owner: LongOperationLease? = nil) async -> AppActionResult {
+    /// The actions that save typing. Every other action saves any typing
+    /// first, so it never acts on, or under, text that is not in the project.
+    static let typingActions: Set<String> = [AppActionID.captionText.rawValue, AppActionID.captionRemove.rawValue,
+                                             AppActionID.textLayerUpdate.rawValue]
+
+    func execute(_ request: AppActionRequest, in session: EditorSession, owner: LongOperationLease? = nil,
+                 control: AppActionControl? = nil) async -> AppActionResult {
+        if !session.typingPreview.isEmpty, !Self.typingActions.contains(request.action) {
+            await session.commitTyping(owner: owner)
+        }
         func result(_ status: AppActionStatus, _ message: String, mutation: AppActionMutation? = nil) -> AppActionResult {
             let result = AppActionResult(protocolVersion: AppActionContract.version, invocationID: request.id,
                 projectID: request.projectID, revision: session.actionRevision, action: request.action, status: status,
@@ -253,7 +279,7 @@ final class AppActionRegistry {
         }
         func preflight() -> String? {
             if request.projectID != session.project.id { return "The active project changed. Read the current project before editing." }
-            if request.revision != session.actionRevision { return "The project changed. Read its current state before editing." }
+            if control == nil, request.revision != session.actionRevision { return "The project changed. Read its current state before editing." }
             if session.activeOperation != nil && session.activeOperation?.token != owner?.token {
                 return session.activeOperation?.operation.waitMessage ?? "Wait for the current operation to finish."
             }
@@ -263,12 +289,13 @@ final class AppActionRegistry {
         guard !Task.isCancelled else { return result(.canceled, "Action canceled.") }
         if workflows[request.action] != nil {
             return await executeBatch([.init(action: request.action, arguments: request.arguments)],
-                projectID: request.projectID, revision: request.revision, in: session, invocationIDs: [request.id])[0]
+                projectID: request.projectID, revision: request.revision, in: session, invocationIDs: [request.id],
+                fromControl: control != nil)[0]
         }
         if let operation = entry.operation, owner == nil {
             var reply: AppActionResult?
             let canceled = await session.runTrackedLongOperation(operation) { lease in
-                reply = await self.execute(request, in: session, owner: lease)
+                reply = await self.execute(request, in: session, owner: lease, control: control)
             }
             return reply ?? result(canceled ? .canceled : .rejected,
                                    canceled ? "Action canceled." : session.activeOperation?.operation.waitMessage ?? "Wait for the current operation to finish.")
@@ -281,9 +308,15 @@ final class AppActionRegistry {
         // Acquiring the edit slot and flushing a gesture can suspend. Validate
         // again before mutation so queued calls cannot act on stale targets.
         if let reason = preflight() { return result(.rejected, reason) }
+        var arguments = request.arguments
+        if let resolve = control?.resolveArguments {
+            arguments = resolve(session)
+            do { try ActionSchema.validate(.object(arguments), against: entry.descriptor.parameters) }
+            catch { return result(.rejected, error.localizedDescription) }
+        }
         do {
             try Task.checkCancellation()
-            let mutation = try await entry.execute(session, .object(request.arguments))
+            let mutation = try await entry.execute(session, .object(arguments))
             try Task.checkCancellation()
             guard session.project != rollback.project else { return result(.unchanged, mutation.message, mutation: mutation) }
             let saved = await session.commitPreparedTimelineEdit(rollbackState: rollback,
@@ -310,6 +343,16 @@ final class AppActionRegistry {
     }
 }
 
+/// A call from one of the editor's own controls rather than from a plan. It
+/// says what the creator wants now, so an edit that landed while it waited for
+/// the edit slot does not refuse it the way it refuses a stale plan.
+struct AppActionControl {
+    /// A toggle reads what it sets once its turn in the edit queue comes, not
+    /// when it was clicked, so two clicks made while an earlier save is still
+    /// running cancel out instead of both setting the same value.
+    var resolveArguments: (@MainActor (EditorSession) -> [String: ActionJSON])?
+}
+
 extension EditorSession {
     func actionRequest<Input: AppActionInput>(_ input: Input) throws -> AppActionRequest {
         guard case .object(let fields) = try ActionJSON.encoding(input) else { throw AppActionError("Invalid action arguments.") }
@@ -317,9 +360,12 @@ extension EditorSession {
                                 revision: actionRevision, action: Input.actionID.rawValue, arguments: fields)
     }
 
+    /// Runs an action for one of the editor's controls. Every button, menu
+    /// item and finished gesture that changes the project comes through here,
+    /// so a click and a Chirpy request for the same values save the same edit.
     @discardableResult
     func performAppAction<Input: AppActionInput>(_ input: Input, owner: LongOperationLease? = nil) async -> AppActionResult {
-        do { return await appActions.execute(try actionRequest(input), in: self, owner: owner) }
+        do { return await appActions.execute(try actionRequest(input), in: self, owner: owner, control: AppActionControl()) }
         catch {
             let message = "Invalid action arguments."
             setStatus(message)
@@ -327,5 +373,38 @@ extension EditorSession {
                 revision: actionRevision, action: Input.actionID.rawValue, status: .rejected,
                 message: message, changes: [], skippedIDs: [], persisted: false)
         }
+    }
+
+    /// A toggle: `input` is read when the action's turn in the edit queue
+    /// comes. See `AppActionControl.resolveArguments`.
+    @discardableResult
+    func performAppAction<Input: AppActionInput>(resolvedAtTurn input: @escaping @MainActor (EditorSession) -> Input) async -> AppActionResult {
+        func fields(_ session: EditorSession) -> [String: ActionJSON] {
+            guard case .object(let fields) = try? ActionJSON.encoding(input(session)) else { return [:] }
+            return fields
+        }
+        do {
+            return await appActions.execute(try actionRequest(input(self)), in: self,
+                                            control: AppActionControl(resolveArguments: fields))
+        } catch {
+            setStatus("Invalid action arguments.")
+            return AppActionResult(protocolVersion: AppActionContract.version, invocationID: UUID(), projectID: project.id,
+                revision: actionRevision, action: Input.actionID.rawValue, status: .rejected,
+                message: "Invalid action arguments.", changes: [], skippedIDs: [], persisted: false)
+        }
+    }
+
+    /// Several actions from one control gesture, saved as one edit and one
+    /// Undo step, and rolled back together if any of them is refused.
+    @discardableResult
+    func performAppActions(_ inputs: [any AppActionInput]) async -> [AppActionResult] {
+        guard let calls = try? inputs.map({ input -> ChirpyActionCall in
+            let request = try actionRequest(input)
+            return ChirpyActionCall(action: request.action, arguments: request.arguments)
+        }) else {
+            setStatus("Invalid action arguments.")
+            return []
+        }
+        return await appActions.executeBatch(calls, projectID: project.id, revision: actionRevision, in: self, fromControl: true)
     }
 }

@@ -128,8 +128,9 @@ extension EditorSession {
     /// it runs: the composition has to be rebuilt for the player to show a new
     /// framing, and rebuilding per mouse event is exactly the stutter the
     /// canvas drags were just cured of.
-    func commitFraming(_ framing: VideoFraming, clipID: UUID) {
-        guard let index = project.clips.firstIndex(where: { $0.id == clipID }) else { return }
+    @discardableResult
+    func commitFraming(_ framing: VideoFraming, clipID: UUID) -> Task<AppActionResult?, Never> {
+        guard let index = project.clips.firstIndex(where: { $0.id == clipID }) else { return Task { nil } }
         let clip = project.clips[index]
 
         // On a keyed clip, changing the framing writes a key here rather than
@@ -139,12 +140,9 @@ extension EditorSession {
         // would silently flatten the move you were halfway through making.
         if VideoFramingTrack.isKeyed(clip) {
             let time = framingSourceTime
-            guard VideoFramingTrack.framing(of: clip, atSource: time) != framing else { return }
-            replaceFramingClip(
-                VideoFramingTrack.setting(framing, atSource: time, in: clip),
-                successStatus: "Keyframe at \(formatTime(currentTime)) · \(framing.percent)%"
-            )
-            return
+            guard VideoFramingTrack.framing(of: clip, atSource: time) != framing else { return Task { nil } }
+            previewFraming(framing, clipID: clipID)
+            return framingKeyAction(.set, clip: clip, at: time, framing: framing)
         }
 
         // Framing a clip that was marquee-selected with others frames all of
@@ -155,28 +153,16 @@ extension EditorSession {
         guard ApplyToAll.changeCount(
             from: project.clips,
             to: ApplyToAll.framing(framing, to: project.clips, ids: targets)
-        ) > 0 else { return }
-        // Barely a wait at all. The debounce is there to coalesce a gesture's
-        // worth of edits, and framing commits once the gesture is already over;
-        // all a longer settle does here is hold the picture at the wrong size
-        // for another fifth of a second. Enough remains to catch the stepper
-        // being clicked repeatedly.
-        // A slider or a stepper is a burst of these, and the debounce below
-        // holds the composition back until the burst ends. The preview keeps
-        // the cutaways where they belong in the meantime.
+        ) > 0 else { return Task { nil } }
+        // The preview keeps the cutaways where they belong while the action
+        // rebuilds the composition.
         previewFraming(framing, clipID: clipID)
-        let what = framing.isIdentity ? "Framing reset" : "Framing set to \(framing.percent)%"
-        scheduleCompositionCommit(
-            settleFor: .milliseconds(50),
-            successStatus: targets.count > 1 ? "\(what) on \(targets.count) clips" : what
-        ) { [self] in
-            guard project.clips.contains(where: { $0.id == clipID }) else { return false }
-            updateProject { project in
-                project.clips = ApplyToAll.framing(framing, to: project.clips, ids: targets)
-                project.updatedAt = Date()
-            }
-            return true
-        }
+        // Keyed and locked clips keep their own framing, as they always have.
+        let framed = project.clips.filter { targets.contains($0.id) && !$0.locked && !VideoFramingTrack.isKeyed($0) }
+        guard !framed.isEmpty else { return Task { nil } }
+        let input = VideoFramingInput(clipIDs: framed.map(\.id), scale: framing.scale, x: framing.x, y: framing.y,
+                                      rotation: min(180, max(-180, framing.rotation)))
+        return Task { await performAppAction(input) }
     }
 
     /// The clips a framing change lands on: the one being framed, and anything
@@ -196,12 +182,13 @@ extension EditorSession {
     /// Inspector controls land here. A keyed clip writes a key at the playhead
     /// through `commitFraming`; anything else is a property set and goes
     /// through the registered action, the same one Chirpy calls.
-    private func setStaticFraming(_ framing: VideoFraming, clipID: UUID) {
-        guard let clip = project.clips.first(where: { $0.id == clipID }) else { return }
+    @discardableResult
+    private func setStaticFraming(_ framing: VideoFraming, clipID: UUID) -> Task<AppActionResult?, Never> {
+        guard let clip = project.clips.first(where: { $0.id == clipID }) else { return Task { nil } }
         guard !VideoFramingTrack.isKeyed(clip) else { return commitFraming(framing, clipID: clipID) }
         previewFraming(framing, clipID: clipID)
         let targets = framingTargets(for: clipID).sorted { $0.uuidString < $1.uuidString }
-        Task {
+        return Task {
             await performAppAction(VideoFramingInput(clipIDs: targets, scale: framing.scale, x: framing.x, y: framing.y, rotation: framing.rotation))
         }
     }
@@ -227,6 +214,28 @@ extension EditorSession {
         // From what is on screen now, so a stepper press on a keyed clip nudges
         // the moment you are looking at rather than the clip's first key.
         setStaticFraming(displayedFraming.with(scale: scale), clipID: clip.id)
+    }
+
+    /// The Scale slider while it moves. The canvas draws the draft the way it
+    /// draws a corner being pulled, and nothing is saved until the slider lets
+    /// go (`commitFramingScale`).
+    func previewFramingScale(_ scale: Double) {
+        guard let clip = framingClip else { return }
+        let framing = displayedFraming.with(scale: scale)
+        if canvasDrag.framingClipID != clip.id { canvasDrag.beginFraming(displayedFraming, clipID: clip.id, from: .zero) }
+        canvasDrag.updateFraming(framing)
+        previewFraming(framing, clipID: clip.id)
+    }
+
+    /// The Scale slider let go, or a number typed beside it: one save through
+    /// the framing action, however far the handle travelled. The draft stays
+    /// on the canvas until that edit lands.
+    func commitFramingScale(_ scale: Double) async {
+        guard let clip = framingClip else { return }
+        let framing = displayedFraming.with(scale: scale)
+        _ = await setStaticFraming(framing, clipID: clip.id).value
+        // Left alone when a drag on the canvas has taken the picture since.
+        if canvasDrag.framingClipID == clip.id, canvasDrag.framing == framing { _ = canvasDrag.endFraming() }
     }
 
     func resetFraming() {

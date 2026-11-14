@@ -24,6 +24,9 @@ extension EditorSession {
             showMessage(busy.operation.waitMessage + " Then export.")
             return nil
         }
+        // A caption or text layer still being typed into is saved first, so
+        // the export has what the canvas shows.
+        await commitTyping()
         // Claimed before the capture awaits, so a second export to this file
         // cannot start in the meantime.
         guard exportJobs.reserve(url) else {
