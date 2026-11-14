@@ -1,22 +1,24 @@
+import CreatorFrame from "./creator-frame";
 import styles from "./studio-bento.module.css";
 
-const looks = [
-  { name: "Clean", className: styles.lookClean },
-  { name: "Outline", className: styles.lookOutline },
-  { name: "Pop", className: styles.lookPop },
-  { name: "Brand", className: styles.lookBrand },
-];
+const looks = ["Clean", "Outline", "Pop", "Brand"];
 
-/** The four caption looks, drawn the way the editor's picker shows them. */
+/** A caption on the video in the Pop look, with the other looks to pick. */
 export default function CaptionLooksVisual() {
   return (
-    <div className={styles.looks}>
-      {looks.map((look) => (
-        <div key={look.name} className={styles.look}>
-          <span className={look.className}>Aa</span>
-          <small>{look.name}</small>
-        </div>
-      ))}
+    <div className={styles.captions}>
+      <CreatorFrame shape="portrait">
+        <p className={styles.captionLine}>
+          Start with <b>what you have.</b>
+        </p>
+      </CreatorFrame>
+      <ul className={styles.lookList}>
+        {looks.map((look) => (
+          <li key={look} data-current={look === "Pop"}>
+            {look}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

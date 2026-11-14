@@ -90,104 +90,164 @@
   outline-offset: -2px;
 }
 
-/* One-click edit: the take, and what is left of it. */
-.take {
-  width: 100%;
-  max-width: 560px;
-}
-.takeRow {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  color: var(--sg-text-muted);
-  font-size: 0.9375rem;
-}
-.takeRow b {
-  color: var(--sg-text);
-  font-size: 1.75rem;
-  font-weight: 600;
-  letter-spacing: -0.012em;
-  font-variant-numeric: tabular-nums;
-}
-.takeRow + .takeTrack {
-  margin-top: 8px;
-}
-.takeTrack {
+/* A frame of footage, shared by the cells that draw over video. */
+.frame {
   position: relative;
-  height: 16px;
-  margin-bottom: 20px;
-  border-radius: 5px;
-  background: var(--sg-surface-tray);
   overflow: hidden;
+  border-radius: 14px;
+  background: #17171a;
 }
-.takeTrack i {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  min-width: 3px;
-  background: var(--sg-text);
+.frame img {
+  object-fit: cover;
 }
-.takeNote {
-  color: var(--sg-text-muted);
-  font-size: 0.875rem;
+.frame[data-dimmed="true"] img {
+  filter: brightness(0.42);
+}
+.portrait {
+  width: 128px;
+  aspect-ratio: 9 / 16;
+}
+.portrait img {
+  object-position: 50% 30%;
+}
+.landscape {
+  width: 100%;
+  aspect-ratio: 16 / 9;
 }
 
-/* Captions: the four looks. */
-.looks {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+/* One-click edit: the transcript, the result, the take's waveform. */
+.edit {
   width: 100%;
 }
-.look {
-  display: flex;
-  flex-direction: column;
+.editTop {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 28px;
   align-items: center;
-  gap: 8px;
 }
-.look span {
+.transcript {
+  color: var(--sg-text);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.75;
+}
+.transcript s {
+  color: var(--sg-text-faint);
+  font-weight: 400;
+}
+.transcript i {
+  margin-inline: 2px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: var(--sg-surface-tray);
+  color: var(--sg-text-faint);
+  font-family: var(--sg-font-mono);
+  font-size: 0.6875rem;
+  font-style: normal;
+  font-weight: 400;
+  text-decoration: line-through;
+}
+.result {
   display: grid;
-  place-items: center;
-  width: 100%;
-  aspect-ratio: 1.25;
-  border-radius: 10px;
-  background: #2b2b30;
-  color: #fff;
-  font-size: 1.125rem;
-  font-weight: 700;
+  gap: 14px;
 }
-.look small {
+.result dt {
   color: var(--sg-text-muted);
   font-size: 0.8125rem;
 }
-.look .lookOutline {
-  -webkit-text-stroke: 3px #000;
-  paint-order: stroke fill;
+.result dd {
+  color: var(--sg-text);
+  font-size: 2.25rem;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
-.look .lookPop {
-  color: #ffd84a;
+.result div:first-child dd {
+  color: var(--sg-text-faint);
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
 }
-.look .lookBrand {
+.wave {
   position: relative;
-  isolation: isolate;
+  height: 44px;
+  margin-top: 22px;
+  border-radius: 8px;
+  overflow: hidden;
+  /* The whole take, as quiet bars. */
+  background:
+    repeating-linear-gradient(
+        90deg,
+        var(--sg-border-strong) 0 2px,
+        transparent 2px 5px
+      )
+      center / 100% 46% no-repeat,
+    var(--sg-surface-tray);
 }
-.look .lookBrand::before {
-  content: "";
+/* A kept part: the same bars, in ink and full height. */
+.wave span {
   position: absolute;
-  z-index: -1;
-  width: 62%;
-  height: 58%;
-  border-radius: 6px;
-  background: #e8793a;
+  top: 0;
+  bottom: 0;
+  min-width: 4px;
+  background:
+    repeating-linear-gradient(90deg, var(--sg-text) 0 2px, transparent 2px 5px)
+      center / 100% 78% no-repeat,
+    var(--sg-surface-tray);
+}
+.waveNote {
+  margin-top: 8px;
+  color: var(--sg-text-muted);
+  font-size: 0.8125rem;
 }
 
-/* Teleprompter: the script, with one line being read. */
-.prompter {
+/* Captions: one caption on the video, and the looks beside it. */
+.captions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
   width: 100%;
-  padding: 18px 20px;
-  border-radius: 14px;
-  background: #17171a;
-  color: rgb(255 255 255 / 0.38);
+}
+.captionLine {
+  position: absolute;
+  inset: auto 8px 16% 8px;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  text-shadow: 0 2px 6px rgb(0 0 0 / 0.55);
+}
+.captionLine b {
+  color: #ffd84a;
+  font-weight: inherit;
+}
+.lookList {
+  display: grid;
+  gap: 6px;
+}
+.lookList li {
+  padding: 6px 14px;
+  border-radius: 999px;
+  color: var(--sg-text-muted);
+  font-size: 0.875rem;
+}
+.lookList li[data-current="true"] {
+  background: var(--sg-surface-tray);
+  color: var(--sg-text);
+  font-weight: 600;
+}
+
+/* Teleprompter: the script over the camera picture. */
+.prompter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 18px;
+  color: rgb(255 255 255 / 0.45);
   font-size: 1rem;
   font-weight: 600;
   line-height: 1.5;
@@ -195,62 +255,101 @@
 .prompter .prompterNow {
   color: #fff;
 }
-.prompterSpeed {
-  display: inline-block;
-  margin-top: 12px;
+.recording {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 3px 9px;
   border-radius: 999px;
-  background: rgb(255 255 255 / 0.12);
-  color: rgb(255 255 255 / 0.8);
+  background: rgb(0 0 0 / 0.5);
+  color: #fff;
+  font-family: var(--sg-font-mono);
   font-size: 0.75rem;
-  font-weight: 400;
+}
+.recording i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f04a4a;
 }
 
-/* Ideas and channels: rows from the product's own lists. */
-.ideas,
-.channels {
+/* Ideas: a thought going in, hooks coming back. */
+.idea {
   width: 100%;
-  border-radius: 14px;
-  background: var(--sg-surface-tray);
-  padding: 4px 14px;
 }
-.ideas li,
-.channels li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-block: 11px;
+.thought {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--sg-surface-tray);
   color: var(--sg-text);
   font-size: 0.9375rem;
 }
-.ideas li + li,
-.channels li + li {
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 2px;
+  background: var(--sg-text);
+  vertical-align: -0.15em;
+}
+.ideaLabel {
+  margin: 14px 0 6px;
+  color: var(--sg-text-muted);
+  font-size: 0.8125rem;
+}
+.hooks li {
+  padding-block: 9px;
+  color: var(--sg-text);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.hooks li + li {
   border-top: var(--sg-hairline) solid var(--sg-border-strong);
 }
-.ideas span,
-.channels span {
-  flex: 1;
-  min-width: 0;
+
+/* Posting: one video queued for three channels. */
+.posts {
+  display: grid;
+  gap: 8px;
+  width: 100%;
 }
-.ideas em,
-.channels em {
+.posts li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px 10px 10px;
+  border-radius: 12px;
+  background: var(--sg-surface-tray);
+  font-size: 0.9375rem;
+}
+.postIcon {
+  display: grid;
+  place-items: center;
   flex: none;
-  padding: 2px 9px;
-  border-radius: 999px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
   background: var(--sg-surface);
   box-shadow: var(--sg-shadow-inset);
-  color: var(--sg-text-muted);
-  font-size: 0.75rem;
-  font-style: normal;
 }
-.ideas em[data-status="Posted"] {
-  color: #2f8f4e;
-}
-.channelIcon {
-  flex: none;
-  width: 18px;
-  height: 18px;
+.postGlyph {
+  width: 16px;
+  height: 16px;
   color: var(--sg-text);
+}
+.postName {
+  flex: 1;
+  color: var(--sg-text);
+  font-weight: 600;
+}
+.posts time {
+  color: var(--sg-text-muted);
+  font-family: var(--sg-font-mono);
+  font-size: 0.75rem;
 }
 
 @media (max-width: 1000px) {
@@ -281,6 +380,13 @@
   .visual {
     min-height: 0;
     padding: 22px 20px 4px;
+  }
+  .editTop {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .result {
+    grid-template-columns: 1fr 1fr;
   }
   .copy {
     padding: 14px 20px 22px;

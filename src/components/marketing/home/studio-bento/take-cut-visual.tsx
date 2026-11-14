@@ -12,31 +12,40 @@ const kept = [
 ];
 
 /**
- * A take before and after one-click edit: the raw recording with the parts
- * the edit kept marked on it, and the finished cut underneath at its real
- * share of the length. The numbers are from one real recording.
+ * One-click edit on one real recording: the transcript with a retake and a
+ * pause struck out, the take's waveform with the kept parts lit, and what the
+ * edit did to its length.
  */
 export default function TakeCutVisual() {
   return (
-    <div className={styles.take}>
-      <div className={styles.takeRow}>
-        <span>Your take</span>
-        <b>6:26</b>
+    <div className={styles.edit}>
+      <div className={styles.editTop}>
+        <p className={styles.transcript}>
+          <s>I spent weeks choosing, uh, I spent</s> <i>1.4s</i> I spent weeks
+          choosing a camera before I made my first video. <s>Every review</s>{" "}
+          <i>0.9s</i> Every review gave me another reason to wait.
+        </p>
+        <dl className={styles.result}>
+          <div>
+            <dt>Recorded</dt>
+            <dd>6:26</dd>
+          </div>
+          <div>
+            <dt>After one click</dt>
+            <dd>0:45</dd>
+          </div>
+        </dl>
       </div>
-      <div className={styles.takeTrack}>
+      <div className={styles.wave}>
         {kept.map(([from, to]) => (
-          <i key={from} style={{ left: `${from}%`, width: `${to - from}%` }} />
+          <span
+            key={from}
+            style={{ left: `${from}%`, width: `${to - from}%` }}
+          />
         ))}
       </div>
-      <div className={styles.takeRow}>
-        <span>After one click</span>
-        <b>0:45</b>
-      </div>
-      <div className={styles.takeTrack}>
-        <i style={{ left: 0, width: "12%" }} />
-      </div>
-      <p className={styles.takeNote}>
-        Retakes, pauses and silence removed. Captions added.
+      <p className={styles.waveNote}>
+        The lit parts are what one click kept of this take.
       </p>
     </div>
   );

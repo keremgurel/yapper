@@ -1,21 +1,24 @@
 import styles from "./studio-bento.module.css";
 
-const ideas = [
-  { title: "What my app audit caught", status: "Captured" },
-  { title: "How I use AI at work", status: "Drafting" },
-  { title: "One month after surgery", status: "Posted" },
+const hooks = [
+  "I waited three weeks to post. It cost me a month.",
+  "The camera was never the problem.",
 ];
 
-/** Three ideas at three stages, as rows from the Ideas list. */
+/** A thought typed into Ideas, and the hooks written back from it. */
 export default function IdeaRowsVisual() {
   return (
-    <ul className={styles.ideas}>
-      {ideas.map((idea) => (
-        <li key={idea.title}>
-          <span>{idea.title}</span>
-          <em data-status={idea.status}>{idea.status}</em>
-        </li>
-      ))}
-    </ul>
+    <div className={styles.idea}>
+      <p className={styles.thought}>
+        why I stopped waiting for a better camera
+        <span className={styles.caret} />
+      </p>
+      <p className={styles.ideaLabel}>Hooks in your voice</p>
+      <ul className={styles.hooks}>
+        {hooks.map((hook) => (
+          <li key={hook}>{hook}</li>
+        ))}
+      </ul>
+    </div>
   );
 }

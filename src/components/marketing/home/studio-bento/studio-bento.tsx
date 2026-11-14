@@ -19,7 +19,7 @@ export default function StudioBento() {
         <header className={styles.intro}>
           <p className="type-label">One studio</p>
           <h2 id="studio-bento-title" className="type-h2">
-            From a raw take to a posted video.
+            From a raw idea to a posted video.
           </h2>
           <p className="type-description">
             Yapper Studio is a video editor, teleprompter and content planner
