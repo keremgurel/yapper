@@ -72,6 +72,19 @@ struct AudioLibraryFilterTests {
         #expect(!AudioLibraryFilter.entries(entries, section: .all, search: "POP").isEmpty)
     }
 
+    @Test("Search combines words from sound names and descriptions in either order")
+    func searchCombinesNameAndDescription() {
+        let entries = AudioEntry.all(saved: [])
+        for (query, expectedID) in [
+            ("typing text reveal", "muted-keyboard-burst"),
+            ("transition mechanical ticks", "mechanical-tick-run"),
+            ("underline highlighter", "quick-highlighter-stroke"),
+        ] {
+            let results = AudioLibraryFilter.entries(entries, section: .builtIn, search: query)
+            #expect(results.map(\.id) == [expectedID])
+        }
+    }
+
     @Test("A search that matches nothing shows nothing rather than everything")
     func emptySearch() {
         let entries = AudioEntry.all(saved: [])

@@ -37,7 +37,7 @@ struct SoundPlanTests {
             #expect(SoundPlan.effect(named: name)?.id == "highlighter", "\(name)")
         }
         let effect = try #require(SoundEffectDescriptor.effect(id: "highlighter"))
-        #expect(effect.category == .clicks)
+        #expect(effect.category == .paperAndMarkers)
         #expect(SoundEffectService.shared.bundledURL(for: effect)?.lastPathComponent == "highlighter.m4a")
     }
 
