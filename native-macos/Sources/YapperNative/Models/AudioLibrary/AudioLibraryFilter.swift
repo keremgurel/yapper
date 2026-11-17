@@ -85,15 +85,11 @@ enum AudioLibrarySection: Hashable, Identifiable {
 
 /// What the grid shows, given the rail and the search field.
 enum AudioLibraryFilter {
-    /// Matched on the name and on the line under it, because "swoosh" is a
-    /// name and "cash register" is a description, and the creator searching for
-    /// either means the same thing.
+    /// A creator can describe a sound using words from its name, description or shelf.
     static func matches(_ entry: AudioEntry, search: String) -> Bool {
-        let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return true }
-        return entry.name.localizedCaseInsensitiveContains(query)
-            || entry.detail.localizedCaseInsensitiveContains(query)
-            || entry.group.localizedCaseInsensitiveContains(query)
+        let text = [entry.name, entry.detail, entry.group].joined(separator: " ")
+        let words = search.split(whereSeparator: \.isWhitespace)
+        return words.allSatisfy { text.localizedCaseInsensitiveContains(String($0)) }
     }
 
     static func entries(
