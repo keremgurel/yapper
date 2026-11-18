@@ -16,6 +16,21 @@ extension EditorSession {
         audioLevels.mainTrack ?? project.resolvedVideoTrackVolume
     }
 
+    /// Capture the clips in the row at the click. Its membership can change
+    /// as other edits move sounds, but the mute belongs to those clips.
+    @discardableResult
+    func toggleAudioLayersMuted(_ layerIDs: [UUID]) -> Task<AppActionResult, Never> {
+        let ids = Set(layerIDs)
+        return Task {
+            await performAppAction(resolvedAtTurn: { session in
+                let hasUnmutedLayer = (session.project.audioLayers ?? []).contains {
+                    ids.contains($0.id) && !$0.isMuted
+                }
+                return AudioMuteInput(layerIDs: layerIDs, muted: hasUnmutedLayer)
+            })
+        }
+    }
+
     // MARK: - Dragging
 
     /// Called on every step of a drag. Nothing is written to the project: see

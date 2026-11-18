@@ -508,7 +508,9 @@ struct ProjectAudioLayer: Codable, Equatable, Identifiable, Sendable {
     /// Keeps an extracted Studio recording portable even after its video is removed.
     var packagedMediaID: UUID?
     var playbackRate: Double?
+    var muted: Bool?
 
+    var isMuted: Bool { muted == true }
     var resolvedPlaybackRate: Double { ClipSpeed.normalized(playbackRate) }
     var sourceEnd: Double { sourceStart + duration * resolvedPlaybackRate }
 

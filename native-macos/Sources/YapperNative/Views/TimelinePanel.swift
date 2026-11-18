@@ -1739,7 +1739,8 @@ struct TimelineAudioItem: View {
             ),
             height: Self.cellHeight,
             selected: selected,
-            volume: levels.volume(for: layer.id) ?? layer.volume
+            volume: levels.volume(for: layer.id) ?? layer.volume,
+            isMuted: layer.isMuted
         )
         // Inset the drawing, never the layout, exactly as the video and overlay
         // cells do. The trim handles are aligned to the layout box, so without
@@ -1757,6 +1758,9 @@ struct TimelineAudioItem: View {
         // The cell on the timeline is where you are looking at the sound when
         // you decide it is the wrong one.
         .contextMenu {
+            Button(layer.isMuted ? "Unmute audio" : "Mute audio") {
+                session.toggleAudioLayersMuted([layer.id])
+            }
             Button("Copy audio") {
                 session.selectAudioLayer(layer.id)
                 session.copyTimelineAudio()

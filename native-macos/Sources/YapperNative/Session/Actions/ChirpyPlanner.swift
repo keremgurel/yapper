@@ -50,6 +50,7 @@ extension EditorSession {
             "animationEvents": try .encoding(try await animationEvents()),
             "sounds": .array((project.audioLayers ?? []).map { .object(["id": .string($0.id.uuidString),
                 "name": .string($0.name), "time": .number($0.timelineStart), "volume": .number($0.volume),
+                "muted": .bool($0.isMuted),
                 "duration": .number($0.duration), "sourceStart": .number($0.sourceStart),
                 "sourceDuration": .number($0.sourceDuration ?? $0.sourceEnd), "playbackRate": .number($0.resolvedPlaybackRate),
                 "effectID": $0.builtInID.map(ActionJSON.string) ?? .null]) }),
