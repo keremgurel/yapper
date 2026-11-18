@@ -88,6 +88,49 @@ struct PropertyActionTests {
         for _ in 0..<2000 where session.appActions.recentResults.count < count { await Task.yield() }
     }
 
+    @Test func audioRowMutePersistsAndRemovesOnlyItsClipsFromPlaybackAndExport() async throws {
+        let (fixture, root) = try await mediaFixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+        var project = fixture
+        var first = try #require(project.audioLayers?.first)
+        first.volume = 0.37
+        var second = first
+        second.id = UUID()
+        second.timelineStart += 0.1
+        project.audioLayers = [first, second]
+        let (session, store) = await session(project) { _ in throw AppActionError("unused") }
+        defer { session.player.replaceCurrentItem(with: nil) }
+
+        #expect(AudioTracks.lanes(for: [first, second]) == [first.id: 0, second.id: 1])
+        #expect(!first.isMuted)
+        let muted = await session.toggleAudioLayersMuted([first.id]).value
+        try #require(muted.status == .applied && muted.persisted)
+        #expect(session.project.audioLayers?.first?.isMuted == true)
+        #expect(session.project.audioLayers?.last == second)
+        #expect(session.project.audioLayers?.first?.volume == first.volume)
+        let saved = try #require(await store.saves.last)
+        let reopened = try JSONDecoder().decode(EditorProject.self, from: JSONEncoder().encode(saved))
+        #expect(reopened.audioLayers == session.project.audioLayers)
+
+        let preview = try await CompositionBuilder.build(project: reopened, for: .preview)
+        #expect(try await preview.asset.loadTracks(withMediaType: .audio).count == 1)
+        let withOneRow = root.appending(path: "one-row.mp4")
+        try await ExportService.export(project: reopened, to: withOneRow)
+        #expect(try await AVURLAsset(url: withOneRow).loadTracks(withMediaType: .audio).count == 1)
+
+        let secondMute = await session.toggleAudioLayersMuted([second.id]).value
+        try #require(secondMute.status == .applied)
+        let mutedExport = root.appending(path: "muted.mp4")
+        try await ExportService.export(project: session.project, to: mutedExport)
+        #expect(try await AVURLAsset(url: mutedExport).loadTracks(withMediaType: .audio).isEmpty)
+
+        await session.undo()
+        #expect(session.project.audioLayers?.last == second)
+        let unmuted = await session.toggleAudioLayersMuted([first.id]).value
+        #expect(unmuted.status == .applied)
+        #expect(session.project.audioLayers == [first, second])
+    }
+
     @Test func captionStyleFromInspectorAndChirpySaveEquivalentStateWithReceipts() async throws {
         let (project, root) = try await mediaFixture()
         defer { try? FileManager.default.removeItem(at: root) }

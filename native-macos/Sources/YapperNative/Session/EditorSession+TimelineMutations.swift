@@ -85,13 +85,11 @@ extension EditorSession {
                     let elapsed = time - layer.timelineStart
                     var left = layer
                     left.duration = elapsed
-                    let right = ProjectAudioLayer(
-                        url: layer.url, name: layer.name, timelineStart: time, duration: layer.duration - elapsed,
-                        sourceStart: layer.sourceStart + elapsed * layer.resolvedPlaybackRate,
-                        sourceDuration: layer.sourceDuration, volume: layer.volume, builtInID: layer.builtInID,
-                        sourceKind: layer.sourceKind, sourceFingerprint: layer.sourceFingerprint,
-                        savedAudioID: layer.savedAudioID, savedAudioHash: layer.savedAudioHash,
-                        packagedMediaID: layer.packagedMediaID, playbackRate: layer.playbackRate)
+                    var right = layer
+                    right.id = UUID()
+                    right.timelineStart = time
+                    right.duration -= elapsed
+                    right.sourceStart += elapsed * layer.resolvedPlaybackRate
                     project.audioLayers?.replaceSubrange(index ... index, with: [left, right])
                     tails[id] = right.id
                 }

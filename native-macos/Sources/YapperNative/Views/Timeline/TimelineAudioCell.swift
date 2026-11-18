@@ -19,13 +19,14 @@ struct TimelineAudioCell: View {
     let selected: Bool
     /// What this is playing at, so the drawing agrees with the mix.
     var volume: Double = 1
+    var isMuted = false
 
     var body: some View {
         ZStack(alignment: .leading) {
             RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous)
                 .fill(Color(red: 0.07, green: 0.25, blue: 0.27).opacity(0.96))
 
-            waveform
+            waveform.opacity(isMuted ? 0.35 : 1)
         }
         // The name is an overlay, not a child of the stack, and that is the
         // whole reason this cell sits where it should.
@@ -42,7 +43,7 @@ struct TimelineAudioCell: View {
         // a short one.
         .overlay(alignment: .topLeading) {
             HStack(spacing: 5) {
-                Image(systemName: "waveform")
+                Image(systemName: isMuted ? "speaker.slash" : "waveform")
                 Text(name).lineLimit(1)
             }
             .font(.studioCaptionStrong)
@@ -64,6 +65,8 @@ struct TimelineAudioCell: View {
         }
         .frame(height: height)
         .clipShape(RoundedRectangle(cornerRadius: StudioRadius.control, style: .continuous))
+        .accessibilityLabel(name)
+        .accessibilityValue(isMuted ? Text("Muted") : Text(""))
     }
 
     @ViewBuilder

@@ -1,6 +1,6 @@
 import Foundation
 
-/// The faders as an action: sound layers by ID, and the speaker's own track.
+/// Faders and mute controls for the sounds on the timeline.
 extension AppActionRegistry {
     func registerAudioVolume() {
         register(AudioVolumeInput.self, availability: { session in
@@ -37,6 +37,23 @@ extension AppActionRegistry {
             let label = input.videoTrack && ids.isEmpty ? "Video volume" : "Volume"
             return AppActionMutation(message: changes.isEmpty ? "Already at that volume." : "\(label) \(AudioLevel.percent(volume))%",
                                      changes: changes)
+        }
+        register(AudioMuteInput.self, availability: { session in
+            (session.project.audioLayers ?? []).isEmpty
+                ? .init(reason: "Add audio to the timeline first.") : .available
+        }) { session, input in
+            let layers = try session.actionAudioLayers(input.layerIDs)
+            let updated = layers.filter { $0.isMuted != input.muted }.map { layer in
+                var copy = layer
+                copy.muted = input.muted ? true : nil
+                return copy
+            }
+            guard !updated.isEmpty else {
+                return .init(message: input.muted ? "Audio already muted." : "Audio already unmuted.")
+            }
+            return try session.mutateActionAudioLayers(
+                updated, message: input.muted ? "Audio muted" : "Audio unmuted"
+            )
         }
     }
 }

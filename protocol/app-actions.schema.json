@@ -124,6 +124,15 @@
       "runtime": "client"
     },
     {
+      "id": "editor.audio.setMuted",
+      "symbol": "audioMute",
+      "input": "AudioMuteInput",
+      "description": "Mute or unmute explicit timeline audio layers by ID in playback and export, preserving their volume, timing and source. Can target multiple sound effects or audio clips in one edit. For the main video use the video-track setting.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
       "id": "editor.audio.setVolume",
       "symbol": "audioVolume",
       "input": "AudioVolumeInput",
@@ -1426,6 +1435,29 @@
           "type": "number",
           "minimum": 0,
           "maximum": 2
+        }
+      }
+    },
+    "AudioMuteInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "layerIDs",
+        "muted"
+      ],
+      "properties": {
+        "layerIDs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true
+        },
+        "muted": {
+          "type": "boolean"
         }
       }
     },

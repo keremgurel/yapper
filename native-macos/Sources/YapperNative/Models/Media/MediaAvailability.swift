@@ -105,6 +105,7 @@ enum MediaAvailability {
     }
 
     static func isRequired(_ layer: ProjectAudioLayer, in project: EditorProject) -> Bool {
+        guard !layer.isMuted else { return false }
         let visibleStart = max(0, layer.timelineStart)
         let visibleEnd = min(project.duration, layer.timelineStart + layer.duration)
         guard layer.duration > 0, visibleEnd > visibleStart else { return false }

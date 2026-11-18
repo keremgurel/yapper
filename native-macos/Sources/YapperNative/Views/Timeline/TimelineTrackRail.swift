@@ -21,6 +21,9 @@ struct TimelineTrackRail: View {
     let layout: TimelineRowLayout
 
     var body: some View {
+        let audioLayers = session.project.audioLayers ?? []
+        let lanes = AudioTracks.lanes(for: audioLayers)
+        let audioRows = Dictionary(grouping: audioLayers) { lanes[$0.id, default: 0] }
         VStack(spacing: 0) {
             // The rows are measured from a top that includes the ruler's
             // height, even though the ruler is drawn above the scroller, so the
@@ -48,13 +51,27 @@ struct TimelineTrackRail: View {
             // One row per audio lane, so the rail stays a column of equals
             // beside the tracks it labels. Sounds stack when they overlap: see
             // AudioTracks.
-            ForEach(0 ..< layout.audioTrackCount, id: \.self) { _ in
-                TrackRailRow(glyph: .audio, height: TimelineRowLayout.audioRowHeight)
+            ForEach(0 ..< layout.audioTrackCount, id: \.self) { lane in
+                audioRow(lane, layers: audioRows[lane] ?? [])
             }
 
             Spacer(minLength: 0)
         }
         .background(Color.panelBackground)
+    }
+
+    private func audioRow(_ lane: Int, layers: [ProjectAudioLayer]) -> some View {
+        let muted = layers.allSatisfy(\.isMuted)
+        return TrackRailRow(glyph: .audio, height: TimelineRowLayout.audioRowHeight) {
+            TrackControlButton(
+                icon: muted ? .speakerMuted : .speakerMid,
+                help: muted ? "Unmute audio row \(lane + 1)" : "Mute audio row \(lane + 1)",
+                isOn: !muted
+            ) {
+                session.toggleAudioLayersMuted(layers.map(\.id))
+            }
+            .disabled(layers.isEmpty)
+        }
     }
 
     private var overlayTracks: [Int] {
