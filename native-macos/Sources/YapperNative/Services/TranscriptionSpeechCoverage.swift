@@ -5,7 +5,7 @@ import Foundation
 /// An independent acoustic check. ASR omissions must not masquerade as pauses.
 /// The classifier detects speech, not words; passing this check does not certify
 /// spelling, proper names, or the editorial choice of take.
-final class TranscriptionSpeechCoverage {
+actor TranscriptionSpeechCoverage {
     private final class Observer: NSObject, SNResultsObserving {
         var ranges: [[Double]] = []
         var failure: Error?

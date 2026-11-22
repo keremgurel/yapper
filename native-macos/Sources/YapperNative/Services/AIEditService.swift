@@ -558,14 +558,11 @@ actor AIEditService {
         guard channelCount > 0 else {
             throw NativeEditorError.aiFailed("This media has no audio channels to transcribe.")
         }
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 32_768) else {
-            throw NativeEditorError.aiFailed("The audio decoder could not allocate a buffer.")
-        }
-
         // Classify the original multichannel samples during the same read
         // used for ASR. A second reader on an interleaved camera file
         // competes with both the decoder and the background media import.
         let coverage = try TranscriptionSpeechCoverage(format: format)
+        var analyzing: Task<Void, Never>?
         let handle = try FileHandle(forWritingTo: output)
         var accumulator = LoudnessEnvelope.Accumulator(
             sampleRate: Int(format.sampleRate.rounded())
@@ -575,12 +572,13 @@ actor AIEditService {
         defer { try? handle.close() }
         while file.framePosition < file.length {
             try Task.checkCancellation()
+            guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 32_768) else {
+                throw NativeEditorError.aiFailed("The audio decoder could not allocate a buffer.")
+            }
             let position = file.framePosition
-            buffer.frameLength = 0
             try file.read(into: buffer, frameCount: buffer.frameCapacity)
             let frameCount = Int(buffer.frameLength)
             guard frameCount > 0, let channels = buffer.floatChannelData else { break }
-            coverage.analyze(buffer, at: position)
             var mono = [Int16](repeating: 0, count: frameCount)
             for frame in 0 ..< frameCount {
                 var sum: Float = 0
@@ -594,6 +592,14 @@ actor AIEditService {
             let bytes = mono.withUnsafeBytes { Data($0) }
             try handle.write(contentsOf: bytes)
             byteCount += bytes.count
+
+            // Read the next buffer while the classifier consumes this one.
+            // Await the previous submission first to keep order and bound
+            // memory to the classifier's buffer and the decoder's buffer.
+            await analyzing?.value
+            analyzing = Task.detached(priority: .userInitiated) {
+                await coverage.analyze(buffer, at: position)
+            }
             let fraction = 0.35 * Double(file.framePosition) / Double(max(1, file.length))
             if fraction - lastProgress >= 0.01 {
                 lastProgress = fraction
@@ -604,8 +610,10 @@ actor AIEditService {
         guard byteCount > 0 else {
             throw NativeEditorError.aiFailed("Audio decoding returned no samples.")
         }
+        await analyzing?.value
+        try Task.checkCancellation()
         return DecodedAudio(
-            speech: try coverage.finish(),
+            speech: try await coverage.finish(),
             url: output,
             byteCount: byteCount,
             sampleRate: Int(format.sampleRate.rounded())
