@@ -5,7 +5,6 @@ import GuidesRail from "./guides-rail";
 const SLUGS = [
   "how-to-generate-content-ideas",
   "1-minute-speech-topics",
-  "impromptu-speaking-practice",
   "how-to-practice-public-speaking-alone",
   "overcome-filler-words",
   "public-speaking-practice-exercises",

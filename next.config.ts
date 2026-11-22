@@ -92,6 +92,16 @@ const nextConfig: NextConfig = {
         destination: "https://speakingpractice.ai/",
         statusCode: 301 as const,
       })),
+      // The impromptu speaking posts moved to the speakingpractice.ai guide
+      // (Nov 22, 2026) so the two sites stop competing for the same queries.
+      ...[
+        "/blog/impromptu-speaking-practice",
+        "/blog/impromptu-speaking-frameworks",
+      ].map((source) => ({
+        source,
+        destination: "https://speakingpractice.ai/guides/impromptu-speaking",
+        statusCode: 301 as const,
+      })),
       ...["/tools", "/tools/words-per-minute"].map((source) => ({
         source,
         destination: "https://speakingpractice.ai/words-per-minute",
