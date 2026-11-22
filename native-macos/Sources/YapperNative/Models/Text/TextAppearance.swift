@@ -96,7 +96,10 @@ extension TextAppearance {
 extension TextAppearance {
     /// The look captions ship with: heavy white type carrying its own contrast
     /// in a shadow, nothing boxing it in.
-    static let captionDefault = TextAppearance()
+    static let captionDefault = TextAppearance(
+        shadowColor: StudioColor.black.withOpacity(0.40),
+        shadowRadius: 0.16
+    )
 
     /// A standalone text layer is bigger than a caption and defaults to the
     /// rounded face the hook tool uses.

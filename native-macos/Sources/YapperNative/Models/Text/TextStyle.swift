@@ -16,7 +16,7 @@ struct TextStyle: Equatable, Sendable {
 
     init(
         x: Double = 0.5,
-        y: Double = 0.82,
+        y: Double = 0.74,
         width: Double = 0.88,
         rotation: Double = 0,
         appearance: TextAppearance = .captionDefault

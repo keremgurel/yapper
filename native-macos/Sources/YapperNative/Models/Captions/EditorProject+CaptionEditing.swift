@@ -66,6 +66,19 @@ extension EditorProject {
         updatedAt = Date()
     }
 
+    mutating func restoreTranscriptRanges(_ ranges: [TranscriptSourceRange]) {
+        // Padding and clip coalescing can bring a neighbouring word back too.
+        let cutIDs = captionsEnabled == true
+            ? Set((transcript ?? []).filter { !self.isWordKept($0) }.map(\.id))
+            : []
+        let limits = Dictionary(uniqueKeysWithValues: media.map { ($0.id, $0.duration) })
+        for range in ranges {
+            let end = min(range.end, limits[range.mediaID] ?? range.end)
+            restoreSourceRange((range.start, end), for: range.mediaID)
+        }
+        captionRestoredWords(cutIDs)
+    }
+
     /// Captions whatever is now in the cut and has no card over it.
     ///
     /// Restoring a line in the transcript brings back words the cards were
@@ -73,17 +86,18 @@ extension EditorProject {
     /// words get cards here, in place, so the line is captioned the moment it
     /// comes back rather than after a regenerate that would cost the creator
     /// every text edit and restyling in the project.
-    mutating func captionRestoredWords() {
-        guard captionsEnabled == true else { return }
+    private mutating func captionRestoredWords(_ restoredIDs: Set<UUID>) {
+        guard captionsEnabled == true, !restoredIDs.isEmpty else { return }
         let existing = storedCaptions
-        guard !existing.isEmpty else { return }
-        let added = CaptionGapFill.captions(
-            coveringGapsIn: existing,
+        let filled = CaptionGapFill.filling(
+            existing,
             words: captionSourceWords,
-            wordsPerCard: wordsPerCaptionCard
+            wordsPerCard: wordsPerCaptionCard,
+            restoredIDs: restoredIDs,
+            transcript: transcript ?? []
         )
-        guard !added.isEmpty else { return }
-        captions = (existing + added).sorted { $0.sourceStart < $1.sourceStart }
+        guard filled != existing else { return }
+        captions = filled
         updatedAt = Date()
     }
 

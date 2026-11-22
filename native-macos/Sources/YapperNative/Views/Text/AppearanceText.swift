@@ -46,11 +46,6 @@ struct AppearanceText: View {
             }
             label
                 .foregroundStyle(appearance.color.swiftUIColor)
-                .shadow(
-                    color: textShadowColor,
-                    radius: shadowRadius,
-                    y: shadowRadius * 0.2
-                )
         }
         // Seventeen copies of the same words, and every one of them carries a
         // minimum scale factor, which makes SwiftUI fit the type by trying it
@@ -62,6 +57,9 @@ struct AppearanceText: View {
         // only changes when the words or the styling do, which is when this
         // renders again.
         .drawingGroup()
+        // Cast the shadow after rasterizing the glyphs so the blur can
+        // feather outside the text bitmap instead of ending at its bounds.
+        .shadow(color: textShadowColor, radius: shadowRadius, y: shadowRadius * 0.2)
     }
 
     private var label: some View {

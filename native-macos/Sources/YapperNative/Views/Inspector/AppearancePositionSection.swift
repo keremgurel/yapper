@@ -9,6 +9,7 @@ import SwiftUI
 /// learning the same idea twice under two names.
 struct AppearancePositionSection: View {
     let editor: TextStyleEditor
+    var showsCoordinates = true
 
     var body: some View {
         InspectorSection(
@@ -30,12 +31,7 @@ struct AppearancePositionSection: View {
                 )
             }
         ) {
-            InspectorRow("Position") {
-                HStack(spacing: 6) {
-                    coordinate("X", value: editor.x) { editor.set(TextStylePatch(x: $0 / 100)) }
-                    coordinate("Y", value: editor.y) { editor.set(TextStylePatch(y: $0 / 100)) }
-                }
-            }
+            if showsCoordinates { AppearanceCoordinates(editor: editor) }
 
             InspectorRow("Anchor") {
                 InspectorSegmentedControl(
@@ -88,28 +84,10 @@ struct AppearancePositionSection: View {
         .help(help)
     }
 
-    private func coordinate(
-        _ label: String,
-        value: Double,
-        onCommit: @escaping (Double) -> Void
-    ) -> some View {
-        HStack(spacing: 4) {
-            Text(label)
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(.tertiary)
-            InspectorNumberField(
-                value: (value * 100).rounded(),
-                range: 5 ... 95,
-                width: 40,
-                onCommit: onCommit
-            )
-        }
-    }
-
     private static let anchors: [(y: Double, icon: String)] = [
         (0.16, "arrow.up.to.line"),
         (0.5, "arrow.up.and.down"),
-        (0.82, "arrow.down.to.line"),
+        (TextStyle.default.y, "arrow.down.to.line"),
     ]
 
     /// The preset the text is sitting on, if it is sitting on one. A card
@@ -119,5 +97,38 @@ struct AppearancePositionSection: View {
         AppearancePositionSection.anchors
             .first { abs($0.y - editor.y) < 0.02 }?
             .y ?? -1
+    }
+}
+
+struct AppearanceCoordinates: View {
+    let editor: TextStyleEditor
+
+    var body: some View {
+        InspectorRow("Position (%)") {
+            HStack(spacing: 10) {
+                coordinate("X", value: editor.x) { editor.set(TextStylePatch(x: $0 / 100)) }
+                coordinate("Y", value: editor.y) { editor.set(TextStylePatch(y: $0 / 100)) }
+            }
+        }
+    }
+
+    private func coordinate(
+        _ label: String,
+        value: Double,
+        onCommit: @escaping (Double) -> Void
+    ) -> some View {
+        HStack(spacing: 4) {
+            Text(label)
+                .font(.studioCaptionStrong)
+                .foregroundStyle(.secondary)
+            InspectorNumberField(
+                value: (value * 1000).rounded() / 10,
+                range: 5 ... 95,
+                decimals: 1,
+                width: 46,
+                onCommit: onCommit
+            )
+            .environment(\.inspectorControlLabel, "\(label) position in percent")
+        }
     }
 }

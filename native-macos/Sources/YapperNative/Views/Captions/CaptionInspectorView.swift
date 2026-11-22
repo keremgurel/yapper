@@ -35,7 +35,7 @@ struct CaptionInspectorView: View {
 
             Group {
                 sectionDivider
-                AppearancePositionSection(editor: editor)
+                AppearancePositionSection(editor: editor, showsCoordinates: false)
                 sectionDivider
                 AppearanceStrokeSection(editor: editor)
                 sectionDivider
@@ -94,6 +94,8 @@ struct CaptionInspectorView: View {
             )
 
             Group {
+                AppearanceCoordinates(editor: editor)
+
                 InspectorRow("Look", alignment: .top) {
                     InspectorLookRail(
                         templates: TextTemplate.all,
