@@ -284,10 +284,7 @@ extension EditorSession {
         let limits = Dictionary(uniqueKeysWithValues: project.media.map { ($0.id, $0.duration) })
         updateProject { project in
             if kept {
-                for range in ranges {
-                    project.restoreSourceRange((range.start, min(limits[range.mediaID] ?? .greatestFiniteMagnitude, range.end)), for: range.mediaID)
-                }
-                project.captionRestoredWords()
+                project.restoreTranscriptRanges(ranges)
             } else {
                 for mediaID in Set(ranges.map(\.mediaID)) {
                     let limit = limits[mediaID] ?? .greatestFiniteMagnitude
@@ -305,8 +302,7 @@ extension EditorSession {
         guard end - start >= 0.02, project.isSourceRangeKept(mediaID: mediaID, start: start, end: end) != kept else { return false }
         updateProject { project in
             if kept {
-                project.restoreSourceRange((start, end), for: mediaID)
-                project.captionRestoredWords()
+                project.restoreTranscriptRanges([TranscriptSourceRange(mediaID: mediaID, start: start, end: end)])
             } else {
                 project.removeSourceRanges([(start, end)], for: mediaID)
             }

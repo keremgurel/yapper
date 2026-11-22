@@ -53,14 +53,38 @@ import Testing
         return subject
     }
 
+    private func restoreTwo(in project: inout EditorProject) {
+        project.restoreTranscriptRanges([TranscriptSourceRange(mediaID: mediaID, start: 0.35, end: 0.65)])
+    }
+
     @Test func aRestoredWordGetsACard() {
         var subject = editedWithoutTwo()
         #expect(subject.captionCues.map(\.text) == ["one", "three", "four"])
 
-        subject.restoreSourceRange((0.35, 0.65), for: mediaID)
-        subject.captionRestoredWords()
+        restoreTwo(in: &subject)
 
         #expect(subject.captionCues.map(\.text) == ["one", "two", "three", "four"])
+    }
+
+    @Test func countedCardAcrossACutLeavesRoomForTheRestoredSpeech() throws {
+        var subject = editedWithoutTwo(wordsPerCard: 3)
+        let original = try #require(subject.captions?.first)
+        #expect(original.text == "one three four")
+        restoreTwo(in: &subject)
+
+        #expect(subject.captionCues.map(\.text) == ["one", "two", "three four"])
+        for word in subject.transcript! {
+            let time = try #require(subject.timelineTime(for: word))
+            #expect(subject.captionCue(at: time + 0.05)?.text.contains(word.text) == true)
+        }
+        #expect(subject.captions?.first?.id == original.id)
+    }
+
+    @Test func restoringSpeechPreservesAnUnrelatedDeletedCaption() {
+        var subject = editedWithoutTwo()
+        subject.removeCaption(subject.storedCaptions.last!.id)
+        restoreTwo(in: &subject)
+        #expect(subject.captionCues.map(\.text) == ["one", "two", "three"])
     }
 
     /// The new card has to sit in the gap, not over the cards either side: a
@@ -70,8 +94,7 @@ import Testing
         var subject = editedWithoutTwo()
         let before = subject.storedCaptions.map { ($0.sourceStart, $0.sourceEnd) }
 
-        subject.restoreSourceRange((0.35, 0.65), for: mediaID)
-        subject.captionRestoredWords()
+        restoreTwo(in: &subject)
 
         let kept = subject.storedCaptions.filter { caption in
             before.contains { $0.0 == caption.sourceStart && $0.1 == caption.sourceEnd }
@@ -83,11 +106,10 @@ import Testing
     /// Running it twice must not stack a second card on the same words.
     @Test func fillingTheGapTwiceAddsNothing() {
         var subject = editedWithoutTwo()
-        subject.restoreSourceRange((0.35, 0.65), for: mediaID)
-        subject.captionRestoredWords()
+        restoreTwo(in: &subject)
         let filled = subject.storedCaptions.count
 
-        subject.captionRestoredWords()
+        restoreTwo(in: &subject)
 
         #expect(subject.storedCaptions.count == filled)
         #expect(subject.captionCues.map(\.text) == ["one", "two", "three", "four"])
@@ -102,8 +124,7 @@ import Testing
         let cards = subject.storedCaptions.count
         subject.removeSourceRanges([(0.35, 0.65)], for: mediaID)
 
-        subject.restoreSourceRange((0.35, 0.65), for: mediaID)
-        subject.captionRestoredWords()
+        restoreTwo(in: &subject)
 
         #expect(subject.storedCaptions.count == cards)
         #expect(subject.captionCues.map(\.text) == ["one two three four"])
@@ -116,8 +137,7 @@ import Testing
         let typed = subject.storedCaptions[0].id
         subject.setCaptionText("my own words", for: typed)
 
-        subject.restoreSourceRange((0.35, 0.65), for: mediaID)
-        subject.captionRestoredWords()
+        restoreTwo(in: &subject)
 
         #expect(subject.caption(withID: typed)?.text == "my own words")
         #expect(subject.captionCues.map(\.text) == ["my own words", "two", "three", "four"])
@@ -129,8 +149,7 @@ import Testing
         var subject = editedWithoutTwo()
         subject.clearCaptions()
 
-        subject.restoreSourceRange((0.35, 0.65), for: mediaID)
-        subject.captionRestoredWords()
+        restoreTwo(in: &subject)
 
         #expect(subject.captionsEnabled == false)
         #expect(subject.storedCaptions.isEmpty)

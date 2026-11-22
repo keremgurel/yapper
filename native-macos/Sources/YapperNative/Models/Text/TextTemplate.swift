@@ -35,12 +35,7 @@ extension TextTemplate {
         TextTemplate(
             id: "clean",
             name: "Clean",
-            appearance: TextAppearance(
-                color: .white,
-                shadowEnabled: true,
-                shadowColor: StudioColor.black.withOpacity(0.85),
-                shadowRadius: 0.3
-            )
+            appearance: .captionDefault
         ),
         TextTemplate(
             id: "outline",

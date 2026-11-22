@@ -8,8 +8,7 @@ import Foundation
 /// it, and the only way to caption it was Regenerate, which throws away every
 /// text edit and every restyling in the project to fix one line.
 ///
-/// So the stretches nothing covers get cards of their own, grouped by the same
-/// generator as the rest, and every existing card is left exactly as it was.
+/// Only newly restored words need a card. Keep deliberate gaps elsewhere.
 enum CaptionGapFill {
     /// How far a new card stays clear of the cards either side of it. A word
     /// belongs to the last card whose range contains it, so a new card allowed
@@ -18,47 +17,89 @@ enum CaptionGapFill {
     /// Shorter than this and there was no real room between the neighbours.
     static let shortestCard = 0.05
 
-    static func captions(
-        coveringGapsIn captions: [ProjectCaption],
+    static func filling(
+        _ captions: [ProjectCaption],
         words: [CaptionSourceWord],
-        wordsPerCard: Int
+        wordsPerCard: Int,
+        restoredIDs: Set<UUID>,
+        transcript: [TranscriptWord]
     ) -> [ProjectCaption] {
-        guard !captions.isEmpty, !words.isEmpty else { return [] }
-        var byMedia: [UUID: [ProjectCaption]] = [:]
-        for caption in captions { byMedia[caption.mediaID, default: []].append(caption) }
+        guard !words.isEmpty else { return captions }
+        // Counted cards own specific words, even when their first and last
+        // words are minutes apart across a cut. Only range-based or manually
+        // timed cards reserve the recording seconds between their endpoints.
+        let claimed = Set(captions.flatMap { $0.wordIDs ?? [] })
+        let ranged = captions.filter { $0.wordIDs == nil || $0.isTextEdited }
+        let byMedia = Dictionary(grouping: ranged, by: \.mediaID)
 
         var fresh: [ProjectCaption] = []
+        var positionByWord: [UUID: Int] = [:]
         var uncovered: [CaptionSourceWord] = []
 
         func flush() {
             guard !uncovered.isEmpty else { return }
             for caption in CaptionGenerator.captions(from: uncovered, wordsPerCard: wordsPerCard) {
-                if let fitted = fitted(caption, among: byMedia[caption.mediaID] ?? []) {
+                if caption.wordIDs != nil {
+                    fresh.append(caption)
+                } else if let fitted = fitted(caption, among: byMedia[caption.mediaID] ?? []) {
                     fresh.append(fitted)
                 }
             }
             uncovered.removeAll(keepingCapacity: true)
         }
 
-        for word in words {
+        for (position, word) in words.enumerated() {
+            if let id = word.id { positionByWord[id] = position }
             // A run of uncovered words ends at the first word that has a card,
             // which keeps a new card from being built across one already there.
-            if isCovered(word, by: byMedia[word.mediaID] ?? []) {
-                flush()
-            } else {
+            let midpoint = (word.sourceStart + word.sourceEnd) / 2
+            let reserved = byMedia[word.mediaID]?.contains {
+                $0.sourceStart <= midpoint && midpoint <= $0.sourceEnd
+            } == true
+            if let id = word.id, restoredIDs.contains(id), !claimed.contains(id), !reserved {
                 uncovered.append(word)
+            } else {
+                flush()
             }
         }
         flush()
-        return fresh
+        let source = Dictionary(uniqueKeysWithValues: transcript.map { ($0.id, $0) })
+        let kept = captions.flatMap { caption in
+            splitAcrossRestoredRuns(caption, positions: positionByWord, source: source)
+        }
+        if fresh.isEmpty, kept.count == captions.count { return captions }
+        return (kept + fresh).sorted { $0.sourceStart < $1.sourceStart }
     }
 
-    private static func isCovered(_ word: CaptionSourceWord, by captions: [ProjectCaption]) -> Bool {
-        if let id = word.id, captions.contains(where: { $0.wordIDs?.contains(id) == true }) {
-            return true
+    /// When both ends of a counted card survive a restore, its words now
+    /// play on opposite sides of a new cue. Give each side its own timing.
+    /// Keep cut members attached so a subsequent restore still finds them.
+    private static func splitAcrossRestoredRuns(
+        _ caption: ProjectCaption,
+        positions: [UUID: Int],
+        source: [UUID: TranscriptWord]
+    ) -> [ProjectCaption] {
+        guard !caption.isTextEdited, !caption.locked, let ids = caption.wordIDs else { return [caption] }
+        var groups: [[UUID]] = [[]]
+        var previousPosition: Int?
+        for id in ids {
+            if let position = positions[id] {
+                if let previousPosition, position != previousPosition + 1 { groups.append([]) }
+                previousPosition = position
+            }
+            groups[groups.count - 1].append(id)
         }
-        let midpoint = (word.sourceStart + word.sourceEnd) / 2
-        return captions.contains { $0.sourceStart <= midpoint && $0.sourceEnd >= midpoint }
+        guard groups.count > 1 else { return [caption] }
+        return groups.enumerated().map { index, members in
+            let words = members.compactMap { source[$0] }
+            var part = caption
+            if index > 0 { part.id = UUID() }
+            part.wordIDs = members
+            part.text = words.map(\.text).joined(separator: " ")
+            part.sourceStart = words.map(\.start).min() ?? caption.sourceStart
+            part.sourceEnd = words.map(\.end).max() ?? caption.sourceEnd
+            return part
+        }
     }
 
     /// Trims a new card back into the gap it was built for. Returns nil when a

@@ -170,6 +170,7 @@ actor AIEditService {
     }
 
     private struct DecodedAudio {
+        let speech: [[Double]]
         let url: URL
         let byteCount: Int
         let sampleRate: Int
@@ -231,21 +232,12 @@ actor AIEditService {
         let keyterms = TranscriptionDictionary.keyterms(dictionary)
         return try await TranscriptionTemporaryFile.withPCMFile { temporaryURL in
             var run = EditLatencyLog.Run("transcribe")
-            // Finding where the speech is reads the whole file a second time.
-            // Started here so it runs beside the decode instead of after it:
-            // on a long take that was the difference between two full reads
-            // back to back and two at once.
-            let mediaURL = media.url
-            let speechTask = Task.detached(priority: .userInitiated) {
-                try TranscriptionSpeechCoverage.measure(url: mediaURL)
-            }
-            defer { speechTask.cancel() }
             // Asked while the take decodes, so the answer costs no time.
             let piecePlanTask = Task { await TranscriptionPiecePlan.current(baseURL: YapperAPI.baseURL) }
             let decoded = try await decodeAudio(
                 url: media.url, output: temporaryURL, progress: progress
             )
-            run.mark("decoded")
+            run.mark("decoded and checked speech")
             let piecePlan = await piecePlanTask.value
             let chunks = TranscriptionChunkPlan.make(
                 byteCount: decoded.byteCount,
@@ -253,8 +245,7 @@ actor AIEditService {
                 chunkSeconds: piecePlan.pieceSeconds,
                 overlapSeconds: piecePlan.overlapSeconds
             )
-            let speech = try await speechTask.value
-            run.mark("speech found")
+            let speech = decoded.speech
             let recovery = TranscriptionChunkPlan.make(
                 byteCount: decoded.byteCount, sampleRate: decoded.sampleRate,
                 chunkSeconds: 10, overlapSeconds: 4
@@ -571,6 +562,10 @@ actor AIEditService {
             throw NativeEditorError.aiFailed("The audio decoder could not allocate a buffer.")
         }
 
+        // Classify the original multichannel samples during the same read
+        // used for ASR. A second reader on an interleaved camera file
+        // competes with both the decoder and the background media import.
+        let coverage = try TranscriptionSpeechCoverage(format: format)
         let handle = try FileHandle(forWritingTo: output)
         var accumulator = LoudnessEnvelope.Accumulator(
             sampleRate: Int(format.sampleRate.rounded())
@@ -580,10 +575,12 @@ actor AIEditService {
         defer { try? handle.close() }
         while file.framePosition < file.length {
             try Task.checkCancellation()
+            let position = file.framePosition
             buffer.frameLength = 0
             try file.read(into: buffer, frameCount: buffer.frameCapacity)
             let frameCount = Int(buffer.frameLength)
             guard frameCount > 0, let channels = buffer.floatChannelData else { break }
+            coverage.analyze(buffer, at: position)
             var mono = [Int16](repeating: 0, count: frameCount)
             for frame in 0 ..< frameCount {
                 var sum: Float = 0
@@ -607,7 +604,12 @@ actor AIEditService {
         guard byteCount > 0 else {
             throw NativeEditorError.aiFailed("Audio decoding returned no samples.")
         }
-        return DecodedAudio(url: output, byteCount: byteCount, sampleRate: Int(format.sampleRate.rounded()))
+        return DecodedAudio(
+            speech: try coverage.finish(),
+            url: output,
+            byteCount: byteCount,
+            sampleRate: Int(format.sampleRate.rounded())
+        )
     }
 
     private struct NonRetryableFailure: Error { let error: Error }

@@ -37,7 +37,7 @@ struct CaptionSnapTests {
 
     @Test func theDefaultCaptionLineIsSnappable() {
         // Dragging back toward where captions start has to land exactly there.
-        let snapped = CaptionSnapEngine.snap(x: 0.2, y: 0.826, canvasSize: stage)
+        let snapped = CaptionSnapEngine.snap(x: 0.2, y: TextStyle.default.y + 0.006, canvasSize: stage)
         #expect(snapped.y == TextStyle.default.y)
     }
 
