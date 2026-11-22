@@ -36,10 +36,79 @@ Work through the entire transcript from left to right. Privately reconstruct the
 {"keep":[[first,last],[first,last],...]}
 All ranges are inclusive global word indices. List a span for every stretch of speech that stays, including passages with no retake in them; anything you leave out of the list is cut from the video.`;
 
+type TimedWord = { text: string; start?: number; end?: number };
+
+/** Mark a complete delivery immediately after a speaker abandons its opening
+ * and starts again. The transcript alone can make this sound like a stutter
+ * inside the final take. The editor still decides which ranges survive. */
+function restartedDeliveries(words: TimedWord[]): string[] {
+  const tokens = words.map(({ text }) =>
+    text.toLowerCase().replace(/[^\p{L}\p{N}']/gu, ""),
+  );
+  const hints: string[] = [];
+  const deliveries = new Map<string, { start: number; end: number }>();
+  const finishes = (i: number) => /(?<!\.)[.!?]$/.test(words[i]!.text);
+  for (let start = 4; start + 4 < words.length; start++) {
+    const gap = (words[start]!.start ?? NaN) - (words[start - 1]!.end ?? NaN);
+    if (!(gap >= 0.5) || finishes(start - 1)) continue;
+    const opening = tokens.slice(start, start + 4);
+    const matches = (i: number) =>
+      opening.every((token, j) => token && token === tokens[i + j]);
+    const earliestLead = Math.max(0, start - 10);
+    let lead = start - 4;
+    while (lead >= earliestLead && !matches(lead)) lead--;
+    if (
+      lead < earliestLead ||
+      words.slice(lead, start).some((_, i) => finishes(lead + i))
+    )
+      continue;
+
+    let end = start;
+    while (end < words.length - 1 && end - start < 45 && !finishes(end)) {
+      const pause = (words[end + 1]!.start ?? 0) - (words[end]!.end ?? 0);
+      if (pause > 1.2 || matches(end + 1)) break;
+      end++;
+    }
+    if (!finishes(end) || end - start < 5) continue;
+
+    // Only draw attention to a competing *completed* delivery with the same
+    // opening, ending and numbers. Leave ordinary repeated openers alone.
+    const numbers = words
+      .slice(start, end + 1)
+      .map(({ text }) => text.replace(/[,.!?]+$/, ""))
+      .filter((token) => /\d/.test(token));
+    const signature = [...opening, tokens[end], ...numbers].join(" ");
+    const earlier = deliveries.get(signature);
+    if (
+      earlier &&
+      sharesWording(
+        tokens.slice(earlier.start + 4, earlier.end),
+        tokens.slice(start + 4, end),
+      ) &&
+      (words[start]!.start ?? Infinity) - (words[earlier.end]!.end ?? 0) <= 60
+    ) {
+      hints.push(
+        `Earlier delivery ${earlier.start}-${earlier.end}; abandoned opening ${lead}-${start - 1}; final complete delivery ${start}-${end}.`,
+      );
+    }
+    deliveries.set(signature, { start, end });
+  }
+  return hints;
+}
+
+// Shared opening and closing words alone regularly occur in lists of
+// different ideas. Require most of the interior vocabulary to recur too.
+function sharesWording(first: string[], second: string[]) {
+  const a = new Set(first);
+  const b = new Set(second);
+  const shared = [...a].filter((token) => b.has(token)).length;
+  return shared >= 2 && shared >= Math.max(a.size, b.size) * 0.6;
+}
+
 /** How the transcript is handed to the model. */
-export function numberedTranscript(
-  words: { text: string; start?: number; end?: number }[],
-): string {
+export function numberedTranscript(words: TimedWord[]): string {
+  const hints = restartedDeliveries(words);
+  const pauseThreshold = hints.length ? 0.5 : 0.75;
   const parts: string[] = [];
   for (let index = 0; index < words.length; index++) {
     const word = words[index]!;
@@ -52,10 +121,13 @@ export function numberedTranscript(
         Number.isFinite(word.start)
       ) {
         const pause = word.start - previous.end;
-        if (pause >= 0.75) parts.push(`[pause=${pause.toFixed(1)}s]`);
+        if (pause >= pauseThreshold) parts.push(`[pause=${pause.toFixed(1)}s]`);
       }
     }
     parts.push(`${index}:${word.text}`);
   }
-  return parts.join(" ");
+  const transcript = parts.join(" ");
+  return hints.length
+    ? `${transcript}\n\nReview these competing deliveries. Prefer the final complete delivery even when ASR mishears a name or a short connecting word there. Keep distinct ideas separately.\n${hints.join("\n")}`
+    : transcript;
 }
