@@ -85,12 +85,12 @@ enum ManagedProjectMedia {
             if let fingerprint = source.fingerprint, try await MediaSourceFingerprint.compute(url: source.url) != fingerprint {
                 throw NativeEditorError.incompatibleMedia(source.url.lastPathComponent)
             }
-            try copyFile(source, into: package, forceStreaming: forceStreaming)
+            try await copyFile(source, into: package, forceStreaming: forceStreaming)
         }
         try await withTaskCancellationHandler { try await work.value } onCancel: { work.cancel() }
     }
 
-    private static func copyFile(_ source: Source, into package: ProjectPackage, forceStreaming: Bool) throws {
+    private static func copyFile(_ source: Source, into package: ProjectPackage, forceStreaming: Bool) async throws {
         try Task.checkCancellation()
         if resolved(source, in: package) != nil { return }
         let fm = FileManager.default
@@ -120,8 +120,9 @@ enum ManagedProjectMedia {
             let input = try FileHandle(forReadingFrom: source.url)
             let output = try FileHandle(forWritingTo: temporary)
             defer { try? input.close(); try? output.close() }
+            let volume = MediaReadPriority.volume(containing: source.url)
             while true {
-                try Task.checkCancellation()
+                try await MediaReadPriority.shared.waitToCopy(on: volume)
                 guard let data = try input.read(upToCount: 4 * 1024 * 1024), !data.isEmpty else { break }
                 try output.write(contentsOf: data)
             }

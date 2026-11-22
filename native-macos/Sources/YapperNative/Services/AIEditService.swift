@@ -234,9 +234,9 @@ actor AIEditService {
             var run = EditLatencyLog.Run("transcribe")
             // Asked while the take decodes, so the answer costs no time.
             let piecePlanTask = Task { await TranscriptionPiecePlan.current(baseURL: YapperAPI.baseURL) }
-            let decoded = try await decodeAudio(
-                url: media.url, output: temporaryURL, progress: progress
-            )
+            let decoded = try await MediaReadPriority.shared.withAudioRead(from: media.url) {
+                try await decodeAudio(url: media.url, output: temporaryURL, progress: progress)
+            }
             run.mark("decoded and checked speech")
             let piecePlan = await piecePlanTask.value
             let chunks = TranscriptionChunkPlan.make(
