@@ -102,7 +102,7 @@ describe("POST /api/clean-transcript payload limits", () => {
     const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(JSON.parse(init.body as string)).toMatchObject({
       model: "gemini-3.7-flash",
-      max_completion_tokens: 8_000,
+      max_completion_tokens: 12_000,
       temperature: 0,
     });
     expect(init.signal).toBeInstanceOf(AbortSignal);
@@ -199,7 +199,7 @@ describe("POST /api/clean-transcript when the answer is cut off", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({ cuts: [[1, 1]] });
-    expect(budgets(fetchMock)).toEqual([8_000, 12_000]);
+    expect(budgets(fetchMock)).toEqual([12_000, 18_000]);
     expect(mocks.reserve).toHaveBeenCalledOnce();
     expect(mocks.refund).not.toHaveBeenCalled();
   });
@@ -214,7 +214,7 @@ describe("POST /api/clean-transcript when the answer is cut off", () => {
     await expect(response.json()).resolves.toEqual({
       error: "transcript_too_long",
     });
-    expect(budgets(fetchMock)).toEqual([8_000, 12_000, 18_000]);
+    expect(budgets(fetchMock)).toEqual([12_000, 18_000, 27_000]);
     expect(mocks.refund).toHaveBeenCalledOnce();
   });
 

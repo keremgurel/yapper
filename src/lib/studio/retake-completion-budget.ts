@@ -12,14 +12,16 @@
  * at 8,000, 105 at 16,000 and 210 at 32,000, with nothing gained in the cut
  * past 16,000.
  *
- * The 1,399 word take is itself cut off at 8,000 about one call in four now
- * (20 of 81). It keeps 8,000 because the other three finish in a minute where
- * 12,000 takes a minute and a half on every call; the fourth is asked again
- * with more room. Takes of 468 and 619 words never came near the cap.
+ * No take starts below 12,000. The 1,399 word take was cut off at 8,000 about
+ * one call in four (20 of 81), and each of those cost a second call, about
+ * 160 seconds in all against 80. At 12,000 none of 20 was cut off and a call
+ * took about 85 seconds, so the wait is much the same on average and no
+ * longer doubles one time in four. Takes of 468 and 619 words finish in 35 to
+ * 41 seconds at either figure, so the higher floor costs them nothing.
  */
 
-/** What the 1,399 word take was measured with. Shorter takes keep it. */
-const FLOOR = 8_000;
+/** Where the 1,399 word take stopped being cut off. Shorter takes share it. */
+const FLOOR = 12_000;
 /** About 210 seconds of thinking, the most that fits in the route's time. */
 const CEILING = 32_000;
 const TOKENS_PER_WORD = 5.5;

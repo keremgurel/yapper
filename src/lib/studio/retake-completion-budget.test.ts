@@ -6,13 +6,13 @@ import {
 } from "./retake-completion-budget";
 
 describe("retakeCompletionBudget", () => {
-  it("keeps the measured allowance for the take it was sized on", () => {
-    expect(retakeCompletionBudget(1_399)).toBe(8_000);
+  it("starts the 1,399 word take where it stopped being cut off", () => {
+    expect(retakeCompletionBudget(1_399)).toBe(12_000);
   });
 
   it("does not go below that for a short take", () => {
-    expect(retakeCompletionBudget(1)).toBe(8_000);
-    expect(retakeCompletionBudget(300)).toBe(8_000);
+    expect(retakeCompletionBudget(1)).toBe(12_000);
+    expect(retakeCompletionBudget(300)).toBe(12_000);
   });
 
   it("gives the 24 minute take the room it was measured to need", () => {
@@ -37,7 +37,7 @@ describe("retakeCompletionBudget", () => {
 
 describe("roomierCompletionBudget", () => {
   it("gives half as much again", () => {
-    expect(roomierCompletionBudget(8_000)).toBe(12_000);
+    expect(roomierCompletionBudget(12_000)).toBe(18_000);
     expect(roomierCompletionBudget(16_000)).toBe(24_000);
   });
 
