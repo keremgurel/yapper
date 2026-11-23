@@ -16,6 +16,7 @@ November 2026) before choosing a new post or changing a legacy page.
 
 - [Topical authority plan, November 2026](topical-authority-plan-2026-11.md)
 - [Keyword research, October 2026](keyword-research-2026-10.md) and `keywords-2026-10.json`
+- [Creator research: yapping best practices](research/creator-yapping-best-practices-2026-11.md) and [Ideas Lab skill proposals](research/ideas-lab-skill-proposals-2026-11.md), November 2026
 - [Blog post log](blog-post-log.md) — add a row when a post goes live
 - [Experiment ledger](experiments/README.md) — baselines, waiting rules, evaluations and scorecards. This is the source of truth for whether a shipped change worked.
 
