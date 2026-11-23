@@ -4,15 +4,15 @@ First written 22 November 2026. Revised 23 November 2026 to match product direct
 
 Windows used throughout (unchanged from the 22 November audit):
 
-| Window | Dates | Site clicks | Site impressions | Avg pos | CTR |
-|---|---|---:|---:|---:|---:|
-| Last 28 days | 24 Oct–20 Nov 2026 | 162 | 13,073 | 12.8 | 1.24% |
-| Previous 28 days | 26 Sep–23 Oct 2026 | 201 | 10,738 | 8.4 | 1.87% |
-| Last 90 days | 23 Aug–20 Nov 2026 | 494 | 29,528 | 11.2 | 1.67% |
+| Window           | Dates              | Site clicks | Site impressions | Avg pos |   CTR |
+| ---------------- | ------------------ | ----------: | ---------------: | ------: | ----: |
+| Last 28 days     | 24 Oct–20 Nov 2026 |         162 |           13,073 |    12.8 | 1.24% |
+| Previous 28 days | 26 Sep–23 Oct 2026 |         201 |           10,738 |     8.4 | 1.87% |
+| Last 90 days     | 23 Aug–20 Nov 2026 |         494 |           29,528 |    11.2 | 1.67% |
 
 Yapper is everything you need to talk to the camera and post. The product is a creator studio for “yapping” — talking-head videos that feel natural and authentic. They should not be heavily scripted or over-edited, but they still need structure so the point makes sense and the story lands.
 
-The workflow the site should teach, and that the product already follows: capture an idea fast (voice, text, or a pasted inspiration link that Yapper transcribes when it can), combine your own thoughts with that inspiration, let AI turn it into a script you can edit, record with the teleprompter if you want, one-click edit to cut silences, retakes and other trims, then cross-post. Speech-practice topics belong to [speakingpractice.ai](https://speakingpractice.ai). Several practice *tools* already 301 there (9 October 2026). Two overlapping impromptu *posts* already 301 to the SpeakingPractice.ai guide (22 November 2026).
+The workflow the site should teach, and that the product already follows: capture an idea fast (voice, text, or a pasted inspiration link that Yapper transcribes when it can), combine your own thoughts with that inspiration, let AI turn it into a script you can edit, record with the teleprompter if you want, one-click edit to cut silences, retakes and other trims, then cross-post. Speech-practice topics belong to [speakingpractice.ai](https://speakingpractice.ai). Several practice _tools_ already 301 there (9 October 2026). Two overlapping impromptu _posts_ already 301 to the SpeakingPractice.ai guide (22 November 2026).
 
 **This document is a plan.** It does not redirect, delete or noindex anything, and it does not change any live page. Those actions need an explicit go-ahead, and should be logged in the [experiment ledger](experiments/README.md) if they ship.
 
@@ -28,7 +28,7 @@ Use this section as a brake on the plan. Do not claim a feature in a post, title
 
 - **Web:** capture ideas (voice, text, or a reference link), keep the source with the idea, shape hooks and scripts in Brain / the AI script writer, and publish or schedule to supported social accounts.
 - **Inspiration links:** paste a YouTube, TikTok or Instagram video. Yapper pulls title, thumbnail, and a transcript when one is available, then you can add your own thoughts and turn the mix into a script. Not every link yields a transcript; write “when a transcript is available,” not “every video is transcribed.”
-- **Hook patterns already in the product:** Contrarian claim, Stop doing X, Stakes first, Mid-action cold open, Specific-number proof, POV framing, Named enemy, Curiosity gap with a payoff, Credential flash, Direct-address callout. These can back a public framework library. Named formats such as STAR, PAS, AIDA, PREP and Hook-Story-Lesson are *not* shipped as named templates yet. Framework pages can still send people into the script writer; only claim a “Yapper template” where one actually exists.
+- **Hook patterns already in the product:** Contrarian claim, Stop doing X, Stakes first, Mid-action cold open, Specific-number proof, POV framing, Named enemy, Curiosity gap with a payoff, Credential flash, Direct-address callout. These can back a public framework library. Named formats such as STAR, PAS, AIDA, PREP and Hook-Story-Lesson are _not_ shipped as named templates yet. Framework pages can still send people into the script writer; only claim a “Yapper template” where one actually exists.
 - **Mac app:** record with a scrolling teleprompter, then one-click and transcript-based editing (silences, retakes, word-level cuts), captions, and export. This is where recording and editing live today.
 - **Cross-posting (Poster):** YouTube, TikTok and Instagram are enabled. Instagram needs a Professional (Business or Creator) account. Facebook is in the product but **paused**. Do not say Yapper posts to every platform, and do not name Facebook as a live destination until it is re-enabled.
 - **AI assistance:** Brain and Chirpy help capture ideas and structure scripts. Script generation uses Studio credits.
@@ -52,11 +52,11 @@ The last-28 vs previous-28 comparison that started this work: `https://ypr.app/`
 
 The title, meta and promise changed on **8 October 2026** in commit `7431cc85` (“Make Yapper Studio the main site and simplify pricing”). They have been stable since.
 
-| | Before (2 Oct, dual-product homepage) | After (8 Oct–today) |
-|---|---|---|
-| Title | Yapper: speaking practice and a video studio | Yapper Studio: your all-in-one content creation studio |
-| Meta | Yapper makes two separate products: Yapper Train for speaking practice and Yapper Studio for making and publishing video. | Everything you need to create content in one place. Ideas that sound like you, a teleprompter, one-click video editing and cross-posting. Try Yapper Studio. |
-| H1 / lede | Speaking practice and a video studio, as two products | “Everything you need to create content.” Ideas, teleprompter, one-click editing and posting. |
+|           | Before (2 Oct, dual-product homepage)                                                                                     | After (8 Oct–today)                                                                                                                                          |
+| --------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Title     | Yapper: speaking practice and a video studio                                                                              | Yapper Studio: your all-in-one content creation studio                                                                                                       |
+| Meta      | Yapper makes two separate products: Yapper Train for speaking practice and Yapper Studio for making and publishing video. | Everything you need to create content in one place. Ideas that sound like you, a teleprompter, one-click video editing and cross-posting. Try Yapper Studio. |
+| H1 / lede | Speaking practice and a video studio, as two products                                                                     | “Everything you need to create content.” Ideas, teleprompter, one-click editing and posting.                                                                 |
 
 The visible content also changed: Train was removed, practice URLs started 301ing to speakingpractice.ai on 9 October, and the homepage became a Studio walkthrough (one-click edit, Brain/Ideas, teleprompter, Poster). Later November commits refined layout and the closing CTA; they did not change the title or the promise.
 
@@ -64,15 +64,15 @@ The [8 October consolidation note](../../../docs/seo/studio-consolidation-2026-1
 
 ### What it ranked for
 
-Query-level Search Console rows are incomplete (privacy filtering: the previous 28 days show 36 page-level clicks but only 5 clicks in the query list). The queries that *are* visible are almost all brand and navigational, not “teleprompter” or “script writer”:
+Query-level Search Console rows are incomplete (privacy filtering: the previous 28 days show 36 page-level clicks but only 5 clicks in the query list). The queries that _are_ visible are almost all brand and navigational, not “teleprompter” or “script writer”:
 
-| Query | Prev 28 days (impr / pos) | Last 28 days (impr / pos) |
-|---|---|---|
-| yapper.website | 467 / 6.1 | 8 / 8.9 |
-| yapper website | 338 / 5.5 | 49 / 9.0 |
-| yapper | 392 / 5.7 | 46 / 8.5 |
-| yapper app | 55 / 8.0 | 7 / 9.9 |
-| yapper.web | 28 / 4.9 | 14 / 7.6 |
+| Query          | Prev 28 days (impr / pos) | Last 28 days (impr / pos) |
+| -------------- | ------------------------- | ------------------------- |
+| yapper.website | 467 / 6.1                 | 8 / 8.9                   |
+| yapper website | 338 / 5.5                 | 49 / 9.0                  |
+| yapper         | 392 / 5.7                 | 46 / 8.5                  |
+| yapper app     | 55 / 8.0                  | 7 / 9.9                   |
+| yapper.web     | 28 / 4.9                  | 14 / 7.6                  |
 
 Two things happened at once:
 
@@ -81,16 +81,16 @@ Two things happened at once:
 
 Weekly clicks on the homepage (finalized, week starting Monday):
 
-| Week of | Clicks | Impressions |
-|---|---:|---:|
-| 28 Sep | 12 | 530 |
-| 5 Oct (title changed 8 Oct) | 11 | 223 |
-| 12 Oct | 7 | 1,310 |
-| 19 Oct | 5 | 255 |
-| 26 Oct | 0 | 121 |
-| 2 Nov | 1 | 96 |
-| 9 Nov | 1 | 129 |
-| 16 Nov | 2 | 264 |
+| Week of                     | Clicks | Impressions |
+| --------------------------- | -----: | ----------: |
+| 28 Sep                      |     12 |         530 |
+| 5 Oct (title changed 8 Oct) |     11 |         223 |
+| 12 Oct                      |      7 |       1,310 |
+| 19 Oct                      |      5 |         255 |
+| 26 Oct                      |      0 |         121 |
+| 2 Nov                       |      1 |          96 |
+| 9 Nov                       |      1 |         129 |
+| 16 Nov                      |      2 |         264 |
 
 The previous 28-day window still includes about two weeks of the old homepage, so 36 → 4 slightly overstates a clean before/after. The weekly series still shows a real break after 8 October: clicks held through that week, then fell to 0–2 a week from 26 October, and they have not recovered.
 
@@ -122,65 +122,65 @@ Clicks and impressions below are the last 28 days and last 90 days, for the cano
 
 ### Core
 
-| URL | 28d clicks | 28d impr | 90d clicks | 90d impr | Notes |
-|---|---:|---:|---:|---:|---|
-| `/` | 4 | 674 | 84 | 4,925 | See §1. 90-day clicks are mostly from before 8 October. |
-| `/pricing` | 2 | 209 | 2 | 387 | |
-| `/features` | 1 | 91 | 1 | 115 | Hub. Thin as a ranking page. |
-| `/features/ai-script-writer` | 1 | 115 | 1 | 128 | |
-| `/features/teleprompter-recorder` | 1 | 56 | 3 | 71 | Best of the feature pages, still tiny. |
-| `/features/transcript-video-editor` | 0 | low / none in the page list | 0 | — | The differentiator. Almost no search presence. |
-| `/features/automatic-captions` | 0 | 14 | 0 | 42 | |
-| `/features/idea-capture` | 0 | 25 | 0 | 34 | |
-| `/features/social-publishing` | 0 | 12 | 0 | 18 | |
-| `/features/content-calendar` | 0 | 24 | 0 | 24 | |
-| `/features/content-library` | 0 | 17 | 0 | 23 | |
-| `/blog` | 0 | 14 | 0 | 42 | |
-| `/blog/what-is-a-teleprompter` | 0 | 587 | 0 | 587 | Visibility without clicks. CTR problem. |
-| `/blog/how-to-memorize-a-script` | 0 | 326 | 0 | 326 | Same pattern. Average position looks better than the primary query (which has not landed yet). |
-| `/blog/how-to-write-a-video-script` | 1 | 26 | 1 | 26 | |
-| `/blog/tiktok-script` | 0 | 54 | 0 | 54 | |
-| `/blog/video-script-examples` | 0 | 50 | 0 | 50 | |
-| `/blog/youtube-script` | — | — | — | — | Shipped 22 November; no finalized post-change data yet. |
-| `/blog/talking-head-video` | 0 | 14 | 0 | 14 | |
-| `/blog/how-to-generate-content-ideas` | 0 | 44 | 0 | 50 | |
+| URL                                   | 28d clicks |                    28d impr | 90d clicks | 90d impr | Notes                                                                                          |
+| ------------------------------------- | ---------: | --------------------------: | ---------: | -------: | ---------------------------------------------------------------------------------------------- |
+| `/`                                   |          4 |                         674 |         84 |    4,925 | See §1. 90-day clicks are mostly from before 8 October.                                        |
+| `/pricing`                            |          2 |                         209 |          2 |      387 |                                                                                                |
+| `/features`                           |          1 |                          91 |          1 |      115 | Hub. Thin as a ranking page.                                                                   |
+| `/features/ai-script-writer`          |          1 |                         115 |          1 |      128 |                                                                                                |
+| `/features/teleprompter-recorder`     |          1 |                          56 |          3 |       71 | Best of the feature pages, still tiny.                                                         |
+| `/features/transcript-video-editor`   |          0 | low / none in the page list |          0 |        — | The differentiator. Almost no search presence.                                                 |
+| `/features/automatic-captions`        |          0 |                          14 |          0 |       42 |                                                                                                |
+| `/features/idea-capture`              |          0 |                          25 |          0 |       34 |                                                                                                |
+| `/features/social-publishing`         |          0 |                          12 |          0 |       18 |                                                                                                |
+| `/features/content-calendar`          |          0 |                          24 |          0 |       24 |                                                                                                |
+| `/features/content-library`           |          0 |                          17 |          0 |       23 |                                                                                                |
+| `/blog`                               |          0 |                          14 |          0 |       42 |                                                                                                |
+| `/blog/what-is-a-teleprompter`        |          0 |                         587 |          0 |      587 | Visibility without clicks. CTR problem.                                                        |
+| `/blog/how-to-memorize-a-script`      |          0 |                         326 |          0 |      326 | Same pattern. Average position looks better than the primary query (which has not landed yet). |
+| `/blog/how-to-write-a-video-script`   |          1 |                          26 |          1 |       26 |                                                                                                |
+| `/blog/tiktok-script`                 |          0 |                          54 |          0 |       54 |                                                                                                |
+| `/blog/video-script-examples`         |          0 |                          50 |          0 |       50 |                                                                                                |
+| `/blog/youtube-script`                |          — |                           — |          — |        — | Shipped 22 November; no finalized post-change data yet.                                        |
+| `/blog/talking-head-video`            |          0 |                          14 |          0 |       14 |                                                                                                |
+| `/blog/how-to-generate-content-ideas` |          0 |                          44 |          0 |       50 |                                                                                                |
 
 Core studio URLs earned about **10 clicks** in the last 28 days. The new posts are being seen (especially the teleprompter and memorize posts) but almost nobody is clicking. Fixing those titles and internal links is cheaper than writing around them.
 
 ### Adjacent
 
-| URL | 28d clicks | 28d impr | 90d clicks | Recommendation |
-|---|---:|---:|---:|---|
-| `/blog/presentation-practice` | 2 | 100 | 5 | Rewrite toward rehearsing a talking-head or course video, then recording it in Studio. Keep until that rewrite ships. |
-| `/blog/how-to-start-a-speech` | 1 | 341 | 1 | Rewrite toward video openings / hooks. 341 impressions already. |
-| `/blog/words-per-minute-speaking` | 1 | 25 | 1 | Rewrite toward script length and on-camera pace. Link the new calculator in §5. The `/tools/words-per-minute` *tool* already 301s to SpeakingPractice.ai; this post can stay as a studio-facing guide. |
-| `/blog/what-are-filler-words` | 0 | 8 | 0 | Rewrite toward removing filler words in a transcript edit, or later 301 to the SpeakingPractice.ai filler-words guide. Traffic is negligible. |
-| `/blog/filler-words-examples` | 0 | 297 | 0 | Same family. Impressions without clicks. Rewrite toward “filler words that show up on camera, and how the editor cuts them,” or keep only one of the three filler posts and point the others at it. |
-| `/blog/overcome-filler-words` | 0 | 32 | 0 | Same recommendation as the other filler posts. |
+| URL                               | 28d clicks | 28d impr | 90d clicks | Recommendation                                                                                                                                                                                         |
+| --------------------------------- | ---------: | -------: | ---------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/blog/presentation-practice`     |          2 |      100 |          5 | Rewrite toward rehearsing a talking-head or course video, then recording it in Studio. Keep until that rewrite ships.                                                                                  |
+| `/blog/how-to-start-a-speech`     |          1 |      341 |          1 | Rewrite toward video openings / hooks. 341 impressions already.                                                                                                                                        |
+| `/blog/words-per-minute-speaking` |          1 |       25 |          1 | Rewrite toward script length and on-camera pace. Link the new calculator in §5. The `/tools/words-per-minute` _tool_ already 301s to SpeakingPractice.ai; this post can stay as a studio-facing guide. |
+| `/blog/what-are-filler-words`     |          0 |        8 |          0 | Rewrite toward removing filler words in a transcript edit, or later 301 to the SpeakingPractice.ai filler-words guide. Traffic is negligible.                                                          |
+| `/blog/filler-words-examples`     |          0 |      297 |          0 | Same family. Impressions without clicks. Rewrite toward “filler words that show up on camera, and how the editor cuts them,” or keep only one of the three filler posts and point the others at it.    |
+| `/blog/overcome-filler-words`     |          0 |       32 |          0 | Same recommendation as the other filler posts.                                                                                                                                                         |
 
 ### Legacy speech-practice posts
 
 These 15 still-indexable posts (plus two already-redirected slugs that still show residual Search Console rows) are why the site still has clicks, and why Google can still read ypr.app as a speaking-practice site.
 
-| URL | 28d clicks | 28d impr | Prev 28d clicks | 90d clicks | Recommendation |
-|---|---:|---:|---:|---:|---|
-| `/blog/1-minute-speech-topics` | 75 | 4,642 | 106 | 246 | **Keep.** See §2. Optionally add a short “if you are filming a 60-second talking-head, here is the studio workflow” link. Do not 301. |
-| `/blog/good-speech-topics` | 18 | 1,575 | 2 | 22 | **Keep for now.** It grew in the last 28 days. A later rewrite can tilt the list toward “topics that make a good talking-head video” without throwing away the current queries. |
-| `/blog/random-topic-generator` | 9 | 426 | 24 | 41 | **Keep for now, plan a later 301** to SpeakingPractice.ai’s random-topic / impromptu experience. The *tool* URL `/random-topic-generator` already 301s there; this post is leftover article intent and is already declining (24 → 9). Revisit after the 1-minute page decision is settled. |
-| `/blog/speech-topic-ideas-for-practice` | 8 | 782 | 8 | 20 | **Keep.** Stable. Treat like good-speech-topics: a later creator-angled rewrite is possible; a 301 is not justified at 8 clicks. |
-| `/blog/topics-to-talk-about-speaking-practice` | 7 | 337 | 2 | 9 | **Keep.** Slightly up. Same family as the other topic lists. |
-| `/blog/random-topic-generator-with-timer` | 5 | 221 | 0 | 5 | **Keep for now.** Close overlap with the other random-topic post and with SpeakingPractice.ai. Prefer consolidating onto one article later, then considering a 301 of the weaker one. |
-| `/blog/public-speaking-practice-exercises` | 2 | 87 | 0 | 3 | **Keep, low priority.** Eventual 301 to a SpeakingPractice.ai drills / practice page is reasonable; traffic is small. |
-| `/blog/impromptu-speaking-topics-timer` | 1 | 51 | 0 | 1 | **Recommend a later 301** to `https://speakingpractice.ai/guides/impromptu-speaking`, the same destination as the two posts already redirected. Not in this change. |
-| `/blog/practice-public-speaking-online-free` | 1 | 5 | 0 | 1 | **Recommend a later 301** to SpeakingPractice.ai (the product this title now describes). |
-| `/blog/table-topics-questions` | 1 | 162 | 0 | 1 | **Recommend a later 301** to `https://speakingpractice.ai/guides/toastmasters-table-topics`. |
-| `/blog/fluency-practice-drills` | 0 | 16 | 0 | 0 | **Recommend a later 301** to SpeakingPractice.ai. No meaningful traffic. |
-| `/blog/how-to-practice-public-speaking-alone` | 0 | 4 | 0 | 0 | **Recommend a later 301** to SpeakingPractice.ai. |
-| `/blog/how-to-think-faster-when-speaking` | 0 | 66 | 0 | 0 | **Recommend a later 301** to SpeakingPractice.ai, or a rewrite only if we can honestly make it about on-camera first takes. Prefer 301. |
-| `/blog/speaking-under-pressure` | 0 | 5 | 0 | 0 | **Recommend a later 301** to SpeakingPractice.ai. |
-| `/blog/what-to-do-when-your-mind-goes-blank` | 0 | 66 | 0 | 0 | **Recommend a later 301** to SpeakingPractice.ai. |
-| `/blog/impromptu-speaking-practice` | 1 | 55 | 2 | 4 | **Already 301’d** (22 Nov) to the SpeakingPractice.ai impromptu guide. Residual Search Console rows should fade. Check coverage at the 6 December redirect review. |
-| `/blog/impromptu-speaking-frameworks` | 0 | 40 | 0 | 0 | **Already 301’d.** Same review. |
+| URL                                            | 28d clicks | 28d impr | Prev 28d clicks | 90d clicks | Recommendation                                                                                                                                                                                                                                                                             |
+| ---------------------------------------------- | ---------: | -------: | --------------: | ---------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/blog/1-minute-speech-topics`                 |         75 |    4,642 |             106 |        246 | **Keep.** See §2. Optionally add a short “if you are filming a 60-second talking-head, here is the studio workflow” link. Do not 301.                                                                                                                                                      |
+| `/blog/good-speech-topics`                     |         18 |    1,575 |               2 |         22 | **Keep for now.** It grew in the last 28 days. A later rewrite can tilt the list toward “topics that make a good talking-head video” without throwing away the current queries.                                                                                                            |
+| `/blog/random-topic-generator`                 |          9 |      426 |              24 |         41 | **Keep for now, plan a later 301** to SpeakingPractice.ai’s random-topic / impromptu experience. The _tool_ URL `/random-topic-generator` already 301s there; this post is leftover article intent and is already declining (24 → 9). Revisit after the 1-minute page decision is settled. |
+| `/blog/speech-topic-ideas-for-practice`        |          8 |      782 |               8 |         20 | **Keep.** Stable. Treat like good-speech-topics: a later creator-angled rewrite is possible; a 301 is not justified at 8 clicks.                                                                                                                                                           |
+| `/blog/topics-to-talk-about-speaking-practice` |          7 |      337 |               2 |          9 | **Keep.** Slightly up. Same family as the other topic lists.                                                                                                                                                                                                                               |
+| `/blog/random-topic-generator-with-timer`      |          5 |      221 |               0 |          5 | **Keep for now.** Close overlap with the other random-topic post and with SpeakingPractice.ai. Prefer consolidating onto one article later, then considering a 301 of the weaker one.                                                                                                      |
+| `/blog/public-speaking-practice-exercises`     |          2 |       87 |               0 |          3 | **Keep, low priority.** Eventual 301 to a SpeakingPractice.ai drills / practice page is reasonable; traffic is small.                                                                                                                                                                      |
+| `/blog/impromptu-speaking-topics-timer`        |          1 |       51 |               0 |          1 | **Recommend a later 301** to `https://speakingpractice.ai/guides/impromptu-speaking`, the same destination as the two posts already redirected. Not in this change.                                                                                                                        |
+| `/blog/practice-public-speaking-online-free`   |          1 |        5 |               0 |          1 | **Recommend a later 301** to SpeakingPractice.ai (the product this title now describes).                                                                                                                                                                                                   |
+| `/blog/table-topics-questions`                 |          1 |      162 |               0 |          1 | **Recommend a later 301** to `https://speakingpractice.ai/guides/toastmasters-table-topics`.                                                                                                                                                                                               |
+| `/blog/fluency-practice-drills`                |          0 |       16 |               0 |          0 | **Recommend a later 301** to SpeakingPractice.ai. No meaningful traffic.                                                                                                                                                                                                                   |
+| `/blog/how-to-practice-public-speaking-alone`  |          0 |        4 |               0 |          0 | **Recommend a later 301** to SpeakingPractice.ai.                                                                                                                                                                                                                                          |
+| `/blog/how-to-think-faster-when-speaking`      |          0 |       66 |               0 |          0 | **Recommend a later 301** to SpeakingPractice.ai, or a rewrite only if we can honestly make it about on-camera first takes. Prefer 301.                                                                                                                                                    |
+| `/blog/speaking-under-pressure`                |          0 |        5 |               0 |          0 | **Recommend a later 301** to SpeakingPractice.ai.                                                                                                                                                                                                                                          |
+| `/blog/what-to-do-when-your-mind-goes-blank`   |          0 |       66 |               0 |          0 | **Recommend a later 301** to SpeakingPractice.ai.                                                                                                                                                                                                                                          |
+| `/blog/impromptu-speaking-practice`            |          1 |       55 |               2 |          4 | **Already 301’d** (22 Nov) to the SpeakingPractice.ai impromptu guide. Residual Search Console rows should fade. Check coverage at the 6 December redirect review.                                                                                                                         |
+| `/blog/impromptu-speaking-frameworks`          |          0 |       40 |               0 |          0 | **Already 301’d.** Same review.                                                                                                                                                                                                                                                            |
 
 Roughly **128 of the last 162 site clicks** still come from legacy practice posts (75 of them from a single URL). Core studio URLs contributed about 10. Until the studio cluster earns its own clicks, we should not donate the high-traffic legacy URLs.
 
@@ -188,7 +188,7 @@ Brand pages `/terms` (17 clicks / 977 impressions) and `/privacy` (2 / 491) are 
 
 ## 4. Topic map
 
-Eight pillars, following the actual workflow. Each has a product page or a planned hub, supporting posts, and (where honest) a tool or a comparison. Volumes are US monthly DataForSEO estimates for a *representative* head term, not a sum of variants.
+Eight pillars, following the actual workflow. Each has a product page or a planned hub, supporting posts, and (where honest) a tool or a comparison. Volumes are US monthly DataForSEO estimates for a _representative_ head term, not a sum of variants.
 
 ### 4.1 Structure and storytelling for yapping videos
 
@@ -218,9 +218,9 @@ Already shipped: `/blog/how-to-write-a-video-script`, `/blog/video-script-exampl
 
 ### 4.5 Teleprompter (every platform Yapper supports)
 
-**Pillar:** `/features/teleprompter-recorder`. Rewrite the *plan* for this page’s language: it is a teleprompter for talking-head videos, available in the Mac app today, on the web for the script, and in a mobile app when that ships. Do not title new cluster posts “teleprompter for Mac” unless the page is specifically about Mac.
+**Pillar:** `/features/teleprompter-recorder`. Rewrite the _plan_ for this page’s language: it is a teleprompter for talking-head videos, available in the Mac app today, on the web for the script, and in a mobile app when that ships. Do not title new cluster posts “teleprompter for Mac” unless the page is specifically about Mac.
 
-Volumes: “teleprompter” 40,500/KD 50 (too broad to win soon); “teleprompter app” 8,100/60 (same); “teleprompter app iphone” 2,400/36 (save for the mobile launch); “teleprompter for Mac” 1,000/24 (a fair *specific* page, because that is what ships today); “how to read a teleprompter” 30/0; “best teleprompter app” 720/36 (only honest once mobile exists, or if the page is clearly a comparison that admits iPhone is coming). `/blog/what-is-a-teleprompter` already has 587 impressions and 0 clicks — fix the title and the first-screen answer before writing another definition post.
+Volumes: “teleprompter” 40,500/KD 50 (too broad to win soon); “teleprompter app” 8,100/60 (same); “teleprompter app iphone” 2,400/36 (save for the mobile launch); “teleprompter for Mac” 1,000/24 (a fair _specific_ page, because that is what ships today); “how to read a teleprompter” 30/0; “best teleprompter app” 720/36 (only honest once mobile exists, or if the page is clearly a comparison that admits iPhone is coming). `/blog/what-is-a-teleprompter` already has 587 impressions and 0 clicks — fix the title and the first-screen answer before writing another definition post.
 
 ### 4.6 One-click editing, without over-editing
 
@@ -242,34 +242,34 @@ Volumes: “teleprompter” 40,500/KD 50 (too broad to win soon); “teleprompte
 
 A public library of the formats creators actually teach for talking-head and yapping videos. One URL per format, each explaining the beats in plain language, showing a short worked example, and linking to the structure pillar and to a Yapper hook pattern or script-writer flow where one exists. This is good programmatic depth without inventing thin pages: every format has to be a real method people already use.
 
-Research for this list came from public articles, YouTube guides (including “The Art of Yapping” and similar talking-to-camera videos), Reddit script-structure threads, and write-ups of TikTok/Instagram yapping and storytime formats. The names below are the ones that keep showing up. Search volume is often on the *method name*, not on “yapping framework,” and some names (especially STAR and AIDA) are used far beyond short video. Each page must say it is about a talking-head video, or we will wander into interview-prep and generic copywriting SERPs.
+Research for this list came from public articles, YouTube guides (including “The Art of Yapping” and similar talking-to-camera videos), Reddit script-structure threads, and write-ups of TikTok/Instagram yapping and storytime formats. The names below are the ones that keep showing up. Search volume is often on the _method name_, not on “yapping framework,” and some names (especially STAR and AIDA) are used far beyond short video. Each page must say it is about a talking-head video, or we will wander into interview-prep and generic copywriting SERPs.
 
 ### The core yapping shapes (write these first)
 
-| Format | Beats, as people teach them | Volume / KD | Notes |
-|---|---|---|---|
-| Hook → one idea → evidence → ask | A claim in the first two seconds, one point, a number or story, one instruction or comment prompt. | Covered by “talking head video” 1,000/0 and hook terms | The default yap. Creatorflow and similar guides describe this almost word for word. |
-| Hook-Story-Lesson | Hook, a short story, the point the viewer can use. | “hook story lesson” had no tool volume | Closest named match to what Can described. Build it anyway; it is the spine of a lot of yapping advice. |
-| Storytime beats | Open inside the action, stakes, turn, payoff, lesson. | Long-tail | How TikTok/Instagram storytime guides tell people to talk. No “so, storytime” opener. |
-| Hook, story, two points | Hook, anecdote, point, point. | Long-tail | From talking-on-camera / “art of yapping” videos. |
-| Steelman, then the point | Hook, name the opposite argument, answer it, then your reason. | Long-tail | Sometimes taught as an “Eight Mile” structure. Good for strong takes. |
-| Strong take / small epiphany / storytime | Three *styles*, not one beat sheet. | Long-tail | A useful companion page so people pick a mode before a framework. |
+| Format                                   | Beats, as people teach them                                                                        | Volume / KD                                            | Notes                                                                                                   |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Hook → one idea → evidence → ask         | A claim in the first two seconds, one point, a number or story, one instruction or comment prompt. | Covered by “talking head video” 1,000/0 and hook terms | The default yap. Creatorflow and similar guides describe this almost word for word.                     |
+| Hook-Story-Lesson                        | Hook, a short story, the point the viewer can use.                                                 | “hook story lesson” had no tool volume                 | Closest named match to what Can described. Build it anyway; it is the spine of a lot of yapping advice. |
+| Storytime beats                          | Open inside the action, stakes, turn, payoff, lesson.                                              | Long-tail                                              | How TikTok/Instagram storytime guides tell people to talk. No “so, storytime” opener.                   |
+| Hook, story, two points                  | Hook, anecdote, point, point.                                                                      | Long-tail                                              | From talking-on-camera / “art of yapping” videos.                                                       |
+| Steelman, then the point                 | Hook, name the opposite argument, answer it, then your reason.                                     | Long-tail                                              | Sometimes taught as an “Eight Mile” structure. Good for strong takes.                                   |
+| Strong take / small epiphany / storytime | Three _styles_, not one beat sheet.                                                                | Long-tail                                              | A useful companion page so people pick a mode before a framework.                                       |
 
 ### Named methods people already search for
 
-| Format | Beats | Volume / KD | Honest use on ypr.app |
-|---|---|---|---|
-| PAS (Problem-Agitate-Solve) | Name the problem, make the cost felt, then the way through. | PAS 90/1; “problem agitate solve” 50/10 | Natural for “stop doing this on camera” videos. Low volume, still worth a library URL. |
-| Hook-Story-Offer | Hook, story, the thing you are offering. | 30/0 | Only when the video actually has an offer. Easy to turn into a sales script; keep it optional. |
-| AIDA | Attention, Interest, Desire, Action. | 2,400/31 | Real demand, mixed SERP (marketing courses). The page has to be “AIDA for a talking-head video,” or skip it until we can win that angle. |
-| Before-After-Bridge | Life before, life after, the bridge that got you there. | 20/7 | Simple transformation yaps. |
-| PREP | Point, Reason, Example, Point. | 320/19 | Built for speaking, not ads. A very clean fit for a 30–60 second yap. |
-| STAR | Situation, Task, Action, Result. | “STAR method” 60,500/50 | Almost all of that volume is job interviews. Do **not** chase the interview SERP. A short “use STAR to tell a story on camera” page is still useful, titled so interview-hunters are not the target. |
-| SCQA | Situation, Complication, Question, Answer. | 480/5 | Winnable. Good for explainers and “here is the decision I made” yaps. |
-| Pixar Story Spine | Once upon a time… and every day… until one day… | 210/0 | A friendly storytime template. Keep it short. |
-| Problem-Solution-Proof-CTA | UGC-style product or opinion yap. | Long-tail | Honest when the video is a recommendation. |
-| Myth-bust / contrarian | Name the belief, why it fails, what to do instead. | Maps to the product’s “Contrarian claim” hook | Already a hook pattern in Studio. |
-| Listicle / countdown | Numbered tips. | Broad | Use sparingly. Empty “top three tips” videos are what the yapping guides tell people *not* to lean on. One library page is enough. |
+| Format                      | Beats                                                       | Volume / KD                                   | Honest use on ypr.app                                                                                                                                                                                |
+| --------------------------- | ----------------------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PAS (Problem-Agitate-Solve) | Name the problem, make the cost felt, then the way through. | PAS 90/1; “problem agitate solve” 50/10       | Natural for “stop doing this on camera” videos. Low volume, still worth a library URL.                                                                                                               |
+| Hook-Story-Offer            | Hook, story, the thing you are offering.                    | 30/0                                          | Only when the video actually has an offer. Easy to turn into a sales script; keep it optional.                                                                                                       |
+| AIDA                        | Attention, Interest, Desire, Action.                        | 2,400/31                                      | Real demand, mixed SERP (marketing courses). The page has to be “AIDA for a talking-head video,” or skip it until we can win that angle.                                                             |
+| Before-After-Bridge         | Life before, life after, the bridge that got you there.     | 20/7                                          | Simple transformation yaps.                                                                                                                                                                          |
+| PREP                        | Point, Reason, Example, Point.                              | 320/19                                        | Built for speaking, not ads. A very clean fit for a 30–60 second yap.                                                                                                                                |
+| STAR                        | Situation, Task, Action, Result.                            | “STAR method” 60,500/50                       | Almost all of that volume is job interviews. Do **not** chase the interview SERP. A short “use STAR to tell a story on camera” page is still useful, titled so interview-hunters are not the target. |
+| SCQA                        | Situation, Complication, Question, Answer.                  | 480/5                                         | Winnable. Good for explainers and “here is the decision I made” yaps.                                                                                                                                |
+| Pixar Story Spine           | Once upon a time… and every day… until one day…             | 210/0                                         | A friendly storytime template. Keep it short.                                                                                                                                                        |
+| Problem-Solution-Proof-CTA  | UGC-style product or opinion yap.                           | Long-tail                                     | Honest when the video is a recommendation.                                                                                                                                                           |
+| Myth-bust / contrarian      | Name the belief, why it fails, what to do instead.          | Maps to the product’s “Contrarian claim” hook | Already a hook pattern in Studio.                                                                                                                                                                    |
+| Listicle / countdown        | Numbered tips.                                              | Broad                                         | Use sparingly. Empty “top three tips” videos are what the yapping guides tell people _not_ to lean on. One library page is enough.                                                                   |
 
 **Do not build first-wave pages for** the Hero’s Journey or StoryBrand. They are too heavy for a natural 30–60 second yap and they pull us into brand-storytelling courses.
 
@@ -280,7 +280,7 @@ Each library URL should end with: here is how to capture the idea in Yapper, her
 Build only tools the product can actually power.
 
 1. **Script word-count-to-video-length calculator.** Still a good, honest free tool. It uses a number we already publish (words per minute) and gives every script post something to link to. “Video length calculator” is small; the value is the linkable asset.
-2. **Video hook generator**, only if it stays on *video* hooks (first eight seconds of a talking-head), not essay hooks. “Hook generator” is 590/0; “hook ideas” is 3,600/14, but the generic SERP is full of writing hooks. Can wait until after the first three pieces.
+2. **Video hook generator**, only if it stays on _video_ hooks (first eight seconds of a talking-head), not essay hooks. “Hook generator” is 590/0; “hook ideas” is 3,600/14, but the generic SERP is full of writing hooks. Can wait until after the first three pieces.
 3. **Inspiration-to-script** is already a product flow, not a separate widget. The post in §4.3 is the public door.
 4. **Mobile app landing page, launch-ready but unpublished until the app ships.** Target “teleprompter app iphone” (2,400/36) and “best teleprompter app” only when a creator can actually download it. The page should promise the same workflow as desktop, kept simple — not a cut-down companion. Do not imply Android or iPhone availability before each one is real.
 5. **“Teleprompter for Mac”** remains a fair specific page for the app that ships today. It is not the brand position.
@@ -292,29 +292,29 @@ The product Can was reaching for is almost certainly **[CutAI](https://usecutai.
 Two near-misses, so we do not mix them up later:
 
 - **[use.ai](https://use.ai)** is an AI chat workspace (many models in one subscription). It is not a video product.
-- **[Cutora](https://usecutora.com/)** is a *web* talking-head editor that makes a first cut of pauses, false starts and retakes. The URL is also a “use + cut…” name. If the memory was “a talking-head cut tool on the web,” this could have been it. Treat CutAI as the primary match; keep Cutora in the competitive set for auto-cut.
+- **[Cutora](https://usecutora.com/)** is a _web_ talking-head editor that makes a first cut of pauses, false starts and retakes. The URL is also a “use + cut…” name. If the memory was “a talking-head cut tool on the web,” this could have been it. Treat CutAI as the primary match; keep Cutora in the competitive set for auto-cut.
 
 ### Overlap by workflow step
 
-| Step | Closest products | Do they really overlap? |
-|---|---|---|
-| Idea capture | Notes apps, ChatGPT, a few creator “idea” tools | Weak overlap. Yapper’s version is voice or text, kept with the idea, organized by pillar. |
-| Inspiration link → transcript → your notes → script | Almost no direct rival in the set below | Distinctive. Opus Clip transcribes long videos to *clip* them, not to help you write your own yap. |
-| Scripting / structure | ChatGPT, Captions’ script tools, generic script generators | Overlap on “draft some words.” Yapper’s angle is structure from *your* idea and references, meant to be edited into something you would say. |
-| Teleprompter | BigVu, Teleprompter.com, Captions | Real overlap on prompting. Those tools do not do the rest of the studio. BigVu is a well-known branded query (5,400, KD 80) — a hard alternative page. |
-| Auto-cut silences / retakes | **CutAI**, Cutora, Descript, Captions, Submagic, PopScript, Toast | Real overlap. This is the comparison set for the editor. |
-| Captions | Captions, Submagic, CapCut, Descript | Real overlap. Captions (the app) is the namesake and a serious talking-head product (teleprompter, captions, AI edit, phone-first). |
-| Cross-posting | Later, Buffer, Publer, the in-app share sheets | Overlap only at the last mile. Yapper’s point is that posting sits on the same project as the idea and the cut. |
-| General short-form timeline | CapCut | Only honest as “talking-head studio vs general editor.” CapCut is not an idea-to-script tool. |
-| Long video → many shorts | Opus Clip (90,500, branded) | Weak overlap. Do not write an “Opus Clip alternative” unless the product actually turns long recordings into many clips, which it does not today. |
+| Step                                                | Closest products                                                  | Do they really overlap?                                                                                                                                |
+| --------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Idea capture                                        | Notes apps, ChatGPT, a few creator “idea” tools                   | Weak overlap. Yapper’s version is voice or text, kept with the idea, organized by pillar.                                                              |
+| Inspiration link → transcript → your notes → script | Almost no direct rival in the set below                           | Distinctive. Opus Clip transcribes long videos to _clip_ them, not to help you write your own yap.                                                     |
+| Scripting / structure                               | ChatGPT, Captions’ script tools, generic script generators        | Overlap on “draft some words.” Yapper’s angle is structure from _your_ idea and references, meant to be edited into something you would say.           |
+| Teleprompter                                        | BigVu, Teleprompter.com, Captions                                 | Real overlap on prompting. Those tools do not do the rest of the studio. BigVu is a well-known branded query (5,400, KD 80) — a hard alternative page. |
+| Auto-cut silences / retakes                         | **CutAI**, Cutora, Descript, Captions, Submagic, PopScript, Toast | Real overlap. This is the comparison set for the editor.                                                                                               |
+| Captions                                            | Captions, Submagic, CapCut, Descript                              | Real overlap. Captions (the app) is the namesake and a serious talking-head product (teleprompter, captions, AI edit, phone-first).                    |
+| Cross-posting                                       | Later, Buffer, Publer, the in-app share sheets                    | Overlap only at the last mile. Yapper’s point is that posting sits on the same project as the idea and the cut.                                        |
+| General short-form timeline                         | CapCut                                                            | Only honest as “talking-head studio vs general editor.” CapCut is not an idea-to-script tool.                                                          |
+| Long video → many shorts                            | Opus Clip (90,500, branded)                                       | Weak overlap. Do not write an “Opus Clip alternative” unless the product actually turns long recordings into many clips, which it does not today.      |
 
 **When to write comparison pages.** Only where we can be honest about platforms and features.
 
-- **CutAI alternative** — a good page once we can say clearly: CutAI is a strong iPhone auto-cut; Yapper is the full talk-to-camera workflow, with auto-cut on the Mac app today and a mobile app coming. Publishing that page *before* mobile ships is possible if the difference is the workflow, not “we are also an iPhone editor.”
+- **CutAI alternative** — a good page once we can say clearly: CutAI is a strong iPhone auto-cut; Yapper is the full talk-to-camera workflow, with auto-cut on the Mac app today and a mobile app coming. Publishing that page _before_ mobile ships is possible if the difference is the workflow, not “we are also an iPhone editor.”
 - **Captions alternative** — later. Captions is phone-first, stylized, and includes tricks (eye-contact correction, AI twins, heavy AI edit) that sit badly with “don’t over-edit.” The honest contrast is natural talking-head studio vs. a effects-heavy talking-head app.
 - **Descript alternative** — 210/0, fair later. Descript is the transcript-editor incumbent, heavier on podcasts and long form.
 - **CapCut alternative** — 1,900/0, larger demand; only after we can say what we are not (no general timeline effects suite).
-- **Submagic** — 6,600 branded. Auto-cut plus captions plus a lot of decoration. A comparison is only useful if we argue for *less* editing, not feature parity.
+- **Submagic** — 6,600 branded. Auto-cut plus captions plus a lot of decoration. A comparison is only useful if we argue for _less_ editing, not feature parity.
 - **BigVu / Teleprompter.com** — teleprompter overlap only. Low priority until the mobile app exists.
 
 ## 8. Internal linking
@@ -343,20 +343,20 @@ Two near-misses, so we do not mix them up later:
 
 A Sunday-routine sequence. Swap only if a review or a launch date (especially mobile) forces it. Log each ship in the [experiment ledger](experiments/README.md).
 
-| Week | Piece | Why this week |
-|---|---|---|
-| 1 | **How to structure a talking-head video** (the yapping structure pillar) | The flagship educational page. Defines the topic, introduces the framework library, and gives every later format a parent. |
-| 2 | **How to talk to the camera naturally** | The delivery promise. Ties structure to sounding like yourself, and mentions the teleprompter as optional. |
-| 3 | **Turn an inspiration video into your own script** | The distinctive product story we can tell honestly today, on the web: paste a link, add your thoughts, leave with a draft. |
-| 4 | Title/meta and internal-link pass on `/blog/what-is-a-teleprompter`, `/blog/how-to-memorize-a-script`, and `/blog/talking-head-video`. Publish the **framework library hub** (index, not 12 thin posts). | Impressions without clicks is cheaper to fix than a new URL. Log the title work as `title_meta`. |
-| 5 | **PREP for talking-head videos** (first named framework page) | Best combination of speaking fit and reachable volume (320/19) in the library. Link it to the script writer. |
-| 6 | **Hook-story-lesson** (and a short “video hooks in the first 8 seconds” section or sibling) | The format Can described, plus hook demand (3,600/14 if we stay on *video* hooks). |
-| 7 | **Never lose a content idea** (voice, note, or a pasted link) | Supports idea-capture. “Content ideas” is 1,000/0. |
-| 8 | **Edit a talking-head without over-editing** (one-click cut of silences and retakes; what to leave in) | The editor differentiator, and a home for later filler-word rewrites. |
-| 9 | **SCQA for short videos**, and a carefully titled **STAR on camera** page (not interview STAR) | Two library pages. SCQA is the more winnable named term (480/5). |
-| 10 | **Storytime structure** (open in the action, stakes, turn, payoff, lesson) | Completes the storytelling cluster. |
-| 11 | **Script length calculator** (tool) and a pass that links it from the script posts | Linkable asset for the cluster. |
-| 12 | **YouTube captions / how to add captions to a talking-head**, *or* finalize the **mobile app landing** and hold it until launch day | Captions if the app is not ready; the landing page if a ship date is real. A CutAI or CapCut comparison only if we can be honest that week. |
+| Week | Piece                                                                                                                                                                                                    | Why this week                                                                                                                               |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | **How to structure a talking-head video** (the yapping structure pillar)                                                                                                                                 | The flagship educational page. Defines the topic, introduces the framework library, and gives every later format a parent.                  |
+| 2    | **How to talk to the camera naturally**                                                                                                                                                                  | The delivery promise. Ties structure to sounding like yourself, and mentions the teleprompter as optional.                                  |
+| 3    | **Turn an inspiration video into your own script**                                                                                                                                                       | The distinctive product story we can tell honestly today, on the web: paste a link, add your thoughts, leave with a draft.                  |
+| 4    | Title/meta and internal-link pass on `/blog/what-is-a-teleprompter`, `/blog/how-to-memorize-a-script`, and `/blog/talking-head-video`. Publish the **framework library hub** (index, not 12 thin posts). | Impressions without clicks is cheaper to fix than a new URL. Log the title work as `title_meta`.                                            |
+| 5    | **PREP for talking-head videos** (first named framework page)                                                                                                                                            | Best combination of speaking fit and reachable volume (320/19) in the library. Link it to the script writer.                                |
+| 6    | **Hook-story-lesson** (and a short “video hooks in the first 8 seconds” section or sibling)                                                                                                              | The format Can described, plus hook demand (3,600/14 if we stay on _video_ hooks).                                                          |
+| 7    | **Never lose a content idea** (voice, note, or a pasted link)                                                                                                                                            | Supports idea-capture. “Content ideas” is 1,000/0.                                                                                          |
+| 8    | **Edit a talking-head without over-editing** (one-click cut of silences and retakes; what to leave in)                                                                                                   | The editor differentiator, and a home for later filler-word rewrites.                                                                       |
+| 9    | **SCQA for short videos**, and a carefully titled **STAR on camera** page (not interview STAR)                                                                                                           | Two library pages. SCQA is the more winnable named term (480/5).                                                                            |
+| 10   | **Storytime structure** (open in the action, stakes, turn, payoff, lesson)                                                                                                                               | Completes the storytelling cluster.                                                                                                         |
+| 11   | **Script length calculator** (tool) and a pass that links it from the script posts                                                                                                                       | Linkable asset for the cluster.                                                                                                             |
+| 12   | **YouTube captions / how to add captions to a talking-head**, _or_ finalize the **mobile app landing** and hold it until launch day                                                                      | Captions if the app is not ready; the landing page if a ship date is real. A CutAI or CapCut comparison only if we can be honest that week. |
 
 After this cycle, read the experiment ledger and the scorecard before starting another 12 weeks. Next candidates: PAS and AIDA-for-video library pages, a hook generator if we can keep it on video hooks, a Reels-script sibling, a Mac-specific teleprompter page, the mobile landing going live, and — separately, with an explicit go-ahead — the first low-traffic legacy 301s in §3.
 
@@ -376,3 +376,38 @@ Same waiting rules as the [experiment ledger](experiments/README.md): a first re
 - The structure pillar and the inspiration-to-script post should pick up impressions for talking-head, script and content-idea queries, not for speech-practice leftovers.
 - Framework pages are judged as a cluster, not as twelve isolated bets. If a named method only attracts the wrong intent (interviews, generic marketing), retitle or narrow it; do not pad the library.
 - The homepage is a brand and conversion hub. Watch brand queries and studio-term impressions; do not use speech-practice clicks as its KPI.
+
+## 13. Creator research (23 November 2026)
+
+Can asked for research on what TikTok, Instagram and YouTube creators teach about yapping and talking to the camera, so it can feed both the site and the Ideas Lab skills. Two documents came out of it:
+
+- [Creator yapping best practices](research/creator-yapping-best-practices-2026-11.md): 45 sources plus 3 Reddit question threads (Oren John / Cut30, Jessi Jean, Jun Yuh, Vinh Giang, Ali Abdaal, Brock Johnson, Kallaway, Jenny Hoyos, Matthew Dicks and others), with the formats, hook patterns, delivery and anti-over-editing advice, and how often each is taught.
+- [Ideas Lab skill proposals](research/ideas-lab-skill-proposals-2026-11.md): 12 new skills and a v2 of `storytime-three-acts`, written in the real `skill_catalog` format, each mapped to the framework page it would back. Specs only; nothing shipped.
+
+What changes in this plan:
+
+- **Hook-story-lesson is confirmed as the right first named framework.** It is the most taught named shape (8 sources). Storytime (9) and strong take (7) follow.
+- **STAR, PREP and SCQA are not creator formats.** No talking-head creator we found teaches them for video. Keep the STAR and PREP pages, but title them as our adaptation ("STAR on camera", "Answer in PREP"), not as something TikTok teaches.
+- **Competitors already run format libraries.** ManyScripts has a "how to yap" cluster with creator teardowns and yap script templates; Virlo has `/tiktok-formats/`; Cutroom has `/formats/`; Cut30 has a how-to-yap guide. Our edge is the workflow each page can end in, plus delivery and editing advice they do not carry.
+
+New page ideas from the research. DataForSEO US, 23 November 2026 (keyword overview of 57 terms plus 8 SERP checks, about $0.033 in total):
+
+| Idea                                                                                    | Keyword                  | Volume |  KD | Verdict                                                                                                                                               |
+| --------------------------------------------------------------------------------------- | ------------------------ | -----: | --: | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| How to yap on camera (could be the structure pillar's secondary title, or its own page) | how to yap               |     70 |   0 | Do it. Weak, mixed SERP (dictionary, Reddit, a "Yap Training" challenge page). Brand-adjacent term worth owning.                                      |
+|                                                                                         | yap video                |     90 |   0 | Same page.                                                                                                                                            |
+|                                                                                         | yapping video            |     40 |   0 | Same page.                                                                                                                                            |
+| Video script templates (fill-in yap, hook-story-lesson, list, PREP answer)              | video script template    |    590 |   0 | Do it. SERP is template and how-to pages, a clean fit for the script writer.                                                                          |
+| Eye contact with the camera (section or short page under the talk-to-camera pillar)     | eye contact with camera  |    390 |  15 | Do it. SERP is creator and webcam tips.                                                                                                               |
+| TikTok / Reels hook pages (siblings of the video hooks page already planned)            | tiktok hooks             |    320 |   9 | Fold into the hooks work.                                                                                                                             |
+|                                                                                         | reel hooks               |    210 |   0 | Same.                                                                                                                                                 |
+| Storytelling framework for video (hub for storytime, hook-story-lesson, STAR on camera) | storytelling framework   |    210 |   0 | Worth a hub later.                                                                                                                                    |
+|                                                                                         | storytelling techniques  |    720 |  13 | General storytelling; check SERP before targeting, may suit SpeakingPractice.ai better.                                                               |
+|                                                                                         | how to tell a good story |    390 |  19 | Same caution.                                                                                                                                         |
+| Filler words on camera                                                                  | how to stop saying um    |    720 |   0 | Public-speaking SERP. Belongs to SpeakingPractice.ai under the topic split; Yapper covers it only as a section of the edit-without-over-editing post. |
+| Avoid                                                                                   | storytime                |  9,900 |  21 | SERP is library story time for kids. Do not target.                                                                                                   |
+| Avoid                                                                                   | storytime ideas          |    140 |   0 | Same (library programming).                                                                                                                           |
+| Avoid                                                                                   | hot take ideas           |    720 |   0 | Lists of opinions, not video formats.                                                                                                                 |
+| Avoid                                                                                   | homework for life        |    210 |   0 | Journaling SERP. Use the idea inside the idea-capture post instead.                                                                                   |
+
+Most delivery phrases are tiny or untracked ("camera confidence" 30, "how to be confident on camera" 10, "how to sound natural on camera" 10, "where to look when filming yourself" 10/49). That matches §4.2: write the talk-to-camera pillar for the topic, not for a head term.

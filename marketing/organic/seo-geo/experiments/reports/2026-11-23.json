@@ -1,0 +1,813 @@
+{
+  "report_date": "2026-11-23",
+  "generated_at": "2026-11-23T09:37:54-07:00",
+  "gsc_latest_by_property": {
+    "sc-domain:practicecelpip.ca": "2026-11-21",
+    "sc-domain:tefpractice.ca": "2026-11-21",
+    "sc-domain:ypr.app": "2026-11-21"
+  },
+  "min_impressions": 100,
+  "gsc_lag_days": 3,
+  "results": [
+    {
+      "id": "yapper-2026-10-26-what-is-a-teleprompter",
+      "site": "yapper",
+      "change_type": "new_post",
+      "shipped_date": "2026-10-26",
+      "urls": [
+        "https://ypr.app/blog/what-is-a-teleprompter"
+      ],
+      "destination_urls": null,
+      "title": "What is a teleprompter and how does it work?",
+      "hypothesis": "A plain-English 'what is a teleprompter' explainer will win a definition-style cluster and lead to Yapper's teleprompter product without competing with the later how-to script posts.",
+      "target_queries": [
+        "what is a teleprompter",
+        "what is teleprompter",
+        "how does a teleprompter work",
+        "teleprompter meaning",
+        "what does a teleprompter look like"
+      ],
+      "review_dates": {
+        "first_review": "2026-11-23",
+        "judge": "2027-01-18"
+      },
+      "stage": "first_review",
+      "verdict": "early_read",
+      "action": "keep",
+      "reason": "Four-week read, not a judgment (final is 2027-01-18). The page has 617 impressions and 0 clicks in the post window, average position 24.6; primary query 'what is a teleprompter' is at position 53.6 (19 impr). Leave it in place until the 12-week judgment.",
+      "gsc_latest": "2026-11-21",
+      "post_days_available": 27,
+      "pre": {
+        "window": {
+          "start": "2026-09-29",
+          "end": "2026-10-25",
+          "days": 27
+        },
+        "page": {
+          "clicks": 0.0,
+          "impressions": 0.0,
+          "ctr": 0.0,
+          "position": null
+        },
+        "pages": {
+          "https://ypr.app/blog/what-is-a-teleprompter": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null
+          }
+        },
+        "queries": {
+          "what is a teleprompter": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "what is teleprompter": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how does a teleprompter work": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "teleprompter meaning": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "what does a teleprompter look like": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          }
+        },
+        "site": {
+          "clicks": 191.0,
+          "impressions": 10099.0,
+          "ctr": 0.01891276363996435,
+          "position": 8.680265372809188
+        },
+        "fetched_at": "2026-11-23T09:37:48-07:00"
+      },
+      "post": {
+        "window": {
+          "start": "2026-10-26",
+          "end": "2026-11-21",
+          "days": 27
+        },
+        "page": {
+          "clicks": 0.0,
+          "impressions": 617.0,
+          "ctr": 0.0,
+          "position": 24.583468395461914
+        },
+        "pages": {
+          "https://ypr.app/blog/what-is-a-teleprompter": {
+            "clicks": 0.0,
+            "impressions": 617.0,
+            "ctr": 0.0,
+            "position": 24.583468395461914
+          }
+        },
+        "queries": {
+          "what is a teleprompter": {
+            "clicks": 0.0,
+            "impressions": 19.0,
+            "ctr": 0.0,
+            "position": 53.63157894736842,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 19.0,
+                "ctr": 0.0,
+                "position": 53.63157894736842
+              }
+            ],
+            "top_pages": [
+              {
+                "clicks": 0.0,
+                "impressions": 19.0,
+                "ctr": 0.0,
+                "position": 53.63157894736842,
+                "page": "https://ypr.app/blog/what-is-a-teleprompter"
+              }
+            ]
+          },
+          "what is teleprompter": {
+            "clicks": 0.0,
+            "impressions": 6.0,
+            "ctr": 0.0,
+            "position": 36.333333333333336,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 6.0,
+                "ctr": 0.0,
+                "position": 36.333333333333336
+              }
+            ],
+            "top_pages": [
+              {
+                "clicks": 0.0,
+                "impressions": 6.0,
+                "ctr": 0.0,
+                "position": 36.333333333333336,
+                "page": "https://ypr.app/blog/what-is-a-teleprompter"
+              }
+            ]
+          },
+          "how does a teleprompter work": {
+            "clicks": 0.0,
+            "impressions": 5.0,
+            "ctr": 0.0,
+            "position": 43.6,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 5.0,
+                "ctr": 0.0,
+                "position": 43.6
+              }
+            ],
+            "top_pages": [
+              {
+                "clicks": 0.0,
+                "impressions": 5.0,
+                "ctr": 0.0,
+                "position": 43.6,
+                "page": "https://ypr.app/blog/what-is-a-teleprompter"
+              }
+            ]
+          },
+          "teleprompter meaning": {
+            "clicks": 0.0,
+            "impressions": 25.0,
+            "ctr": 0.0,
+            "position": 47.52,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 25.0,
+                "ctr": 0.0,
+                "position": 47.52
+              }
+            ],
+            "top_pages": [
+              {
+                "clicks": 0.0,
+                "impressions": 25.0,
+                "ctr": 0.0,
+                "position": 47.52,
+                "page": "https://ypr.app/blog/what-is-a-teleprompter"
+              }
+            ]
+          },
+          "what does a teleprompter look like": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          }
+        },
+        "site": {
+          "clicks": 157.0,
+          "impressions": 12971.0,
+          "ctr": 0.012103924138462724,
+          "position": 12.848816590856526
+        },
+        "fetched_at": "2026-11-23T09:37:54-07:00"
+      },
+      "comparison": {
+        "page": {
+          "pre": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null
+          },
+          "post": {
+            "clicks": 0.0,
+            "impressions": 617.0,
+            "ctr": 0.0,
+            "position": 24.583468395461914
+          },
+          "clicks_delta": 0.0,
+          "clicks_pct": null,
+          "impressions_delta": 617.0,
+          "impressions_pct": null,
+          "ctr_delta": 0.0,
+          "ctr_pct": null,
+          "position_delta": null,
+          "site_clicks_pct": -0.17801047120418845,
+          "clicks_vs_site": null,
+          "impressions_vs_site": null
+        },
+        "site": {
+          "pre": {
+            "clicks": 191.0,
+            "impressions": 10099.0,
+            "ctr": 0.01891276363996435,
+            "position": 8.680265372809188
+          },
+          "post": {
+            "clicks": 157.0,
+            "impressions": 12971.0,
+            "ctr": 0.012103924138462724,
+            "position": 12.848816590856526
+          },
+          "clicks_delta": -34.0,
+          "clicks_pct": -0.17801047120418848,
+          "impressions_delta": 2872.0,
+          "impressions_pct": 0.28438459253391424,
+          "ctr_delta": -0.006808839501501627,
+          "ctr_pct": -0.3600129325951044,
+          "position_delta": 4.168551218047337,
+          "site_clicks_pct": null,
+          "clicks_vs_site": null,
+          "impressions_vs_site": null
+        },
+        "queries": {
+          "what is a teleprompter": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 19.0,
+              "ctr": 0.0,
+              "position": 53.63157894736842,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 19.0,
+                  "ctr": 0.0,
+                  "position": 53.63157894736842
+                }
+              ],
+              "top_pages": [
+                {
+                  "clicks": 0.0,
+                  "impressions": 19.0,
+                  "ctr": 0.0,
+                  "position": 53.63157894736842,
+                  "page": "https://ypr.app/blog/what-is-a-teleprompter"
+                }
+              ]
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 19.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": -0.17801047120418845,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 19.0,
+              "ctr": 0.0,
+              "position": 53.63157894736842
+            },
+            "top_pages_post": [
+              {
+                "clicks": 0.0,
+                "impressions": 19.0,
+                "ctr": 0.0,
+                "position": 53.63157894736842,
+                "page": "https://ypr.app/blog/what-is-a-teleprompter"
+              }
+            ]
+          },
+          "what is teleprompter": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 6.0,
+              "ctr": 0.0,
+              "position": 36.333333333333336,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 6.0,
+                  "ctr": 0.0,
+                  "position": 36.333333333333336
+                }
+              ],
+              "top_pages": [
+                {
+                  "clicks": 0.0,
+                  "impressions": 6.0,
+                  "ctr": 0.0,
+                  "position": 36.333333333333336,
+                  "page": "https://ypr.app/blog/what-is-a-teleprompter"
+                }
+              ]
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 6.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": -0.17801047120418845,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 6.0,
+              "ctr": 0.0,
+              "position": 36.333333333333336
+            },
+            "top_pages_post": [
+              {
+                "clicks": 0.0,
+                "impressions": 6.0,
+                "ctr": 0.0,
+                "position": 36.333333333333336,
+                "page": "https://ypr.app/blog/what-is-a-teleprompter"
+              }
+            ]
+          },
+          "how does a teleprompter work": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 5.0,
+              "ctr": 0.0,
+              "position": 43.6,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 5.0,
+                  "ctr": 0.0,
+                  "position": 43.6
+                }
+              ],
+              "top_pages": [
+                {
+                  "clicks": 0.0,
+                  "impressions": 5.0,
+                  "ctr": 0.0,
+                  "position": 43.6,
+                  "page": "https://ypr.app/blog/what-is-a-teleprompter"
+                }
+              ]
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 5.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": -0.17801047120418845,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 5.0,
+              "ctr": 0.0,
+              "position": 43.6
+            },
+            "top_pages_post": [
+              {
+                "clicks": 0.0,
+                "impressions": 5.0,
+                "ctr": 0.0,
+                "position": 43.6,
+                "page": "https://ypr.app/blog/what-is-a-teleprompter"
+              }
+            ]
+          },
+          "teleprompter meaning": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 25.0,
+              "ctr": 0.0,
+              "position": 47.52,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 25.0,
+                  "ctr": 0.0,
+                  "position": 47.52
+                }
+              ],
+              "top_pages": [
+                {
+                  "clicks": 0.0,
+                  "impressions": 25.0,
+                  "ctr": 0.0,
+                  "position": 47.52,
+                  "page": "https://ypr.app/blog/what-is-a-teleprompter"
+                }
+              ]
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 25.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": -0.17801047120418845,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 25.0,
+              "ctr": 0.0,
+              "position": 47.52
+            },
+            "top_pages_post": [
+              {
+                "clicks": 0.0,
+                "impressions": 25.0,
+                "ctr": 0.0,
+                "position": 47.52,
+                "page": "https://ypr.app/blog/what-is-a-teleprompter"
+              }
+            ]
+          },
+          "what does a teleprompter look like": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 0.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": -0.17801047120418845,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "top_pages_post": []
+          }
+        }
+      },
+      "inspection": null,
+      "baseline_stored": {
+        "window": {
+          "start": "2026-09-28",
+          "end": "2026-10-25",
+          "days": 28
+        },
+        "page": {
+          "clicks": 0.0,
+          "impressions": 0.0,
+          "ctr": 0.0,
+          "position": null
+        },
+        "pages": {
+          "https://ypr.app/blog/what-is-a-teleprompter": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null
+          }
+        },
+        "queries": {
+          "what is a teleprompter": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "what is teleprompter": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how does a teleprompter work": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "teleprompter meaning": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "what does a teleprompter look like": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          }
+        },
+        "site": {
+          "clicks": 203.0,
+          "impressions": 10574.0,
+          "ctr": 0.01919803291091356,
+          "position": 8.611689048609797
+        },
+        "fetched_at": "2026-11-22T19:43:57-07:00"
+      }
+    }
+  ],
+  "summary": {
+    "n": 1,
+    "by_verdict": {
+      "early_read": 1
+    }
+  },
+  "site": "yapper"
+}
