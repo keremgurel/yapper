@@ -102,10 +102,34 @@ describe("POST /api/clean-transcript payload limits", () => {
     const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(JSON.parse(init.body as string)).toMatchObject({
       model: "gemini-3.7-flash",
-      max_completion_tokens: 8_000,
+      max_completion_tokens: 12_000,
       temperature: 0,
     });
     expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("offers no tools and constrains the answer to this transcript's spans", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        choices: [{ message: { content: '{"keep":[[0,2]]}' } }],
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await POST(
+      request({ words: [{ text: "a" }, { text: "b" }, { text: "c" }] }),
+    );
+
+    const sent = JSON.parse(
+      (fetchMock.mock.calls[0]?.[1] as RequestInit).body as string,
+    );
+    expect(sent.tools).toBeUndefined();
+    expect(sent.response_format).toMatchObject({
+      type: "json_schema",
+      json_schema: { strict: true },
+    });
+    // The last word of a three word take is index 2.
+    expect(JSON.stringify(sent.response_format)).toContain('"maximum":2');
   });
 
   it("refuses an edit it cannot read, and refunds the credit", async () => {
@@ -128,23 +152,106 @@ describe("POST /api/clean-transcript payload limits", () => {
       "unreadable_edit",
     );
   });
+});
 
-  it("refuses a truncated answer rather than applying half of it", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
+describe("POST /api/clean-transcript when the answer is cut off", () => {
+  const words = [{ text: "a" }, { text: "b" }, { text: "c" }];
+  // Readable on its own, which is the danger: applied, it would be an edit.
+  const cutOff = {
+    choices: [
+      { finish_reason: "length", message: { content: '{"keep":[[0,0]]}' } },
+    ],
+  };
+  const answered = {
+    choices: [{ message: { content: '{"keep":[[0,0],[2,2]]}' } }],
+  };
+  const budgets = (fetchMock: ReturnType<typeof vi.fn>) =>
+    fetchMock.mock.calls.map(
+      (call) =>
+        JSON.parse((call[1] as RequestInit).body as string)
+          .max_completion_tokens,
+    );
+
+  it("gives a long take more room than a short one", async () => {
+    const fetchMock = vi.fn(async () =>
       Response.json({
-        choices: [
-          { finish_reason: "length", message: { content: '{"keep":[' } },
-        ],
+        choices: [{ message: { content: '{"keep":[[0,2891]]}' } }],
       }),
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const response = await POST(request({ words: [{ text: "hello" }] }));
+    const response = await POST(
+      request({ words: Array.from({ length: 2_892 }, () => ({ text: "w" })) }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(budgets(fetchMock)).toEqual([16_000]);
+  });
+
+  it("asks again with more room instead of failing the edit", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(async () => Response.json(cutOff))
+      .mockImplementationOnce(async () => Response.json(answered));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(request({ words }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ cuts: [[1, 1]] });
+    expect(budgets(fetchMock)).toEqual([12_000, 18_000]);
+    expect(mocks.reserve).toHaveBeenCalledOnce();
+    expect(mocks.refund).not.toHaveBeenCalled();
+  });
+
+  it("never applies a cut-off answer, however often it is cut off", async () => {
+    const fetchMock = vi.fn(async () => Response.json(cutOff));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(request({ words }));
 
     expect(response.status).toBe(502);
     await expect(response.json()).resolves.toEqual({
       error: "transcript_too_long",
     });
+    expect(budgets(fetchMock)).toEqual([12_000, 18_000, 27_000]);
+    expect(mocks.refund).toHaveBeenCalledOnce();
+  });
+
+  it("stops asking when there is no more room to give", async () => {
+    const fetchMock = vi.fn(async () => Response.json(cutOff));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(
+      request({ words: Array.from({ length: 5_000 }, () => ({ text: "w" })) }),
+    );
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      error: "transcript_too_long",
+    });
+    expect(budgets(fetchMock)).toEqual([28_000, 32_000]);
+    expect(mocks.refund).toHaveBeenCalledOnce();
+  });
+
+  it("does not start a second try it has no time to finish", async () => {
+    let now = 1_000_000;
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+    // The first try uses 200 of the 280 seconds, then comes back cut off.
+    const fetchMock = vi.fn(async () => {
+      now += 200_000;
+      return Response.json(cutOff);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(request({ words }));
+    clock.mockRestore();
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      error: "transcript_too_long",
+    });
+    expect(fetchMock).toHaveBeenCalledOnce();
     expect(mocks.refund).toHaveBeenCalledOnce();
   });
 });

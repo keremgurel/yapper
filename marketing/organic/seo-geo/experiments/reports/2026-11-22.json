@@ -12,9 +12,7 @@
       "site": "yapper",
       "change_type": "new_post",
       "shipped_date": "2026-10-26",
-      "urls": [
-        "https://ypr.app/blog/what-is-a-teleprompter"
-      ],
+      "urls": ["https://ypr.app/blog/what-is-a-teleprompter"],
       "destination_urls": null,
       "title": "What is a teleprompter and how does it work?",
       "hypothesis": "A plain-English 'what is a teleprompter' explainer will win a definition-style cluster and lead to Yapper's teleprompter product without competing with the later how-to script posts.",
@@ -805,9 +803,7 @@
       "site": "yapper",
       "change_type": "new_post",
       "shipped_date": "2026-11-01",
-      "urls": [
-        "https://ypr.app/blog/how-to-memorize-a-script"
-      ],
+      "urls": ["https://ypr.app/blog/how-to-memorize-a-script"],
       "destination_urls": null,
       "title": "How to memorize a script fast (and when not to)",
       "hypothesis": "A 'how to memorize a script' post that also says when not to memorize will rank for a clearly defined how-to cluster and pair with the teleprompter post instead of competing with it.",
@@ -1714,9 +1710,7 @@
       "site": "yapper",
       "change_type": "new_post",
       "shipped_date": "2026-11-08",
-      "urls": [
-        "https://ypr.app/blog/talking-head-video"
-      ],
+      "urls": ["https://ypr.app/blog/talking-head-video"],
       "destination_urls": null,
       "title": "What Is a Talking Head Video? A Simple Recording Workflow",
       "hypothesis": "A definition-plus-workflow post will rank for 'talking head video' and connect recording advice to Yapper's teleprompter.",
@@ -2353,9 +2347,7 @@
       "site": "yapper",
       "change_type": "new_post",
       "shipped_date": "2026-11-13",
-      "urls": [
-        "https://ypr.app/blog/video-script-examples"
-      ],
+      "urls": ["https://ypr.app/blog/video-script-examples"],
       "destination_urls": null,
       "title": "Video script examples: 6 short scripts you can copy",
       "hypothesis": "Six short, copyable scripts will rank for 'video script examples' / 'marketing video script example' and complement the earlier how-to-write-a-video-script post.",
@@ -3318,9 +3310,7 @@
       "site": "yapper",
       "change_type": "new_post",
       "shipped_date": "2026-11-15",
-      "urls": [
-        "https://ypr.app/blog/tiktok-script"
-      ],
+      "urls": ["https://ypr.app/blog/tiktok-script"],
       "destination_urls": null,
       "title": "How to write a TikTok script (template and 5 examples)",
       "hypothesis": "A TikTok-specific script template will rank for 'tiktok script' and extend the video-script series without overlapping the YouTube post that followed.",
@@ -4063,9 +4053,7 @@
       "site": "yapper",
       "change_type": "new_post",
       "shipped_date": "2026-11-22",
-      "urls": [
-        "https://ypr.app/blog/youtube-script"
-      ],
+      "urls": ["https://ypr.app/blog/youtube-script"],
       "destination_urls": null,
       "title": "How to write a YouTube script (template for 8 to 15 minute videos)",
       "hypothesis": "A YouTube-specific 8–15 minute script template will finish the video-script topic after the TikTok post and rank for 'youtube script' / 'youtube video script'.",

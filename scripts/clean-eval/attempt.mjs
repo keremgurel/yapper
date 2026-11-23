@@ -1,4 +1,5 @@
 import { cutsFromKeptSpans } from "../../src/lib/studio/retake-keep-spans.ts";
+import { retakeCompletionBudget } from "../../src/lib/studio/retake-completion-budget.ts";
 import { legacyBlockCuts } from "./legacy-blocks.mjs";
 import { explainRejection } from "./explain.mjs";
 import { buildMessages } from "./prompts.mjs";
@@ -22,7 +23,8 @@ export async function runAttempt({ model, variant, fixture, run }) {
   const body = {
     model,
     temperature: 0,
-    max_completion_tokens: variant.maxCompletionTokens,
+    max_completion_tokens:
+      variant.maxCompletionTokens ?? retakeCompletionBudget(wordCount),
     messages,
   };
   let reasoningSent = null;

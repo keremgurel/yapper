@@ -14,9 +14,7 @@
       "site": "yapper",
       "change_type": "new_post",
       "shipped_date": "2026-10-26",
-      "urls": [
-        "https://ypr.app/blog/what-is-a-teleprompter"
-      ],
+      "urls": ["https://ypr.app/blog/what-is-a-teleprompter"],
       "destination_urls": null,
       "title": "What is a teleprompter and how does it work?",
       "hypothesis": "A plain-English 'what is a teleprompter' explainer will win a definition-style cluster and lead to Yapper's teleprompter product without competing with the later how-to script posts.",

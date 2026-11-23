@@ -42,9 +42,14 @@ export async function complete(body, { timeoutMs = 320_000 } = {}) {
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(timeoutMs),
   });
-  const elapsedMs = Math.round(performance.now() - started);
+  // Headers come back long before the answer does: the gateway opens the
+  // response after about twenty seconds whatever the model is still doing.
+  // Timing to the headers made every long take look like a twenty second job.
+  const headersMs = Math.round(performance.now() - started);
   const data = await response.json().catch(() => ({}));
+  const elapsedMs = Math.round(performance.now() - started);
   return {
+    headersMs,
     status: response.status,
     requestId: response.headers.get("x-request-id"),
     adaptedParams: response.headers.get("x-si-adapted-params"),

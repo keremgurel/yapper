@@ -17,8 +17,11 @@ const base = {
 };
 
 export const VARIANTS = {
-  // Production as shipped: keep only contract, 8,000 token cap, nothing else.
-  baseline: { ...base, maxCompletionTokens: 8_000 },
+  // Production as shipped: keep only contract, the strict schema, and a token
+  // cap that grows with the take (null means "what the route would send").
+  baseline: { ...base, maxCompletionTokens: null, schema: true },
+  // Production before 2026-11-23: a fixed 8,000 token cap and no schema.
+  "fixed-8000": { ...base, maxCompletionTokens: 8_000 },
   "blocks-legacy": { ...base, contract: "blocks" },
   reasoning: { ...base, reasoning: "medium", maxCompletionTokens: 8_000 },
   schema: { ...base, schema: true },
