@@ -36,21 +36,5 @@ export function retakeEditSchema(wordCount) {
   };
 }
 
-/** Keep only contract as a strict schema. */
-export function keepOnlySchema(wordCount) {
-  const index = { type: "integer", minimum: 0, maximum: wordCount - 1 };
-  const span = { type: "array", items: index, minItems: 2, maxItems: 2 };
-  return {
-    type: "json_schema",
-    json_schema: {
-      name: "kept_spans",
-      strict: true,
-      schema: {
-        type: "object",
-        properties: { keep: { type: "array", items: span } },
-        required: ["keep"],
-        additionalProperties: false,
-      },
-    },
-  };
-}
+/** Keep only contract as a strict schema: the one production sends. */
+export { keptSpansResponseFormat as keepOnlySchema } from "../../src/lib/studio/retake-keep-schema.ts";

@@ -12,6 +12,11 @@ import {
 } from "@/lib/studio/retake-clusters";
 import { clippedRetakeOpenings } from "@/lib/studio/retake-boundaries";
 import { cutsFromKeptSpans } from "@/lib/studio/retake-keep-spans";
+import { keptSpansResponseFormat } from "@/lib/studio/retake-keep-schema";
+import {
+  retakeCompletionBudget,
+  roomierCompletionBudget,
+} from "@/lib/studio/retake-completion-budget";
 import { measureEditRun } from "@/lib/studio/edit-run";
 import { recordEditRun } from "@/lib/db/edit-runs";
 import {
@@ -40,11 +45,6 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 const MAX_JSON_BYTES = 256 * 1024;
 const PROVIDER_TIMEOUT_MS = 280_000;
-// The keep-only contract measured about 350 completion tokens on the 1,399-word
-// production take. Gemini counts hidden thinking against this cap, so it must
-// leave room to think as well as to answer; 8,000 did on every measured run,
-// while the previous model at 16,000 still ran out mid-answer.
-const MAX_COMPLETION_TOKENS = 8_000;
 const MAX_PROVIDER_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 interface ChatCompletionResponse {
@@ -95,10 +95,14 @@ async function trackedPOST(req: Request): Promise<Response> {
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";
   // The default is selected from repeatable, word-level scoring against a
   // hand-audited real take (docs/one-click-benchmark-review.md, Part 2): on
-  // this contract it scored F1 0.986 in about 20 seconds, where gemini-3.1-pro
-  // took 100 seconds and failed its own contract on every run. Keep the
-  // environment override for canaries. Do not send a `reasoning` parameter:
-  // Google rejects it with a 400 through the gateway.
+  // this contract it scored F1 0.986, where gemini-3.1-pro failed its own
+  // contract on every run. (The 20 seconds reported there was the time to the
+  // response headers. A whole answer takes about a minute.) Keep the
+  // environment override for canaries, but not for an Anthropic model: the
+  // gateway rejects `response_format` for those with a 400. Do not send a
+  // `reasoning` parameter either: Google rejects it with a 400, and
+  // `reasoning_effort` below "high" switches thinking off, which answers in
+  // three seconds and cuts worse (F1 0.973 against 0.992 on a 2,892 word take).
   const model = process.env.AI_CLEAN_MODEL ?? "gemini-3.7-flash";
 
   let rawBody: unknown;
@@ -138,9 +142,13 @@ async function trackedPOST(req: Request): Promise<Response> {
   try {
     let answer = "";
     let boundaryFeedback = "";
+    // Grows with the take, and again if an answer is cut off. See
+    // retake-completion-budget.ts for the measurements behind both.
+    let completionBudget = retakeCompletionBudget(words.length);
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
       const remaining = deadline - Date.now();
       if (remaining <= 0) throw new Error("timeout");
+      const startedAt = Date.now();
       try {
         const { response, data } =
           await fetchBoundedJson<ChatCompletionResponse>(
@@ -154,7 +162,8 @@ async function trackedPOST(req: Request): Promise<Response> {
               body: JSON.stringify({
                 model,
                 temperature: 0,
-                max_completion_tokens: MAX_COMPLETION_TOKENS,
+                max_completion_tokens: completionBudget,
+                response_format: keptSpansResponseFormat(words.length),
                 messages: [
                   { role: "system", content: RETAKE_PROMPT },
                   { role: "user", content: numberedTranscript(words) },
@@ -174,10 +183,25 @@ async function trackedPOST(req: Request): Promise<Response> {
             },
           );
         if (!response.ok) throw new Error(`ai_${response.status}`);
-        // Fail closed on a cut-off answer. Half a decision applied at full
+        // A cut-off answer is never read. Half a decision applied at full
         // confidence looks exactly like a successful edit that lost the ending.
+        // The model ran out of room, usually while still thinking, so it is
+        // asked again with more. This try used all the room it had, so the
+        // next is unlikely to be quicker: when less time is left than this one
+        // took, starting it would only make the creator wait for the deadline
+        // to fail instead. With no more room or time, fail closed.
         if (data.choices?.[0]?.finish_reason === "length") {
-          throw new Error("transcript_too_long");
+          const roomier = roomierCompletionBudget(completionBudget);
+          const took = Date.now() - startedAt;
+          if (
+            roomier === null ||
+            attempt === ATTEMPTS - 1 ||
+            deadline - Date.now() < took
+          ) {
+            throw new Error("transcript_too_long");
+          }
+          completionBudget = roomier;
+          continue;
         }
         answer = data.choices?.[0]?.message?.content ?? "";
         if (answer.trim() && !data.error) {
