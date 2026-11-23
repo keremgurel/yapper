@@ -11,17 +11,17 @@ The box scripts in `/workspace/seo-experiments` read and write these files, then
 
 ## Waiting rules
 
-| Change type | First look | Final judgment |
-|---|---|---|
-| `title_meta`, `content_refresh`, `data_refresh`, `internal_links` | 4 weeks | 8 weeks |
-| `new_post`, `tool_page` | 4-week *read* (not a verdict) | 12 weeks |
-| `redirect` | 2 weeks (coverage / indexing) | 4 weeks |
+| Change type                                                       | First look                    | Final judgment |
+| ----------------------------------------------------------------- | ----------------------------- | -------------- |
+| `title_meta`, `content_refresh`, `data_refresh`, `internal_links` | 4 weeks                       | 8 weeks        |
+| `new_post`, `tool_page`                                           | 4-week _read_ (not a verdict) | 12 weeks       |
+| `redirect`                                                        | 2 weeks (coverage / indexing) | 4 weeks        |
 
 Search Console finalized data lags 2–3 days. A window with fewer than about 100 impressions is inconclusive. Official verdicts are never issued before the first review date. Recommended actions (`keep`, `iterate`, `revert`, `expand the pattern`) are advice only — do not revert a live page without an explicit go-ahead.
 
 ## How to log a change
 
-As soon as a post, title/meta edit, refresh, redirect or tool page is *live*:
+As soon as a post, title/meta edit, refresh, redirect or tool page is _live_:
 
 ```bash
 source /workspace/.seo-venv/bin/activate
