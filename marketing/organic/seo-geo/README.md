@@ -4,11 +4,13 @@ Keyword research, the published-post log, the experiment ledger and the
 topical authority plan for Yapper (ypr.app). This is the same
 `marketing/organic/seo-geo` layout used by CELPIP Practice and TEF Practice.
 
-Yapper is a creator studio (script, teleprompter, transcript-based editor,
-captions, publishing). Speech-practice topics belong to
+Yapper is everything you need to talk to the camera and post: capture an idea,
+shape a script, record, edit without over-editing, and cross-post. It runs on
+the web and the Mac app today; a mobile app with the same workflow is coming.
+Do not position the product as Mac-only. Speech-practice topics belong to
 [speakingpractice.ai](https://speakingpractice.ai). See the
-[topical authority plan](topical-authority-plan-2026-11.md) before choosing
-a new post or changing a legacy page.
+[topical authority plan](topical-authority-plan-2026-11.md) (revised 23
+November 2026) before choosing a new post or changing a legacy page.
 
 ## Start here
 
