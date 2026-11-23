@@ -1,0 +1,4465 @@
+{
+  "report_date": "2026-11-22",
+  "generated_at": "2026-11-22T19:54:47-07:00",
+  "gsc_latest_by_property": {
+    "sc-domain:ypr.app": "2026-11-20"
+  },
+  "min_impressions": 100,
+  "gsc_lag_days": 3,
+  "results": [
+    {
+      "id": "yapper-2026-10-26-what-is-a-teleprompter",
+      "site": "yapper",
+      "change_type": "new_post",
+      "shipped_date": "2026-10-26",
+      "urls": [
+        "https://ypr.app/blog/what-is-a-teleprompter"
+      ],
+      "destination_urls": null,
+      "title": "What is a teleprompter and how does it work?",
+      "hypothesis": "A plain-English 'what is a teleprompter' explainer will win a definition-style cluster and lead to Yapper's teleprompter product without competing with the later how-to script posts.",
+      "target_queries": [
+        "what is a teleprompter",
+        "what is teleprompter",
+        "how does a teleprompter work",
+        "teleprompter meaning",
+        "what does a teleprompter look like"
+      ],
+      "review_dates": {
+        "first_review": "2026-11-23",
+        "judge": "2027-01-18"
+      },
+      "stage": "pre_review",
+      "verdict": "too_early",
+      "action": "keep",
+      "reason": "Too early to judge. First review is 2026-11-23 and final judgment is 2027-01-18. Preview only (26 finalized days): 0 clicks, 587 impressions, CTR 0.00%, avg position 24.5.",
+      "gsc_latest": "2026-11-20",
+      "post_days_available": 26,
+      "pre": {
+        "window": {
+          "start": "2026-09-30",
+          "end": "2026-10-25",
+          "days": 26
+        },
+        "page": {
+          "clicks": 0.0,
+          "impressions": 0.0,
+          "ctr": 0.0,
+          "position": null
+        },
+        "pages": {
+          "https://ypr.app/blog/what-is-a-teleprompter": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null
+          }
+        },
+        "queries": {
+          "what is a teleprompter": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "what is teleprompter": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how does a teleprompter work": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "teleprompter meaning": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "what does a teleprompter look like": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          }
+        },
+        "site": {
+          "clicks": 177.0,
+          "impressions": 9696.0,
+          "ctr": 0.018254950495049504,
+          "position": 8.724113036303631
+        },
+        "fetched_at": "2026-11-22T19:48:38-07:00"
+      },
+      "post": {
+        "window": {
+          "start": "2026-10-26",
+          "end": "2026-11-20",
+          "days": 26
+        },
+        "page": {
+          "clicks": 0.0,
+          "impressions": 587.0,
+          "ctr": 0.0,
+          "position": 24.475298126064736
+        },
+        "pages": {
+          "https://ypr.app/blog/what-is-a-teleprompter": {
+            "clicks": 0.0,
+            "impressions": 587.0,
+            "ctr": 0.0,
+            "position": 24.475298126064736
+          }
+        },
+        "queries": {
+          "what is a teleprompter": {
+            "clicks": 0.0,
+            "impressions": 18.0,
+            "ctr": 0.0,
+            "position": 54.77777777777778,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 18.0,
+                "ctr": 0.0,
+                "position": 54.77777777777778
+              }
+            ],
+            "top_pages": [
+              {
+                "clicks": 0.0,
+                "impressions": 18.0,
+                "ctr": 0.0,
+                "position": 54.77777777777778,
+                "page": "https://ypr.app/blog/what-is-a-teleprompter"
+              }
+            ]
+          },
+          "what is teleprompter": {
+            "clicks": 0.0,
+            "impressions": 5.0,
+            "ctr": 0.0,
+            "position": 33.6,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 5.0,
+                "ctr": 0.0,
+                "position": 33.6
+              }
+            ],
+            "top_pages": [
+              {
+                "clicks": 0.0,
+                "impressions": 5.0,
+                "ctr": 0.0,
+                "position": 33.6,
+                "page": "https://ypr.app/blog/what-is-a-teleprompter"
+              }
+            ]
+          },
+          "how does a teleprompter work": {
+            "clicks": 0.0,
+            "impressions": 4.0,
+            "ctr": 0.0,
+            "position": 44.75,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 4.0,
+                "ctr": 0.0,
+                "position": 44.75
+              }
+            ],
+            "top_pages": [
+              {
+                "clicks": 0.0,
+                "impressions": 4.0,
+                "ctr": 0.0,
+                "position": 44.75,
+                "page": "https://ypr.app/blog/what-is-a-teleprompter"
+              }
+            ]
+          },
+          "teleprompter meaning": {
+            "clicks": 0.0,
+            "impressions": 24.0,
+            "ctr": 0.0,
+            "position": 47.541666666666664,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 24.0,
+                "ctr": 0.0,
+                "position": 47.541666666666664
+              }
+            ],
+            "top_pages": [
+              {
+                "clicks": 0.0,
+                "impressions": 24.0,
+                "ctr": 0.0,
+                "position": 47.541666666666664,
+                "page": "https://ypr.app/blog/what-is-a-teleprompter"
+              }
+            ]
+          },
+          "what does a teleprompter look like": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          }
+        },
+        "site": {
+          "clicks": 149.0,
+          "impressions": 12518.0,
+          "ctr": 0.01190285988177025,
+          "position": 12.902380571976353
+        },
+        "fetched_at": "2026-11-22T19:48:43-07:00"
+      },
+      "comparison": {
+        "page": {
+          "pre": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null
+          },
+          "post": {
+            "clicks": 0.0,
+            "impressions": 587.0,
+            "ctr": 0.0,
+            "position": 24.475298126064736
+          },
+          "clicks_delta": 0.0,
+          "clicks_pct": null,
+          "impressions_delta": 587.0,
+          "impressions_pct": null,
+          "ctr_delta": 0.0,
+          "ctr_pct": null,
+          "position_delta": null,
+          "site_clicks_pct": -0.1581920903954802,
+          "clicks_vs_site": null,
+          "impressions_vs_site": null
+        },
+        "site": {
+          "pre": {
+            "clicks": 177.0,
+            "impressions": 9696.0,
+            "ctr": 0.018254950495049504,
+            "position": 8.724113036303631
+          },
+          "post": {
+            "clicks": 149.0,
+            "impressions": 12518.0,
+            "ctr": 0.01190285988177025,
+            "position": 12.902380571976353
+          },
+          "clicks_delta": -28.0,
+          "clicks_pct": -0.15819209039548024,
+          "impressions_delta": 2822.0,
+          "impressions_pct": 0.29104785478547857,
+          "ctr_delta": -0.006352090613279253,
+          "ctr_pct": -0.34796537054438215,
+          "position_delta": 4.178267535672722,
+          "site_clicks_pct": null,
+          "clicks_vs_site": null,
+          "impressions_vs_site": null
+        },
+        "queries": {
+          "what is a teleprompter": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 18.0,
+              "ctr": 0.0,
+              "position": 54.77777777777778,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 18.0,
+                  "ctr": 0.0,
+                  "position": 54.77777777777778
+                }
+              ],
+              "top_pages": [
+                {
+                  "clicks": 0.0,
+                  "impressions": 18.0,
+                  "ctr": 0.0,
+                  "position": 54.77777777777778,
+                  "page": "https://ypr.app/blog/what-is-a-teleprompter"
+                }
+              ]
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 18.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": -0.1581920903954802,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 18.0,
+              "ctr": 0.0,
+              "position": 54.77777777777778
+            },
+            "top_pages_post": [
+              {
+                "clicks": 0.0,
+                "impressions": 18.0,
+                "ctr": 0.0,
+                "position": 54.77777777777778,
+                "page": "https://ypr.app/blog/what-is-a-teleprompter"
+              }
+            ]
+          },
+          "what is teleprompter": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 5.0,
+              "ctr": 0.0,
+              "position": 33.6,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 5.0,
+                  "ctr": 0.0,
+                  "position": 33.6
+                }
+              ],
+              "top_pages": [
+                {
+                  "clicks": 0.0,
+                  "impressions": 5.0,
+                  "ctr": 0.0,
+                  "position": 33.6,
+                  "page": "https://ypr.app/blog/what-is-a-teleprompter"
+                }
+              ]
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 5.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": -0.1581920903954802,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 5.0,
+              "ctr": 0.0,
+              "position": 33.6
+            },
+            "top_pages_post": [
+              {
+                "clicks": 0.0,
+                "impressions": 5.0,
+                "ctr": 0.0,
+                "position": 33.6,
+                "page": "https://ypr.app/blog/what-is-a-teleprompter"
+              }
+            ]
+          },
+          "how does a teleprompter work": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 4.0,
+              "ctr": 0.0,
+              "position": 44.75,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 4.0,
+                  "ctr": 0.0,
+                  "position": 44.75
+                }
+              ],
+              "top_pages": [
+                {
+                  "clicks": 0.0,
+                  "impressions": 4.0,
+                  "ctr": 0.0,
+                  "position": 44.75,
+                  "page": "https://ypr.app/blog/what-is-a-teleprompter"
+                }
+              ]
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 4.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": -0.1581920903954802,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 4.0,
+              "ctr": 0.0,
+              "position": 44.75
+            },
+            "top_pages_post": [
+              {
+                "clicks": 0.0,
+                "impressions": 4.0,
+                "ctr": 0.0,
+                "position": 44.75,
+                "page": "https://ypr.app/blog/what-is-a-teleprompter"
+              }
+            ]
+          },
+          "teleprompter meaning": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 24.0,
+              "ctr": 0.0,
+              "position": 47.541666666666664,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 24.0,
+                  "ctr": 0.0,
+                  "position": 47.541666666666664
+                }
+              ],
+              "top_pages": [
+                {
+                  "clicks": 0.0,
+                  "impressions": 24.0,
+                  "ctr": 0.0,
+                  "position": 47.541666666666664,
+                  "page": "https://ypr.app/blog/what-is-a-teleprompter"
+                }
+              ]
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 24.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": -0.1581920903954802,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 24.0,
+              "ctr": 0.0,
+              "position": 47.541666666666664
+            },
+            "top_pages_post": [
+              {
+                "clicks": 0.0,
+                "impressions": 24.0,
+                "ctr": 0.0,
+                "position": 47.541666666666664,
+                "page": "https://ypr.app/blog/what-is-a-teleprompter"
+              }
+            ]
+          },
+          "what does a teleprompter look like": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 0.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": -0.1581920903954802,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "top_pages_post": []
+          }
+        }
+      },
+      "inspection": null,
+      "baseline_stored": {
+        "window": {
+          "start": "2026-09-28",
+          "end": "2026-10-25",
+          "days": 28
+        },
+        "page": {
+          "clicks": 0.0,
+          "impressions": 0.0,
+          "ctr": 0.0,
+          "position": null
+        },
+        "pages": {
+          "https://ypr.app/blog/what-is-a-teleprompter": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null
+          }
+        },
+        "queries": {
+          "what is a teleprompter": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "what is teleprompter": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how does a teleprompter work": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "teleprompter meaning": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "what does a teleprompter look like": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/what-is-a-teleprompter",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          }
+        },
+        "site": {
+          "clicks": 203.0,
+          "impressions": 10574.0,
+          "ctr": 0.01919803291091356,
+          "position": 8.611689048609797
+        },
+        "fetched_at": "2026-11-22T19:43:57-07:00"
+      }
+    },
+    {
+      "id": "yapper-2026-11-01-how-to-memorize-a-script",
+      "site": "yapper",
+      "change_type": "new_post",
+      "shipped_date": "2026-11-01",
+      "urls": [
+        "https://ypr.app/blog/how-to-memorize-a-script"
+      ],
+      "destination_urls": null,
+      "title": "How to memorize a script fast (and when not to)",
+      "hypothesis": "A 'how to memorize a script' post that also says when not to memorize will rank for a clearly defined how-to cluster and pair with the teleprompter post instead of competing with it.",
+      "target_queries": [
+        "how to memorize a script",
+        "how to quickly memorize a script",
+        "how to memorize a script fast",
+        "best way to memorize a script",
+        "memorize a script",
+        "how to memorize a script in one night",
+        "fastest way to memorize a script"
+      ],
+      "review_dates": {
+        "first_review": "2026-11-29",
+        "judge": "2027-01-24"
+      },
+      "stage": "pre_review",
+      "verdict": "too_early",
+      "action": "keep",
+      "reason": "Too early to judge. First review is 2026-11-29 and final judgment is 2027-01-24. Preview only (20 finalized days): 0 clicks, 326 impressions, CTR 0.00%, avg position 6.3.",
+      "gsc_latest": "2026-11-20",
+      "post_days_available": 20,
+      "pre": {
+        "window": {
+          "start": "2026-10-12",
+          "end": "2026-10-31",
+          "days": 20
+        },
+        "page": {
+          "clicks": 0.0,
+          "impressions": 0.0,
+          "ctr": 0.0,
+          "position": null
+        },
+        "pages": {
+          "https://ypr.app/blog/how-to-memorize-a-script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null
+          }
+        },
+        "queries": {
+          "how to memorize a script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how to quickly memorize a script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how to memorize a script fast": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "best way to memorize a script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "memorize a script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how to memorize a script in one night": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "fastest way to memorize a script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          }
+        },
+        "site": {
+          "clicks": 115.0,
+          "impressions": 8017.0,
+          "ctr": 0.01434451789946364,
+          "position": 9.842459772982412
+        },
+        "fetched_at": "2026-11-22T19:49:34-07:00"
+      },
+      "post": {
+        "window": {
+          "start": "2026-11-01",
+          "end": "2026-11-20",
+          "days": 20
+        },
+        "page": {
+          "clicks": 0.0,
+          "impressions": 326.0,
+          "ctr": 0.0,
+          "position": 6.306748466257669
+        },
+        "pages": {
+          "https://ypr.app/blog/how-to-memorize-a-script": {
+            "clicks": 0.0,
+            "impressions": 326.0,
+            "ctr": 0.0,
+            "position": 6.306748466257669
+          }
+        },
+        "queries": {
+          "how to memorize a script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how to quickly memorize a script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how to memorize a script fast": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "best way to memorize a script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "memorize a script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how to memorize a script in one night": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "fastest way to memorize a script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          }
+        },
+        "site": {
+          "clicks": 121.0,
+          "impressions": 10393.0,
+          "ctr": 0.01164245165014914,
+          "position": 12.84605022611373
+        },
+        "fetched_at": "2026-11-22T19:49:41-07:00"
+      },
+      "comparison": {
+        "page": {
+          "pre": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null
+          },
+          "post": {
+            "clicks": 0.0,
+            "impressions": 326.0,
+            "ctr": 0.0,
+            "position": 6.306748466257669
+          },
+          "clicks_delta": 0.0,
+          "clicks_pct": null,
+          "impressions_delta": 326.0,
+          "impressions_pct": null,
+          "ctr_delta": 0.0,
+          "ctr_pct": null,
+          "position_delta": null,
+          "site_clicks_pct": 0.05217391304347818,
+          "clicks_vs_site": null,
+          "impressions_vs_site": null
+        },
+        "site": {
+          "pre": {
+            "clicks": 115.0,
+            "impressions": 8017.0,
+            "ctr": 0.01434451789946364,
+            "position": 9.842459772982412
+          },
+          "post": {
+            "clicks": 121.0,
+            "impressions": 10393.0,
+            "ctr": 0.01164245165014914,
+            "position": 12.84605022611373
+          },
+          "clicks_delta": 6.0,
+          "clicks_pct": 0.05217391304347826,
+          "impressions_delta": 2376.0,
+          "impressions_pct": 0.2963702132967444,
+          "ctr_delta": -0.002702066249314501,
+          "ctr_pct": -0.18836926191960307,
+          "position_delta": 3.0035904531313182,
+          "site_clicks_pct": null,
+          "clicks_vs_site": null,
+          "impressions_vs_site": null
+        },
+        "queries": {
+          "how to memorize a script": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 0.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.05217391304347818,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "top_pages_post": []
+          },
+          "how to quickly memorize a script": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 0.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.05217391304347818,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "top_pages_post": []
+          },
+          "how to memorize a script fast": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 0.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.05217391304347818,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "top_pages_post": []
+          },
+          "best way to memorize a script": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 0.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.05217391304347818,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "top_pages_post": []
+          },
+          "memorize a script": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 0.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.05217391304347818,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "top_pages_post": []
+          },
+          "how to memorize a script in one night": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 0.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.05217391304347818,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "top_pages_post": []
+          },
+          "fastest way to memorize a script": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 0.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.05217391304347818,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "top_pages_post": []
+          }
+        }
+      },
+      "inspection": null,
+      "baseline_stored": {
+        "window": {
+          "start": "2026-10-04",
+          "end": "2026-10-31",
+          "days": 28
+        },
+        "page": {
+          "clicks": 0.0,
+          "impressions": 0.0,
+          "ctr": 0.0,
+          "position": null
+        },
+        "pages": {
+          "https://ypr.app/blog/how-to-memorize-a-script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null
+          }
+        },
+        "queries": {
+          "how to memorize a script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how to quickly memorize a script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how to memorize a script fast": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "best way to memorize a script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "memorize a script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how to memorize a script in one night": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "fastest way to memorize a script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/how-to-memorize-a-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          }
+        },
+        "site": {
+          "clicks": 170.0,
+          "impressions": 10387.0,
+          "ctr": 0.016366612111292964,
+          "position": 9.613170309040147
+        },
+        "fetched_at": "2026-11-22T19:44:30-07:00"
+      }
+    },
+    {
+      "id": "yapper-2026-11-08-talking-head-video",
+      "site": "yapper",
+      "change_type": "new_post",
+      "shipped_date": "2026-11-08",
+      "urls": [
+        "https://ypr.app/blog/talking-head-video"
+      ],
+      "destination_urls": null,
+      "title": "What Is a Talking Head Video? A Simple Recording Workflow",
+      "hypothesis": "A definition-plus-workflow post will rank for 'talking head video' and connect recording advice to Yapper's teleprompter.",
+      "target_queries": [
+        "talking head video",
+        "what is a talking head video",
+        "how to make a talking head video",
+        "how to film yourself"
+      ],
+      "review_dates": {
+        "first_review": "2026-12-06",
+        "judge": "2027-01-31"
+      },
+      "stage": "pre_review",
+      "verdict": "too_early",
+      "action": "keep",
+      "reason": "Too early to judge. First review is 2026-12-06 and final judgment is 2027-01-31. Preview only (13 finalized days): 0 clicks, 14 impressions, CTR 0.00%, avg position 11.9.",
+      "gsc_latest": "2026-11-20",
+      "post_days_available": 13,
+      "pre": {
+        "window": {
+          "start": "2026-10-26",
+          "end": "2026-11-07",
+          "days": 13
+        },
+        "page": {
+          "clicks": 0.0,
+          "impressions": 0.0,
+          "ctr": 0.0,
+          "position": null
+        },
+        "pages": {
+          "https://ypr.app/blog/talking-head-video": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null
+          }
+        },
+        "queries": {
+          "talking head video": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/talking-head-video",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "what is a talking head video": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/talking-head-video",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how to make a talking head video": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/talking-head-video",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how to film yourself": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/talking-head-video",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          }
+        },
+        "site": {
+          "clicks": 61.0,
+          "impressions": 4905.0,
+          "ctr": 0.012436289500509684,
+          "position": 13.174311926605505
+        },
+        "fetched_at": "2026-11-22T19:50:15-07:00"
+      },
+      "post": {
+        "window": {
+          "start": "2026-11-08",
+          "end": "2026-11-20",
+          "days": 13
+        },
+        "page": {
+          "clicks": 0.0,
+          "impressions": 14.0,
+          "ctr": 0.0,
+          "position": 11.857142857142858
+        },
+        "pages": {
+          "https://ypr.app/blog/talking-head-video": {
+            "clicks": 0.0,
+            "impressions": 14.0,
+            "ctr": 0.0,
+            "position": 11.857142857142858
+          }
+        },
+        "queries": {
+          "talking head video": {
+            "clicks": 0.0,
+            "impressions": 1.0,
+            "ctr": 0.0,
+            "position": 13.0,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/talking-head-video",
+                "clicks": 0.0,
+                "impressions": 1.0,
+                "ctr": 0.0,
+                "position": 13.0
+              }
+            ],
+            "top_pages": [
+              {
+                "clicks": 0.0,
+                "impressions": 1.0,
+                "ctr": 0.0,
+                "position": 13.0,
+                "page": "https://ypr.app/blog/talking-head-video"
+              }
+            ]
+          },
+          "what is a talking head video": {
+            "clicks": 0.0,
+            "impressions": 4.0,
+            "ctr": 0.0,
+            "position": 10.5,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/talking-head-video",
+                "clicks": 0.0,
+                "impressions": 4.0,
+                "ctr": 0.0,
+                "position": 10.5
+              }
+            ],
+            "top_pages": [
+              {
+                "clicks": 0.0,
+                "impressions": 4.0,
+                "ctr": 0.0,
+                "position": 10.5,
+                "page": "https://ypr.app/blog/talking-head-video"
+              }
+            ]
+          },
+          "how to make a talking head video": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/talking-head-video",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how to film yourself": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/talking-head-video",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          }
+        },
+        "site": {
+          "clicks": 88.0,
+          "impressions": 7613.0,
+          "ctr": 0.01155917509523184,
+          "position": 12.727177196900039
+        },
+        "fetched_at": "2026-11-22T19:50:19-07:00"
+      },
+      "comparison": {
+        "page": {
+          "pre": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null
+          },
+          "post": {
+            "clicks": 0.0,
+            "impressions": 14.0,
+            "ctr": 0.0,
+            "position": 11.857142857142858
+          },
+          "clicks_delta": 0.0,
+          "clicks_pct": null,
+          "impressions_delta": 14.0,
+          "impressions_pct": null,
+          "ctr_delta": 0.0,
+          "ctr_pct": null,
+          "position_delta": null,
+          "site_clicks_pct": 0.4426229508196722,
+          "clicks_vs_site": null,
+          "impressions_vs_site": null
+        },
+        "site": {
+          "pre": {
+            "clicks": 61.0,
+            "impressions": 4905.0,
+            "ctr": 0.012436289500509684,
+            "position": 13.174311926605505
+          },
+          "post": {
+            "clicks": 88.0,
+            "impressions": 7613.0,
+            "ctr": 0.01155917509523184,
+            "position": 12.727177196900039
+          },
+          "clicks_delta": 27.0,
+          "clicks_pct": 0.4426229508196721,
+          "impressions_delta": 2708.0,
+          "impressions_pct": 0.5520897043832824,
+          "ctr_delta": -0.0008771144052778443,
+          "ctr_pct": -0.0705286255391447,
+          "position_delta": -0.44713472970546597,
+          "site_clicks_pct": null,
+          "clicks_vs_site": null,
+          "impressions_vs_site": null
+        },
+        "queries": {
+          "talking head video": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/talking-head-video",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 1.0,
+              "ctr": 0.0,
+              "position": 13.0,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/talking-head-video",
+                  "clicks": 0.0,
+                  "impressions": 1.0,
+                  "ctr": 0.0,
+                  "position": 13.0
+                }
+              ],
+              "top_pages": [
+                {
+                  "clicks": 0.0,
+                  "impressions": 1.0,
+                  "ctr": 0.0,
+                  "position": 13.0,
+                  "page": "https://ypr.app/blog/talking-head-video"
+                }
+              ]
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 1.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.4426229508196722,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 1.0,
+              "ctr": 0.0,
+              "position": 13.0
+            },
+            "top_pages_post": [
+              {
+                "clicks": 0.0,
+                "impressions": 1.0,
+                "ctr": 0.0,
+                "position": 13.0,
+                "page": "https://ypr.app/blog/talking-head-video"
+              }
+            ]
+          },
+          "what is a talking head video": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/talking-head-video",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 4.0,
+              "ctr": 0.0,
+              "position": 10.5,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/talking-head-video",
+                  "clicks": 0.0,
+                  "impressions": 4.0,
+                  "ctr": 0.0,
+                  "position": 10.5
+                }
+              ],
+              "top_pages": [
+                {
+                  "clicks": 0.0,
+                  "impressions": 4.0,
+                  "ctr": 0.0,
+                  "position": 10.5,
+                  "page": "https://ypr.app/blog/talking-head-video"
+                }
+              ]
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 4.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.4426229508196722,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 4.0,
+              "ctr": 0.0,
+              "position": 10.5
+            },
+            "top_pages_post": [
+              {
+                "clicks": 0.0,
+                "impressions": 4.0,
+                "ctr": 0.0,
+                "position": 10.5,
+                "page": "https://ypr.app/blog/talking-head-video"
+              }
+            ]
+          },
+          "how to make a talking head video": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/talking-head-video",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/talking-head-video",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 0.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.4426229508196722,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "top_pages_post": []
+          },
+          "how to film yourself": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/talking-head-video",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/talking-head-video",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 0.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.4426229508196722,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "top_pages_post": []
+          }
+        }
+      },
+      "inspection": null,
+      "baseline_stored": {
+        "window": {
+          "start": "2026-10-11",
+          "end": "2026-11-07",
+          "days": 28
+        },
+        "page": {
+          "clicks": 0.0,
+          "impressions": 0.0,
+          "ctr": 0.0,
+          "position": null
+        },
+        "pages": {
+          "https://ypr.app/blog/talking-head-video": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null
+          }
+        },
+        "queries": {
+          "talking head video": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/talking-head-video",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "what is a talking head video": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/talking-head-video",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how to make a talking head video": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/talking-head-video",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how to film yourself": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/talking-head-video",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          }
+        },
+        "site": {
+          "clicks": 150.0,
+          "impressions": 11031.0,
+          "ctr": 0.013598041881968996,
+          "position": 10.660864835463693
+        },
+        "fetched_at": "2026-11-22T19:44:49-07:00"
+      }
+    },
+    {
+      "id": "yapper-2026-11-13-video-script-examples",
+      "site": "yapper",
+      "change_type": "new_post",
+      "shipped_date": "2026-11-13",
+      "urls": [
+        "https://ypr.app/blog/video-script-examples"
+      ],
+      "destination_urls": null,
+      "title": "Video script examples: 6 short scripts you can copy",
+      "hypothesis": "Six short, copyable scripts will rank for 'video script examples' / 'marketing video script example' and complement the earlier how-to-write-a-video-script post.",
+      "target_queries": [
+        "marketing video script example",
+        "video script examples",
+        "corporate video script example",
+        "promo video script",
+        "training video script example",
+        "explainer video script example",
+        "youtube video script example"
+      ],
+      "review_dates": {
+        "first_review": "2026-12-11",
+        "judge": "2027-02-05"
+      },
+      "stage": "pre_review",
+      "verdict": "too_early",
+      "action": "keep",
+      "reason": "Too early to judge. First review is 2026-12-11 and final judgment is 2027-02-05. Preview only (8 finalized days): 0 clicks, 50 impressions, CTR 0.00%, avg position 25.7.",
+      "gsc_latest": "2026-11-20",
+      "post_days_available": 8,
+      "pre": {
+        "window": {
+          "start": "2026-11-05",
+          "end": "2026-11-12",
+          "days": 8
+        },
+        "page": {
+          "clicks": 0.0,
+          "impressions": 0.0,
+          "ctr": 0.0,
+          "position": null
+        },
+        "pages": {
+          "https://ypr.app/blog/video-script-examples": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null
+          }
+        },
+        "queries": {
+          "marketing video script example": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "video script examples": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "corporate video script example": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "promo video script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "training video script example": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "explainer video script example": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "youtube video script example": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          }
+        },
+        "site": {
+          "clicks": 37.0,
+          "impressions": 3262.0,
+          "ctr": 0.011342734518700184,
+          "position": 13.704169221336603
+        },
+        "fetched_at": "2026-11-22T19:51:09-07:00"
+      },
+      "post": {
+        "window": {
+          "start": "2026-11-13",
+          "end": "2026-11-20",
+          "days": 8
+        },
+        "page": {
+          "clicks": 0.0,
+          "impressions": 50.0,
+          "ctr": 0.0,
+          "position": 25.74
+        },
+        "pages": {
+          "https://ypr.app/blog/video-script-examples": {
+            "clicks": 0.0,
+            "impressions": 50.0,
+            "ctr": 0.0,
+            "position": 25.74
+          }
+        },
+        "queries": {
+          "marketing video script example": {
+            "clicks": 0.0,
+            "impressions": 2.0,
+            "ctr": 0.0,
+            "position": 15.0,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 2.0,
+                "ctr": 0.0,
+                "position": 15.0
+              }
+            ],
+            "top_pages": [
+              {
+                "clicks": 0.0,
+                "impressions": 2.0,
+                "ctr": 0.0,
+                "position": 15.0,
+                "page": "https://ypr.app/blog/video-script-examples"
+              }
+            ]
+          },
+          "video script examples": {
+            "clicks": 0.0,
+            "impressions": 3.0,
+            "ctr": 0.0,
+            "position": 74.66666666666667,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 3.0,
+                "ctr": 0.0,
+                "position": 74.66666666666667
+              }
+            ],
+            "top_pages": [
+              {
+                "clicks": 0.0,
+                "impressions": 3.0,
+                "ctr": 0.0,
+                "position": 74.66666666666667,
+                "page": "https://ypr.app/blog/video-script-examples"
+              }
+            ]
+          },
+          "corporate video script example": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "promo video script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "training video script example": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "explainer video script example": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "youtube video script example": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          }
+        },
+        "site": {
+          "clicks": 60.0,
+          "impressions": 5428.0,
+          "ctr": 0.01105379513633014,
+          "position": 12.502763448784082
+        },
+        "fetched_at": "2026-11-22T19:51:16-07:00"
+      },
+      "comparison": {
+        "page": {
+          "pre": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null
+          },
+          "post": {
+            "clicks": 0.0,
+            "impressions": 50.0,
+            "ctr": 0.0,
+            "position": 25.74
+          },
+          "clicks_delta": 0.0,
+          "clicks_pct": null,
+          "impressions_delta": 50.0,
+          "impressions_pct": null,
+          "ctr_delta": 0.0,
+          "ctr_pct": null,
+          "position_delta": null,
+          "site_clicks_pct": 0.6216216216216217,
+          "clicks_vs_site": null,
+          "impressions_vs_site": null
+        },
+        "site": {
+          "pre": {
+            "clicks": 37.0,
+            "impressions": 3262.0,
+            "ctr": 0.011342734518700184,
+            "position": 13.704169221336603
+          },
+          "post": {
+            "clicks": 60.0,
+            "impressions": 5428.0,
+            "ctr": 0.01105379513633014,
+            "position": 12.502763448784082
+          },
+          "clicks_delta": 23.0,
+          "clicks_pct": 0.6216216216216216,
+          "impressions_delta": 2166.0,
+          "impressions_pct": 0.6640098099325568,
+          "ctr_delta": -0.0002889393823700438,
+          "ctr_pct": -0.025473520683542784,
+          "position_delta": -1.201405772552521,
+          "site_clicks_pct": null,
+          "clicks_vs_site": null,
+          "impressions_vs_site": null
+        },
+        "queries": {
+          "marketing video script example": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/video-script-examples",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 2.0,
+              "ctr": 0.0,
+              "position": 15.0,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/video-script-examples",
+                  "clicks": 0.0,
+                  "impressions": 2.0,
+                  "ctr": 0.0,
+                  "position": 15.0
+                }
+              ],
+              "top_pages": [
+                {
+                  "clicks": 0.0,
+                  "impressions": 2.0,
+                  "ctr": 0.0,
+                  "position": 15.0,
+                  "page": "https://ypr.app/blog/video-script-examples"
+                }
+              ]
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 2.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.6216216216216217,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 2.0,
+              "ctr": 0.0,
+              "position": 15.0
+            },
+            "top_pages_post": [
+              {
+                "clicks": 0.0,
+                "impressions": 2.0,
+                "ctr": 0.0,
+                "position": 15.0,
+                "page": "https://ypr.app/blog/video-script-examples"
+              }
+            ]
+          },
+          "video script examples": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/video-script-examples",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 3.0,
+              "ctr": 0.0,
+              "position": 74.66666666666667,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/video-script-examples",
+                  "clicks": 0.0,
+                  "impressions": 3.0,
+                  "ctr": 0.0,
+                  "position": 74.66666666666667
+                }
+              ],
+              "top_pages": [
+                {
+                  "clicks": 0.0,
+                  "impressions": 3.0,
+                  "ctr": 0.0,
+                  "position": 74.66666666666667,
+                  "page": "https://ypr.app/blog/video-script-examples"
+                }
+              ]
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 3.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.6216216216216217,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 3.0,
+              "ctr": 0.0,
+              "position": 74.66666666666667
+            },
+            "top_pages_post": [
+              {
+                "clicks": 0.0,
+                "impressions": 3.0,
+                "ctr": 0.0,
+                "position": 74.66666666666667,
+                "page": "https://ypr.app/blog/video-script-examples"
+              }
+            ]
+          },
+          "corporate video script example": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/video-script-examples",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/video-script-examples",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 0.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.6216216216216217,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "top_pages_post": []
+          },
+          "promo video script": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/video-script-examples",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/video-script-examples",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 0.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.6216216216216217,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "top_pages_post": []
+          },
+          "training video script example": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/video-script-examples",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/video-script-examples",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 0.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.6216216216216217,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "top_pages_post": []
+          },
+          "explainer video script example": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/video-script-examples",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/video-script-examples",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 0.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.6216216216216217,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "top_pages_post": []
+          },
+          "youtube video script example": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/video-script-examples",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/video-script-examples",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 0.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.6216216216216217,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "top_pages_post": []
+          }
+        }
+      },
+      "inspection": null,
+      "baseline_stored": {
+        "window": {
+          "start": "2026-10-16",
+          "end": "2026-11-12",
+          "days": 28
+        },
+        "page": {
+          "clicks": 0.0,
+          "impressions": 0.0,
+          "ctr": 0.0,
+          "position": null
+        },
+        "pages": {
+          "https://ypr.app/blog/video-script-examples": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null
+          }
+        },
+        "queries": {
+          "marketing video script example": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "video script examples": {
+            "clicks": 0.0,
+            "impressions": 1.0,
+            "ctr": 0.0,
+            "position": 100.0,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": [
+              {
+                "clicks": 0.0,
+                "impressions": 1.0,
+                "ctr": 0.0,
+                "position": 100.0,
+                "page": "https://ypr.app/blog/how-to-write-a-video-script"
+              }
+            ]
+          },
+          "corporate video script example": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "promo video script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "training video script example": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "explainer video script example": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "youtube video script example": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/video-script-examples",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          }
+        },
+        "site": {
+          "clicks": 148.0,
+          "impressions": 10797.0,
+          "ctr": 0.013707511345744189,
+          "position": 11.876354542928592
+        },
+        "fetched_at": "2026-11-22T19:45:18-07:00"
+      }
+    },
+    {
+      "id": "yapper-2026-11-15-tiktok-script",
+      "site": "yapper",
+      "change_type": "new_post",
+      "shipped_date": "2026-11-15",
+      "urls": [
+        "https://ypr.app/blog/tiktok-script"
+      ],
+      "destination_urls": null,
+      "title": "How to write a TikTok script (template and 5 examples)",
+      "hypothesis": "A TikTok-specific script template will rank for 'tiktok script' and extend the video-script series without overlapping the YouTube post that followed.",
+      "target_queries": [
+        "tiktok script",
+        "tiktok script generator",
+        "tiktok video script",
+        "tiktok script writer",
+        "tiktok script template"
+      ],
+      "review_dates": {
+        "first_review": "2026-12-13",
+        "judge": "2027-02-07"
+      },
+      "stage": "pre_review",
+      "verdict": "too_early",
+      "action": "keep",
+      "reason": "Too early to judge. First review is 2026-12-13 and final judgment is 2027-02-07. Preview only (6 finalized days): 0 clicks, 54 impressions, CTR 0.00%, avg position 9.7.",
+      "gsc_latest": "2026-11-20",
+      "post_days_available": 6,
+      "pre": {
+        "window": {
+          "start": "2026-11-09",
+          "end": "2026-11-14",
+          "days": 6
+        },
+        "page": {
+          "clicks": 0.0,
+          "impressions": 0.0,
+          "ctr": 0.0,
+          "position": null
+        },
+        "pages": {
+          "https://ypr.app/blog/tiktok-script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null
+          }
+        },
+        "queries": {
+          "tiktok script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/tiktok-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "tiktok script generator": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/tiktok-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "tiktok video script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/tiktok-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "tiktok script writer": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/tiktok-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "tiktok script template": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/tiktok-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          }
+        },
+        "site": {
+          "clicks": 37.0,
+          "impressions": 2969.0,
+          "ctr": 0.012462108454024925,
+          "position": 14.017177500842035
+        },
+        "fetched_at": "2026-11-22T19:52:03-07:00"
+      },
+      "post": {
+        "window": {
+          "start": "2026-11-15",
+          "end": "2026-11-20",
+          "days": 6
+        },
+        "page": {
+          "clicks": 0.0,
+          "impressions": 54.0,
+          "ctr": 0.0,
+          "position": 9.666666666666666
+        },
+        "pages": {
+          "https://ypr.app/blog/tiktok-script": {
+            "clicks": 0.0,
+            "impressions": 54.0,
+            "ctr": 0.0,
+            "position": 9.666666666666666
+          }
+        },
+        "queries": {
+          "tiktok script": {
+            "clicks": 0.0,
+            "impressions": 3.0,
+            "ctr": 0.0,
+            "position": 42.333333333333336,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/tiktok-script",
+                "clicks": 0.0,
+                "impressions": 3.0,
+                "ctr": 0.0,
+                "position": 42.333333333333336
+              }
+            ],
+            "top_pages": [
+              {
+                "clicks": 0.0,
+                "impressions": 3.0,
+                "ctr": 0.0,
+                "position": 42.333333333333336,
+                "page": "https://ypr.app/blog/tiktok-script"
+              }
+            ]
+          },
+          "tiktok script generator": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/tiktok-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "tiktok video script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/tiktok-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "tiktok script writer": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/tiktok-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "tiktok script template": {
+            "clicks": 0.0,
+            "impressions": 1.0,
+            "ctr": 0.0,
+            "position": 42.0,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/tiktok-script",
+                "clicks": 0.0,
+                "impressions": 1.0,
+                "ctr": 0.0,
+                "position": 42.0
+              }
+            ],
+            "top_pages": [
+              {
+                "clicks": 0.0,
+                "impressions": 1.0,
+                "ctr": 0.0,
+                "position": 42.0,
+                "page": "https://ypr.app/blog/tiktok-script"
+              }
+            ]
+          }
+        },
+        "site": {
+          "clicks": 46.0,
+          "impressions": 4311.0,
+          "ctr": 0.010670378102528416,
+          "position": 11.576896311760612
+        },
+        "fetched_at": "2026-11-22T19:52:08-07:00"
+      },
+      "comparison": {
+        "page": {
+          "pre": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null
+          },
+          "post": {
+            "clicks": 0.0,
+            "impressions": 54.0,
+            "ctr": 0.0,
+            "position": 9.666666666666666
+          },
+          "clicks_delta": 0.0,
+          "clicks_pct": null,
+          "impressions_delta": 54.0,
+          "impressions_pct": null,
+          "ctr_delta": 0.0,
+          "ctr_pct": null,
+          "position_delta": null,
+          "site_clicks_pct": 0.2432432432432432,
+          "clicks_vs_site": null,
+          "impressions_vs_site": null
+        },
+        "site": {
+          "pre": {
+            "clicks": 37.0,
+            "impressions": 2969.0,
+            "ctr": 0.012462108454024925,
+            "position": 14.017177500842035
+          },
+          "post": {
+            "clicks": 46.0,
+            "impressions": 4311.0,
+            "ctr": 0.010670378102528416,
+            "position": 11.576896311760612
+          },
+          "clicks_delta": 9.0,
+          "clicks_pct": 0.24324324324324326,
+          "impressions_delta": 1342.0,
+          "impressions_pct": 0.452004041764904,
+          "ctr_delta": -0.001791730351496509,
+          "ctr_pct": -0.14377425442143607,
+          "position_delta": -2.440281189081423,
+          "site_clicks_pct": null,
+          "clicks_vs_site": null,
+          "impressions_vs_site": null
+        },
+        "queries": {
+          "tiktok script": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/tiktok-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 3.0,
+              "ctr": 0.0,
+              "position": 42.333333333333336,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/tiktok-script",
+                  "clicks": 0.0,
+                  "impressions": 3.0,
+                  "ctr": 0.0,
+                  "position": 42.333333333333336
+                }
+              ],
+              "top_pages": [
+                {
+                  "clicks": 0.0,
+                  "impressions": 3.0,
+                  "ctr": 0.0,
+                  "position": 42.333333333333336,
+                  "page": "https://ypr.app/blog/tiktok-script"
+                }
+              ]
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 3.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.2432432432432432,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 3.0,
+              "ctr": 0.0,
+              "position": 42.333333333333336
+            },
+            "top_pages_post": [
+              {
+                "clicks": 0.0,
+                "impressions": 3.0,
+                "ctr": 0.0,
+                "position": 42.333333333333336,
+                "page": "https://ypr.app/blog/tiktok-script"
+              }
+            ]
+          },
+          "tiktok script generator": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/tiktok-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/tiktok-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 0.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.2432432432432432,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "top_pages_post": []
+          },
+          "tiktok video script": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/tiktok-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/tiktok-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 0.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.2432432432432432,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "top_pages_post": []
+          },
+          "tiktok script writer": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/tiktok-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/tiktok-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 0.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.2432432432432432,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "top_pages_post": []
+          },
+          "tiktok script template": {
+            "pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/tiktok-script",
+                  "clicks": 0.0,
+                  "impressions": 0.0,
+                  "ctr": 0.0,
+                  "position": null
+                }
+              ],
+              "top_pages": []
+            },
+            "post": {
+              "clicks": 0.0,
+              "impressions": 1.0,
+              "ctr": 0.0,
+              "position": 42.0,
+              "on_pages": [
+                {
+                  "url": "https://ypr.app/blog/tiktok-script",
+                  "clicks": 0.0,
+                  "impressions": 1.0,
+                  "ctr": 0.0,
+                  "position": 42.0
+                }
+              ],
+              "top_pages": [
+                {
+                  "clicks": 0.0,
+                  "impressions": 1.0,
+                  "ctr": 0.0,
+                  "position": 42.0,
+                  "page": "https://ypr.app/blog/tiktok-script"
+                }
+              ]
+            },
+            "clicks_delta": 0.0,
+            "clicks_pct": null,
+            "impressions_delta": 1.0,
+            "impressions_pct": null,
+            "ctr_delta": 0.0,
+            "ctr_pct": null,
+            "position_delta": null,
+            "site_clicks_pct": 0.2432432432432432,
+            "clicks_vs_site": null,
+            "impressions_vs_site": null,
+            "on_pages_pre": {
+              "clicks": 0.0,
+              "impressions": 0.0,
+              "ctr": 0.0,
+              "position": null
+            },
+            "on_pages_post": {
+              "clicks": 0.0,
+              "impressions": 1.0,
+              "ctr": 0.0,
+              "position": 42.0
+            },
+            "top_pages_post": [
+              {
+                "clicks": 0.0,
+                "impressions": 1.0,
+                "ctr": 0.0,
+                "position": 42.0,
+                "page": "https://ypr.app/blog/tiktok-script"
+              }
+            ]
+          }
+        }
+      },
+      "inspection": null,
+      "baseline_stored": {
+        "window": {
+          "start": "2026-10-18",
+          "end": "2026-11-14",
+          "days": 28
+        },
+        "page": {
+          "clicks": 0.0,
+          "impressions": 0.0,
+          "ctr": 0.0,
+          "position": null
+        },
+        "pages": {
+          "https://ypr.app/blog/tiktok-script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null
+          }
+        },
+        "queries": {
+          "tiktok script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/tiktok-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "tiktok script generator": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/tiktok-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "tiktok video script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/tiktok-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "tiktok script writer": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/tiktok-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "tiktok script template": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/tiktok-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          }
+        },
+        "site": {
+          "clicks": 152.0,
+          "impressions": 10892.0,
+          "ctr": 0.01395519647447668,
+          "position": 12.694913698127065
+        },
+        "fetched_at": "2026-11-22T19:45:45-07:00"
+      }
+    },
+    {
+      "id": "yapper-2026-11-22-youtube-script",
+      "site": "yapper",
+      "change_type": "new_post",
+      "shipped_date": "2026-11-22",
+      "urls": [
+        "https://ypr.app/blog/youtube-script"
+      ],
+      "destination_urls": null,
+      "title": "How to write a YouTube script (template for 8 to 15 minute videos)",
+      "hypothesis": "A YouTube-specific 8–15 minute script template will finish the video-script topic after the TikTok post and rank for 'youtube script' / 'youtube video script'.",
+      "target_queries": [
+        "youtube video script",
+        "youtube script",
+        "how to write a youtube video script",
+        "youtube script template",
+        "how to write a youtube script",
+        "youtube script example",
+        "youtube script format"
+      ],
+      "review_dates": {
+        "first_review": "2026-12-20",
+        "judge": "2027-02-14"
+      },
+      "stage": "pre_review",
+      "verdict": "too_early",
+      "action": "keep",
+      "reason": "Too early to judge. First review is 2026-12-20 and final judgment is 2027-02-14. No finalized post-change Search Console days are available yet.",
+      "gsc_latest": "2026-11-20",
+      "post_days_available": 0,
+      "pre": null,
+      "post": null,
+      "comparison": null,
+      "inspection": null,
+      "baseline_stored": {
+        "window": {
+          "start": "2026-10-25",
+          "end": "2026-11-21",
+          "days": 28
+        },
+        "page": {
+          "clicks": 0.0,
+          "impressions": 0.0,
+          "ctr": 0.0,
+          "position": null
+        },
+        "pages": {
+          "https://ypr.app/blog/youtube-script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null
+          }
+        },
+        "queries": {
+          "youtube video script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/youtube-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "youtube script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/youtube-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how to write a youtube video script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/youtube-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "youtube script template": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/youtube-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "how to write a youtube script": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/youtube-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "youtube script example": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/youtube-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "youtube script format": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/youtube-script",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          }
+        },
+        "site": {
+          "clicks": 156.0,
+          "impressions": 12813.0,
+          "ctr": 0.01217513462889253,
+          "position": 12.87653164754546
+        },
+        "fetched_at": "2026-11-22T19:46:17-07:00"
+      }
+    },
+    {
+      "id": "yapper-2026-11-22-redirect-impromptu-speaking-practice",
+      "site": "yapper",
+      "change_type": "redirect",
+      "shipped_date": "2026-11-22",
+      "urls": [
+        "https://ypr.app/blog/impromptu-speaking-practice",
+        "https://ypr.app/blog/impromptu-speaking-frameworks"
+      ],
+      "destination_urls": [
+        "https://speakingpractice.ai/guides/impromptu-speaking"
+      ],
+      "title": "Redirect Yapper impromptu posts to speakingpractice.ai",
+      "hypothesis": "301ing the two overlapping Yapper impromptu posts to the SpeakingPractice.ai guide will stop the two sites competing for the same queries and consolidate ranking signals on the guide.",
+      "target_queries": [
+        "impromptu speaking",
+        "impromptu speech",
+        "impromptu speaking practice",
+        "impromptu speaking frameworks",
+        "impromptu speaking examples"
+      ],
+      "review_dates": {
+        "first_review": "2026-12-06",
+        "judge": "2026-12-20"
+      },
+      "stage": "pre_review",
+      "verdict": "too_early",
+      "action": "keep",
+      "reason": "Too early to judge. First review is 2026-12-06 and final judgment is 2026-12-20. No finalized post-change Search Console days are available yet.",
+      "gsc_latest": "2026-11-20",
+      "post_days_available": 0,
+      "pre": null,
+      "post": null,
+      "comparison": null,
+      "inspection": {
+        "https://ypr.app/blog/impromptu-speaking-practice": {
+          "verdict": "PASS",
+          "coverage_state": "Submitted and indexed",
+          "indexing_state": "INDEXING_ALLOWED",
+          "page_fetch": "SUCCESSFUL",
+          "robots": "ALLOWED",
+          "last_crawl": "2026-10-30T15:22:45Z",
+          "google_canonical": "https://ypr.app/blog/impromptu-speaking-practice",
+          "user_canonical": "https://ypr.app/blog/impromptu-speaking-practice"
+        },
+        "https://ypr.app/blog/impromptu-speaking-frameworks": {
+          "verdict": "PASS",
+          "coverage_state": "Submitted and indexed",
+          "indexing_state": "INDEXING_ALLOWED",
+          "page_fetch": "SUCCESSFUL",
+          "robots": "ALLOWED",
+          "last_crawl": "2026-10-29T07:20:07Z",
+          "google_canonical": "https://ypr.app/blog/impromptu-speaking-frameworks",
+          "user_canonical": "https://ypr.app/blog/impromptu-speaking-frameworks"
+        },
+        "https://speakingpractice.ai/guides/impromptu-speaking": {
+          "error": "<HttpError 403 when requesting https://searchconsole.googleapis.com/v1/urlInspection/index:inspect?alt=json returned \"You do not own this site, or the inspected URL is not part of this property.\". Details: \"You do not own this site, or the inspected URL is not part of this property.\">"
+        }
+      },
+      "baseline_stored": {
+        "window": {
+          "start": "2026-10-25",
+          "end": "2026-11-21",
+          "days": 28
+        },
+        "page": {
+          "clicks": 1.0,
+          "impressions": 93.0,
+          "ctr": 0.010752688172043012,
+          "position": 7.473118279569892
+        },
+        "pages": {
+          "https://ypr.app/blog/impromptu-speaking-practice": {
+            "clicks": 1.0,
+            "impressions": 53.0,
+            "ctr": 0.018867924528301886,
+            "position": 9.0
+          },
+          "https://ypr.app/blog/impromptu-speaking-frameworks": {
+            "clicks": 0.0,
+            "impressions": 40.0,
+            "ctr": 0.0,
+            "position": 5.45
+          }
+        },
+        "queries": {
+          "impromptu speaking": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/impromptu-speaking-practice",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              },
+              {
+                "url": "https://ypr.app/blog/impromptu-speaking-frameworks",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "impromptu speech": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/impromptu-speaking-practice",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              },
+              {
+                "url": "https://ypr.app/blog/impromptu-speaking-frameworks",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "impromptu speaking practice": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/impromptu-speaking-practice",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              },
+              {
+                "url": "https://ypr.app/blog/impromptu-speaking-frameworks",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          },
+          "impromptu speaking frameworks": {
+            "clicks": 0.0,
+            "impressions": 1.0,
+            "ctr": 0.0,
+            "position": 11.0,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/impromptu-speaking-practice",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              },
+              {
+                "url": "https://ypr.app/blog/impromptu-speaking-frameworks",
+                "clicks": 0.0,
+                "impressions": 1.0,
+                "ctr": 0.0,
+                "position": 11.0
+              }
+            ],
+            "top_pages": [
+              {
+                "clicks": 0.0,
+                "impressions": 1.0,
+                "ctr": 0.0,
+                "position": 11.0,
+                "page": "https://ypr.app/blog/impromptu-speaking-frameworks"
+              }
+            ]
+          },
+          "impromptu speaking examples": {
+            "clicks": 0.0,
+            "impressions": 0.0,
+            "ctr": 0.0,
+            "position": null,
+            "on_pages": [
+              {
+                "url": "https://ypr.app/blog/impromptu-speaking-practice",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              },
+              {
+                "url": "https://ypr.app/blog/impromptu-speaking-frameworks",
+                "clicks": 0.0,
+                "impressions": 0.0,
+                "ctr": 0.0,
+                "position": null
+              }
+            ],
+            "top_pages": []
+          }
+        },
+        "site": {
+          "clicks": 156.0,
+          "impressions": 12813.0,
+          "ctr": 0.01217513462889253,
+          "position": 12.87653164754546
+        },
+        "fetched_at": "2026-11-22T19:47:35-07:00"
+      }
+    }
+  ],
+  "summary": {
+    "n": 7,
+    "by_verdict": {
+      "too_early": 7
+    }
+  },
+  "site": "yapper"
+}

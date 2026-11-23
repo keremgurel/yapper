@@ -1,0 +1,836 @@
+{
+  "report_date": "2026-11-22",
+  "generated_at": "2026-11-22T19:55:21-07:00",
+  "gsc_latest": "2026-11-20",
+  "windows": {
+    "last_7": {
+      "start": "2026-11-14",
+      "end": "2026-11-20",
+      "days": 7
+    },
+    "prev_7": {
+      "start": "2026-11-07",
+      "end": "2026-11-13",
+      "days": 7
+    },
+    "last_28": {
+      "start": "2026-10-24",
+      "end": "2026-11-20",
+      "days": 28
+    },
+    "prev_28": {
+      "start": "2026-09-26",
+      "end": "2026-10-23",
+      "days": 28
+    }
+  },
+  "sites": {
+    "yapper": {
+      "name": "Yapper",
+      "property": "sc-domain:ypr.app",
+      "headline": "7d clicks 49 (+22.5%, up) · 28d clicks 162 (-19.4%, down) · 28d blog share 82.1%",
+      "periods": {
+        "7": {
+          "last": {
+            "clicks": 49.0,
+            "impressions": 4812.0,
+            "ctr": 0.010182876142975894,
+            "position": 12.012884455527846
+          },
+          "prev": {
+            "clicks": 40.0,
+            "impressions": 3131.0,
+            "ctr": 0.012775471095496647,
+            "position": 14.422229319706164
+          },
+          "delta": {
+            "clicks": 9.0,
+            "clicks_pct": 0.225,
+            "impressions": 1681.0,
+            "impressions_pct": 0.5368891727882465,
+            "ctr": -0.0025925949525207534,
+            "position": -2.4093448641783173
+          },
+          "pages_with_impressions": {
+            "last": 71,
+            "prev": 72
+          },
+          "content_share": {
+            "last": {
+              "content_pages": 56,
+              "content_clicks": 42.0,
+              "all_clicks": 49.0,
+              "share": 0.8571428571428571
+            },
+            "prev": {
+              "content_pages": 54,
+              "content_clicks": 32.0,
+              "all_clicks": 40.0,
+              "share": 0.8
+            }
+          },
+          "top_gaining_pages": [
+            {
+              "page": "https://ypr.app/blog/good-speech-topics",
+              "clicks_pre": 3.0,
+              "clicks_post": 11.0,
+              "clicks_delta": 8.0,
+              "impressions_pre": 320.0,
+              "impressions_post": 885.0,
+              "impressions_delta": 565.0,
+              "position_pre": 32.271875,
+              "position_post": 14.64406779661017
+            },
+            {
+              "page": "https://ypr.app/blog/topics-to-talk-about-speaking-practice",
+              "clicks_pre": 1.0,
+              "clicks_post": 5.0,
+              "clicks_delta": 4.0,
+              "impressions_pre": 91.0,
+              "impressions_post": 139.0,
+              "impressions_delta": 48.0,
+              "position_pre": 10.637362637362637,
+              "position_post": 9.66906474820144
+            },
+            {
+              "page": "https://ypr.app/blog/random-topic-generator",
+              "clicks_pre": 1.0,
+              "clicks_post": 4.0,
+              "clicks_delta": 3.0,
+              "impressions_pre": 83.0,
+              "impressions_post": 106.0,
+              "impressions_delta": 23.0,
+              "position_pre": 12.228915662650602,
+              "position_post": 10.066037735849056
+            },
+            {
+              "page": "https://ypr.app/blog/speech-topic-ideas-for-practice",
+              "clicks_pre": 1.0,
+              "clicks_post": 2.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 170.0,
+              "impressions_post": 325.0,
+              "impressions_delta": 155.0,
+              "position_pre": 18.258823529411764,
+              "position_post": 13.178461538461539
+            },
+            {
+              "page": "https://ypr.app/pricing",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 63.0,
+              "impressions_post": 68.0,
+              "impressions_delta": 5.0,
+              "position_pre": 5.714285714285714,
+              "position_post": 5.661764705882353
+            },
+            {
+              "page": "https://ypr.app/blog/practice-public-speaking-online-free",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 2.0,
+              "impressions_post": 2.0,
+              "impressions_delta": 0.0,
+              "position_pre": 9.0,
+              "position_post": 2.5
+            },
+            {
+              "page": "https://ypr.app/blog/table-topics-questions",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 80.0,
+              "impressions_post": 69.0,
+              "impressions_delta": -11.0,
+              "position_pre": 16.675,
+              "position_post": 12.246376811594203
+            },
+            {
+              "page": "https://ypr.app/",
+              "clicks_pre": 2.0,
+              "clicks_post": 2.0,
+              "clicks_delta": 0.0,
+              "impressions_pre": 123.0,
+              "impressions_post": 297.0,
+              "impressions_delta": 174.0,
+              "position_pre": 12.829268292682928,
+              "position_post": 7.9966329966329965
+            }
+          ],
+          "top_losing_pages": [
+            {
+              "page": "https://ypr.app/blog/1-minute-speech-topics",
+              "clicks_pre": 23.0,
+              "clicks_post": 17.0,
+              "clicks_delta": -6.0,
+              "impressions_pre": 1114.0,
+              "impressions_post": 1429.0,
+              "impressions_delta": 315.0,
+              "position_pre": 8.194793536804308,
+              "position_post": 8.153254023792861
+            },
+            {
+              "page": "https://ypr.app/blog/presentation-practice",
+              "clicks_pre": 1.0,
+              "clicks_post": 0.0,
+              "clicks_delta": -1.0,
+              "impressions_pre": 34.0,
+              "impressions_post": 24.0,
+              "impressions_delta": -10.0,
+              "position_pre": 5.735294117647059,
+              "position_post": 7.666666666666667
+            },
+            {
+              "page": "https://ypr.app/features",
+              "clicks_pre": 1.0,
+              "clicks_post": 0.0,
+              "clicks_delta": -1.0,
+              "impressions_pre": 38.0,
+              "impressions_post": 32.0,
+              "impressions_delta": -6.0,
+              "position_pre": 7.026315789473684,
+              "position_post": 6.625
+            },
+            {
+              "page": "https://ypr.app/blog/words-per-minute-speaking",
+              "clicks_pre": 1.0,
+              "clicks_post": 0.0,
+              "clicks_delta": -1.0,
+              "impressions_pre": 6.0,
+              "impressions_post": 3.0,
+              "impressions_delta": -3.0,
+              "position_pre": 5.666666666666667,
+              "position_post": 8.666666666666668
+            },
+            {
+              "page": "https://ypr.app/features/teleprompter-recorder",
+              "clicks_pre": 1.0,
+              "clicks_post": 0.0,
+              "clicks_delta": -1.0,
+              "impressions_pre": 7.0,
+              "impressions_post": 22.0,
+              "impressions_delta": 15.0,
+              "position_pre": 8.0,
+              "position_post": 8.772727272727273
+            },
+            {
+              "page": "https://ypr.app/privacy",
+              "clicks_pre": 1.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 0.0,
+              "impressions_pre": 157.0,
+              "impressions_post": 118.0,
+              "impressions_delta": -39.0,
+              "position_pre": 7.560509554140127,
+              "position_post": 7.0508474576271185
+            },
+            {
+              "page": "https://ypr.app/products/studio/pricing",
+              "clicks_pre": 0.0,
+              "clicks_post": 0.0,
+              "clicks_delta": 0.0,
+              "impressions_pre": 74.0,
+              "impressions_post": 59.0,
+              "impressions_delta": -15.0,
+              "position_pre": 13.608108108108109,
+              "position_post": 8.779661016949152
+            },
+            {
+              "page": "https://ypr.app/features/ai-script-writer",
+              "clicks_pre": 0.0,
+              "clicks_post": 0.0,
+              "clicks_delta": 0.0,
+              "impressions_pre": 38.0,
+              "impressions_post": 24.0,
+              "impressions_delta": -14.0,
+              "position_pre": 9.394736842105264,
+              "position_post": 6.833333333333333
+            }
+          ],
+          "top_gaining_queries": [
+            {
+              "query": "speech ideas",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 4.0,
+              "impressions_post": 12.0,
+              "impressions_delta": 8.0,
+              "position_pre": 45.5,
+              "position_post": 15.666666666666666
+            },
+            {
+              "query": "best topic for speech",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 0.0,
+              "impressions_post": 5.0,
+              "impressions_delta": 5.0,
+              "position_pre": null,
+              "position_post": 19.6
+            },
+            {
+              "query": "talk for a minute topics",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 2.0,
+              "impressions_post": 7.0,
+              "impressions_delta": 5.0,
+              "position_pre": 9.0,
+              "position_post": 9.571428571428571
+            },
+            {
+              "query": "speaking for 1 minute on a random topic",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 9.0,
+              "impressions_post": 13.0,
+              "impressions_delta": 4.0,
+              "position_pre": 8.777777777777779,
+              "position_post": 7.846153846153846
+            },
+            {
+              "query": "speech topic ideas",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 3.0,
+              "impressions_post": 7.0,
+              "impressions_delta": 4.0,
+              "position_pre": 46.0,
+              "position_post": 14.142857142857142
+            },
+            {
+              "query": "topics to talk about for 1 minute",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 2.0,
+              "impressions_post": 5.0,
+              "impressions_delta": 3.0,
+              "position_pre": 1.0,
+              "position_post": 8.8
+            },
+            {
+              "query": "one minute speech ideas",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 0.0,
+              "impressions_post": 3.0,
+              "impressions_delta": 3.0,
+              "position_pre": null,
+              "position_post": 5.666666666666667
+            },
+            {
+              "query": "speech theme ideas",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 0.0,
+              "impressions_post": 2.0,
+              "impressions_delta": 2.0,
+              "position_pre": null,
+              "position_post": 5.0
+            }
+          ],
+          "top_losing_queries": [
+            {
+              "query": "random topics to talk about for 1 minute",
+              "clicks_pre": 2.0,
+              "clicks_post": 0.0,
+              "clicks_delta": -2.0,
+              "impressions_pre": 39.0,
+              "impressions_post": 83.0,
+              "impressions_delta": 44.0,
+              "position_pre": 10.307692307692308,
+              "position_post": 9.662650602409638
+            },
+            {
+              "query": "talk for 1 minute topics",
+              "clicks_pre": 1.0,
+              "clicks_post": 0.0,
+              "clicks_delta": -1.0,
+              "impressions_pre": 5.0,
+              "impressions_post": 2.0,
+              "impressions_delta": -3.0,
+              "position_pre": 7.8,
+              "position_post": 8.5
+            },
+            {
+              "query": "give me a topic to talk about for 1 minute",
+              "clicks_pre": 1.0,
+              "clicks_post": 0.0,
+              "clicks_delta": -1.0,
+              "impressions_pre": 2.0,
+              "impressions_post": 1.0,
+              "impressions_delta": -1.0,
+              "position_pre": 6.0,
+              "position_post": 9.0
+            },
+            {
+              "query": "1 minute topic to speak",
+              "clicks_pre": 1.0,
+              "clicks_post": 0.0,
+              "clicks_delta": -1.0,
+              "impressions_pre": 1.0,
+              "impressions_post": 3.0,
+              "impressions_delta": 2.0,
+              "position_pre": 5.0,
+              "position_post": 2.333333333333333
+            },
+            {
+              "query": "speaking on random topic for 1 minute",
+              "clicks_pre": 0.0,
+              "clicks_post": 0.0,
+              "clicks_delta": 0.0,
+              "impressions_pre": 15.0,
+              "impressions_post": 3.0,
+              "impressions_delta": -12.0,
+              "position_pre": 7.533333333333333,
+              "position_post": 7.333333333333333
+            },
+            {
+              "query": "one minute rant topics",
+              "clicks_pre": 0.0,
+              "clicks_post": 0.0,
+              "clicks_delta": 0.0,
+              "impressions_pre": 12.0,
+              "impressions_post": 0.0,
+              "impressions_delta": -12.0,
+              "position_pre": 9.583333333333334,
+              "position_post": null
+            },
+            {
+              "query": "talk about a random topic for 1 minute",
+              "clicks_pre": 0.0,
+              "clicks_post": 0.0,
+              "clicks_delta": 0.0,
+              "impressions_pre": 17.0,
+              "impressions_post": 9.0,
+              "impressions_delta": -8.0,
+              "position_pre": 7.235294117647059,
+              "position_post": 8.777777777777779
+            },
+            {
+              "query": "impromptu table topics questions",
+              "clicks_pre": 0.0,
+              "clicks_post": 0.0,
+              "clicks_delta": 0.0,
+              "impressions_pre": 20.0,
+              "impressions_post": 13.0,
+              "impressions_delta": -7.0,
+              "position_pre": 7.1,
+              "position_post": 6.615384615384615
+            }
+          ]
+        },
+        "28": {
+          "last": {
+            "clicks": 162.0,
+            "impressions": 13073.0,
+            "ctr": 0.01239195287998164,
+            "position": 12.844947601927638
+          },
+          "prev": {
+            "clicks": 201.0,
+            "impressions": 10738.0,
+            "ctr": 0.018718569566027195,
+            "position": 8.412181039299682
+          },
+          "delta": {
+            "clicks": -39.0,
+            "clicks_pct": -0.19402985074626866,
+            "impressions": 2335.0,
+            "impressions_pct": 0.2174520394859378,
+            "ctr": -0.006326616686045554,
+            "position": 4.432766562627956
+          },
+          "pages_with_impressions": {
+            "last": 82,
+            "prev": 58
+          },
+          "content_share": {
+            "last": {
+              "content_pages": 63,
+              "content_clicks": 133.0,
+              "all_clicks": 162.0,
+              "share": 0.8209876543209876
+            },
+            "prev": {
+              "content_pages": 32,
+              "content_clicks": 145.0,
+              "all_clicks": 202.0,
+              "share": 0.7178217821782178
+            }
+          },
+          "top_gaining_pages": [
+            {
+              "page": "https://ypr.app/blog/good-speech-topics",
+              "clicks_pre": 2.0,
+              "clicks_post": 18.0,
+              "clicks_delta": 16.0,
+              "impressions_pre": 333.0,
+              "impressions_post": 1575.0,
+              "impressions_delta": 1242.0,
+              "position_pre": 9.70870870870871,
+              "position_post": 22.533968253968254
+            },
+            {
+              "page": "https://ypr.app/terms",
+              "clicks_pre": 7.0,
+              "clicks_post": 17.0,
+              "clicks_delta": 10.0,
+              "impressions_pre": 392.0,
+              "impressions_post": 977.0,
+              "impressions_delta": 585.0,
+              "position_pre": 3.7857142857142856,
+              "position_post": 3.749232343909928
+            },
+            {
+              "page": "https://ypr.app/blog/topics-to-talk-about-speaking-practice",
+              "clicks_pre": 2.0,
+              "clicks_post": 7.0,
+              "clicks_delta": 5.0,
+              "impressions_pre": 54.0,
+              "impressions_post": 337.0,
+              "impressions_delta": 283.0,
+              "position_pre": 13.925925925925926,
+              "position_post": 11.40652818991098
+            },
+            {
+              "page": "https://ypr.app/blog/random-topic-generator-with-timer",
+              "clicks_pre": 0.0,
+              "clicks_post": 5.0,
+              "clicks_delta": 5.0,
+              "impressions_pre": 0.0,
+              "impressions_post": 221.0,
+              "impressions_delta": 221.0,
+              "position_pre": null,
+              "position_post": 16.574660633484164
+            },
+            {
+              "page": "https://ypr.app/blog/public-speaking-practice-exercises",
+              "clicks_pre": 0.0,
+              "clicks_post": 2.0,
+              "clicks_delta": 2.0,
+              "impressions_pre": 16.0,
+              "impressions_post": 87.0,
+              "impressions_delta": 71.0,
+              "position_pre": 6.0,
+              "position_post": 15.494252873563218
+            },
+            {
+              "page": "https://ypr.app/pricing",
+              "clicks_pre": 0.0,
+              "clicks_post": 2.0,
+              "clicks_delta": 2.0,
+              "impressions_pre": 172.0,
+              "impressions_post": 209.0,
+              "impressions_delta": 37.0,
+              "position_pre": 7.011627906976744,
+              "position_post": 5.866028708133971
+            },
+            {
+              "page": "https://ypr.app/blog/how-to-start-a-speech",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 65.0,
+              "impressions_post": 341.0,
+              "impressions_delta": 276.0,
+              "position_pre": 9.815384615384616,
+              "position_post": 33.6950146627566
+            },
+            {
+              "page": "https://ypr.app/blog/table-topics-questions",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 0.0,
+              "impressions_post": 162.0,
+              "impressions_delta": 162.0,
+              "position_pre": null,
+              "position_post": 15.067901234567902
+            }
+          ],
+          "top_losing_pages": [
+            {
+              "page": "https://ypr.app/",
+              "clicks_pre": 36.0,
+              "clicks_post": 4.0,
+              "clicks_delta": -32.0,
+              "impressions_pre": 2442.0,
+              "impressions_post": 674.0,
+              "impressions_delta": -1768.0,
+              "position_pre": 6.19041769041769,
+              "position_post": 9.495548961424332
+            },
+            {
+              "page": "https://ypr.app/blog/1-minute-speech-topics",
+              "clicks_pre": 106.0,
+              "clicks_post": 75.0,
+              "clicks_delta": -31.0,
+              "impressions_pre": 4951.0,
+              "impressions_post": 4642.0,
+              "impressions_delta": -309.0,
+              "position_pre": 7.903857806503737,
+              "position_post": 8.2585092632486
+            },
+            {
+              "page": "https://ypr.app/blog/random-topic-generator",
+              "clicks_pre": 24.0,
+              "clicks_post": 9.0,
+              "clicks_delta": -15.0,
+              "impressions_pre": 714.0,
+              "impressions_post": 426.0,
+              "impressions_delta": -288.0,
+              "position_pre": 11.894957983193278,
+              "position_post": 15.62206572769953
+            },
+            {
+              "page": "https://ypr.app/training",
+              "clicks_pre": 4.0,
+              "clicks_post": 0.0,
+              "clicks_delta": -4.0,
+              "impressions_pre": 49.0,
+              "impressions_post": 0.0,
+              "impressions_delta": -49.0,
+              "position_pre": 5.469387755102041,
+              "position_post": null
+            },
+            {
+              "page": "https://ypr.app/privacy",
+              "clicks_pre": 6.0,
+              "clicks_post": 2.0,
+              "clicks_delta": -4.0,
+              "impressions_pre": 369.0,
+              "impressions_post": 491.0,
+              "impressions_delta": 122.0,
+              "position_pre": 7.116531165311653,
+              "position_post": 6.922606924643585
+            },
+            {
+              "page": "https://ypr.app/products/train/pricing",
+              "clicks_pre": 2.0,
+              "clicks_post": 0.0,
+              "clicks_delta": -2.0,
+              "impressions_pre": 11.0,
+              "impressions_post": 0.0,
+              "impressions_delta": -11.0,
+              "position_pre": 5.545454545454546,
+              "position_post": null
+            },
+            {
+              "page": "https://ypr.app/studio",
+              "clicks_pre": 1.0,
+              "clicks_post": 0.0,
+              "clicks_delta": -1.0,
+              "impressions_pre": 22.0,
+              "impressions_post": 5.0,
+              "impressions_delta": -17.0,
+              "position_pre": 4.454545454545455,
+              "position_post": 3.4
+            },
+            {
+              "page": "https://ypr.app/blog/impromptu-speaking-practice",
+              "clicks_pre": 2.0,
+              "clicks_post": 1.0,
+              "clicks_delta": -1.0,
+              "impressions_pre": 32.0,
+              "impressions_post": 55.0,
+              "impressions_delta": 23.0,
+              "position_pre": 6.96875,
+              "position_post": 9.10909090909091
+            }
+          ],
+          "top_gaining_queries": [
+            {
+              "query": "1 minute topics",
+              "clicks_pre": 0.0,
+              "clicks_post": 2.0,
+              "clicks_delta": 2.0,
+              "impressions_pre": 0.0,
+              "impressions_post": 6.0,
+              "impressions_delta": 6.0,
+              "position_pre": null,
+              "position_post": 4.666666666666666
+            },
+            {
+              "query": "speech ideas",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 5.0,
+              "impressions_post": 21.0,
+              "impressions_delta": 16.0,
+              "position_pre": 89.2,
+              "position_post": 36.904761904761905
+            },
+            {
+              "query": "speech topic ideas",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 1.0,
+              "impressions_post": 10.0,
+              "impressions_delta": 9.0,
+              "position_pre": 11.0,
+              "position_post": 23.7
+            },
+            {
+              "query": "talk for 1 minute topics",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 2.0,
+              "impressions_post": 9.0,
+              "impressions_delta": 7.0,
+              "position_pre": 9.0,
+              "position_post": 8.0
+            },
+            {
+              "query": "best topic for speech",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 0.0,
+              "impressions_post": 6.0,
+              "impressions_delta": 6.0,
+              "position_pre": null,
+              "position_post": 25.833333333333332
+            },
+            {
+              "query": "one minute talk on any topic",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 1.0,
+              "impressions_post": 5.0,
+              "impressions_delta": 4.0,
+              "position_pre": 12.0,
+              "position_post": 10.6
+            },
+            {
+              "query": "speak on a topic for one minute",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 8.0,
+              "impressions_post": 12.0,
+              "impressions_delta": 4.0,
+              "position_pre": 9.75,
+              "position_post": 8.75
+            },
+            {
+              "query": "give me a topic to talk about for 1 minute",
+              "clicks_pre": 0.0,
+              "clicks_post": 1.0,
+              "clicks_delta": 1.0,
+              "impressions_pre": 0.0,
+              "impressions_post": 3.0,
+              "impressions_delta": 3.0,
+              "position_pre": null,
+              "position_post": 7.0
+            }
+          ],
+          "top_losing_queries": [
+            {
+              "query": "talk about random topic for 1 minute",
+              "clicks_pre": 4.0,
+              "clicks_post": 0.0,
+              "clicks_delta": -4.0,
+              "impressions_pre": 44.0,
+              "impressions_post": 43.0,
+              "impressions_delta": -1.0,
+              "position_pre": 6.659090909090909,
+              "position_post": 7.395348837209302
+            },
+            {
+              "query": "random topic for speaking",
+              "clicks_pre": 3.0,
+              "clicks_post": 0.0,
+              "clicks_delta": -3.0,
+              "impressions_pre": 100.0,
+              "impressions_post": 62.0,
+              "impressions_delta": -38.0,
+              "position_pre": 9.21,
+              "position_post": 8.85483870967742
+            },
+            {
+              "query": "talk about a random topic for 1 minute",
+              "clicks_pre": 4.0,
+              "clicks_post": 1.0,
+              "clicks_delta": -3.0,
+              "impressions_pre": 101.0,
+              "impressions_post": 63.0,
+              "impressions_delta": -38.0,
+              "position_pre": 7.881188118811881,
+              "position_post": 7.777777777777778
+            },
+            {
+              "query": "speak on a random topic for 1 minute",
+              "clicks_pre": 3.0,
+              "clicks_post": 0.0,
+              "clicks_delta": -3.0,
+              "impressions_pre": 107.0,
+              "impressions_post": 95.0,
+              "impressions_delta": -12.0,
+              "position_pre": 8.981308411214954,
+              "position_post": 9.6
+            },
+            {
+              "query": "speaking on a random topic for 1 minute",
+              "clicks_pre": 5.0,
+              "clicks_post": 3.0,
+              "clicks_delta": -2.0,
+              "impressions_pre": 233.0,
+              "impressions_post": 181.0,
+              "impressions_delta": -52.0,
+              "position_pre": 7.0042918454935625,
+              "position_post": 8.281767955801104
+            },
+            {
+              "query": "1 minute random topic",
+              "clicks_pre": 2.0,
+              "clicks_post": 0.0,
+              "clicks_delta": -2.0,
+              "impressions_pre": 25.0,
+              "impressions_post": 14.0,
+              "impressions_delta": -11.0,
+              "position_pre": 8.120000000000001,
+              "position_post": 9.285714285714286
+            },
+            {
+              "query": "yapper.website",
+              "clicks_pre": 1.0,
+              "clicks_post": 0.0,
+              "clicks_delta": -1.0,
+              "impressions_pre": 468.0,
+              "impressions_post": 10.0,
+              "impressions_delta": -458.0,
+              "position_pre": 6.096153846153846,
+              "position_post": 6.0
+            },
+            {
+              "query": "yapper website",
+              "clicks_pre": 1.0,
+              "clicks_post": 0.0,
+              "clicks_delta": -1.0,
+              "impressions_pre": 338.0,
+              "impressions_post": 51.0,
+              "impressions_delta": -287.0,
+              "position_pre": 5.476331360946745,
+              "position_post": 8.92156862745098
+            }
+          ]
+        }
+      }
+    }
+  }
+}
