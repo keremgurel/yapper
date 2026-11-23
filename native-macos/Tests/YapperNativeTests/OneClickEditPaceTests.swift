@@ -9,9 +9,43 @@ struct OneClickEditPaceTests {
     func retakeStepScalesWithWords() {
         let short = OneClickEditPace(words: 472, mediaSeconds: 311)
         #expect(short.expectedSeconds(for: .removingRetakes) < take.expectedSeconds(for: .removingRetakes))
-        // Measured: 1,399 words took about twenty seconds.
-        let measured = OneClickEditPace(words: 1_399, mediaSeconds: 600)
-        #expect(abs(measured.expectedSeconds(for: .removingRetakes) - 20) < 4)
+    }
+
+    @Test(
+        "the retake step expects what a call measured",
+        arguments: [(544, 38.0), (1_399, 85.0), (2_891, 115.0)]
+    )
+    func retakeStepMatchesMeasuredCalls(words: Int, seconds: Double) {
+        let pace = OneClickEditPace(words: words, mediaSeconds: 600)
+        #expect(abs(pace.expectedSeconds(for: .removingRetakes) - seconds) < 1)
+    }
+
+    @Test("the retake step stops growing where the server stops adding room")
+    func retakeStepLevelsOff() {
+        let long = OneClickEditPace(words: 6_000, mediaSeconds: 3_000)
+        let longer = OneClickEditPace(words: 12_000, mediaSeconds: 6_000)
+        #expect(long.expectedSeconds(for: .removingRetakes) == 210)
+        #expect(longer.expectedSeconds(for: .removingRetakes) == 210)
+    }
+
+    @Test("a few words still get a retake step long enough to watch")
+    func shortTakeHasAFloor() {
+        let tiny = OneClickEditPace(words: 40, mediaSeconds: 20)
+        #expect(tiny.expectedSeconds(for: .removingRetakes) == 15)
+    }
+
+    @Test("transcribing expects what the 24.6 minute take measured")
+    func transcribingMatchesTheMeasuredRun() {
+        let measured = OneClickEditPace(words: 0, mediaSeconds: 1_476)
+        #expect(abs(measured.expectedSeconds(for: .transcribing) - 52) < 2)
+    }
+
+    @Test("the steps after the retake call are expected to be brief")
+    func lateStepsAreBrief() {
+        let long = OneClickEditPace(words: 2_891, mediaSeconds: 1_476)
+        for stage in [OneClickEditStage.cuttingPauses, .trimmingSilence, .addingCaptions] {
+            #expect(long.expectedSeconds(for: stage) <= 2)
+        }
     }
 
     @Test("a take with no transcript yet still gets a moving bar")
