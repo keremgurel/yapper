@@ -381,3 +381,37 @@ describe("complete repeated take boundaries", () => {
     expect(mocks.refund).toHaveBeenCalledOnce();
   });
 });
+
+describe("a sentence stranded in front of a retake", () => {
+  // [dropped line] kept sentence [dropped false start] kept retake
+  const line =
+    "And today we are baking two loaves of sourdough for the market.";
+  const words = `${line} And that is plenty. And today we are ${line}`
+    .split(" ")
+    .map((text) => ({ text }));
+  const lineWords = line.split(" ").length;
+  const sentence = [lineWords, lineWords + 3];
+  const retake = [lineWords + 8, words.length - 1];
+
+  it("is cut along with the line the speaker went back to", async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        choices: [
+          {
+            message: { content: JSON.stringify({ keep: [sentence, retake] }) },
+          },
+        ],
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(request({ words }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      cuts: [[0, retake[0]! - 1]],
+    });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(mocks.refund).not.toHaveBeenCalled();
+  });
+});
