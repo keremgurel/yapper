@@ -67,15 +67,25 @@ The retake step is one model call that reads the whole take, and on a take this 
 
 The harness used to time a call up to the response headers, which arrive after about 20 seconds whatever the model is doing. That is where the earlier "20 seconds per call" came from. `surplus.mjs` now times the whole answer and records the header time separately.
 
-Against the finished edit of the same take, the fresh cut kept one sentence the finished edit does not have ("And we're almost halfway."), dropped one phrase it does have ("back to what I'm used to,"), and on two lines chose an earlier take where the finished edit uses the last one. A direct run on the same transcript the day before differed on one take. The model does not return the same cut twice on a take this dense.
+Against the finished edit of the same take, the fresh cut kept one four word sentence the finished edit does not have, dropped one short phrase it does have, and on two lines chose an earlier take where the finished edit uses the last one. A direct run on the same transcript the day before differed on one take. The model does not return the same cut twice on a take this dense.
 
 ### After the retake fix (#362), same day
 
 The route now sizes the token cap to the take (16,000 for this one), sends the kept-spans schema, and asks again with more room when an answer is cut off. 1-Click Edit was run again from the button on the same project, against production, with the transcript reused. The retake step took 111 seconds and needed one call, against 190 seconds before.
 
-The cut came back as 32 clips and 2:05. Against the finished edit it differs in two places. It kept a one second fragment at 1:07 ("And we're almost"), and it took the $1,500 line from 16:26 where the finished edit uses the take at 16:07. This is one run.
+The cut came back as 32 clips and 2:05. Against the finished edit it differs in two places. It kept a one second fragment at 1:07, and it took one line from 16:26 where the finished edit uses the take at 16:07. This is one run.
 
 The app's progress bar still expected 43 seconds for this step. keremgurel/yapper#363 changes the estimates to the measured times: 115 seconds for this take's retake step, 52 for transcribing it, and 2 each for the steps after. A third run with that build took 131 seconds for the retake step and returned the same cut, fragment included. The bar was about a third full at 42 seconds and about two thirds at 1 minute 39.
+
+### The fragment at 1:07
+
+The fragment was a whole sentence of four words with its last word clipped by the silence trim. It was said once, straight after a line that was then recorded again, so the model kept it as an idea said only once, and it played in front of the retake of the line it had followed. All three saved answers on the app's transcript kept it. On Deepgram's and Scribe's transcripts of the same take the model chose differently at that spot and the cut was coherent, so this depends on the transcript.
+
+The route now cuts that case itself (`src/lib/studio/retake-stranded-spans.ts`). It looks for a kept sentence of 2 to 12 words, cut on both sides, that was not said before and sits between a dropped line and the kept retake of that line. It adds no model call.
+
+A looser version also took a sentence that runs straight into the retake. That one fired on six answer keys, each time on the first sentence of a passage recorded again from the top, which has to stay. The version in the route fires on none of the 59 answer keys or the nine finished projects. On 107 saved model answers it fires three times, all on this sentence.
+
+Sent through the route on localhost (signed in with local fake auth, a throwaway database, the real provider), the app's transcript came back with the sentence cut and no other difference from the finished edit, word for word. The request took 190 seconds. This is one run.
 
 ## What it does not test
 
