@@ -45,6 +45,41 @@ and puts the old app back if the new one fails verification. Do not kill the
 app or move bundles by hand: a killed export leaves its scratch folder in the
 temp directory until the next launch sweeps it a day later.
 
+## Release
+
+A packaged build is signed ad hoc and only opens on the Mac that built it.
+The download other people get comes from:
+
+```bash
+./scripts/release-app.sh
+```
+
+It builds one binary for Apple silicon and Intel, signs it with the Developer
+ID certificate under the hardened runtime, has Apple notarize the app and then
+the disk image, and staples both. The result is
+`dist/Yapper-Studio-<version>.dmg`, with a copy at `dist/Yapper-Studio.dmg`.
+It uploads nothing. It refuses to run with uncommitted changes, so every
+download maps to a commit.
+
+Each Mac that makes releases needs two things once, both done by the account
+holder:
+
+1. A Developer ID Application certificate. In Xcode, open Settings, Accounts,
+   pick the team, Manage Certificates, then add "Developer ID Application".
+2. Notary credentials. Make an app-specific password at account.apple.com
+   (Sign-In and Security), then run the command below with the Apple ID and
+   the team ID from developer.apple.com/account. It asks for the password and
+   keeps it in the keychain.
+
+```bash
+xcrun notarytool store-credentials yapper-notary --apple-id APPLE_ID --team-id TEAM_ID
+```
+
+The hardened runtime blocks the camera and microphone unless the signature
+asks for them, which `Resources/YapperNative.entitlements` does. A new
+capability of that kind (Apple Events, for one) needs its entitlement added
+there, or it fails only in the released build.
+
 ## Temporary files
 
 An export writes nothing outside its destination except one
