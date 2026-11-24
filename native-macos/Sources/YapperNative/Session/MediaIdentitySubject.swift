@@ -33,6 +33,13 @@ enum MediaIdentitySubject: Sendable {
         return media + audio
     }
 
+    var url: URL {
+        switch self {
+        case let .media(media, _): media.url
+        case let .audio(layer, _): layer.url
+        }
+    }
+
     /// Reads the file and says whether it still holds the expected bytes.
     /// Saved audio is compared by its whole content, everything else by the
     /// sampled fingerprint taken at import.

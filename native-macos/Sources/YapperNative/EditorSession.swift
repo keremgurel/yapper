@@ -468,6 +468,11 @@ final class EditorSession: ObservableObject {
     /// the app forward landed on a refusal: "Wait a moment: Yapper is checking
     /// the project's media files."
     func verifyMediaResourcesChangedOnDisk() async {
+        // Whatever was validated before the app went to the back is no longer
+        // known to be true, including files the edit does not use right now
+        // and an undo could bring back.
+        validatedMediaRevisions.removeAll()
+        validatedAudioRevisions.removeAll()
         guard await requiredMediaChangedOnDisk() else { return }
         await refuseMediaChangedOnDisk()
     }

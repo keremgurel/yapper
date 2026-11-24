@@ -269,6 +269,9 @@ extension EditorSession {
     /// not read again, so a rebuild after every edit stays cheap.
     func validateAvailableMediaIdentity() async throws {
         for subject in MediaIdentitySubject.required(in: project) {
+            // A drive can be pulled while an earlier file is being read. A
+            // file that has gone is the offline banner's to report.
+            guard MediaAvailability.isRegularReadableFile(subject.url) else { continue }
             switch subject {
             case let .media(media, expected):
                 let revision = try MediaResourceRevision(url: media.url, fingerprint: expected)
