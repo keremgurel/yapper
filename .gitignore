@@ -69,3 +69,6 @@ next-env.d.ts
 
 # Chirpy eval raw runs (baselines worth keeping go in scripts/chirpy-eval/baselines/)
 scripts/chirpy-eval/results/
+
+# Generated audio and results for scripts/cut-testset (rebuild with synth.mjs)
+/.cut-testset-work/

@@ -12,6 +12,7 @@ import {
 } from "@/lib/studio/retake-clusters";
 import { clippedRetakeOpenings } from "@/lib/studio/retake-boundaries";
 import { cutsFromKeptSpans } from "@/lib/studio/retake-keep-spans";
+import { cutStrandedSpans } from "@/lib/studio/retake-stranded-spans";
 import { keptSpansResponseFormat } from "@/lib/studio/retake-keep-schema";
 import {
   retakeCompletionBudget,
@@ -241,11 +242,15 @@ async function trackedPOST(req: Request): Promise<Response> {
       await new Promise((resolve) => setTimeout(resolve, RETRY_PAUSE_MS));
     }
 
-    const cuts = cutsFromKeptSpans(answer, words.length);
-    if (!cuts) {
+    const proposed = cutsFromKeptSpans(answer, words.length);
+    if (!proposed) {
       await refundCreditReservation(userId, reservation, "unreadable_edit");
       return Response.json({ error: "unreadable_edit" }, { status: 502 });
     }
+    // The one place the model's keep list is overruled: a short sentence it
+    // kept between a dropped line and that line's retake, which would play
+    // before the line it was said after. See retake-stranded-spans.ts.
+    const cuts = cutStrandedSpans(words, proposed);
     // Counted for the time-saved card on Home. A failed write never costs
     // the creator their edit.
     await recordEditRun(
