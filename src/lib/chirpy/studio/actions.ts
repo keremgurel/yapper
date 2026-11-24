@@ -7,6 +7,7 @@ import { CANVAS_ACTIONS } from "./canvas/actions";
 import { IDEAS_ACTIONS } from "./ideas/actions";
 import { INSPIRATION_ACTIONS } from "./inspiration/actions";
 import { STORAGE_ACTIONS } from "./storage/actions";
+import { STYLES_ACTIONS } from "./styles/actions";
 
 /**
  * Every server action in the contract with its executor. The mapped type makes
@@ -23,6 +24,7 @@ export const STUDIO_EXECUTORS: {
   ...BRAIN_ACTIONS,
   ...CANVAS_ACTIONS,
   ...INSPIRATION_ACTIONS,
+  ...STYLES_ACTIONS,
 };
 
 export function studioExecutor(

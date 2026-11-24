@@ -1,0 +1,28 @@
+{
+  "name": "yapper-style-runner",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Renders the style library (src/lib/style-library) with Remotion: a studio with live controls and the sample previews.",
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio",
+    "previews": "node scripts/render-previews.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.545",
+    "@remotion/cli": "4.0.545",
+    "@remotion/google-fonts": "4.0.545",
+    "@remotion/renderer": "4.0.545",
+    "@remotion/zod-types": "4.0.545",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "remotion": "4.0.545",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "typescript": "^5"
+  }
+}

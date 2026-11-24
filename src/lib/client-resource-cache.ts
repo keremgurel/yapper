@@ -142,6 +142,8 @@ export const STUDIO_RESOURCE_KEYS = {
   /** Reload-only: the Brain page's Knowledge, skills and voice set. */
   brain: "studio:brain",
   brand: "studio:brand",
+  /** The creator's saved looks in the style library. */
+  styles: "studio:styles",
   billing: "studio:billing",
   views: (stage: string) => `studio:views:${stage}`,
   channel: (platform: string) => `studio:channel:${platform}`,

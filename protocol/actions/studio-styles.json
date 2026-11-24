@@ -1,0 +1,112 @@
+{
+  "description": "The style library: a creator's saved looks. A look is an arrangement of blocks (a layout, what sits in it, the captions over it) started from a library template. The server runs these inside a Chirpy turn through the same operations a connector calls.",
+  "runtime": "server",
+  "actions": [
+    {
+      "id": "studio.styles.save",
+      "input": "StyleLookSaveInput",
+      "description": "Save a new look for the creator, started from a library template (from is its id, such as half-and-half) or copied from one of their saved looks (from is the look's id). The source is not changed.",
+      "effect": "serverEdit"
+    },
+    {
+      "id": "studio.styles.edit",
+      "input": "StyleLookEditInput",
+      "description": "Change a saved look: rename it, or apply up to 8 edits in order, all or nothing. Each edit names a place (layout, layout.top, captions): setOptions changes the look of the block there, setContent changes what it shows, setBlock swaps it for another style, clear empties it.",
+      "effect": "serverEdit"
+    },
+    {
+      "id": "studio.styles.delete",
+      "input": "StyleLookDeleteInput",
+      "description": "Delete one of the creator's saved looks. The creator is asked to confirm first.",
+      "effect": "destructive",
+      "confirm": true
+    }
+  ],
+  "$defs": {
+    "StyleLookSaveInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from"],
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "A library template id or the id of one of the creator's looks.",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        }
+      }
+    },
+    "StyleLookEditInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lookID"],
+      "properties": {
+        "lookID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "edits": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/StyleLookEdit"
+          }
+        }
+      }
+    },
+    "StyleLookEdit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "at"],
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": ["setOptions", "setContent", "setBlock", "clear"]
+        },
+        "at": {
+          "type": "string",
+          "description": "The place to change, as listed for the look: layout, layout.top, overlay, captions.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "styleId": {
+          "type": "string",
+          "description": "For setBlock: the style to put there, such as splits.speaker-below.",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "options": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Option keys and values for the block, from its listed settings. Out-of-range numbers are clamped and unknown keys dropped, and the receipt says so."
+        },
+        "content": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "What the block shows: a picture or clip URL, a label, a value."
+        }
+      }
+    },
+    "StyleLookDeleteInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lookID"],
+      "properties": {
+        "lookID": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    }
+  }
+}

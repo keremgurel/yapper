@@ -13,6 +13,7 @@ import type { BrandOverview } from "./brand/reads";
 import type { BrainOverview } from "./brain/overview";
 import type { IdeasOverview } from "./ideas/reads";
 import type { StorageNames, StorageOverview } from "./storage/reads";
+import type { StylesOverview } from "./styles/reads";
 import { inspirationForPrompt } from "./inspiration/focus";
 import { STUDIO_SYSTEM } from "./prompt";
 import type { StudioTurnInput } from "./wire";
@@ -32,6 +33,8 @@ export interface StudioOverview extends IdeasOverview {
   automations?: AutomationsOverview;
   /** Only on the Brain tab or when the request is about the Brain. */
   brain?: BrainOverview;
+  /** Only when the request is about looks, templates or the style library. */
+  styles?: StylesOverview;
 }
 
 const REFERENCE = JSON.stringify({

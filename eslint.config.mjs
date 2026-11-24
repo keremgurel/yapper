@@ -20,6 +20,9 @@ const eslintConfig = defineConfig([
     "workers/*/node_modules/**",
     "workers/*/.wrangler/**",
     "workers/*/worker-configuration.d.ts",
+    // Remotion runner for the style library, with its own dependencies.
+    "style-runner/node_modules/**",
+    "style-runner/out/**",
     "next-env.d.ts",
   ]),
   // Disable ESLint rules that conflict with Prettier (must stay last).

@@ -46,6 +46,9 @@ export async function runInvocation(
     const outcome = await studioExecutor(
       record.action as (typeof STUDIO_ACTIONS)[number]["id"],
     ).run(record.arguments, context);
+    // `data` is for programs calling an action directly; a receipt keeps the
+    // sentence and what to reload.
+    delete outcome.data;
     finished = { ...record, status: "done", ...outcome };
   } catch (error) {
     if (!(error instanceof StudioActionFailure))

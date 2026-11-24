@@ -24,6 +24,9 @@ export interface ActionOutcome {
   /** Writing the creator should read as Chirpy's reply (a canvas answer, a
    * brainstorm), in place of the sentence the planner wrote beforehand. */
   reply?: string;
+  /** The saved state after the action, for a caller that is a program (a
+   * connector). Never stored with the receipt and never shown by Chirpy. */
+  data?: unknown;
 }
 
 /** Names the planner saw, so a confirmation can say "Delete “Gym myths”"
@@ -39,6 +42,8 @@ export interface StudioNames {
   sizes?: Record<string, string>;
   /** Knowledge sections, skills and voice samples, by id. */
   brain?: Record<string, string>;
+  /** Saved looks, by id. */
+  looks?: Record<string, string>;
 }
 
 export interface StudioActionDefinition<Input> {

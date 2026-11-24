@@ -28,6 +28,7 @@ const isProtectedApi = createRouteMatcher([
   "/api/project(.*)",
   "/api/publish(.*)",
   "/api/storage(.*)",
+  "/api/styles(.*)",
   "/api/submissions(.*)",
   "/api/transcribe(.*)",
   "/api/transcription-dictionary(.*)",
@@ -85,9 +86,13 @@ export const config = {
     "/api/design-overlays",
     "/api/revise-overlay",
     "/api/review-overlay",
+    // The connector answers its own 401 with where to sign in, and needs
+    // Clerk context to read an OAuth token or a session.
+    "/api/mcp",
     "/api/project/:path*",
     "/api/publish/:path*",
     "/api/storage/:path*",
+    "/api/styles/:path*",
     "/api/submissions/:path*",
     "/api/transcribe/:path*",
     "/api/transcribe",
