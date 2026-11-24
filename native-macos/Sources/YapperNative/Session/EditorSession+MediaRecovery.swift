@@ -264,44 +264,33 @@ extension EditorSession {
         setStatus("Ready")
     }
 
+    /// Refuses any required file that no longer holds the bytes the project
+    /// was built on. A file already checked at its current size and dates is
+    /// not read again, so a rebuild after every edit stays cheap.
     func validateAvailableMediaIdentity() async throws {
-        let requiredMedia = MediaAvailability.requiredMediaIDs(in: project)
-        for media in project.media where requiredMedia.contains(media.id) && MediaAvailability.isRegularReadableFile(media.url) {
-            guard let expected = media.sourceFingerprint else { continue }
-            let revision = try MediaResourceRevision(url: media.url, fingerprint: expected)
-            if validatedMediaRevisions[media.id] == revision { continue }
-            let actual = try await MediaSourceFingerprint.compute(url: media.url)
-            guard actual == expected else {
-                mediaAvailability.markOffline(media)
-                throw NativeEditorError.incompatibleMedia(media.name)
-            }
-            validatedMediaRevisions[media.id] = revision
-        }
-        for layer in project.audioLayers ?? [] where MediaAvailability.isRequired(layer, in: project) {
-            guard layer.builtInID == nil, MediaAvailability.isRegularReadableFile(layer.url),
-                  let expected = layer.sourceFingerprint else { continue }
-            let identity = layer.sourceKind == .saved && layer.savedAudioHash != nil
-                ? "saved:\(layer.savedAudioHash!)"
-                : "sampled:\(expected)"
-            let key = layer.url.resolvingSymlinksInPath().path + "|" + identity
-            let revision = try MediaResourceRevision(url: layer.url, fingerprint: identity)
-            if validatedAudioRevisions[key] == revision { continue }
-            let actual: String
-            if layer.sourceKind == .saved, let exact = layer.savedAudioHash {
-                let hash = try await AudioContentHash.computeAsync(url: layer.url)
-                guard hash == exact else {
+        for subject in MediaIdentitySubject.required(in: project) {
+            switch subject {
+            case let .media(media, expected):
+                let revision = try MediaResourceRevision(url: media.url, fingerprint: expected)
+                if validatedMediaRevisions[media.id] == revision { continue }
+                guard try await subject.matchesDisk() else {
+                    mediaAvailability.markOffline(media)
+                    throw NativeEditorError.incompatibleMedia(media.name)
+                }
+                validatedMediaRevisions[media.id] = revision
+            case let .audio(layer, expected):
+                let identity = layer.sourceKind == .saved && layer.savedAudioHash != nil
+                    ? "saved:\(layer.savedAudioHash!)"
+                    : "sampled:\(expected)"
+                let key = layer.url.resolvingSymlinksInPath().path + "|" + identity
+                let revision = try MediaResourceRevision(url: layer.url, fingerprint: identity)
+                if validatedAudioRevisions[key] == revision { continue }
+                guard try await subject.matchesDisk() else {
                     mediaAvailability.markAudioOffline(layer)
                     throw NativeEditorError.incompatibleMedia(layer.name)
                 }
-                actual = expected
-            } else {
-                actual = try await MediaSourceFingerprint.compute(url: layer.url)
+                validatedAudioRevisions[key] = revision
             }
-            guard actual == expected else {
-                mediaAvailability.markAudioOffline(layer)
-                throw NativeEditorError.incompatibleMedia(layer.name)
-            }
-            validatedAudioRevisions[key] = revision
         }
     }
 

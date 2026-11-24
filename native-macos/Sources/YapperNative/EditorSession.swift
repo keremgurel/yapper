@@ -459,7 +459,20 @@ final class EditorSession: ObservableObject {
         }
     }
 
+    /// Coming back to the app, a file may have been replaced behind it. The
+    /// files are read first without taking the editor, and the editor is taken
+    /// only when one of them really has changed.
+    ///
+    /// The read used to run inside the operation, on every activation. It held
+    /// the editor for about as long as a click lasts, so the click that brought
+    /// the app forward landed on a refusal: "Wait a moment: Yapper is checking
+    /// the project's media files."
     func verifyMediaResourcesChangedOnDisk() async {
+        guard await requiredMediaChangedOnDisk() else { return }
+        await refuseMediaChangedOnDisk()
+    }
+
+    private func refuseMediaChangedOnDisk() async {
         guard let operation = beginLongOperation(.recoveringMedia) else {
             if pendingMediaRecovery == nil { pendingMediaRecovery = .verify }
             else { pendingMediaRecovery?.merge(.verify) }
