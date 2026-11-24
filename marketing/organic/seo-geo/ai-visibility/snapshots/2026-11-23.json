@@ -1,0 +1,4605 @@
+{
+  "site": "yapper",
+  "date": "2026-11-23",
+  "generated_at": "2026-11-23T18:54:32-07:00",
+  "prompt_set_version": 1,
+  "location": 2840,
+  "brand": {
+    "name": "Yapper",
+    "domain": "ypr.app",
+    "patterns": ["ypr\\.app", "(?-i:\\bYapper\\b)(?!\\.so)"]
+  },
+  "engines": ["chatgpt", "google", "ai_mode", "perplexity"],
+  "cost_usd": 0.5609,
+  "summary": {
+    "prompts": 30,
+    "engines": {
+      "chatgpt": {
+        "answered": 30,
+        "cited": 1,
+        "mentioned": 1,
+        "visible": 1,
+        "avg_position_when_named": 1.0,
+        "share_of_voice": 0.02,
+        "top_brands": [
+          ["ChatGPT", 9],
+          ["Descript", 7],
+          ["Captions", 6],
+          ["CapCut", 6],
+          ["Teleprompter.com", 4],
+          ["BIGVU", 4],
+          ["VEED", 4],
+          ["PromptSmart", 3]
+        ],
+        "retrieved_not_cited": 0
+      },
+      "google": {
+        "answered": 30,
+        "cited": 2,
+        "mentioned": 1,
+        "visible": 2,
+        "avg_position_when_named": 1.0,
+        "share_of_voice": 0.061,
+        "top_brands": [
+          ["Descript", 6],
+          ["VEED", 5],
+          ["CapCut", 5],
+          ["Teleprompter.com", 3],
+          ["OpusClip", 3],
+          ["BIGVU", 2],
+          ["Yapper", 2],
+          ["Teleprompter Premium", 1]
+        ],
+        "ai_overview_present": 29,
+        "ai_overview_loaded": 29,
+        "organic_top10": 1,
+        "organic_top20": 1
+      },
+      "ai_mode": {
+        "answered": 30,
+        "cited": 0,
+        "mentioned": 1,
+        "visible": 1,
+        "avg_position_when_named": 1.0,
+        "share_of_voice": 0.03,
+        "top_brands": [
+          ["CapCut", 6],
+          ["Descript", 5],
+          ["Teleprompter.com", 3],
+          ["PromptSmart", 2],
+          ["BIGVU", 2],
+          ["Captions", 2],
+          ["Riverside", 2],
+          ["VEED", 2]
+        ]
+      },
+      "perplexity": {
+        "answered": 30,
+        "cited": 5,
+        "mentioned": 3,
+        "visible": 5,
+        "avg_position_when_named": 1.0,
+        "share_of_voice": 0.089,
+        "top_brands": [
+          ["Descript", 13],
+          ["VEED", 8],
+          ["CapCut", 6],
+          ["BIGVU", 5],
+          ["Yapper", 5],
+          ["Captions", 3],
+          ["OpusClip", 3],
+          ["Teleprompter.com", 2]
+        ]
+      }
+    },
+    "any_engine_visible": 6,
+    "any_engine_cited": 6,
+    "top_our_urls": [
+      ["https://ypr.app/", 4],
+      ["https://ypr.app/terms", 2],
+      ["https://ypr.app/blog/1-minute-speech-topics", 2],
+      ["https://ypr.app/features", 2],
+      ["https://ypr.app/features/idea-capture", 2],
+      ["https://ypr.app/privacy", 1],
+      ["https://ypr.app/blog", 1],
+      ["https://ypr.app/blog/talking-head-video", 1],
+      ["https://ypr.app/features/ai-script-writer", 1],
+      ["https://ypr.app/features/social-publishing", 1]
+    ],
+    "top_cited_domains": [
+      ["youtube.com", 35],
+      ["apps.apple.com", 14],
+      ["descript.com", 13],
+      ["veed.io", 12],
+      ["reddit.com", 12],
+      ["instagram.com", 11],
+      ["bigvu.tv", 10],
+      ["teleprompter.com", 8],
+      ["capcut.com", 8],
+      ["play.google.com", 8],
+      ["jupitrr.com", 7],
+      ["facebook.com", 7],
+      ["canva.com", 7],
+      ["api.dataforseo.com", 7],
+      ["captions.ai", 6]
+    ]
+  },
+  "opportunities": [
+    {
+      "id": "p01",
+      "text": "best teleprompter app",
+      "intent": "buyer",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["teleprompter.com", 3],
+        ["teleprompterpro.com", 3],
+        ["bigvu.tv", 2],
+        ["reddit.com", 2],
+        ["apps.apple.com", 2]
+      ]
+    },
+    {
+      "id": "p02",
+      "text": "best teleprompter app for recording talking head videos",
+      "intent": "buyer",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["teleprompter.com", 2],
+        ["youtube.com", 2],
+        ["bigvu.tv", 1],
+        ["promptsmart.com", 1],
+        ["teleprompterforvideo.com", 1]
+      ]
+    },
+    {
+      "id": "p03",
+      "text": "AI script writer for YouTube videos",
+      "intent": "buyer",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["vidiq.com", 3],
+        ["youtube.com", 2],
+        ["reddit.com", 1],
+        ["facebook.com", 1],
+        ["tubelab.net", 1]
+      ]
+    },
+    {
+      "id": "p04",
+      "text": "AI video script generator",
+      "intent": "buyer",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["veed.io", 2],
+        ["kapwing.com", 2],
+        ["canva.com", 2],
+        ["pictory.ai", 2],
+        ["playplay.com", 2]
+      ]
+    },
+    {
+      "id": "p13",
+      "text": "app that removes silences and filler words from video automatically",
+      "intent": "buyer",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["gling.ai", 2],
+        ["apps.apple.com", 2],
+        ["apps.microsoft.com", 2],
+        ["descript.com", 1],
+        ["capcut.com", 1]
+      ]
+    },
+    {
+      "id": "p14",
+      "text": "best app to cut pauses and retakes from talking videos",
+      "intent": "buyer",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["capcut.com", 2],
+        ["opus.pro", 2],
+        ["youtube.com", 2],
+        ["apps.apple.com", 2],
+        ["descript.com", 1]
+      ]
+    },
+    {
+      "id": "p15",
+      "text": "CutAI alternative",
+      "intent": "buyer",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["apps.apple.com", 3],
+        ["aiagentsdirectory.com", 2],
+        ["capcut.com", 1],
+        ["captions.ai", 1],
+        ["descript.com", 1]
+      ]
+    },
+    {
+      "id": "p16",
+      "text": "Captions app alternative",
+      "intent": "buyer",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["writepanda.ai", 2],
+        ["capcut.com", 1],
+        ["submagic.co", 1],
+        ["about.instagram.com", 1],
+        ["veed.io", 1]
+      ]
+    },
+    {
+      "id": "p21",
+      "text": "how to cross-post one video to TikTok, Instagram Reels and YouTube Shorts",
+      "intent": "buyer",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["shortsync.app", 3],
+        ["oneupapp.io", 2],
+        ["metricool.com", 1],
+        ["buffer.com", 1],
+        ["later.com", 1]
+      ]
+    },
+    {
+      "id": "p29",
+      "text": "teleprompter app with AI script writer",
+      "intent": "buyer",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["bigvu.tv", 4],
+        ["play.google.com", 3],
+        ["teleprompter.com", 2],
+        ["apps.apple.com", 2],
+        ["promptsmart.com", 1]
+      ]
+    },
+    {
+      "id": "p05",
+      "text": "how to write a video script",
+      "intent": "info",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["canva.com", 2],
+        ["adobe.com", 2],
+        ["reddit.com", 1],
+        ["youtube.com", 1],
+        ["techsmith.com", 1]
+      ]
+    },
+    {
+      "id": "p06",
+      "text": "video script template",
+      "intent": "info",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["canva.com", 1],
+        ["leadde.ai", 1],
+        ["veed.io", 1],
+        ["contentiq.media", 1],
+        ["moonb.io", 1]
+      ]
+    },
+    {
+      "id": "p07",
+      "text": "how to structure a talking head video",
+      "intent": "info",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["documentary.org", 1],
+        ["facebook.com", 1],
+        ["scribd.com", 1],
+        ["jupitrr.com", 1],
+        ["beverlyboy.com", 1]
+      ]
+    },
+    {
+      "id": "p08",
+      "text": "talking head video tips",
+      "intent": "info",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["1of10.com", 2],
+        ["youtube.com", 2],
+        ["instagram.com", 1],
+        ["tiktok.com", 1],
+        ["jupitrr.com", 1]
+      ]
+    },
+    {
+      "id": "p09",
+      "text": "how to talk to the camera naturally",
+      "intent": "info",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["youtube.com", 3],
+        ["reddit.com", 1],
+        ["instagram.com", 1],
+        ["effectivepresentations.com", 1],
+        ["kwiga.com", 1]
+      ]
+    },
+    {
+      "id": "p10",
+      "text": "how to make eye contact with the camera when recording",
+      "intent": "info",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["descript.com", 2],
+        ["youtube.com", 2],
+        ["marketscale.com", 2],
+        ["reddit.com", 1],
+        ["instagram.com", 1]
+      ]
+    },
+    {
+      "id": "p11",
+      "text": "how to memorize a script for a video",
+      "intent": "info",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["youtube.com", 3],
+        ["nyfa.edu", 2],
+        ["tiktok.com", 1],
+        ["yellowbrick.co", 1],
+        ["vsaworld.com", 1]
+      ]
+    },
+    {
+      "id": "p12",
+      "text": "what is a teleprompter",
+      "intent": "info",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["en.wikipedia.org", 3],
+        ["elgato.com", 3],
+        ["youtube.com", 2],
+        ["ikancorp.com", 2],
+        ["neewer.com", 1]
+      ]
+    },
+    {
+      "id": "p17",
+      "text": "how to turn an inspiration video into my own script",
+      "intent": "info",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["canva.com", 2],
+        ["veed.io", 1],
+        ["youtube.com", 1],
+        ["aicoursify.com", 1],
+        ["manus.im", 1]
+      ]
+    },
+    {
+      "id": "p18",
+      "text": "video hook ideas for TikTok and Reels",
+      "intent": "info",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["snshelper.com", 1],
+        ["heyorca.com", 1],
+        ["socialmon.ai", 1],
+        ["tiktok.com", 1],
+        ["makehooks.com", 1]
+      ]
+    },
+    {
+      "id": "p20",
+      "text": "YouTube script template",
+      "intent": "info",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["reddit.com", 2],
+        ["youtube.com", 2],
+        ["overseeros.com", 2],
+        ["notion.com", 2],
+        ["medium.com", 1]
+      ]
+    },
+    {
+      "id": "p25",
+      "text": "how to yap on camera",
+      "intent": "info",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["youtube.com", 3],
+        ["instagram.com", 2],
+        ["kabo.sh", 2],
+        ["tiktok.com", 1],
+        ["api.dataforseo.com", 1]
+      ]
+    },
+    {
+      "id": "p26",
+      "text": "hook story lesson video format",
+      "intent": "info",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": false,
+      "top_cited": [
+        ["facebook.com", 1],
+        ["selfstorming.com", 1],
+        ["blossai.com", 1],
+        ["gist.github.com", 1],
+        ["github.com", 1]
+      ]
+    },
+    {
+      "id": "p27",
+      "text": "how to tell a story on camera",
+      "intent": "info",
+      "named_somewhere": false,
+      "organic_rank": null,
+      "aio_present": true,
+      "top_cited": [
+        ["theshutterclub.com", 1],
+        ["wta.org", 1],
+        ["youtube.com", 1],
+        ["blurb.com", 1],
+        ["twenty5films.com", 1]
+      ]
+    }
+  ],
+  "ledger": [
+    {
+      "id": "yapper-2026-10-26-what-is-a-teleprompter",
+      "change_type": "new_post",
+      "shipped": "2026-10-26",
+      "url": "https://ypr.app/blog/what-is-a-teleprompter",
+      "ai_citations": 0
+    },
+    {
+      "id": "yapper-2026-11-01-how-to-memorize-a-script",
+      "change_type": "new_post",
+      "shipped": "2026-11-01",
+      "url": "https://ypr.app/blog/how-to-memorize-a-script",
+      "ai_citations": 0
+    },
+    {
+      "id": "yapper-2026-11-08-talking-head-video",
+      "change_type": "new_post",
+      "shipped": "2026-11-08",
+      "url": "https://ypr.app/blog/talking-head-video",
+      "ai_citations": 1
+    },
+    {
+      "id": "yapper-2026-11-13-video-script-examples",
+      "change_type": "new_post",
+      "shipped": "2026-11-13",
+      "url": "https://ypr.app/blog/video-script-examples",
+      "ai_citations": 0
+    },
+    {
+      "id": "yapper-2026-11-15-tiktok-script",
+      "change_type": "new_post",
+      "shipped": "2026-11-15",
+      "url": "https://ypr.app/blog/tiktok-script",
+      "ai_citations": 1
+    },
+    {
+      "id": "yapper-2026-11-22-youtube-script",
+      "change_type": "new_post",
+      "shipped": "2026-11-22",
+      "url": "https://ypr.app/blog/youtube-script",
+      "ai_citations": 0
+    },
+    {
+      "id": "yapper-2026-11-22-redirect-impromptu-speaking-practice",
+      "change_type": "redirect",
+      "shipped": "2026-11-22",
+      "url": "https://ypr.app/blog/impromptu-speaking-practice",
+      "ai_citations": 0
+    },
+    {
+      "id": "yapper-2026-11-22-redirect-impromptu-speaking-practice",
+      "change_type": "redirect",
+      "shipped": "2026-11-22",
+      "url": "https://ypr.app/blog/impromptu-speaking-frameworks",
+      "ai_citations": 0
+    }
+  ],
+  "ai_search_volume": [
+    ["what is a teleprompter", 753],
+    ["best teleprompter app", 356],
+    ["how to write a video script", 96],
+    ["ai video script generator", 49],
+    ["1 minute speech topics", 31],
+    ["how to talk to the camera naturally", 3]
+  ],
+  "results": [
+    {
+      "id": "p01",
+      "text": "best teleprompter app",
+      "lang": "en",
+      "source": "gsc",
+      "intent": "buyer",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["Teleprompter.com", "BIGVU", "PromptSmart", "ChatGPT"],
+          "competitors_named": [
+            "Teleprompter.com",
+            "BIGVU",
+            "PromptSmart",
+            "ChatGPT"
+          ],
+          "competitors_cited": ["BIGVU", "Teleprompter.com", "PromptSmart"],
+          "cited_domains": [
+            "teleprompter.com",
+            "bigvu.tv",
+            "promptsmart.com",
+            "teleprompterpro.com",
+            "cueprompter.com",
+            "primalvideo.com",
+            "itechguides.com"
+          ],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [
+            "Teleprompter.com",
+            "BIGVU",
+            "PromptSmart Pro",
+            "Teleprompter Pro",
+            "CuePrompter"
+          ],
+          "retrieved_domains": [
+            "teleprompter.com",
+            "bigvu.tv",
+            "primalvideo.com",
+            "teleprompterstudio.app",
+            "itechguides.com",
+            "orateapp.co",
+            "mobilestalk.net",
+            "goteleprompter.com",
+            "lightshot.pro",
+            "highlightme.app",
+            "cueteleprompter.com"
+          ],
+          "retrieved_ours": false,
+          "fan_out_queries": [
+            "best teleprompter apps iOS Android 2026 reviews features pricing"
+          ]
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "apps.apple.com",
+            "teleprompter.com",
+            "reddit.com",
+            "voiceprompter.app",
+            "play.google.com",
+            "teleprompterpro.com",
+            "youtube.com",
+            "teleprompter.works",
+            "voice-scroll.com"
+          ],
+          "item_types": [
+            "ai_overview",
+            "organic",
+            "video",
+            "discussions_and_forums",
+            "people_also_ask",
+            "related_searches"
+          ],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": ["Teleprompter.com", "Teleprompter Premium"],
+            "competitors_cited": ["Teleprompter.com"],
+            "cited_domains": [
+              "reddit.com",
+              "apps.apple.com",
+              "youtube.com",
+              "teleprompter.com",
+              "voiceprompter.app",
+              "teleprompterpro.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": ["Teleprompter.com", "Teleprompter Premium"],
+          "competitors_cited": ["Teleprompter.com"],
+          "cited_domains": [
+            "reddit.com",
+            "apps.apple.com",
+            "youtube.com",
+            "teleprompter.com",
+            "voiceprompter.app",
+            "teleprompterpro.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["Teleprompter.com", "PromptSmart"],
+          "competitors_named": ["Teleprompter.com", "PromptSmart"],
+          "competitors_cited": ["Teleprompter.com"],
+          "cited_domains": [
+            "youtube.com",
+            "teleprompterpro.com",
+            "teleprompter.com",
+            "reddit.com",
+            "instagram.com",
+            "tellieapp.com"
+          ],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["Teleprompter.com", "PromptSmart", "BIGVU", "Speakflow"],
+          "competitors_named": [
+            "Teleprompter.com",
+            "PromptSmart",
+            "BIGVU",
+            "Speakflow"
+          ],
+          "competitors_cited": ["Descript", "BIGVU"],
+          "cited_domains": [
+            "bigvu.tv",
+            "lilachbullock.com",
+            "jupitrr.com",
+            "teleprompter.works",
+            "voiceprompter.app",
+            "descript.com",
+            "apps.apple.com",
+            "flowprompter.app",
+            "vidpros.com"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005229
+        }
+      }
+    },
+    {
+      "id": "p02",
+      "text": "best teleprompter app for recording talking head videos",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [
+            "Teleprompter.com",
+            "PromptSmart",
+            "BIGVU",
+            "CapCut",
+            "Captions",
+            "ChatGPT"
+          ],
+          "competitors_named": [
+            "Teleprompter.com",
+            "PromptSmart",
+            "BIGVU",
+            "CapCut",
+            "Captions",
+            "ChatGPT"
+          ],
+          "competitors_cited": [
+            "CapCut",
+            "BIGVU",
+            "Teleprompter.com",
+            "PromptSmart"
+          ],
+          "cited_domains": [
+            "bigvu.tv",
+            "promptsmart.com",
+            "teleprompter.com",
+            "teleprompterforvideo.com",
+            "capcut.com",
+            "itechguides.com",
+            "mobilestalk.net"
+          ],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [
+            "BIGVU",
+            "PromptSmart Pro",
+            "Teleprompter.com",
+            "Teleprompter for Video",
+            "CapCut"
+          ],
+          "retrieved_domains": [
+            "bigvu.tv",
+            "teleprompterstudio.app",
+            "itechguides.com",
+            "mobilestalk.net",
+            "filmora.wondershare.com",
+            "cue-app.me",
+            "orateapp.co",
+            "lightshot.pro",
+            "goteleprompter.com"
+          ],
+          "retrieved_ours": false,
+          "fan_out_queries": [
+            "best teleprompter apps for recording talking head videos iPhone Android 2026 PromptSmart BIGVU Teleprompter Premium features pricing"
+          ]
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "facebook.com",
+            "medium.com",
+            "reddit.com",
+            "voixprompt.com",
+            "shopjustlovelythings.com",
+            "play.google.com",
+            "youtube.com",
+            "gruv.ai",
+            "hollyland.com"
+          ],
+          "item_types": [
+            "ai_overview",
+            "video",
+            "organic",
+            "people_also_ask",
+            "discussions_and_forums",
+            "related_searches"
+          ],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": ["BIGVU", "Teleprompter.com"],
+            "competitors_cited": ["Teleprompter.com"],
+            "cited_domains": [
+              "youtube.com",
+              "teleprompter.com",
+              "facebook.com",
+              "voixprompt.com",
+              "medium.com",
+              "interhacktives.substack.com",
+              "play.google.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": ["BIGVU", "Teleprompter.com"],
+          "competitors_cited": ["Teleprompter.com"],
+          "cited_domains": [
+            "youtube.com",
+            "teleprompter.com",
+            "facebook.com",
+            "voixprompt.com",
+            "medium.com",
+            "interhacktives.substack.com",
+            "play.google.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["BIGVU", "PromptSmart"],
+          "competitors_named": ["BIGVU", "PromptSmart"],
+          "competitors_cited": [],
+          "cited_domains": ["youtube.com", "framekit.ai"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [
+            "PromptSmart",
+            "Teleprompter.com",
+            "BIGVU",
+            "CapCut",
+            "Descript"
+          ],
+          "competitors_named": [
+            "PromptSmart",
+            "Teleprompter.com",
+            "BIGVU",
+            "CapCut",
+            "Descript"
+          ],
+          "competitors_cited": ["Descript"],
+          "cited_domains": [
+            "descript.com",
+            "flowprompter.app",
+            "jupitrr.com",
+            "vidpros.com",
+            "riverside.com",
+            "voiceprompter.app",
+            "apps.apple.com",
+            "hollyland.com"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.00535
+        }
+      }
+    },
+    {
+      "id": "p03",
+      "text": "AI script writer for YouTube videos",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [],
+          "retrieved_domains": [],
+          "retrieved_ours": false,
+          "fan_out_queries": []
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "biogpt.io",
+            "pushbio.io",
+            "fueler.io",
+            "store.hypergpt.ai",
+            "syllaby.io",
+            "youtubedownload.minitool.com",
+            "rankedsuite.com",
+            "facebook.com",
+            "kiasai.com",
+            "medium.com"
+          ],
+          "item_types": [
+            "ai_overview",
+            "organic",
+            "people_also_ask",
+            "video",
+            "related_searches"
+          ],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": ["VEED"],
+            "competitors_cited": ["VEED"],
+            "cited_domains": [
+              "reddit.com",
+              "youtube.com",
+              "facebook.com",
+              "vidiq.com",
+              "tubelab.net",
+              "veed.io",
+              "playplay.com",
+              "powtoon.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": ["VEED"],
+          "competitors_cited": ["VEED"],
+          "cited_domains": [
+            "reddit.com",
+            "youtube.com",
+            "facebook.com",
+            "vidiq.com",
+            "tubelab.net",
+            "veed.io",
+            "playplay.com",
+            "powtoon.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": ["youtube.com", "vidiq.com"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["Descript"],
+          "competitors_named": ["Descript"],
+          "competitors_cited": ["Descript"],
+          "cited_domains": [
+            "descript.com",
+            "vidiq.com",
+            "fliki.ai",
+            "tubemagic.com",
+            "keywordly.ai",
+            "braiv.co",
+            "bit.ai",
+            "videodubber.ai",
+            "restream.io",
+            "ryrob.com"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005423
+        }
+      }
+    },
+    {
+      "id": "p04",
+      "text": "AI video script generator",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [],
+          "retrieved_domains": [],
+          "retrieved_ours": false,
+          "fan_out_queries": []
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "toolify.ai",
+            "vdobloom.com",
+            "insideaimedia.com",
+            "vidnoz.com",
+            "rebellink.com",
+            "nealschaffer.com",
+            "bith.ai",
+            "youtube.com",
+            "clipfly.ai",
+            "insmind.com"
+          ],
+          "item_types": ["ai_overview", "organic"],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": ["VEED", "InVideo"],
+            "competitors_cited": ["VEED", "InVideo"],
+            "cited_domains": [
+              "veed.io",
+              "kapwing.com",
+              "canva.com",
+              "pictory.ai",
+              "playplay.com",
+              "invideo.io",
+              "creatify.ai",
+              "powtoon.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": ["VEED", "InVideo"],
+          "competitors_cited": ["VEED", "InVideo"],
+          "cited_domains": [
+            "veed.io",
+            "kapwing.com",
+            "canva.com",
+            "pictory.ai",
+            "playplay.com",
+            "invideo.io",
+            "creatify.ai",
+            "powtoon.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["InVideo"],
+          "competitors_named": ["InVideo"],
+          "competitors_cited": ["InVideo"],
+          "cited_domains": [
+            "canva.com",
+            "zapier.com",
+            "invideo.io",
+            "heygen.com"
+          ],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["VEED"],
+          "competitors_named": ["VEED"],
+          "competitors_cited": ["BIGVU", "VEED"],
+          "cited_domains": [
+            "pictory.ai",
+            "heygen.com",
+            "playplay.com",
+            "bigvu.tv",
+            "steve.ai",
+            "veed.io",
+            "kapwing.com",
+            "fliki.ai",
+            "bit.ai"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005361
+        }
+      }
+    },
+    {
+      "id": "p05",
+      "text": "how to write a video script",
+      "lang": "en",
+      "source": "research",
+      "intent": "info",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [],
+          "retrieved_domains": [],
+          "retrieved_ours": false,
+          "fan_out_queries": []
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "johneengle.com",
+            "quora.com",
+            "gan.ai",
+            "writeme.ai",
+            "animotica.com",
+            "blog.lunabloomai.com",
+            "ahamediagroup.com",
+            "brafton.co.uk",
+            "blog.hubspot.com",
+            "trackfive.com"
+          ],
+          "item_types": [
+            "ai_overview",
+            "images",
+            "organic",
+            "people_also_ask",
+            "video"
+          ],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": [],
+            "competitors_cited": [],
+            "cited_domains": [
+              "reddit.com",
+              "youtube.com",
+              "techsmith.com",
+              "guides.library.cornell.edu",
+              "linkedin.com",
+              "canva.com",
+              "copyposse.com",
+              "worldof8billion.org",
+              "ctl.columbia.edu",
+              "adobe.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "reddit.com",
+            "youtube.com",
+            "techsmith.com",
+            "guides.library.cornell.edu",
+            "linkedin.com",
+            "canva.com",
+            "copyposse.com",
+            "worldof8billion.org",
+            "ctl.columbia.edu",
+            "adobe.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": ["canva.com"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": ["Captions", "Descript", "VEED"],
+          "cited_domains": [
+            "blog.hubspot.com",
+            "designkit.com",
+            "veed.io",
+            "adobe.com",
+            "descript.com",
+            "clipchamp.com",
+            "swarmify.com",
+            "promo.com",
+            "captions.ai",
+            "virbo.wondershare.com"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005744
+        }
+      }
+    },
+    {
+      "id": "p06",
+      "text": "video script template",
+      "lang": "en",
+      "source": "research",
+      "intent": "info",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [],
+          "retrieved_domains": [],
+          "retrieved_ours": false,
+          "fan_out_queries": []
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "framesurfer.com",
+            "quora.com",
+            "boast.io",
+            "clickup.com",
+            "wiki.opensourceecology.org",
+            "wevideo.com",
+            "youtube.com",
+            "contentbuck.com",
+            "veo3ai.io"
+          ],
+          "item_types": ["ai_overview", "images", "organic"],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": [],
+            "competitors_cited": [],
+            "cited_domains": [],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": []
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["Descript"],
+          "competitors_named": ["Descript"],
+          "competitors_cited": [],
+          "cited_domains": ["canva.com", "leadde.ai"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": ["CapCut", "VEED"],
+          "cited_domains": [
+            "veed.io",
+            "contentiq.media",
+            "moonb.io",
+            "virbo.wondershare.com",
+            "boords.com",
+            "fliki.ai",
+            "documentero.com",
+            "onassemble.com",
+            "capcut.com",
+            "designkit.com"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005581
+        }
+      }
+    },
+    {
+      "id": "p07",
+      "text": "how to structure a talking head video",
+      "lang": "en",
+      "source": "research",
+      "intent": "info",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [],
+          "retrieved_domains": [],
+          "retrieved_ours": false,
+          "fan_out_queries": []
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "speakhead.com",
+            "pinterest.com",
+            "learnbase.com",
+            "beverlyboy.com",
+            "documentary.org",
+            "scribd.com",
+            "vidpros.com",
+            "jupitrr.com"
+          ],
+          "item_types": ["ai_overview", "video", "organic"],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": [],
+            "competitors_cited": [],
+            "cited_domains": [
+              "documentary.org",
+              "facebook.com",
+              "scribd.com",
+              "jupitrr.com",
+              "beverlyboy.com",
+              "youtube.com",
+              "instagram.com",
+              "learnbase.com",
+              "speakhead.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "documentary.org",
+            "facebook.com",
+            "scribd.com",
+            "jupitrr.com",
+            "beverlyboy.com",
+            "youtube.com",
+            "instagram.com",
+            "learnbase.com",
+            "speakhead.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["Captions"],
+          "competitors_named": ["Captions"],
+          "competitors_cited": ["Captions"],
+          "cited_domains": ["captions.ai"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": ["OpusClip"],
+          "cited_domains": [
+            "usevyra.com",
+            "riverside.com",
+            "abdn.ac.uk",
+            "chatcut.io",
+            "fireplaceugc.com",
+            "piktochart.com",
+            "aicoursify.com",
+            "opus.pro",
+            "jryze.me",
+            "wistia.com"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005478
+        }
+      }
+    },
+    {
+      "id": "p08",
+      "text": "talking head video tips",
+      "lang": "en",
+      "source": "research",
+      "intent": "info",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [],
+          "retrieved_domains": [],
+          "retrieved_ours": false,
+          "fan_out_queries": []
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "jupitrr.com",
+            "instagram.com",
+            "videoeditingcompany.com",
+            "youtube.com",
+            "vidpros.com",
+            "1of10.com",
+            "linkedin.com",
+            "reddit.com"
+          ],
+          "item_types": ["ai_overview", "organic"],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": [],
+            "competitors_cited": [],
+            "cited_domains": [
+              "instagram.com",
+              "tiktok.com",
+              "1of10.com",
+              "youtube.com",
+              "jupitrr.com",
+              "clearcommunicationacademy.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "instagram.com",
+            "tiktok.com",
+            "1of10.com",
+            "youtube.com",
+            "jupitrr.com",
+            "clearcommunicationacademy.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["Riverside", "CapCut"],
+          "competitors_named": ["Riverside", "CapCut"],
+          "competitors_cited": [],
+          "cited_domains": ["youtube.com", "api.dataforseo.com"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": ["Captions", "Descript", "OpusClip", "VEED"],
+          "cited_domains": [
+            "descript.com",
+            "veed.io",
+            "piktochart.com",
+            "easy-peasy.ai",
+            "cliploft.com",
+            "1of10.com",
+            "opus.pro",
+            "captions.ai",
+            "abdn.ac.uk",
+            "animoto.com"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005412
+        }
+      }
+    },
+    {
+      "id": "p09",
+      "text": "how to talk to the camera naturally",
+      "lang": "en",
+      "source": "research",
+      "intent": "info",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [],
+          "retrieved_domains": [],
+          "retrieved_ours": false,
+          "fan_out_queries": []
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "youtube.com",
+            "reddit.com",
+            "ronnyleber.com",
+            "snapchat.com",
+            "quora.com",
+            "blog.vmgstudios.com",
+            "instagram.com"
+          ],
+          "item_types": [
+            "ai_overview",
+            "video",
+            "organic",
+            "people_also_ask",
+            "discussions_and_forums",
+            "short_videos"
+          ],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": [],
+            "competitors_cited": [],
+            "cited_domains": [
+              "youtube.com",
+              "reddit.com",
+              "instagram.com",
+              "effectivepresentations.com",
+              "kwiga.com",
+              "launchthedamnthing.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "youtube.com",
+            "reddit.com",
+            "instagram.com",
+            "effectivepresentations.com",
+            "kwiga.com",
+            "launchthedamnthing.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "youtube.com",
+            "clearcommunicationacademy.com",
+            "api.dataforseo.com"
+          ],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": ["Descript"],
+          "cited_domains": ["descript.com", "wikihow.com", "youtube.com"],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.00536
+        }
+      }
+    },
+    {
+      "id": "p10",
+      "text": "how to make eye contact with the camera when recording",
+      "lang": "en",
+      "source": "research",
+      "intent": "info",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [],
+          "retrieved_domains": [],
+          "retrieved_ours": false,
+          "fan_out_queries": []
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "kumospace.com",
+            "youtube.com",
+            "facebook.com",
+            "instagram.com",
+            "linkedin.com",
+            "amp-events.com"
+          ],
+          "item_types": [
+            "ai_overview",
+            "video",
+            "short_videos",
+            "organic",
+            "people_also_ask"
+          ],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": ["Descript"],
+            "competitors_cited": ["Descript"],
+            "cited_domains": [
+              "reddit.com",
+              "instagram.com",
+              "descript.com",
+              "facebook.com",
+              "kumospace.com",
+              "youtube.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": ["Descript"],
+          "competitors_cited": ["Descript"],
+          "cited_domains": [
+            "reddit.com",
+            "instagram.com",
+            "descript.com",
+            "facebook.com",
+            "kumospace.com",
+            "youtube.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": ["marketscale.com"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": ["Descript", "BIGVU", "VEED"],
+          "cited_domains": [
+            "bigvu.tv",
+            "zipperhq.com",
+            "marketscale.com",
+            "youtube.com",
+            "descript.com",
+            "camo.com",
+            "atlassian.com",
+            "amherst.edu",
+            "courses.dcs.wisc.edu",
+            "veed.io"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005265
+        }
+      }
+    },
+    {
+      "id": "p11",
+      "text": "how to memorize a script for a video",
+      "lang": "en",
+      "source": "gsc",
+      "intent": "info",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [],
+          "retrieved_domains": [],
+          "retrieved_ours": false,
+          "fan_out_queries": []
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "yellowbrick.co",
+            "ru.pinterest.com",
+            "vsaworld.com",
+            "quora.com",
+            "reddit.com",
+            "facebook.com",
+            "pinterest.com"
+          ],
+          "item_types": [
+            "ai_overview",
+            "organic",
+            "people_also_ask",
+            "perspectives"
+          ],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": [],
+            "competitors_cited": [],
+            "cited_domains": [
+              "tiktok.com",
+              "nyfa.edu",
+              "youtube.com",
+              "yellowbrick.co",
+              "vsaworld.com",
+              "quora.com",
+              "facebook.com",
+              "blog.clickmeeting.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "tiktok.com",
+            "nyfa.edu",
+            "youtube.com",
+            "yellowbrick.co",
+            "vsaworld.com",
+            "quora.com",
+            "facebook.com",
+            "blog.clickmeeting.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "youtube.com",
+            "reddit.com",
+            "nyfa.edu",
+            "api.dataforseo.com"
+          ],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "offbook.com",
+            "aiteleprompterapp.com",
+            "torontofilmschool.ca",
+            "pioneerdrama.com",
+            "youtube.com",
+            "zapier.com",
+            "magneticmemorymethod.com",
+            "kenlevine.blogspot.com"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005334
+        }
+      }
+    },
+    {
+      "id": "p12",
+      "text": "what is a teleprompter",
+      "lang": "en",
+      "source": "gsc",
+      "intent": "info",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [],
+          "retrieved_domains": [],
+          "retrieved_ours": false,
+          "fan_out_queries": []
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "definitions.net",
+            "beverlyboy.com",
+            "idea.org",
+            "patugwu.com",
+            "eventtechnology.org",
+            "onestream.live",
+            "tikalon.com",
+            "sherycp.weebly.com",
+            "oxfordlearnersdictionaries.com"
+          ],
+          "item_types": [
+            "ai_overview",
+            "images",
+            "people_also_ask",
+            "video",
+            "organic"
+          ],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": [],
+            "competitors_cited": [],
+            "cited_domains": [
+              "youtube.com",
+              "en.wikipedia.org",
+              "ikancorp.com",
+              "elgato.com",
+              "neewer.com",
+              "instagram.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "youtube.com",
+            "en.wikipedia.org",
+            "ikancorp.com",
+            "elgato.com",
+            "neewer.com",
+            "instagram.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["Teleprompter.com"],
+          "competitors_named": ["Teleprompter.com"],
+          "competitors_cited": ["Teleprompter.com"],
+          "cited_domains": [
+            "youtube.com",
+            "en.wikipedia.org",
+            "ikancorp.com",
+            "scriptscroller.com",
+            "google.com",
+            "elgato.com",
+            "medium.com",
+            "teleprompter.com",
+            "api.dataforseo.com"
+          ],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "en.wikipedia.org",
+            "dictionary.com",
+            "prod-ccroc-direct.merriam-webster.com",
+            "elgato.com",
+            "restream.io",
+            "merriam-webster.com",
+            "britannica.com",
+            "oxfordlearnersdictionaries.com",
+            "dictionary.cambridge.org",
+            "help.teleprompterpad.com"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005109
+        }
+      }
+    },
+    {
+      "id": "p13",
+      "text": "app that removes silences and filler words from video automatically",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["Descript", "Captions", "CapCut", "VEED"],
+          "competitors_named": ["Descript", "Captions", "CapCut", "VEED"],
+          "competitors_cited": ["Descript", "CapCut", "VEED"],
+          "cited_domains": [
+            "descript.com",
+            "gling.ai",
+            "capcut.com",
+            "veed.io",
+            "inshot.com"
+          ],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": ["Descript", "Gling", "CapCut", "VEED", "InShot"],
+          "retrieved_domains": [
+            "cutroom.editorialdeskmedia.com",
+            "opus.pro",
+            "octuedit.com",
+            "shortyedit.com",
+            "efficient-compute.com",
+            "toolnimba.com",
+            "sycamore.to",
+            "blitzcutai.com",
+            "slicecut.io",
+            "marxx.ai",
+            "zippyclip.net"
+          ],
+          "retrieved_ours": false,
+          "fan_out_queries": [
+            "best apps automatically remove silence filler words from video editing Descript CapCut Gling AutoCut features 2026"
+          ]
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "the-automator.com",
+            "youtube.com",
+            "apps.apple.com",
+            "cutfa.st",
+            "makereels.live",
+            "facebook.com",
+            "videogen.io",
+            "clip-short.com",
+            "afadingthought.substack.com"
+          ],
+          "item_types": [
+            "ai_overview",
+            "organic",
+            "video",
+            "discussions_and_forums",
+            "related_searches"
+          ],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": ["CapCut", "Descript", "Riverside"],
+            "competitors_cited": [],
+            "cited_domains": [
+              "youtube.com",
+              "makereels.live",
+              "facebook.com",
+              "the-automator.com",
+              "apps.apple.com",
+              "cutfa.st",
+              "clip-short.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": ["CapCut", "Descript", "Riverside"],
+          "competitors_cited": [],
+          "cited_domains": [
+            "youtube.com",
+            "makereels.live",
+            "facebook.com",
+            "the-automator.com",
+            "apps.apple.com",
+            "cutfa.st",
+            "clip-short.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["Riverside"],
+          "competitors_named": ["Riverside"],
+          "competitors_cited": [],
+          "cited_domains": ["riverside.com", "apps.microsoft.com"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["Descript", "VEED"],
+          "competitors_named": ["Descript", "VEED"],
+          "competitors_cited": [],
+          "cited_domains": [
+            "gling.ai",
+            "pictory.ai",
+            "echowave.io",
+            "apps.apple.com",
+            "tella.com",
+            "apps.microsoft.com",
+            "play.google.com"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.0053
+        }
+      }
+    },
+    {
+      "id": "p14",
+      "text": "best app to cut pauses and retakes from talking videos",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [
+            "Descript",
+            "Captions",
+            "CapCut",
+            "VEED",
+            "OpusClip",
+            "ChatGPT"
+          ],
+          "competitors_named": [
+            "Descript",
+            "Captions",
+            "CapCut",
+            "VEED",
+            "OpusClip",
+            "ChatGPT"
+          ],
+          "competitors_cited": ["Descript", "CapCut", "OpusClip", "VEED"],
+          "cited_domains": [
+            "descript.com",
+            "gling.ai",
+            "capcut.com",
+            "veed.io",
+            "opus.pro",
+            "renderster.com"
+          ],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": ["Descript", "Gling", "CapCut", "VEED"],
+          "retrieved_domains": [
+            "opus.pro",
+            "renderster.com",
+            "cutroom.editorialdeskmedia.com",
+            "kraftoai.com",
+            "async.com",
+            "editorop.com",
+            "usecutora.com",
+            "voxota.com",
+            "descript.com"
+          ],
+          "retrieved_ours": false,
+          "fan_out_queries": [
+            "best AI video editing apps automatically remove silence pauses retakes Descript Gling CapCut 2026"
+          ]
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "cutsio.com",
+            "quora.com",
+            "facebook.com",
+            "reddit.com",
+            "snapy.ai",
+            "youtube.com",
+            "netjoints.com"
+          ],
+          "item_types": [
+            "ai_overview",
+            "video",
+            "organic",
+            "discussions_and_forums",
+            "short_videos",
+            "people_also_ask"
+          ],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": ["Descript", "CapCut", "OpusClip"],
+            "competitors_cited": ["CapCut", "OpusClip"],
+            "cited_domains": [
+              "youtube.com",
+              "capcut.com",
+              "store.hollyland.com",
+              "opus.pro",
+              "instagram.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": ["Descript", "CapCut", "OpusClip"],
+          "competitors_cited": ["CapCut", "OpusClip"],
+          "cited_domains": [
+            "youtube.com",
+            "capcut.com",
+            "store.hollyland.com",
+            "opus.pro",
+            "instagram.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["CapCut", "Descript"],
+          "competitors_named": ["CapCut", "Descript"],
+          "competitors_cited": [],
+          "cited_domains": [
+            "youtube.com",
+            "apps.apple.com",
+            "api.dataforseo.com"
+          ],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["CutAI", "CapCut", "Descript"],
+          "competitors_named": ["CutAI", "CapCut", "Descript"],
+          "competitors_cited": ["CutAI"],
+          "cited_domains": [
+            "usecutai.com",
+            "apps.apple.com",
+            "getrecut.com",
+            "cutugc.app",
+            "cueclip.app",
+            "heygen.com",
+            "vizard.ai"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005307
+        }
+      }
+    },
+    {
+      "id": "p15",
+      "text": "CutAI alternative",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [
+            "CutAI",
+            "CapCut",
+            "Captions",
+            "Descript",
+            "VEED",
+            "ChatGPT"
+          ],
+          "competitors_named": [
+            "CutAI",
+            "CapCut",
+            "Captions",
+            "Descript",
+            "VEED",
+            "ChatGPT"
+          ],
+          "competitors_cited": [
+            "CutAI",
+            "Captions",
+            "Descript",
+            "CapCut",
+            "VEED"
+          ],
+          "cited_domains": [
+            "capcut.com",
+            "captions.ai",
+            "descript.com",
+            "veed.io",
+            "instagram.com",
+            "apps.apple.com",
+            "usecutai.com",
+            "stringers.io"
+          ],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [
+            "CapCut",
+            "Captions",
+            "Descript",
+            "VEED",
+            "Edits by Instagram"
+          ],
+          "retrieved_domains": [
+            "iappstores.com",
+            "apps.apple.com",
+            "usecutai.com",
+            "aimadeeasy.app",
+            "cutgpt.co",
+            "stringers.io",
+            "morebangers.com",
+            "appshunter.io"
+          ],
+          "retrieved_ours": false,
+          "fan_out_queries": [
+            "CutAI app alternatives what is CutAI AI video editor"
+          ]
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "colossyan.com",
+            "ai.toolcent.com",
+            "tubernetic.com",
+            "toolify.ai",
+            "techshark.io",
+            "elloai.com",
+            "eesel.ai",
+            "findmyaitool.com",
+            "g2.com"
+          ],
+          "item_types": ["ai_overview", "organic"],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": ["CutAI", "CapCut", "VEED"],
+            "competitors_cited": [],
+            "cited_domains": [
+              "elloai.com",
+              "apps.apple.com",
+              "youtube.com",
+              "tubernetic.com",
+              "pexo.ai"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": ["CutAI", "CapCut", "VEED"],
+          "competitors_cited": [],
+          "cited_domains": [
+            "elloai.com",
+            "apps.apple.com",
+            "youtube.com",
+            "tubernetic.com",
+            "pexo.ai"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["CutAI", "CapCut", "OpusClip"],
+          "competitors_named": ["CutAI", "CapCut", "OpusClip"],
+          "competitors_cited": [],
+          "cited_domains": ["aiagentsdirectory.com"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["CutAI", "VEED", "Descript", "CapCut"],
+          "competitors_named": ["CutAI", "VEED", "Descript", "CapCut"],
+          "competitors_cited": [],
+          "cited_domains": [
+            "aiagentsdirectory.com",
+            "worthtotry.com",
+            "aimadeeasy.app",
+            "withai.top",
+            "agentery.com",
+            "twelve.tools",
+            "cut.pro",
+            "apps.apple.com",
+            "sourceforge.net"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005259
+        }
+      }
+    },
+    {
+      "id": "p16",
+      "text": "Captions app alternative",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["Captions", "CapCut", "Submagic", "VEED", "Descript"],
+          "competitors_named": [
+            "Captions",
+            "CapCut",
+            "Submagic",
+            "VEED",
+            "Descript"
+          ],
+          "competitors_cited": ["Descript", "CapCut", "Submagic", "VEED"],
+          "cited_domains": [
+            "capcut.com",
+            "submagic.co",
+            "about.instagram.com",
+            "veed.io",
+            "descript.com"
+          ],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [
+            "CapCut",
+            "Submagic",
+            "Edits by Instagram",
+            "VEED",
+            "Descript"
+          ],
+          "retrieved_domains": [
+            "storycut.com",
+            "trymimic.app",
+            "designrevision.com",
+            "cutroomai.com",
+            "writepanda.ai",
+            "sycamore.to",
+            "reelisviral.com",
+            "shortstack.tools",
+            "the64th.com",
+            "socaptions.com",
+            "solaraai.com",
+            "vidpal.ai"
+          ],
+          "retrieved_ours": false,
+          "fan_out_queries": [
+            "best alternatives to Captions AI video editing app 2026 features pricing"
+          ]
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "aicentralresources.com",
+            "youtube.com",
+            "ezugc.ai",
+            "appdex.app",
+            "aiclipy.com",
+            "facebook.com",
+            "vidio.ai",
+            "autosubtitles.com",
+            "videoconverter.wondershare.com",
+            "spotsaas.com"
+          ],
+          "item_types": ["ai_overview", "organic", "related_searches"],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": [
+              "Captions",
+              "CapCut",
+              "OpusClip",
+              "Submagic",
+              "Descript"
+            ],
+            "competitors_cited": [],
+            "cited_domains": ["reddit.com", "vizard.ai", "writepanda.ai"],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": [
+            "Captions",
+            "CapCut",
+            "OpusClip",
+            "Submagic",
+            "Descript"
+          ],
+          "competitors_cited": [],
+          "cited_domains": ["reddit.com", "vizard.ai", "writepanda.ai"]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["CapCut", "Submagic", "Descript", "VEED"],
+          "competitors_named": ["CapCut", "Submagic", "Descript", "VEED"],
+          "competitors_cited": [],
+          "cited_domains": ["frameos.studio", "finance.yahoo.com"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [
+            "Captions",
+            "CapCut",
+            "Submagic",
+            "Descript",
+            "VEED",
+            "OpusClip"
+          ],
+          "competitors_named": [
+            "Captions",
+            "CapCut",
+            "Submagic",
+            "Descript",
+            "VEED",
+            "OpusClip"
+          ],
+          "competitors_cited": [],
+          "cited_domains": [
+            "shitshorts.com",
+            "noobclaw.com",
+            "writepanda.ai",
+            "storycut.com",
+            "echowave.io",
+            "aiclipy.com",
+            "vidpal.ai",
+            "sycamore.to",
+            "solaraai.com",
+            "nexusclips.com"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005245
+        }
+      }
+    },
+    {
+      "id": "p17",
+      "text": "how to turn an inspiration video into my own script",
+      "lang": "en",
+      "source": "research",
+      "intent": "info",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["Descript"],
+          "competitors_named": ["Descript"],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [],
+          "retrieved_domains": [],
+          "retrieved_ours": false,
+          "fan_out_queries": []
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "gan.ai",
+            "infinitecreation.io",
+            "videomaker.com",
+            "rebellink.com",
+            "aicoursify.com",
+            "youtube.com",
+            "colossyan.com",
+            "contentkrush.com",
+            "submagic.co",
+            "facebook.com"
+          ],
+          "item_types": ["ai_overview", "organic", "people_also_ask"],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": ["VEED"],
+            "competitors_cited": ["VEED"],
+            "cited_domains": [
+              "veed.io",
+              "youtube.com",
+              "aicoursify.com",
+              "canva.com",
+              "manus.im"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": ["VEED"],
+          "competitors_cited": ["VEED"],
+          "cited_domains": [
+            "veed.io",
+            "youtube.com",
+            "aicoursify.com",
+            "canva.com",
+            "manus.im"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": ["canva.com"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": ["CapCut"],
+          "cited_domains": [
+            "socialhunt.co",
+            "hypescribe.com",
+            "reddit.com",
+            "tareno.co",
+            "chillnoteai.com",
+            "capcut.com",
+            "short.ai",
+            "blog.hubspot.com"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005668
+        }
+      }
+    },
+    {
+      "id": "p18",
+      "text": "video hook ideas for TikTok and Reels",
+      "lang": "en",
+      "source": "research",
+      "intent": "info",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [],
+          "retrieved_domains": [],
+          "retrieved_ours": false,
+          "fan_out_queries": []
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "nextlevelglobalacademy.com",
+            "vadoo.tv",
+            "flick.social",
+            "snshelper.com",
+            "lemon8-app.com",
+            "makehooks.com",
+            "metricool.com",
+            "tickbig.com",
+            "jp.pinterest.com"
+          ],
+          "item_types": [
+            "ai_overview",
+            "organic",
+            "people_also_ask",
+            "video",
+            "images"
+          ],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": [],
+            "competitors_cited": [],
+            "cited_domains": [
+              "snshelper.com",
+              "heyorca.com",
+              "socialmon.ai",
+              "tiktok.com",
+              "makehooks.com",
+              "tickbig.com",
+              "ru.pinterest.com",
+              "instagram.com",
+              "youtube.com",
+              "lemon8-app.com",
+              "flick.social",
+              "vadoo.tv"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "snshelper.com",
+            "heyorca.com",
+            "socialmon.ai",
+            "tiktok.com",
+            "makehooks.com",
+            "tickbig.com",
+            "ru.pinterest.com",
+            "instagram.com",
+            "youtube.com",
+            "lemon8-app.com",
+            "flick.social",
+            "vadoo.tv"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": ["reelrise.app", "videotto.com"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "monty.fast",
+            "usevyra.com",
+            "clyper.io",
+            "postnext.io",
+            "retiplex.com",
+            "playplay.com",
+            "smartpostly.com",
+            "captionsauce.com",
+            "wolfvisibility.com",
+            "ugcagent.app"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005789
+        }
+      }
+    },
+    {
+      "id": "p19",
+      "text": "TikTok script template",
+      "lang": "en",
+      "source": "gsc",
+      "intent": "info",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [],
+          "retrieved_domains": [],
+          "retrieved_ours": false,
+          "fan_out_queries": []
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "virtualsocialmedia.com",
+            "etsy.com",
+            "denote.net",
+            "nestscale.com",
+            "youtube.com",
+            "tlinky.com",
+            "chatartpro.com",
+            "theresanaiforthat.com",
+            "onflowads.com",
+            "tiktok.com"
+          ],
+          "item_types": ["ai_overview", "organic"],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": [],
+            "competitors_cited": [],
+            "cited_domains": [],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": []
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": ["retiplex.com"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": true,
+          "cited_rank": 2,
+          "our_urls": ["https://ypr.app/blog/tiktok-script"],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "noobclaw.com",
+            "ypr.app",
+            "tokconnect.com",
+            "gazecue.com",
+            "hyperwriteai.com",
+            "polimake.com",
+            "pictory.ai",
+            "rephrasely.com",
+            "tlinky.com",
+            "teleprompter.works"
+          ],
+          "visible": true,
+          "model": "sonar",
+          "cost_tokens": 0.005479
+        }
+      }
+    },
+    {
+      "id": "p20",
+      "text": "YouTube script template",
+      "lang": "en",
+      "source": "research",
+      "intent": "info",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [],
+          "retrieved_domains": [],
+          "retrieved_ours": false,
+          "fan_out_queries": []
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "tr.pinterest.com",
+            "views4you.com",
+            "scalenut.com",
+            "pinterest.com",
+            "entrepreneur.com",
+            "blog.hubspot.com",
+            "martintalbotmedia.medium.com",
+            "videolearningai.com",
+            "clickup.com",
+            "sk.pinterest.com"
+          ],
+          "item_types": [
+            "ai_overview",
+            "organic",
+            "images",
+            "video",
+            "related_searches"
+          ],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": [],
+            "competitors_cited": [],
+            "cited_domains": [
+              "reddit.com",
+              "medium.com",
+              "youtube.com",
+              "overseeros.com",
+              "milanote.com",
+              "katiesteckly.com",
+              "notion.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "reddit.com",
+            "medium.com",
+            "youtube.com",
+            "overseeros.com",
+            "milanote.com",
+            "katiesteckly.com",
+            "notion.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": ["youtube.com", "reddit.com", "api.dataforseo.com"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": ["Later"],
+          "cited_domains": [
+            "kabo.sh",
+            "fyreinteractive.co",
+            "airmore.ai",
+            "swiftcopy.io",
+            "boords.com",
+            "overseeros.com",
+            "vidiq.com",
+            "notion.com",
+            "unkoa.com",
+            "later.com"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.00579
+        }
+      }
+    },
+    {
+      "id": "p21",
+      "text": "how to cross-post one video to TikTok, Instagram Reels and YouTube Shorts",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [
+            "Descript",
+            "Metricool",
+            "Buffer",
+            "Later",
+            "ChatGPT",
+            "CapCut"
+          ],
+          "competitors_named": [
+            "Descript",
+            "Metricool",
+            "Buffer",
+            "Later",
+            "ChatGPT",
+            "CapCut"
+          ],
+          "competitors_cited": ["Buffer", "Later", "Metricool"],
+          "cited_domains": [
+            "metricool.com",
+            "buffer.com",
+            "later.com",
+            "shortstack.tools",
+            "runmimi.com"
+          ],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": ["Metricool", "Buffer", "Later"],
+          "retrieved_domains": [
+            "clyper.io",
+            "runmimi.com",
+            "learn.repping.ai",
+            "doe.louisiana.gov",
+            "reelspan.com",
+            "upload-post.com",
+            "genlabs-development.up.railway.app",
+            "lumiclip.ai",
+            "youtube.com",
+            "bereel.pro",
+            "easyviral.ai",
+            "zippyclip.net",
+            "shortstack.tools"
+          ],
+          "retrieved_ours": false,
+          "fan_out_queries": [
+            "official TikTok Studio schedule posts Instagram Meta Business Suite schedule Reels YouTube Studio schedule Shorts cross posting tools 2026"
+          ]
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "tiktok.com",
+            "reddit.com",
+            "circleboom.com",
+            "youtube.com",
+            "taisly.com",
+            "digitalmarketersforum.com",
+            "vbout.com",
+            "indiepost.app"
+          ],
+          "item_types": [
+            "ai_overview",
+            "organic",
+            "people_also_ask",
+            "discussions_and_forums"
+          ],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": ["Descript"],
+            "competitors_cited": [],
+            "cited_domains": [
+              "shortsync.app",
+              "digitalmarketersforum.com",
+              "youtube.com",
+              "indiepost.app",
+              "taisly.com",
+              "socialync.io",
+              "quora.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": ["Descript"],
+          "competitors_cited": [],
+          "cited_domains": [
+            "shortsync.app",
+            "digitalmarketersforum.com",
+            "youtube.com",
+            "indiepost.app",
+            "taisly.com",
+            "socialync.io",
+            "quora.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["Later", "Buffer", "Metricool", "CapCut", "Descript"],
+          "competitors_named": [
+            "Later",
+            "Buffer",
+            "Metricool",
+            "CapCut",
+            "Descript"
+          ],
+          "competitors_cited": [],
+          "cited_domains": ["shortsync.app", "oneupapp.io"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["Descript", "Buffer", "Metricool"],
+          "competitors_named": ["Descript", "Buffer", "Metricool"],
+          "competitors_cited": [],
+          "cited_domains": [
+            "postminion.com",
+            "mellow.world",
+            "postwire.io",
+            "postspread.com",
+            "kadenzo.app",
+            "shortsync.app",
+            "hookspring.com",
+            "upload-post.com",
+            "shortsmith.kr",
+            "oneupapp.io"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005537
+        }
+      }
+    },
+    {
+      "id": "p22",
+      "text": "all-in-one content creation app for talking head creators",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["Captions", "BIGVU", "Descript", "ChatGPT"],
+          "competitors_named": ["Captions", "BIGVU", "Descript", "ChatGPT"],
+          "competitors_cited": ["Captions", "Descript", "BIGVU"],
+          "cited_domains": [
+            "jupitrr.com",
+            "captions.ai",
+            "bigvu.tv",
+            "descript.com",
+            "mirrorcut.ai"
+          ],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": ["Jupitrr AI", "Captions", "BIGVU", "Descript"],
+          "retrieved_domains": [
+            "jupitrr.com",
+            "mirrorcut.ai",
+            "reelvana.app",
+            "aiindigo.com",
+            "itechguides.com",
+            "opus.pro",
+            "g2.com",
+            "realtake.ai",
+            "sakura5.app",
+            "vidpros.com"
+          ],
+          "retrieved_ours": false,
+          "fan_out_queries": [
+            "all-in-one content creation apps for talking head video creators script teleprompter recording editing captions repurposing 2026"
+          ]
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "facebook.com",
+            "castmagic.io",
+            "reddit.com",
+            "blog.lunabloomai.com",
+            "clickup.com",
+            "youtube.com",
+            "toolsatlas.net",
+            "storysonic.com",
+            "appsumo.com"
+          ],
+          "item_types": [
+            "ai_overview",
+            "video",
+            "organic",
+            "discussions_and_forums",
+            "people_also_ask",
+            "related_searches"
+          ],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": ["Descript", "CapCut", "VEED", "OpusClip"],
+            "competitors_cited": [],
+            "cited_domains": [
+              "youtube.com",
+              "storysonic.com",
+              "toolsatlas.net",
+              "edits.instagram.com",
+              "clickup.com",
+              "blog.lunabloomai.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": ["Descript", "CapCut", "VEED", "OpusClip"],
+          "competitors_cited": [],
+          "cited_domains": [
+            "youtube.com",
+            "storysonic.com",
+            "toolsatlas.net",
+            "edits.instagram.com",
+            "clickup.com",
+            "blog.lunabloomai.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["CapCut", "VEED", "Synthesia"],
+          "competitors_named": ["CapCut", "VEED", "Synthesia"],
+          "competitors_cited": [],
+          "cited_domains": [
+            "jupitrr.com",
+            "heygen.com",
+            "jimdo.com",
+            "pose.ai"
+          ],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": true,
+          "position": 1,
+          "cited": true,
+          "cited_rank": 1,
+          "our_urls": ["https://ypr.app/"],
+          "names": ["Yapper", "Riverside", "Submagic"],
+          "competitors_named": ["Riverside", "Submagic"],
+          "competitors_cited": ["Submagic"],
+          "cited_domains": [
+            "ypr.app",
+            "jupitrr.com",
+            "apps.apple.com",
+            "play.google.com",
+            "puppetry.com",
+            "contentcreators.com",
+            "prismvideos.com",
+            "submagic.co"
+          ],
+          "visible": true,
+          "model": "sonar",
+          "cost_tokens": 0.005256
+        }
+      }
+    },
+    {
+      "id": "p23",
+      "text": "random topics to talk about for 1 minute",
+      "lang": "en",
+      "source": "gsc",
+      "intent": "info",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [],
+          "retrieved_domains": [],
+          "retrieved_ours": false,
+          "fan_out_queries": []
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": 5,
+          "organic_url": "https://ypr.app/blog/table-topics-questions",
+          "top10_domains": [
+            "instagram.com",
+            "quora.com",
+            "quizlet.com",
+            "ypr.app",
+            "theclassroom.com",
+            "reddit.com",
+            "scribd.com",
+            "facebook.com"
+          ],
+          "item_types": ["ai_overview", "organic", "people_also_ask"],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": true,
+            "cited_rank": 5,
+            "our_urls": ["https://ypr.app/blog/1-minute-speech-topics"],
+            "competitors_named": [],
+            "competitors_cited": [],
+            "cited_domains": [
+              "speechtopicgen.com",
+              "randomtopicgen.com",
+              "wordwall.net",
+              "getorato.com",
+              "ypr.app",
+              "talkdrill.com",
+              "quora.com"
+            ],
+            "visible": true
+          },
+          "mentioned": false,
+          "cited": true,
+          "visible": true,
+          "position": null,
+          "cited_rank": 5,
+          "our_urls": ["https://ypr.app/blog/1-minute-speech-topics"],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "speechtopicgen.com",
+            "randomtopicgen.com",
+            "wordwall.net",
+            "getorato.com",
+            "ypr.app",
+            "talkdrill.com",
+            "quora.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": ["getorato.com"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "randomtopics.app",
+            "random-topic-generator.com",
+            "randomtopicgenerator.net",
+            "myrandomverse.com"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005294
+        }
+      }
+    },
+    {
+      "id": "p24",
+      "text": "1 minute speech topics",
+      "lang": "en",
+      "source": "gsc",
+      "intent": "info",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [],
+          "retrieved_domains": [],
+          "retrieved_ours": false,
+          "fan_out_queries": []
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "ai.tenorshare.com",
+            "quora.com",
+            "greatassignmenthelp.com",
+            "rhetoriclab.com",
+            "facebook.com",
+            "myperfectwords.com",
+            "presentationskills.me",
+            "mchip.net",
+            "en.sorumatik.co"
+          ],
+          "item_types": ["ai_overview", "organic", "people_also_ask", "images"],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": [],
+            "competitors_cited": [],
+            "cited_domains": [
+              "getorato.com",
+              "write-out-loud.com",
+              "mocktrialstrategies.com",
+              "reddit.com",
+              "virtualspeech.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "getorato.com",
+            "write-out-loud.com",
+            "mocktrialstrategies.com",
+            "reddit.com",
+            "virtualspeech.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": ["write-out-loud.com", "debateladder.com"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": true,
+          "cited_rank": 6,
+          "our_urls": ["https://ypr.app/blog/1-minute-speech-topics"],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "write-out-loud.com",
+            "getorato.com",
+            "randomtopics.app",
+            "presentationskills.me",
+            "impromptugenerator.com",
+            "ypr.app",
+            "universalwisdomschool.in",
+            "random-topic.com",
+            "franticallyspeaking.com"
+          ],
+          "visible": true,
+          "model": "sonar",
+          "cost_tokens": 0.005248
+        }
+      }
+    },
+    {
+      "id": "p25",
+      "text": "how to yap on camera",
+      "lang": "en",
+      "source": "research",
+      "intent": "info",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [],
+          "retrieved_domains": [],
+          "retrieved_ours": false,
+          "fan_out_queries": []
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "instagram.com",
+            "youtube.com",
+            "sarahcollinscoaching.com",
+            "kabo.sh",
+            "reddit.com",
+            "tiktok.com"
+          ],
+          "item_types": [
+            "ai_overview",
+            "organic",
+            "people_also_ask",
+            "short_videos",
+            "perspectives"
+          ],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": [],
+            "competitors_cited": [],
+            "cited_domains": [
+              "instagram.com",
+              "tiktok.com",
+              "kabo.sh",
+              "youtube.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "instagram.com",
+            "tiktok.com",
+            "kabo.sh",
+            "youtube.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "youtube.com",
+            "instagram.com",
+            "api.dataforseo.com"
+          ],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "cut30.co",
+            "creators.ramd.am",
+            "kabo.sh",
+            "youtube.com",
+            "buzzsprout.com",
+            "open.spotify.com"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005347
+        }
+      }
+    },
+    {
+      "id": "p26",
+      "text": "hook story lesson video format",
+      "lang": "en",
+      "source": "research",
+      "intent": "info",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [],
+          "retrieved_domains": [],
+          "retrieved_ours": false,
+          "fan_out_queries": []
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "facebook.com",
+            "youtube.com",
+            "filmscribe.ai",
+            "instagram.com",
+            "tiktok.com",
+            "linkedin.com"
+          ],
+          "item_types": ["organic", "people_also_ask"],
+          "ai_overview": {
+            "present": false,
+            "loaded": false,
+            "mentioned": false,
+            "cited": false,
+            "visible": false,
+            "our_urls": [],
+            "cited_domains": [],
+            "competitors_named": [],
+            "competitors_cited": [],
+            "position": null,
+            "cited_rank": null
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": []
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": ["facebook.com", "selfstorming.com"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "blossai.com",
+            "gist.github.com",
+            "github.com",
+            "hanzoskills.com",
+            "autoshort.io",
+            "scribd.com",
+            "klap.app",
+            "inspirefusion.com"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005438
+        }
+      }
+    },
+    {
+      "id": "p27",
+      "text": "how to tell a story on camera",
+      "lang": "en",
+      "source": "research",
+      "intent": "info",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["Teleprompter.com"],
+          "competitors_named": ["Teleprompter.com"],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": [],
+          "retrieved_domains": [],
+          "retrieved_ours": false,
+          "fan_out_queries": []
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "reddit.com",
+            "omgitzlo.com",
+            "horizont3000.sharepoint.com",
+            "theshutterclub.com",
+            "twenty5films.com",
+            "mcahalane.com",
+            "facebook.com",
+            "youtube.com",
+            "snapchat.com",
+            "ricksdailytips.com"
+          ],
+          "item_types": [
+            "ai_overview",
+            "video",
+            "people_also_ask",
+            "organic",
+            "short_videos",
+            "discussions_and_forums",
+            "related_searches"
+          ],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": [],
+            "competitors_cited": [],
+            "cited_domains": [
+              "theshutterclub.com",
+              "wta.org",
+              "youtube.com",
+              "blurb.com",
+              "twenty5films.com",
+              "mcahalane.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "theshutterclub.com",
+            "wta.org",
+            "youtube.com",
+            "blurb.com",
+            "twenty5films.com",
+            "mcahalane.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": ["medium.com"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["Descript"],
+          "competitors_named": ["Descript"],
+          "competitors_cited": [],
+          "cited_domains": [
+            "iphotography.com",
+            "pixflow.net",
+            "rmcad.edu",
+            "worldofviruses.unl.edu",
+            "tamron-americas.com",
+            "storytellingonline.info",
+            "peacecorps.gov",
+            "creatorhandbook.net",
+            "myclickmagazine.com",
+            "strath.ac.uk"
+          ],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005576
+        }
+      }
+    },
+    {
+      "id": "p28",
+      "text": "best app to capture video ideas",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["ChatGPT"],
+          "competitors_named": ["ChatGPT"],
+          "competitors_cited": [],
+          "cited_domains": [
+            "notion.com",
+            "milanote.com",
+            "apple.com",
+            "nemosapp.com",
+            "goalsandprogress.com",
+            "influencernotes.com"
+          ],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": ["Notion", "Milanote", "Apple Notes", "Nemos"],
+          "retrieved_domains": [
+            "nemosapp.com",
+            "goalsandprogress.com",
+            "developers.fabric.so",
+            "savedthat.app",
+            "clairmind.ai",
+            "zapier.com",
+            "notecairn.com",
+            "influencernotes.com",
+            "dupple.com",
+            "ai4u.space"
+          ],
+          "retrieved_ours": false,
+          "fan_out_queries": [
+            "best apps to capture and organize video content ideas creators 2026 Notion Apple Notes Google Keep Milanote"
+          ]
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "youtube.com",
+            "jourdujour.wordpress.com",
+            "wp301redirects.com",
+            "pinterest.com",
+            "crayo.ai",
+            "ioshacker.com",
+            "lemonad.org",
+            "techyv.com",
+            "facebook.com",
+            "somethingforthat.com"
+          ],
+          "item_types": [
+            "ai_overview",
+            "organic",
+            "people_also_ask",
+            "discussions_and_forums"
+          ],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": [],
+            "competitors_cited": [],
+            "cited_domains": [
+              "milanote.com",
+              "play.google.com",
+              "preframe-app.com",
+              "zapier.com",
+              "speakwiseapp.com",
+              "heypocket.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "milanote.com",
+            "play.google.com",
+            "preframe-app.com",
+            "zapier.com",
+            "speakwiseapp.com",
+            "heypocket.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": [],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": ["milanote.com", "getbraindump.com"],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": true,
+          "position": 1,
+          "cited": true,
+          "cited_rank": 1,
+          "our_urls": ["https://ypr.app/features/idea-capture"],
+          "names": ["Yapper"],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": [
+            "ypr.app",
+            "apps.apple.com",
+            "atlassian.com",
+            "nytimes.com",
+            "techradar.com",
+            "lifehacker.com"
+          ],
+          "visible": true,
+          "model": "sonar",
+          "cost_tokens": 0.005261
+        }
+      }
+    },
+    {
+      "id": "p29",
+      "text": "teleprompter app with AI script writer",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["BIGVU", "Teleprompter.com", "PromptSmart", "ChatGPT"],
+          "competitors_named": [
+            "BIGVU",
+            "Teleprompter.com",
+            "PromptSmart",
+            "ChatGPT"
+          ],
+          "competitors_cited": ["BIGVU", "Teleprompter.com", "PromptSmart"],
+          "cited_domains": [
+            "bigvu.tv",
+            "teleprompter.com",
+            "promptsmart.com",
+            "itechguides.com",
+            "thewindowsclub.com"
+          ],
+          "visible": false,
+          "model": "gpt-6",
+          "brand_entities": ["BIGVU", "Teleprompter.com", "PromptSmart"],
+          "retrieved_domains": [
+            "bigvu.tv",
+            "itechguides.com",
+            "teleprompterstudio.app",
+            "mobilestalk.net",
+            "thewindowsclub.com",
+            "cue-app.me",
+            "rottenwifi.com",
+            "techyorker.com",
+            "goteleprompter.com",
+            "rankite.com"
+          ],
+          "retrieved_ours": false,
+          "fan_out_queries": [
+            "best teleprompter apps with AI script writer 2026 BIGVU Teleprompter.com PromptSmart features"
+          ]
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "awzware.com",
+            "visionvix.com",
+            "mixcord.co",
+            "play.google.com",
+            "youtube.com",
+            "cofenster.com",
+            "reddit.com",
+            "facebook.com",
+            "selfmadenewbie.com"
+          ],
+          "item_types": [
+            "ai_overview",
+            "organic",
+            "video",
+            "people_also_ask",
+            "discussions_and_forums",
+            "related_searches"
+          ],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": false,
+            "position": null,
+            "cited": false,
+            "cited_rank": null,
+            "our_urls": [],
+            "competitors_named": ["BIGVU", "Teleprompter.com"],
+            "competitors_cited": ["BIGVU", "Teleprompter.com", "Speakflow"],
+            "cited_domains": [
+              "speakflow.com",
+              "play.google.com",
+              "bigvu.tv",
+              "teleprompter.com",
+              "owlprompter.app",
+              "youtube.com"
+            ],
+            "visible": false
+          },
+          "mentioned": false,
+          "cited": false,
+          "visible": false,
+          "position": null,
+          "cited_rank": null,
+          "our_urls": [],
+          "competitors_named": ["BIGVU", "Teleprompter.com"],
+          "competitors_cited": ["BIGVU", "Teleprompter.com", "Speakflow"],
+          "cited_domains": [
+            "speakflow.com",
+            "play.google.com",
+            "bigvu.tv",
+            "teleprompter.com",
+            "owlprompter.app",
+            "youtube.com"
+          ]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["BIGVU", "Captions", "Teleprompter.com"],
+          "competitors_named": ["BIGVU", "Captions", "Teleprompter.com"],
+          "competitors_cited": ["Captions", "BIGVU"],
+          "cited_domains": [
+            "bigvu.tv",
+            "play.google.com",
+            "apps.apple.com",
+            "captions.ai",
+            "studiovity.com",
+            "solaraai.com",
+            "beastteleprompter.com"
+          ],
+          "visible": false,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": false,
+          "position": null,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["BIGVU"],
+          "competitors_named": ["BIGVU"],
+          "competitors_cited": ["BIGVU"],
+          "cited_domains": ["apps.apple.com", "play.google.com", "bigvu.tv"],
+          "visible": false,
+          "model": "sonar",
+          "cost_tokens": 0.005312
+        }
+      }
+    },
+    {
+      "id": "p30",
+      "text": "what is Yapper ypr.app",
+      "lang": "en",
+      "source": "gsc",
+      "intent": "brand",
+      "engines": {
+        "chatgpt": {
+          "status": "ok",
+          "mentioned": true,
+          "position": 1,
+          "cited": true,
+          "cited_rank": 1,
+          "our_urls": [
+            "https://ypr.app/",
+            "https://ypr.app/privacy",
+            "https://ypr.app/terms"
+          ],
+          "names": ["Yapper", "ChatGPT"],
+          "competitors_named": ["ChatGPT"],
+          "competitors_cited": [],
+          "cited_domains": ["ypr.app"],
+          "visible": true,
+          "model": "gpt-6",
+          "brand_entities": ["Yapper"],
+          "retrieved_domains": [
+            "ypr.app",
+            "play.google.com",
+            "getyapping.com",
+            "yapperhq.com",
+            "apps.apple.com",
+            "yapperlive.app",
+            "yapper.exposed",
+            "getyapper.org"
+          ],
+          "retrieved_ours": true,
+          "fan_out_queries": ["Yapper ypr.app what is Yapper app"]
+        },
+        "google": {
+          "status": "ok",
+          "organic_rank": null,
+          "organic_url": null,
+          "top10_domains": [
+            "useyappr.com",
+            "youtube.com",
+            "instagram.com",
+            "apkpure.com",
+            "yapper.party",
+            "facebook.com",
+            "keywordsearch.com",
+            "tiktok.com"
+          ],
+          "item_types": ["ai_overview", "organic", "people_also_ask"],
+          "ai_overview": {
+            "present": true,
+            "loaded": true,
+            "mentioned": true,
+            "position": 1,
+            "cited": true,
+            "cited_rank": 1,
+            "our_urls": [
+              "https://ypr.app/",
+              "https://ypr.app/blog",
+              "https://ypr.app/blog/talking-head-video",
+              "https://ypr.app/features",
+              "https://ypr.app/features/ai-script-writer",
+              "https://ypr.app/features/social-publishing"
+            ],
+            "competitors_named": [],
+            "competitors_cited": [],
+            "cited_domains": ["ypr.app"],
+            "visible": true
+          },
+          "mentioned": true,
+          "cited": true,
+          "visible": true,
+          "position": 1,
+          "cited_rank": 1,
+          "our_urls": [
+            "https://ypr.app/",
+            "https://ypr.app/blog",
+            "https://ypr.app/blog/talking-head-video",
+            "https://ypr.app/features",
+            "https://ypr.app/features/ai-script-writer",
+            "https://ypr.app/features/social-publishing"
+          ],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": ["ypr.app"]
+        },
+        "ai_mode": {
+          "status": "ok",
+          "mentioned": true,
+          "position": 1,
+          "cited": false,
+          "cited_rank": null,
+          "our_urls": [],
+          "names": ["Yapper", "Descript"],
+          "competitors_named": ["Descript"],
+          "competitors_cited": [],
+          "cited_domains": [],
+          "visible": true,
+          "present": true
+        },
+        "perplexity": {
+          "status": "ok",
+          "mentioned": true,
+          "position": 1,
+          "cited": true,
+          "cited_rank": 1,
+          "our_urls": [
+            "https://ypr.app/",
+            "https://ypr.app/features",
+            "https://ypr.app/features/automatic-captions",
+            "https://ypr.app/features/idea-capture",
+            "https://ypr.app/features/teleprompter-recorder",
+            "https://ypr.app/pricing",
+            "https://ypr.app/products",
+            "https://ypr.app/studio/editor",
+            "https://ypr.app/terms"
+          ],
+          "names": ["Yapper"],
+          "competitors_named": [],
+          "competitors_cited": [],
+          "cited_domains": ["ypr.app", "play.google.com"],
+          "visible": true,
+          "model": "sonar",
+          "cost_tokens": 0.005177
+        }
+      }
+    }
+  ]
+}
