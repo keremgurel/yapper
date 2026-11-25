@@ -645,7 +645,7 @@ struct TextWorkbench: View {
                 }
             }
             .padding(16)
-            .frame(maxWidth: 680, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .inspectorPane(maxWidth: 680)
     }

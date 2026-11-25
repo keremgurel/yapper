@@ -36,7 +36,7 @@ struct StylesWorkbench: View {
                 Spacer(minLength: 0)
             }
             .padding(16)
-            .frame(maxWidth: 620, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .inspectorPane(maxWidth: 660)
     }

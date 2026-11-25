@@ -1366,6 +1366,32 @@ final class EditorSession: ObservableObject {
         }
     }
 
+    /// Plays an effect from part-way in, for scrubbing its waveform before
+    /// adding it. `fraction` is how far into the sound, 0 to 1.
+    func previewSoundEffect(_ effect: SoundEffectDescriptor, from fraction: Double) async {
+        if previewingSoundID != effect.id || soundPreview == nil {
+            await previewSoundEffect(effect)
+        }
+        guard let sound = soundPreview else { return }
+        let start = min(max(0, fraction), 0.999) * sound.duration
+        sound.currentTime = start
+        if !sound.isPlaying { sound.play() }
+        soundPreviewEnd?.cancel()
+        soundPreviewEnd = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(Int((sound.duration - start) * 1000) + 120))
+            guard !Task.isCancelled, let self, previewingSoundID == effect.id else { return }
+            previewingSoundID = nil
+            soundPreview = nil
+        }
+    }
+
+    /// How far the sound being previewed has played, 0 to 1. Read by the card
+    /// on each frame while it plays, so nothing is published per tick.
+    var soundPreviewProgress: Double {
+        guard let sound = soundPreview, sound.duration > 0 else { return 0 }
+        return sound.currentTime / sound.duration
+    }
+
     /// Stops whatever is being previewed, now.
     func stopSoundPreview() {
         soundPreviewEnd?.cancel()

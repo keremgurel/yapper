@@ -19,6 +19,8 @@ struct SimpleWorkbench: View {
             guard let request, let tab = WorkbenchTab(rawValue: request.tool), let next = SimpleRailItem(tab: tab) else { return }
             withAnimation(.easeOut(duration: 0.14)) { item = next }
         }
+        // ⌘K opens Edit, where Chirpy is.
+        .onChange(of: session.isAssistantOpen) { _, open in if open { item = .quick } }
         .onChange(of: session.project.clips.isEmpty) { wasEmpty, isEmpty in
             // Footage just arrived: 1-Click Edit is the next thing to do.
             if wasEmpty, !isEmpty { item = .quick }

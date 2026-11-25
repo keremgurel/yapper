@@ -3,7 +3,7 @@ import SwiftUI
 /// The editor's audio tab: the sound you have selected, the sounds already in
 /// the project, your saved library and the shipped effects, in that order.
 ///
-/// One column, one width. Every block below fills `AudioWorkbenchMetrics.width`
+/// One column across the pane. Every block below fills it
 /// so their left and right edges line up, which the old tab did not: the
 /// header, the selected card, the shelf and the search each had a width of
 /// their own, between 528 and 620 points.
@@ -23,11 +23,9 @@ struct AudioWorkbench: View {
                     ProjectAudioList(session: session, layers: layers)
                 }
 
-                WorkbenchSavedAudioShelf(session: session, store: .shared)
-
                 SoundEffectsSection(session: session)
             }
-            .frame(maxWidth: AudioWorkbenchMetrics.width, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
         }
         .inspectorPane(maxWidth: AudioWorkbenchMetrics.width + 32)
@@ -35,8 +33,8 @@ struct AudioWorkbench: View {
 
     private var header: some View {
         WorkbenchPaneHeader(
-            title: "Audio",
-            detail: "Music and sound effects for your timeline"
+            title: "Sounds",
+            detail: "Click a waveform to hear it from there, then add it at the playhead."
         ) {
             Button {
                 ImportPanels.openAudio(for: session)
@@ -63,6 +61,6 @@ enum AudioWorkbenchMetrics {
     static let cardRadius: CGFloat = 8
     /// Two cards a row at the tab's width, one when the pane is narrow.
     static let columns = [
-        GridItem(.adaptive(minimum: 230), spacing: gridSpacing, alignment: .top),
+        GridItem(.adaptive(minimum: 250), spacing: gridSpacing, alignment: .top),
     ]
 }
