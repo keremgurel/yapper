@@ -5,17 +5,18 @@ import Testing
 @testable import YapperNative
 
 private actor StyleTestStore: ProjectPersisting {
-    var saves: [EditorProject] = []
     func load() async throws -> EditorProject? { nil }
-    func save(_ project: EditorProject) async throws { saves.append(project) }
+    func save(_ project: EditorProject) async throws {}
 }
 
-/// Style library templates in the editor: the bundled catalog, applying a
-/// split through the same executor Chirpy uses, the split's own settings, and
-/// the top visual.
+/// Style library templates in the editor: laid over a stretch of words or the
+/// whole video, offered through Chirpy as cards, changed afterwards by span,
+/// and drawn the same in the player and the export.
 @MainActor
 @Suite(.serialized)
 struct StyleTemplateActionTests {
+    /// A 4 s green take with one sentence every second, and a wide red clip
+    /// for the top half.
     private func fixture() async throws -> (EditorProject, URL) {
         let root = FileManager.default.temporaryDirectory.appending(path: "style-actions-\(UUID())")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -25,15 +26,22 @@ struct StyleTemplateActionTests {
         try await SyntheticVideo.write(color: NSColor.red.cgColor, size: CGSize(width: 320, height: 180), seconds: 4, to: clipURL)
         let take = try await MediaProbe.inspect(url: takeURL)
         let clip = try await MediaProbe.inspect(url: clipURL)
-        let words = [TranscriptWord(mediaID: take.id, text: "hello", start: 0.2, end: 0.6)]
+        let lines = [("Hello", "there."), ("Signups", "flat."), ("Then", "growth."), ("Bye", "now.")]
+        var words: [TranscriptWord] = []
+        for (index, line) in lines.enumerated() {
+            let t = Double(index)
+            words.append(TranscriptWord(mediaID: take.id, text: line.0, start: t + 0.1, end: t + 0.4))
+            words.append(TranscriptWord(mediaID: take.id, text: line.1, start: t + 0.5, end: t + 0.9))
+        }
+        let captions = lines.indices.map { index in
+            ProjectCaption(mediaID: take.id, text: "\(lines[index].0) \(lines[index].1)",
+                           sourceStart: Double(index) + 0.1, sourceEnd: Double(index) + 0.9,
+                           wordIDs: [words[index * 2].id, words[index * 2 + 1].id])
+        }
         let project = EditorProject(
             media: [take, clip],
-            clips: [
-                TimelineClip(mediaID: take.id, sourceStart: 0, sourceEnd: 2),
-                TimelineClip(mediaID: take.id, sourceStart: 2, sourceEnd: 4, isLocked: true),
-            ],
-            transcript: words, captionsEnabled: true,
-            captions: [ProjectCaption(mediaID: take.id, text: "hello", sourceStart: 0.2, sourceEnd: 0.6, wordIDs: [words[0].id])],
+            clips: [TimelineClip(mediaID: take.id, sourceStart: 0, sourceEnd: 4)],
+            transcript: words, captionsEnabled: true, captions: captions,
             aspectRatio: .source
         )
         return (project, root)
@@ -50,9 +58,16 @@ struct StyleTemplateActionTests {
         await session.appActions.execute(try session.actionRequest(input), in: session)
     }
 
+    private func phrase(_ text: String) -> TimelineAnchorInput {
+        TimelineAnchorInput(kind: .phrase, time: nil, phrase: text, occurrence: nil, eventID: nil, offset: nil)
+    }
+
+    private func captionY(_ project: EditorProject, _ index: Int) -> Double {
+        project.storedCaptions[index].resolvedStyle(base: project.captionStyleOrDefault).y
+    }
+
     @Test func bundledCatalogHasTheSplit() throws {
-        let catalog = StyleTemplateCatalog.bundled
-        let half = try #require(catalog.template("half-and-half"))
+        let half = try #require(StyleTemplateCatalog.bundled.template("half-and-half"))
         guard case let .split(camera, zoom, focus, top) = half.layout else {
             Issue.record("half-and-half should be a split")
             return
@@ -60,21 +75,15 @@ struct StyleTemplateActionTests {
         #expect(camera == StyleBoxPlan(x: 0, y: 0.5, width: 1, height: 0.5))
         #expect(top.height == 0.5)
         #expect(zoom == 1 && focus == 0.3)
-        #expect(half.backdrop?.preset == "shapeGrid")
-        #expect(half.captions?.style.y == 0.525)
-        #expect(catalog.template("talking-head")?.layout == .fullFrame)
+        #expect(StyleTemplateCatalog.bundled.template("talking-head")?.layout == .fullFrame)
     }
 
     @Test func coverFramingKeepsTheFocusLineInPlace() {
-        // A 9:16 take in a 1080 x 960 half covers it twice as tall as the
-        // area, so keeping the line 30% down in place slides it 0.2 down.
         let framing = CameraRegionFraming.framing(
             zoom: 1, focusY: 0.3, sourceAspect: 9.0 / 16.0,
             region: .below(seam: 0.5), frameAspect: 9.0 / 16.0
         )
         #expect(abs(framing.y - 0.2) < 0.0001)
-        #expect(framing.scale == 1)
-        // A wide take fills the half by height: nothing to slide.
         let wide = CameraRegionFraming.framing(
             zoom: 1, focusY: 0.3, sourceAspect: 16.0 / 9.0,
             region: .below(seam: 0.5), frameAspect: 9.0 / 16.0
@@ -82,46 +91,85 @@ struct StyleTemplateActionTests {
         #expect(abs(wide.y) < 0.0001)
     }
 
-    @Test func applyingTheSplitSetsLayoutBackdropAndCaptions() async throws {
+    @Test func splitCoversOnlyTheWordsItWasAskedFor() async throws {
         let (project, root) = try await fixture()
         defer { try? FileManager.default.removeItem(at: root) }
         let session = await session(project)
 
-        let result = try await run(StyleApplyInput(templateID: "half-and-half", topMediaID: project.media[1].id), in: session)
+        let result = try await run(StyleApplyInput(templateID: "half-and-half", at: phrase("Signups"), until: nil,
+                                                   topMediaID: project.media[1].id), in: session)
         #expect(result.status == .applied, "\(result.message)")
-        let applied = session.project
-        #expect(applied.cameraRegion == .below(seam: 0.5))
-        #expect(applied.backdropPreset == .shapeGrid)
-        #expect(applied.captionStyleOrDefault.y == 0.525)
-        #expect(applied.wordsPerCaptionCard == 3)
-        // The unlocked clip is framed for the half; the locked one is left.
-        #expect(applied.clips[0].framing != nil)
-        #expect(applied.clips[1].framing == nil)
-        #expect(result.skippedIDs == [project.clips[1].id])
-
-        let top = try #require(applied.styleTopOverlay)
-        #expect(top.mediaID == project.media[1].id)
-        #expect(top.x == 0 && top.y == 0 && top.width == 1 && top.height == 0.5)
-        // Part of the layout, so square corners and no shadow.
-        #expect(!OverlayFrame.drawsAsCard(top))
-        // A wide clip cropped to fill a 180 x 160 area: its sides go.
-        let crop = try #require(top.crop)
-        #expect(crop.height == 1 && crop.width < 1)
+        let span = try #require(session.project.resolvedLayoutSpans.first)
+        // From "Signups" to the end of its sentence, "flat."
+        #expect(abs(span.sourceStart - 1.1) < 0.01 && abs(span.sourceEnd - 1.9) < 0.01)
+        #expect(session.project.layoutSpan(atTimeline: 1.5)?.id == span.id)
+        #expect(session.project.layoutSpan(atTimeline: 0.5) == nil)
+        #expect(session.project.backdropPreset == .shapeGrid)
+        // Only the caption spoken inside moves under the seam.
+        #expect(abs(captionY(session.project, 1) - 0.525) < 0.0001)
+        #expect(captionY(session.project, 0) == captionY(project, 0))
+        // The top visual lasts as long as the split, square and cropped to fill.
+        let top = try #require(session.project.topOverlay(of: span))
+        #expect(abs(top.timelineStart - 1.1) < 0.01 && abs(top.duration - 0.8) < 0.01)
+        #expect(top.height == 0.5 && !OverlayFrame.drawsAsCard(top))
+        #expect((top.crop?.width ?? 1) < 1)
     }
 
-    @Test func splitSettingsMoveEverythingWithTheSeam() async throws {
+    @Test func wholeVideoWhenNoWordsAreNamed() async throws {
         let (project, root) = try await fixture()
         defer { try? FileManager.default.removeItem(at: root) }
         let session = await session(project)
-        _ = try await run(StyleApplyInput(templateID: "half-and-half", topMediaID: project.media[1].id), in: session)
+        _ = try await run(StyleApplyInput(templateID: "half-and-half", at: nil, until: nil, topMediaID: nil), in: session)
+        let span = try #require(session.project.resolvedLayoutSpans.first)
+        #expect(span.sourceStart == 0 && span.sourceEnd == 4)
+        #expect(session.project.timelineRanges(of: span) == [0 ... 4])
+    }
 
-        let result = try await run(StyleSplitInput(seam: 0.4, cameraZoom: 1.2, cameraFocusY: nil, visualInset: nil), in: session)
+    @Test func aCutInsideTheSplitKeepsItOnTheSameWords() async throws {
+        let (project, root) = try await fixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let session = await session(project)
+        _ = try await run(StyleApplyInput(templateID: "half-and-half", at: phrase("Signups"), until: phrase("Bye"),
+                                          topMediaID: nil), in: session)
+        let span = try #require(session.project.resolvedLayoutSpans.first)
+        session.updateProject { project in
+            let id = project.media[0].id
+            project.clips = [TimelineClip(mediaID: id, sourceStart: 0, sourceEnd: 2), TimelineClip(mediaID: id, sourceStart: 2.5, sourceEnd: 4)]
+        }
+        let ranges = session.project.timelineRanges(of: span)
+        #expect(ranges.count == 1)
+        #expect(abs(ranges[0].lowerBound - 1.1) < 0.01 && abs(ranges[0].upperBound - 2.6) < 0.01)
+    }
+
+    @Test func talkingHeadGivesAStretchTheWholeFrameBack() async throws {
+        let (project, root) = try await fixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let session = await session(project)
+        _ = try await run(StyleApplyInput(templateID: "half-and-half", at: nil, until: nil, topMediaID: project.media[1].id), in: session)
+        let result = try await run(StyleApplyInput(templateID: "talking-head", at: phrase("Then"), until: phrase("Bye"),
+                                                   topMediaID: nil), in: session)
         #expect(result.status == .applied, "\(result.message)")
-        let moved = session.project
-        #expect(moved.cameraRegion == .below(seam: 0.4))
-        #expect(abs((moved.styleTopOverlay?.height ?? 0) - 0.4) < 0.0001)
-        #expect(abs(moved.captionStyleOrDefault.y - 0.425) < 0.0001)
-        #expect(moved.clips[0].framing?.scale == 1.2)
+        let span = try #require(session.project.resolvedLayoutSpans.first)
+        // The longer side, before "Then", keeps the split and its top visual.
+        #expect(span.sourceStart == 0 && abs(span.sourceEnd - 2.1) < 0.01)
+        #expect(session.project.layoutSpan(atTimeline: 2.5) == nil)
+        #expect(session.project.topOverlay(of: span) != nil)
+        #expect(captionY(session.project, 2) == captionY(project, 2))
+    }
+
+    @Test func splitSettingsMoveTheSeamTopVisualAndCaptions() async throws {
+        let (project, root) = try await fixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let session = await session(project)
+        _ = try await run(StyleApplyInput(templateID: "half-and-half", at: phrase("Signups"), until: nil,
+                                          topMediaID: project.media[1].id), in: session)
+        let span = try #require(session.project.resolvedLayoutSpans.first)
+        let result = try await run(StyleSplitInput(spanID: span.id, seam: 0.4, cameraZoom: 1.2, cameraFocusY: nil, visualInset: nil), in: session)
+        #expect(result.status == .applied, "\(result.message)")
+        let moved = try #require(session.project.layoutSpan(span.id))
+        #expect(moved.region == .below(seam: 0.4) && moved.cameraZoom == 1.2)
+        #expect(abs((session.project.topOverlay(of: moved)?.height ?? 0) - 0.4) < 0.0001)
+        #expect(abs(captionY(session.project, 1) - 0.425) < 0.0001)
         #expect(result.changes.map(\.property).contains("split.seam"))
     }
 
@@ -129,60 +177,60 @@ struct StyleTemplateActionTests {
         let (project, root) = try await fixture()
         defer { try? FileManager.default.removeItem(at: root) }
         let session = await session(project)
-        let refused = try await run(StyleTopVisualInput(mediaID: project.media[1].id), in: session)
-        #expect(refused.status == .rejected)
-
-        _ = try await run(StyleApplyInput(templateID: "half-and-half", topMediaID: project.media[1].id), in: session)
-        let first = try #require(session.project.styleTopOverlay)
-        let result = try await run(StyleTopVisualInput(mediaID: project.media[0].id), in: session)
+        _ = try await run(StyleApplyInput(templateID: "half-and-half", at: nil, until: nil, topMediaID: project.media[1].id), in: session)
+        let span = try #require(session.project.resolvedLayoutSpans.first)
+        let first = try #require(session.project.topOverlay(of: span))
+        let result = try await run(StyleTopVisualInput(spanID: span.id, mediaID: project.media[0].id), in: session)
         #expect(result.status == .applied, "\(result.message)")
-        let swapped = try #require(session.project.styleTopOverlay)
-        #expect(swapped.id == first.id)
-        #expect(swapped.mediaID == project.media[0].id)
-        // A tall take in a wide area: its top and bottom go instead.
-        #expect(swapped.crop?.width == 1 && (swapped.crop?.height ?? 1) < 1)
+        let swapped = try #require(session.project.topOverlay(of: span))
+        #expect(swapped.id == first.id && swapped.mediaID == project.media[0].id)
         #expect(session.project.overlays?.count == 1)
     }
 
-    @Test func talkingHeadGivesTheCameraTheWholeFrameBack() async throws {
+    /// "Split screen when I talk about signups": Chirpy offers cards, the
+    /// reply carries them, and tapping one lays the split on those words.
+    @Test func chirpyOffersCardsAndATapApplies() async throws {
         let (project, root) = try await fixture()
         defer { try? FileManager.default.removeItem(at: root) }
         let session = await session(project)
-        _ = try await run(StyleApplyInput(templateID: "half-and-half", topMediaID: project.media[1].id), in: session)
-        let result = try await run(StyleApplyInput(templateID: "talking-head", topMediaID: nil), in: session)
-        #expect(result.status == .applied, "\(result.message)")
-        #expect(session.project.cameraRegion == nil)
-        #expect(session.project.clips[0].framing == nil)
-        #expect(session.project.overlays?.isEmpty ?? true)
-        #expect(session.project.appliedStyle?.templateID == "talking-head")
-        #expect(try await run(StyleSplitInput(seam: 0.4, cameraZoom: nil, cameraFocusY: nil, visualInset: nil), in: session).status == .rejected)
+        let offer = StyleOfferInput(at: phrase("Signups"), until: nil, templateIDs: nil)
+        session.chirpyPlanner = { _ in
+            guard case .object(let fields) = try ActionJSON.encoding(offer) else { throw AppActionError("bad input") }
+            return ChirpyPlanReply(message: "Here are some looks.", actions: [.init(action: "editor.styles.offer", arguments: fields)])
+        }
+        await session.runAssistant(instruction: "split screen when I talk about signups")
+        let reply = try #require(session.conversation.messages.last)
+        let cards = try #require(reply.offer)
+        #expect(cards.templateIDs == ["talking-head", "half-and-half"])
+        #expect(session.project.resolvedLayoutSpans.isEmpty)
+
+        await session.chooseOfferedStyle("half-and-half", from: cards, in: reply.id)
+        #expect(session.project.layoutSpan(atTimeline: 1.5) != nil)
+        #expect(session.conversation.messages.last?.offer?.chosen == "half-and-half")
     }
 
     @Test func unknownTemplateIsRefusedWithTheChoices() async throws {
         let (project, root) = try await fixture()
         defer { try? FileManager.default.removeItem(at: root) }
         let session = await session(project)
-        let result = try await run(StyleApplyInput(templateID: "speaker-below", topMediaID: nil), in: session)
+        let result = try await run(StyleApplyInput(templateID: "speaker-below", at: nil, until: nil, topMediaID: nil), in: session)
         #expect(result.status == .rejected)
         #expect(result.message.contains("half-and-half"))
         #expect(session.project == project)
     }
 
-    /// The camera drawn only below the seam, the top visual above it and the
-    /// backdrop nowhere it should not be, in the player's composition and in
-    /// a real export.
-    @Test func splitRendersTheSameInPreviewAndExport() async throws {
+    /// The split only while its words play: full frame before it, camera
+    /// below the seam during it, in the player and in a real export.
+    @Test func splitRendersOnlyDuringItsStretchInPreviewAndExport() async throws {
         let (base, root) = try await fixture()
         defer { try? FileManager.default.removeItem(at: root) }
         var project = base
-        project.clips = [TimelineClip(mediaID: base.media[0].id, sourceStart: 0, sourceEnd: 4)]
         project.captionsEnabled = false
         let plan = try #require(StyleTemplateCatalog.bundled.template("half-and-half"))
-        _ = project.applyStyleLayout(plan)
+        _ = project.applyStyleTemplate(plan, over: [StyleRange(mediaID: base.media[0].id, source: 1.5 ... 3)])
         project.applyStyleBackdrop(ProjectBackdropInput(color: "#0000FF", preset: nil, presetColors: nil))
         #expect(project.needsStudioCompositor)
 
-        // The camera only: blue backdrop above the seam, green take below.
         let outputURL = root.appending(path: "split.mp4")
         let built = try await CompositionBuilder.build(project: project)
         let preview = AVAssetImageGenerator(asset: built.asset)
@@ -192,16 +240,18 @@ struct StyleTemplateActionTests {
         for generator in [preview, exported] {
             generator.requestedTimeToleranceBefore = .zero
             generator.requestedTimeToleranceAfter = .zero
-            let frame = try generator.copyCGImage(at: CMTime(seconds: 1, preferredTimescale: 600), actualTime: nil)
-            func pixel(_ u: Double, _ v: Double) throws -> SampledPixel {
-                try #require(frame.sample(x: Int(u * Double(frame.width)), y: Int(v * Double(frame.height))))
+            func pixel(_ seconds: Double, _ u: Double, _ v: Double) throws -> SampledPixel {
+                let frame = try generator.copyCGImage(at: CMTime(seconds: seconds, preferredTimescale: 600), actualTime: nil)
+                return try #require(frame.sample(x: Int(u * Double(frame.width)), y: Int(v * Double(frame.height))))
             }
-            let above = try pixel(0.5, 0.25)
+            let before = try pixel(0.7, 0.5, 0.25)
+            #expect(before.green > 200 && before.blue < 60, "before the split: \(before)")
+            let above = try pixel(2.2, 0.5, 0.25)
             #expect(above.blue > 200 && above.green < 60, "above the seam: \(above)")
-            let below = try pixel(0.5, 0.75)
+            let below = try pixel(2.2, 0.5, 0.75)
             #expect(below.green > 200 && below.blue < 60, "below the seam: \(below)")
-            let justBelow = try pixel(0.1, 0.53)
-            #expect(justBelow.green > 200, "just under the seam: \(justBelow)")
+            let after = try pixel(3.5, 0.5, 0.25)
+            #expect(after.green > 200 && after.blue < 60, "after the split: \(after)")
         }
     }
 }

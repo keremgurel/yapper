@@ -97,7 +97,7 @@ struct PlayerPanel: View {
                     // and the picture is often zoomed past the frame. See
                     // VideoFrameHandleOverlay.
                     .overlay {
-                        if session.isVideoFrameSelected {
+                        if session.isVideoFrameSelected, !session.isLayoutSpanAtPlayhead {
                             VideoFrameHandleOverlay(
                                 session: session,
                                 drag: session.canvasDrag,
@@ -116,7 +116,7 @@ struct PlayerPanel: View {
                     // at something in the picture, so it has to be on top of
                     // it, and it has nothing to say when there is no picture.
                     .overlay {
-                        if session.showsFaceIndicator {
+                        if session.showsFaceIndicator, !session.isLayoutSpanAtPlayhead {
                             SpeakerFaceIndicator(
                                 session: session,
                                 clock: session.playbackClock,

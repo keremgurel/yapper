@@ -58,6 +58,9 @@ final class EditorSession: ObservableObject {
     /// than a clip selection: the timeline keeps a clip selected almost all the
     /// time, and the framing handles must only appear when they were asked for.
     @Published var isVideoFrameSelected = false
+    /// Templates an `editor.styles.offer` put up during the Chirpy turn in
+    /// flight, handed to that turn's reply as tappable cards. See `StyleOffer`.
+    var pendingStyleOffer: StyleOffer?
     /// What the crop editor is open on, or nil when it is closed. See
     /// `CropRequest`.
     @Published var cropRequest: CropRequest?

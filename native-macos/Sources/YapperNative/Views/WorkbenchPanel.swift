@@ -234,6 +234,8 @@ struct WorkbenchPanel: View {
             MediaWorkbench(session: session)
         case .quick:
             QuickEditWorkbench(session: session)
+        case .styles:
+            StylesWorkbench(session: session)
         case .transcript:
             TranscriptWorkbench(
                 session: session,
@@ -328,7 +330,7 @@ struct WorkbenchPanel: View {
     /// The tab that pairs naturally with another: the one you reach for next.
     private func companionTab(for tab: WorkbenchTab) -> WorkbenchTab {
         switch tab {
-        case .quick, .media, .filters: .transcript
+        case .quick, .media, .filters, .styles: .transcript
         case .transcript, .captions, .audio, .text, .overlays, .video: .quick
         }
     }

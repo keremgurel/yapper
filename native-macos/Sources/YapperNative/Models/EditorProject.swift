@@ -645,12 +645,10 @@ struct EditorProject: Codable, Equatable, Sendable {
     /// The preset's colours where the creator changed them. See
     /// `OverlayBackdrop.colors`.
     var backdropPresetColors: [String]?
-    /// Where the speaker's footage is drawn when a layout gives it only part
-    /// of the frame. `nil` is the whole frame. See `CameraRegion`.
-    var cameraRegion: CameraRegion?
-    /// The style library template this project was given, and what it put
-    /// where. See `AppliedStyle`.
-    var appliedStyle: AppliedStyle?
+    /// Stretches laid out by a style library template, such as a split with
+    /// the camera in the bottom half. Outside them the take fills the frame.
+    /// See `LayoutSpan`.
+    var layoutSpans: [LayoutSpan]?
 
     init(
         id: UUID = UUID(),
@@ -795,7 +793,7 @@ struct EditorProject: Codable, Equatable, Sendable {
             || hasImageClip
             // The footage is cut to its area after it is placed, which only
             // the editor's own compositor knows how to do.
-            || cameraRegion != nil
+            || !resolvedLayoutSpans.isEmpty
             || (overlays ?? []).contains { overlay in
                 media.first(where: { $0.id == overlay.mediaID })?.isImage == false
                     && OverlayKeyTrack.hasAnimatedCrop(overlay)

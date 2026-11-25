@@ -53,6 +53,13 @@ final class AssistantConversation: ObservableObject {
     func ask(_ text: String) { append(.you(text)); isThinking = true }
     func answer(_ message: AssistantMessage) { isThinking = false; append(message) }
     func giveUp() { isThinking = false }
+
+    /// Marks which card of an offer was tapped, so the reply shows it picked.
+    func markChosen(_ templateID: String, in messageID: UUID) {
+        guard let index = messages.firstIndex(where: { $0.id == messageID }), messages[index].offer != nil else { return }
+        messages[index].offer?.chosen = templateID
+        do { try save() } catch { persistenceError = error.localizedDescription }
+    }
     func clear() { messages = []; isThinking = false; try? save() }
 
     /// Journal before editing. An uncertain invocation must never be replayed.

@@ -24,19 +24,23 @@ struct AssistantMessage: Identifiable, Codable, Equatable, Sendable {
     /// anything that changed nothing.
     let notes: [String]
     let tone: Tone
+    /// Templates Chirpy put up to choose from, shown as cards under the reply.
+    var offer: StyleOffer?
 
     init(
         id: UUID = UUID(),
         author: Author,
         text: String,
         notes: [String] = [],
-        tone: Tone
+        tone: Tone,
+        offer: StyleOffer? = nil
     ) {
         self.id = id
         self.author = author
         self.text = text
         self.notes = notes
         self.tone = tone
+        self.offer = offer
     }
 
     static func you(_ text: String) -> AssistantMessage {
@@ -50,8 +54,9 @@ struct AssistantMessage: Identifiable, Codable, Equatable, Sendable {
     static func chirpy(
         _ text: String,
         notes: [String] = [],
-        tone: Tone = .done
+        tone: Tone = .done,
+        offer: StyleOffer? = nil
     ) -> AssistantMessage {
-        AssistantMessage(author: .chirpy, text: text, notes: notes, tone: tone)
+        AssistantMessage(author: .chirpy, text: text, notes: notes, tone: tone, offer: offer)
     }
 }

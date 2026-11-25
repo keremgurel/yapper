@@ -1,11 +1,19 @@
 {
-  "description": "Style library templates on the open project: applying one, and the settings that belong to the template itself.",
+  "description": "Style library templates on the open project: laying one over part of the video or all of it, offering the creator a choice, and the settings that belong to a laid-out stretch.",
   "runtime": "client",
   "actions": [
     {
+      "id": "editor.styles.offer",
+      "symbol": "styleOffer",
+      "description": "Show the creator the templates that fit a stretch of the video as cards they can tap, instead of choosing for them. Use it when they ask for a look (\"split screen when I talk about pricing\", \"make this part look like Kallaway\") without naming a template, or ask what is available. at and until are the same phrase anchors editor.overlays.add takes; leave both out for the whole video. templateIDs narrows the cards to those templates. Changes nothing until the creator taps a card, which runs editor.styles.apply.",
+      "input": "StyleOfferInput",
+      "effect": "read",
+      "requiresRebuild": false
+    },
+    {
       "id": "editor.styles.apply",
       "symbol": "styleApply",
-      "description": "Apply a style library template to the whole project. half-and-half puts the camera in the bottom half, cropped to fill, keeps the top half for a picture or clip, sets a dark grid backdrop and moves captions just under the seam. talking-head gives the camera the whole frame again and puts captions under the chin. Captions, backdrop and framing become ordinary project values: change them afterwards with editor.captions.setStyle, editor.project.setBackdrop and editor.video.setFraming. topMediaID puts imported media in the top half straight away. Locked and keyframed clips keep their framing.",
+      "description": "Lay a style library template over a stretch of the video, or the whole video when at and until are left out. half-and-half puts the camera in the bottom half, cropped to fill, keeps the top half for a picture or clip, sets a dark grid backdrop and moves the captions spoken in that stretch just under the seam. talking-head gives that stretch the whole frame back. Use it when the creator names a template or picks one; otherwise use editor.styles.offer. topMediaID puts imported media in the top half straight away. Caption style and backdrop become ordinary project values afterwards: change them with editor.captions.setStyle and editor.project.setBackdrop.",
       "input": "StyleApplyInput",
       "effect": "reversibleEdit",
       "requiresRebuild": true
@@ -13,7 +21,7 @@
     {
       "id": "editor.styles.setSplit",
       "symbol": "styleSplit",
-      "description": "Change the split screen a template set up: seam is where the camera starts as a fraction of the frame height from the top (0.5 is the middle, lower gives the camera more room); cameraZoom (1 fills the camera area) and cameraFocusY (0 keeps the top of the take in view, 1 the bottom) reframe every unlocked clip without keyframes; visualInset is the margin around the top visual as a fraction of the frame width. The top visual and the captions follow the seam unless the captions were moved by hand. Send only the fields to change. Only available after editor.styles.apply with half-and-half.",
+      "description": "Change one laid-out stretch (spanID from layoutSpans in the context): seam is where the camera starts as a fraction of the frame height from the top (0.5 is the middle, lower gives the camera more room); cameraZoom (1 fills the camera area) and cameraFocusY (0 keeps the top of the take in view, 1 the bottom) reframe the speaker in it; visualInset is the margin around the top visual as a fraction of the frame width. The top visual and that stretch's captions follow the seam. Send only the fields to change.",
       "input": "StyleSplitInput",
       "effect": "reversibleEdit",
       "requiresRebuild": true
@@ -21,13 +29,28 @@
     {
       "id": "editor.styles.setTopVisual",
       "symbol": "styleTopVisual",
-      "description": "Put imported media (a picture, clip or generated overlay from the media list) in the top half of a split screen, cropped to fill it for the whole video. Replaces whatever is there, keeping its timing. Only available after editor.styles.apply with half-and-half.",
+      "description": "Put imported media (a picture, clip or generated overlay from the media list) in the top half of one laid-out stretch (spanID from layoutSpans), cropped to fill it for as long as the stretch is on screen. Replaces whatever is there.",
       "input": "StyleTopVisualInput",
       "effect": "reversibleEdit",
       "requiresRebuild": true
     }
   ],
   "$defs": {
+    "StyleOfferInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "at": { "$ref": "#/$defs/TimelineAnchorInput" },
+        "until": { "$ref": "#/$defs/TimelineAnchorInput" },
+        "templateIDs": {
+          "type": "array",
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+        }
+      }
+    },
     "StyleApplyInput": {
       "type": "object",
       "additionalProperties": false,
@@ -39,6 +62,8 @@
           "maxLength": 64,
           "description": "A template id from the bundled catalog: half-and-half or talking-head."
         },
+        "at": { "$ref": "#/$defs/TimelineAnchorInput" },
+        "until": { "$ref": "#/$defs/TimelineAnchorInput" },
         "topMediaID": {
           "type": "string",
           "format": "uuid",
@@ -49,8 +74,9 @@
     "StyleSplitInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": [],
+      "required": ["spanID"],
       "properties": {
+        "spanID": { "type": "string", "format": "uuid" },
         "seam": { "type": "number", "minimum": 0.3, "maximum": 0.72 },
         "cameraZoom": { "type": "number", "minimum": 1, "maximum": 2 },
         "cameraFocusY": { "type": "number", "minimum": 0, "maximum": 1 },
@@ -60,8 +86,9 @@
     "StyleTopVisualInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["mediaID"],
+      "required": ["spanID", "mediaID"],
       "properties": {
+        "spanID": { "type": "string", "format": "uuid" },
         "mediaID": { "type": "string", "format": "uuid" }
       }
     }

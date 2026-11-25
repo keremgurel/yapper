@@ -65,8 +65,7 @@ struct SpeakerFaceIndicator: View {
         let picture = VideoFramingGeometry.mediaBox(
             framing: session.displayedFraming,
             sourceAspect: session.framingSourceAspect,
-            stageSize: stageSize,
-            region: session.project.cameraRegion
+            stageSize: stageSize
         )
         let box = CGRect(
             x: picture.minX + face.minX * picture.width,

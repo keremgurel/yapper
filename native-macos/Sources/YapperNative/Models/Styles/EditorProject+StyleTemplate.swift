@@ -1,73 +1,40 @@
 import Foundation
 
-/// The split's own settings, in the units `editor.styles.setSplit` takes.
-struct StyleSplitSettings: Codable, Equatable, Sendable {
-    var seam: Double
-    var cameraZoom: Double
-    var cameraFocusY: Double
-    var visualInset: Double
-}
-
 extension EditorProject {
-    /// Applies a template's layout: the camera region and the clips' framing,
-    /// and the record of which template this is. Returns the clips whose
-    /// framing was left alone.
-    mutating func applyStyleLayout(_ plan: StyleTemplatePlan) -> [UUID] {
-        let topOverlayID = appliedStyle?.topOverlayID
+    /// Lays a template over each stretch: its look on the whole project, its
+    /// layout only where it was asked for. A full-frame template gives those
+    /// stretches the whole frame back. Returns the spans it placed.
+    mutating func applyStyleTemplate(_ plan: StyleTemplatePlan, over ranges: [StyleRange]) -> [LayoutSpan] {
+        let wholeVideo = ranges == StyleRange.wholeVideo(self)
+        if let backdrop = plan.backdrop { applyStyleBackdrop(backdrop) }
+        if let captions = plan.captions {
+            // Validated by the caller before anything changed.
+            try? applyStyleCaptions(captions, includingHeight: wholeVideo && plan.layout == .fullFrame)
+        }
         switch plan.layout {
         case .fullFrame:
-            // The top visual belongs to the split; on a full frame it would
-            // sit on the speaker's face.
-            if let topOverlayID { overlays?.removeAll { $0.id == topOverlayID } }
-            appliedStyle = AppliedStyle(templateID: plan.id)
-            return setCameraLayout(nil)
+            for range in ranges { clearLayout(mediaID: range.mediaID, source: range.source) }
+            return []
         case let .split(camera, zoom, focusY, top):
-            let inset = max(0, top.x)
-            appliedStyle = AppliedStyle(
-                templateID: plan.id,
-                topOverlayID: topOverlayID,
-                split: StyleSplitSettings(seam: camera.y, cameraZoom: zoom, cameraFocusY: focusY, visualInset: inset)
-            )
-            let skipped = setCameraLayout(
-                CameraRegion(x: camera.x, y: camera.y, width: camera.width, height: camera.height),
-                zoom: zoom,
-                focusY: focusY
-            )
-            fitStyleTopOverlay()
-            return skipped
+            return ranges.map { range in
+                placeLayoutSpan(
+                    templateID: plan.id,
+                    camera: CameraRegion(x: camera.x, y: camera.y, width: camera.width, height: camera.height),
+                    zoom: zoom, focusY: focusY, inset: max(0, top.x),
+                    mediaID: range.mediaID, source: range.source
+                )
+            }
         }
     }
 
-    /// Changes the split's own settings. The camera, the top visual and the
-    /// captions move with the seam; captions someone placed by hand stay.
-    mutating func setStyleSplit(_ input: StyleSplitInput) -> [UUID] {
-        guard var settings = appliedStyle?.split, let region = cameraRegion else { return [] }
-        let oldSeam = region.y
-        if let seam = input.seam { settings.seam = seam }
-        if let zoom = input.cameraZoom { settings.cameraZoom = zoom }
-        if let focus = input.cameraFocusY { settings.cameraFocusY = focus }
-        if let inset = input.visualInset { settings.visualInset = inset }
-        appliedStyle?.split = settings
-        let skipped = setCameraLayout(
-            .below(seam: settings.seam),
-            zoom: settings.cameraZoom,
-            focusY: settings.cameraFocusY
-        )
-        fitStyleTopOverlay()
-        if let moved = cameraRegion?.y, moved != oldSeam, var style = captionStyle {
-            // Only the shared caption height, and only by the distance the seam
-            // moved, so captions that sat under the seam still do.
-            style.y = min(0.95, max(0.05, style.y + moved - oldSeam))
-            captionStyle = style
+    /// From the first moment any of these stretches is on screen to the last.
+    func timelineExtent(of ranges: [StyleRange]) -> ClosedRange<Double> {
+        let spans = ranges.map {
+            LayoutSpan(templateID: "", mediaID: $0.mediaID, sourceStart: $0.source.lowerBound, sourceEnd: $0.source.upperBound,
+                       region: .below(seam: 0.5), cameraZoom: 1, cameraFocusY: 0.5)
         }
-        return skipped
-    }
-
-    /// What `editor.styles.setSplit` reads back, for receipts and the
-    /// inspector. `nil` without a split.
-    var styleSplitSettings: StyleSplitSettings? {
-        guard var settings = appliedStyle?.split, let region = cameraRegion else { return nil }
-        settings.seam = region.y
-        return settings
+        let extents = spans.compactMap(timelineExtent(of:))
+        guard let first = extents.map(\.lowerBound).min(), let last = extents.map(\.upperBound).max() else { return 0 ... 0 }
+        return first ... last
     }
 }

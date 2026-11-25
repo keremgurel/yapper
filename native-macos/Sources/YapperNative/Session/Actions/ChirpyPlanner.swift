@@ -40,6 +40,14 @@ extension EditorSession {
             "canUndo": .bool(canUndo), "canRedo": .bool(canRedo),
             "videoTrackVolume": .number(project.resolvedVideoTrackVolume),
             "speechAvailable": .bool(!TimelineCue.words(in: project).isEmpty),
+            "layoutSpans": .array(project.resolvedLayoutSpans.compactMap { span in
+                guard let extent = project.timelineExtent(of: span) else { return nil }
+                return .object(["id": .string(span.id.uuidString), "templateID": .string(span.templateID),
+                    "start": .number(extent.lowerBound), "end": .number(extent.upperBound),
+                    "seam": .number(span.region.y), "cameraZoom": .number(span.cameraZoom),
+                    "cameraFocusY": .number(span.cameraFocusY),
+                    "topVisual": project.topOverlay(of: span).flatMap { overlay in project.media.first { $0.id == overlay.mediaID }?.name }.map(ActionJSON.string) ?? .null])
+            }),
             "media": .array(project.media.map { media in .object(["id": .string(media.id.uuidString), "name": .string(media.name),
                 "duration": .number(media.duration), "width": .number(Double(media.width)), "height": .number(Double(media.height)),
                 "kind": .string(media.isScene ? "scene" : media.isImage ? "image" : "video"),
@@ -152,14 +160,18 @@ extension EditorSession {
                 conversation.answer(.chirpy(reply.message)); return
             }
             try conversation.begin(executionID)
+            pendingStyleOffer = nil
             let receipts = await appActions.executeBatch(reply.actions, projectID: projectID, revision: revision, in: self)
+            let offer = pendingStyleOffer
+            pendingStyleOffer = nil
             try conversation.finish(receipts, invocationID: executionID)
             let succeeded = receipts.allSatisfy { $0.status == .applied || $0.status == .unchanged }
             // Only execution receipts can announce success. A model's planned
             // changes are never presented as changes that actually happened.
             let messages = receipts.map(\.message)
             conversation.answer(.chirpy(succeeded ? ChirpyReceiptSummary.success(messages) : "I couldn’t complete that edit.",
-                notes: succeeded ? [] : ChirpyReceiptSummary.troubleNotes(messages), tone: succeeded ? .done : .trouble))
+                notes: succeeded ? [] : ChirpyReceiptSummary.troubleNotes(messages), tone: succeeded ? .done : .trouble,
+                offer: succeeded ? offer : nil))
         } catch {
             if project.id == projectID {
                 conversation.answer(.chirpy((error is CancellationError || Task.isCancelled) ? "Request canceled." : error.localizedDescription, tone: .trouble))

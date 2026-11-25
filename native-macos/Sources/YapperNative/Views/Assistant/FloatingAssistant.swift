@@ -252,7 +252,7 @@ private struct AssistantPanel: View {
         if conversation.isEmpty {
             AssistantEmptyState(usesStudioBrain: session.assistantUsesStudioBrain, onPick: useExample)
         } else {
-            AssistantTranscript(conversation: conversation)
+            AssistantTranscript(conversation: conversation, session: session)
         }
     }
 

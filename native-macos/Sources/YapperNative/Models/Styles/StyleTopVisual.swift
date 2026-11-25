@@ -17,13 +17,21 @@ enum StyleTopVisual {
 }
 
 extension EditorProject {
-    /// Moves the template's top visual onto the top area and crops it to
-    /// fill it, after the seam or the inset changed or its media was swapped.
-    /// Does nothing when the template has no top visual.
-    mutating func fitStyleTopOverlay() {
+    /// The overlay filling a span's top area, if it is still there.
+    func topOverlay(of span: LayoutSpan) -> ProjectOverlay? {
+        guard let id = span.topOverlayID else { return nil }
+        return overlays?.first { $0.id == id }
+    }
+
+    /// Moves a span's top visual onto its top area for exactly as long as the
+    /// span is on screen, cropped to fill, after the seam, the inset, the
+    /// span's words or the media changed. Does nothing without a top visual.
+    mutating func fitTopOverlay(of spanID: UUID) {
         guard
-            let box = styleTopBox,
-            let id = appliedStyle?.topOverlayID,
+            let span = layoutSpan(spanID),
+            let box = topBox(of: span),
+            let extent = timelineExtent(of: span),
+            let id = span.topOverlayID,
             let index = overlays?.firstIndex(where: { $0.id == id })
         else { return }
         var overlay = overlays![index]
@@ -34,7 +42,10 @@ extension EditorProject {
         overlay.rotation = nil
         overlay.keys = nil
         overlay.flush = true
+        overlay.timelineStart = extent.lowerBound
+        let length = extent.upperBound - extent.lowerBound
         if let media = media.first(where: { $0.id == overlay.mediaID }) {
+            overlay.duration = media.isImage ? length : min(length, max(0.1, media.duration - overlay.sourceStart))
             let crop = StyleTopVisual.coverCrop(
                 mediaAspect: CompositionBuilder.aspect(of: media),
                 boxAspect: box.width * resolvedAspectRatio / box.height

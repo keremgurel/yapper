@@ -194,11 +194,6 @@ struct OverlayInspectorView: View {
     /// one of them was too small to aim in. See `CropSheet`.
     private var essentials: some View {
         VStack(alignment: .leading, spacing: 9) {
-            if session.project.appliedStyle?.topOverlayID == overlay.id {
-                InspectorRow("Top half", detail: "This overlay fills the top of the split layout.") {
-                    StyleTopVisualMenu(session: session)
-                }
-            }
             InspectorRow("Keyframe", detail: keyframeSummary) {
                 OverlayKeyframeControls(session: session, overlay: overlay)
             }

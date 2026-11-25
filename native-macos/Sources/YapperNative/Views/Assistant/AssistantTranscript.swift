@@ -7,6 +7,8 @@ import SwiftUI
 /// appearing at the end of a list you then have to go and find.
 struct AssistantTranscript: View {
     @ObservedObject var conversation: AssistantConversation
+    /// For the template cards a reply can carry. See `StyleOfferCards`.
+    var session: EditorSession?
 
     /// What the last row is called, so the scroller has something to aim at.
     private static let bottom = "assistant.transcript.bottom"
@@ -16,7 +18,7 @@ struct AssistantTranscript: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(conversation.messages) { message in
-                        AssistantMessageRow(message: message)
+                        AssistantMessageRow(message: message, session: session)
                             // Rises into place from below, which is the
                             // direction the transcript itself is moving.
                             .transition(
