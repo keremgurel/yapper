@@ -19,7 +19,7 @@ set -euo pipefail
 script_dir=${0:A:h}
 project_dir=${script_dir:h}
 dist_dir="$project_dir/dist"
-app_name="Yapper Studio Native.app"
+app_name="Yapper Studio.app"
 app_dir="$dist_dir/$app_name"
 notary_profile=${YAPPER_NOTARY_PROFILE:-yapper-notary}
 

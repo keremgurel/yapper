@@ -1,4 +1,4 @@
-# Yapper Studio Native
+# Yapper Studio for Mac
 
 Mac-first native video editor prototype built with Swift, AppKit/SwiftUI,
 AVFoundation, Core Media, and Core Animation. It lives beside the current web
@@ -26,7 +26,7 @@ verified before the test passes.
 ./scripts/package-app.sh
 ```
 
-The result is `dist/Yapper Studio Native.app`. The native editor uses one
+The result is `dist/Yapper Studio.app`. The native editor uses one
 continuous composition for playback; it never pause/plays separate video
 elements at clip boundaries.
 
@@ -36,7 +36,8 @@ elements at clip boundaries.
 ./scripts/install-app.sh
 ```
 
-This replaces `/Applications/Yapper Studio Native.app` with the packaged build.
+This replaces `/Applications/Yapper Studio.app` with the packaged build, and
+removes `/Applications/Yapper Studio Native.app`, the app's earlier name.
 If the installed app is open, the script quits it the way Cmd-Q does (so a
 running export can finish or cancel and clean up), swaps the bundle, and opens
 the new one. The old bundle is kept in a `/Applications/.yapper-update-*`

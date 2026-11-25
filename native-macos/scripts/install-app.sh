@@ -1,7 +1,7 @@
 #!/bin/zsh
-# Installs a packaged build as /Applications/Yapper Studio Native.app.
+# Installs a packaged build as /Applications/Yapper Studio.app.
 #
-#   scripts/install-app.sh [path/to/Yapper Studio Native.app]
+#   scripts/install-app.sh [path/to/Yapper Studio.app]
 #
 # YAPPER_INSTALL_DIR replaces /Applications, for trying this out safely.
 #
@@ -14,10 +14,13 @@ set -euo pipefail
 
 script_dir=${0:A:h}
 project_dir=${script_dir:h}
-source_app=${1:-"$project_dir/dist/Yapper Studio Native.app"}
+source_app=${1:-"$project_dir/dist/Yapper Studio.app"}
 install_dir=${YAPPER_INSTALL_DIR:-/Applications}
-target_app="$install_dir/Yapper Studio Native.app"
-running_pattern="^$target_app/Contents/MacOS/YapperNative"
+target_app="$install_dir/Yapper Studio.app"
+# The name before November 2026. Same bundle ID, so it is replaced too, or
+# Launch Services would see two copies of one app.
+legacy_app="$install_dir/Yapper Studio Native.app"
+running_pattern="^($target_app|$legacy_app)/Contents/MacOS/YapperNative"
 bundle_id=com.yapper.studio.native
 
 if [[ ! -d $source_app ]]; then
@@ -38,14 +41,14 @@ if pgrep -qf "$running_pattern"; then
     sleep 1
   done
   if pgrep -qf "$running_pattern"; then
-    print -u2 -- "Yapper Studio Native is still open, maybe asking about a running export. Quit it, then run this again."
+    print -u2 -- "Yapper Studio is still open, maybe asking about a running export. Quit it, then run this again."
     exit 1
   fi
 fi
 
 staging=$(mktemp -d "$install_dir/.yapper-update-XXXXXXXX")
-staged_app="$staging/Yapper Studio Native.app"
-previous_app="$staging/Previous Yapper Studio Native.app"
+staged_app="$staging/Yapper Studio.app"
+previous_app="$staging/Previous Yapper Studio.app"
 
 cleanup() {
   if [[ ! -e $target_app && -e $previous_app ]]; then
@@ -68,9 +71,13 @@ fi
 mv "$staged_app" "$target_app"
 if ! codesign --verify --deep --strict "$target_app"; then
   # Out of the way, so cleanup puts the previous app back.
-  mv "$target_app" "$staging/Rejected Yapper Studio Native.app"
+  mv "$target_app" "$staging/Rejected Yapper Studio.app"
   print -u2 -- "The installed copy failed verification. The previous app is back."
   exit 1
+fi
+
+if [[ -e $legacy_app ]]; then
+  rm -rf "$legacy_app"
 fi
 
 print -r -- "$target_app"

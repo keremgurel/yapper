@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Builds dist/Yapper Studio Native.app.
+# Builds dist/Yapper Studio.app.
 #
 # By default it builds for this Mac only and signs ad hoc, which runs here and
 # nowhere else. scripts/release-app.sh sets these to make a build for others:
@@ -11,7 +11,7 @@ set -euo pipefail
 
 script_dir=${0:A:h}
 project_dir=${script_dir:h}
-app_dir="$project_dir/dist/Yapper Studio Native.app"
+app_dir="$project_dir/dist/Yapper Studio.app"
 contents_dir="$app_dir/Contents"
 sign_identity=${YAPPER_SIGN_IDENTITY:--}
 
