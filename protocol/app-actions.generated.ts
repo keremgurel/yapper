@@ -160,7 +160,7 @@ export interface CaptionVisibilityInput {
   regenerate?: boolean;
 }
 
-export type TextFontChoice = "modern" | "rounded" | "editorial";
+export type TextFontChoice = "modern" | "rounded" | "editorial" | "impact" | "condensed" | "geometric" | "slab" | "marker" | "typewriter";
 
 export type TextCaseChoice = "asSpoken" | "lower" | "upper";
 

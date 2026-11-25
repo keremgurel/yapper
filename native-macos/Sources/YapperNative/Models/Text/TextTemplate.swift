@@ -95,7 +95,7 @@ extension TextTemplate {
                 shadowEnabled: false
             )
         ),
-    ]
+    ] + TextTemplate.faces
 
     /// The template the text currently matches, if any.
     static func active(for appearance: TextAppearance) -> TextTemplate? {

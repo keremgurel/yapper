@@ -18,39 +18,71 @@ struct CaptionWorkbenchView: View {
 
     private var isOn: Bool { session.captionsVisible }
 
+    /// Wider than this, styling and the lines sit side by side.
+    private static let sideBySideWidth: CGFloat = 820
+
     var body: some View {
         VStack(spacing: 0) {
             toolbar
             Divider()
-
-            ScrollViewReader { scrollProxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        if session.hasCaptions {
-                            CaptionInspectorView(session: session)
-                                .padding(.horizontal, 14)
-                            Divider()
-                            CaptionListView(session: session) { session.seekToTimelineTime($0) }
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 12)
-                        } else {
-                            emptyState
-                                .padding(14)
+            GeometryReader { proxy in
+                if session.hasCaptions, proxy.size.width >= Self.sideBySideWidth {
+                    HStack(alignment: .top, spacing: 0) {
+                        ScrollView {
+                            styling.padding(.horizontal, 14)
                         }
-
-                        Divider()
-                        DictionaryPanel(session: session)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 12)
+                        .frame(width: min(460, proxy.size.width * 0.46))
+                        Rectangle().fill(Color.studioLine).frame(width: 1)
+                        linesScroll { lines.padding(.horizontal, 14) }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    linesScroll {
+                        VStack(alignment: .leading, spacing: 0) {
+                            if session.hasCaptions {
+                                styling.padding(.horizontal, 14)
+                                Divider()
+                            }
+                            lines.padding(.horizontal, 14)
+                        }
+                    }
                 }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Color.panelBackground)
+    }
+
+    private var styling: some View {
+        CaptionInspectorView(session: session)
+    }
+
+    /// What the captions say, and the words they should always get right.
+    private var lines: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if session.hasCaptions {
+                InspectorFoldSection("Lines", id: "captions.lines") {
+                    CaptionListView(session: session) { session.seekToTimelineTime($0) }
+                }
+            } else {
+                emptyState.padding(.vertical, 14)
+            }
+            Divider()
+            InspectorFoldSection("Dictionary", id: "captions.dictionary", summary: "Names and words captions should spell right", openByDefault: false) {
+                DictionaryPanel(session: session)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// The lines scroll to the caption under a seek or a timeline click.
+    private func linesScroll<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        let body = content()
+        return ScrollViewReader { scrollProxy in
+            ScrollView { body }
                 .onChange(of: seekReveal.request) { _, request in
                     guard
                         let request,
-                        let captionID = session.captionCueCache.nearestCueID(
-                            to: request.timelineTime
-                        )
+                        let captionID = session.captionCueCache.nearestCueID(to: request.timelineTime)
                     else { return }
                     // No animation and no playback observation: one lazy row
                     // jumps into view after the seek finishes.
@@ -58,14 +90,9 @@ struct CaptionWorkbenchView: View {
                 }
                 .onChange(of: captionSelection.ids) { _, ids in
                     guard ids.count == 1, let captionID = ids.first else { return }
-                    // A timeline click already opens this tab. Reveal the exact
-                    // selected row once, without observing playback or adding
-                    // animation work to scrolling.
                     scrollProxy.scrollTo(captionID, anchor: .center)
                 }
-            }
         }
-        .inspectorPane(maxWidth: 620)
     }
 
     /// The state of the captions and the two things to do about it. On one
@@ -90,16 +117,13 @@ struct CaptionWorkbenchView: View {
 
     private var status: some View {
         HStack(spacing: 8) {
-            // Green for showing, grey for hidden: a state, not an action.
-            Circle()
-                .fill(isOn ? Color.studioSuccess : Color.studioTextMuted.opacity(0.5))
-                .frame(width: 7, height: 7)
-            Text(isOn ? "Captions on" : "Captions off")
+            Text("Captions")
                 .font(.studioBodyStrong)
             if session.hasCaptions {
-                Text("\(CaptionListProjection.visibleCount(in: session.captions, textsByID: session.captionTexts)) cards")
+                Text("\(CaptionListProjection.visibleCount(in: session.captions, textsByID: session.captionTexts))")
                     .font(.studioCaption)
                     .foregroundStyle(Color.studioTextMuted)
+                    .monospacedDigit()
             }
         }
         .lineLimit(1)
@@ -107,40 +131,35 @@ struct CaptionWorkbenchView: View {
 
     @ViewBuilder
     private var toolbarActions: some View {
-
-            if session.hasCaptions {
-                Button {
-                    Task { await session.toggleCaptions() }
-                } label: {
-                    Label(
-                        isOn ? "Hide" : "Show",
-                        systemImage: isOn ? "eye.slash" : "eye"
-                    )
-                }
-                .buttonStyle(EditorGhostButtonStyle(size: .small))
-                .disabled(!session.appActions.availability(.captionVisibility, in: session).isAvailable)
-                .help(
-                    isOn
-                        ? "Hide captions in the preview and the export. Every card is kept."
-                        : "Show captions again"
-                )
-            }
-
+        if session.hasCaptions {
             Button {
                 Task { await session.generateCaptions() }
             } label: {
-                Label(
-                    session.hasCaptions ? "Regenerate" : "Generate",
-                    systemImage: "wand.and.stars"
-                )
+                Label("Regenerate", systemImage: "arrow.clockwise")
+            }
+            .buttonStyle(EditorGhostButtonStyle(size: .small))
+            .disabled(session.project.clips.isEmpty || session.isBusy)
+            .help("Rebuild every caption from the transcript while keeping your corrections.")
+        } else {
+            Button {
+                Task { await session.generateCaptions() }
+            } label: {
+                Label("Generate captions", systemImage: "captions.bubble")
             }
             .buttonStyle(EditorPrimaryButtonStyle(size: .small))
             .disabled(session.project.clips.isEmpty || session.isBusy)
-            .help(
-                session.hasCaptions
-                    ? "Rebuild every card from the transcript while keeping your corrections."
-                    : "Build caption cards from the transcript"
-            )
+            .help("Make captions from the transcript")
+        }
+
+        if session.hasCaptions {
+            StudioSwitch(isOn: Binding(
+                get: { isOn },
+                set: { _ in Task { await session.toggleCaptions() } }
+            ))
+            .disabled(!session.appActions.availability(.captionVisibility, in: session).isAvailable)
+            .help(isOn ? "Hide captions in the preview and the export. Every caption is kept." : "Show captions again")
+            .accessibilityLabel("Show captions")
+        }
     }
 
     private var emptyState: some View {

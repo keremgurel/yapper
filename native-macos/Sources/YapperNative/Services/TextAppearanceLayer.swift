@@ -213,15 +213,7 @@ enum TextAppearanceLayer {
     }
 
     static func font(for family: TextLayerFont, size: CGFloat) -> NSFont {
-        let base = NSFont.systemFont(ofSize: size, weight: .heavy)
-        let design: NSFontDescriptor.SystemDesign = switch family {
-        case .modern: .default
-        case .rounded: .rounded
-        case .editorial: .serif
-        }
-        guard let descriptor = base.fontDescriptor.withDesign(design),
-              let font = NSFont(descriptor: descriptor, size: size) else { return base }
-        return font
+        family.nsFont(size: size)
     }
 }
 

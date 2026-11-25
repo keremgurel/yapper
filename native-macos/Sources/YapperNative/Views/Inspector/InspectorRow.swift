@@ -2,7 +2,15 @@ import SwiftUI
 
 /// The measurements a panel of properties has to agree on.
 private struct InspectorLabelKey: EnvironmentKey { static let defaultValue = "Value" }
+private struct InspectorFillsWidthKey: EnvironmentKey { static let defaultValue = false }
 extension EnvironmentValues {
+    /// Set by a panel whose controls all run to the same right edge, so a
+    /// two-way switch and an eight-way one line up instead of stopping wherever
+    /// their labels end.
+    var inspectorFillsWidth: Bool {
+        get { self[InspectorFillsWidthKey.self] }
+        set { self[InspectorFillsWidthKey.self] = newValue }
+    }
     var inspectorControlLabel: String {
         get { self[InspectorLabelKey.self] }
         set { self[InspectorLabelKey.self] = newValue }
@@ -115,6 +123,7 @@ struct InspectorSegmentedControl<Value: Hashable>: View {
     let options: [Option]
     let selection: Value
     let onSelect: (Value) -> Void
+    @Environment(\.inspectorFillsWidth) private var fillsWidth
 
     var body: some View {
         HStack(spacing: 2) {
@@ -127,7 +136,7 @@ struct InspectorSegmentedControl<Value: Hashable>: View {
         .clipShape(RoundedRectangle(cornerRadius: StudioRadius.field, style: .continuous))
         // As wide as its choices need, not the whole row: a two-way switch
         // stretched across a wide pane looked like a progress bar.
-        .frame(maxWidth: CGFloat(options.count) * 96, alignment: .leading)
+        .frame(maxWidth: fillsWidth ? .infinity : CGFloat(options.count) * 96, alignment: .leading)
     }
 
     private func segment(_ option: Option) -> some View {

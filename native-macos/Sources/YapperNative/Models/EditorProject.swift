@@ -386,6 +386,12 @@ enum TextLayerFont: String, Codable, CaseIterable, Identifiable, Sendable {
     case modern
     case rounded
     case editorial
+    case impact
+    case condensed
+    case geometric
+    case slab
+    case marker
+    case typewriter
 
     var id: String { rawValue }
 
@@ -394,6 +400,12 @@ enum TextLayerFont: String, Codable, CaseIterable, Identifiable, Sendable {
         case .modern: "Modern"
         case .rounded: "Rounded"
         case .editorial: "Editorial"
+        case .impact: "Impact"
+        case .condensed: "Condensed"
+        case .geometric: "Geometric"
+        case .slab: "Slab"
+        case .marker: "Marker"
+        case .typewriter: "Typewriter"
         }
     }
 }

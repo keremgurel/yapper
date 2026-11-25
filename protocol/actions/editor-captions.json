@@ -108,7 +108,17 @@
     },
     "TextFontChoice": {
       "type": "string",
-      "enum": ["modern", "rounded", "editorial"]
+      "enum": [
+        "modern",
+        "rounded",
+        "editorial",
+        "impact",
+        "condensed",
+        "geometric",
+        "slab",
+        "marker",
+        "typewriter"
+      ]
     },
     "TextCaseChoice": {
       "type": "string",
