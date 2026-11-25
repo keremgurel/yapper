@@ -102,6 +102,8 @@ struct StyleTemplateActionTests {
         let top = try #require(applied.styleTopOverlay)
         #expect(top.mediaID == project.media[1].id)
         #expect(top.x == 0 && top.y == 0 && top.width == 1 && top.height == 0.5)
+        // Part of the layout, so square corners and no shadow.
+        #expect(!OverlayFrame.drawsAsCard(top))
         // A wide clip cropped to fill a 180 x 160 area: its sides go.
         let crop = try #require(top.crop)
         #expect(crop.height == 1 && crop.width < 1)

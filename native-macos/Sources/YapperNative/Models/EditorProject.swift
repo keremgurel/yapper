@@ -308,6 +308,10 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
     /// What fills the frame behind the card while it is up. `nil` draws
     /// nothing, which is every overlay saved before this existed.
     var backdrop: OverlayBackdrop?
+    /// True when the overlay is part of a layout rather than a card laid on
+    /// the picture: the top half of a split. Drawn with square corners and no
+    /// shadow, like an overlay cut to the whole frame. `nil` reads as off.
+    var flush: Bool?
 
     init(
         id: UUID = UUID(),

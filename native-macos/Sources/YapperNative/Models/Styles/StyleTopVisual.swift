@@ -33,6 +33,7 @@ extension EditorProject {
         overlay.height = box.height
         overlay.rotation = nil
         overlay.keys = nil
+        overlay.flush = true
         if let media = media.first(where: { $0.id == overlay.mediaID }) {
             let crop = StyleTopVisual.coverCrop(
                 mediaAspect: CompositionBuilder.aspect(of: media),

@@ -71,7 +71,7 @@ struct OverlayCanvasItem: View {
         if let media, media.isScene {
             SceneCanvasPreview(media: media, overlay: displayed, size: frame.size, clock: session.playbackClock)
         } else if drawsItsOwnPicture, let image = session.thumbnailsByMedia[overlay.mediaID]?.first {
-            let full = OverlayFrame.isFullFrame(displayed)
+            let full = !OverlayFrame.drawsAsCard(displayed)
             CroppedOverlayImage(
                 image: session.gradedOverlayImage(image),
                 crop: displayed.resolvedCrop,

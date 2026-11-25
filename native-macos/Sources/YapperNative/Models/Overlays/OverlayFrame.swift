@@ -73,6 +73,12 @@ enum OverlayFrame {
     /// True when an overlay covers the frame. Something cut to the full frame
     /// is a graphic laid over the picture rather than a card sitting on it, so
     /// it is drawn square-cornered and without a shadow.
+    /// Whether the overlay gets a card's rounded corners and shadow. A graphic
+    /// cut to the whole frame, or one that is part of a layout, gets neither.
+    static func drawsAsCard(_ overlay: ProjectOverlay) -> Bool {
+        !isFullFrame(overlay) && overlay.flush != true
+    }
+
     static func isFullFrame(_ overlay: ProjectOverlay) -> Bool {
         overlay.width >= 0.98 && overlay.height >= 0.98
             && overlay.x <= 0.02 && overlay.y <= 0.02

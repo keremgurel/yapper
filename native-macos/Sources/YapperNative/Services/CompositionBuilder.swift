@@ -543,7 +543,7 @@ enum CompositionBuilder {
                     naturalSize = image.extent.size
                     preferredTransform = .identity
                     stills[overlay.id] = image
-                    if !OverlayFrame.isFullFrame(overlay) {
+                    if OverlayFrame.drawsAsCard(overlay) {
                         cards[overlay.id] = .standard(
                             cornerRadius: OverlayFrame.cornerRadius(in: renderSize)
                         )
@@ -1015,7 +1015,7 @@ enum CompositionBuilder {
             // A card on top of the picture is rounded and casts a shadow. A
             // graphic cut to the whole frame is part of the picture, so it gets
             // neither.
-            if !OverlayFrame.isFullFrame(overlay) {
+            if OverlayFrame.drawsAsCard(overlay) {
                 layer.cornerRadius = OverlayFrame.cornerRadius(in: renderSize)
                 layer.shadowColor = NSColor.black.cgColor
                 layer.shadowOpacity = 0.28
