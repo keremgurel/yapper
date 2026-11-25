@@ -81,6 +81,55 @@ asks for them, which `Resources/YapperNative.entitlements` does. A new
 capability of that kind (Apple Events, for one) needs its entitlement added
 there, or it fails only in the released build.
 
+### Updates
+
+Installed copies update themselves with [Sparkle](https://sparkle-project.org).
+Once a day, and from "Check for Updates…" in the app menu, the app reads
+`appcast.xml` from the latest GitHub release of keremgurel/yapper. When the
+build number there is higher than its own, it offers the new version,
+downloads the disk image and replaces itself. Copies of 1.0.0 have no updater,
+so their owners have to download the first version that does by hand.
+
+The release script writes `dist/appcast.xml` next to the disk image. A release
+is published by attaching three files to a GitHub release tagged
+`v<version>`: `Yapper-Studio-<version>.dmg`, which the appcast points at,
+`Yapper-Studio.dmg`, which the site links to, and `appcast.xml`. The feed only
+goes live once that release is published and marked latest, so the download
+and the update notice always appear together. A release in this repository
+marked latest without an `appcast.xml` makes every check fail until the next
+one, so mark other releases as pre-releases.
+
+Before each release, raise `CFBundleVersion` in `Resources/Info.plist`, as
+well as `CFBundleShortVersionString`. Sparkle compares the build number, and
+the script refuses one that is not higher than the published build.
+
+Both the disk image and the feed are signed with an EdDSA key. The private
+half lives in the login keychain under the account `yapper-studio`, and the
+public half is `SUPublicEDKey` in `Resources/Info.plist`. Installed copies
+reject any update not signed by that key, so losing it means shipping a
+manual download again. Keep an exported copy somewhere safe, such as a
+password manager, and import it on any other Mac that makes releases:
+
+```bash
+.build/artifacts/sparkle/Sparkle/bin/generate_keys --account yapper-studio -x yapper-sparkle-key
+.build/artifacts/sparkle/Sparkle/bin/generate_keys --account yapper-studio -f yapper-sparkle-key
+```
+
+Delete the exported file afterwards. The tools appear after the first
+`swift build`.
+
+To try an update without publishing anything, make two copies of a packaged
+app. In each copy's `Info.plist`, set `CFBundleVersion` lower in one than the
+other, point `SUFeedURL` at `http://127.0.0.1:<port>/appcast.xml`, and add
+`NSAppTransportSecurity` with `NSAllowsLocalNetworking` so plain HTTP to this
+Mac is allowed. Give both a bundle ID of their own and remove
+`CFBundleURLTypes`, so neither one picks up Yapper Studio's sign-in links. Then
+re-sign each copy with the app signing command in `scripts/package-app.sh`.
+Put the newer copy in a disk image and write its feed with
+`YAPPER_DOWNLOAD_BASE=http://127.0.0.1:<port> scripts/make-appcast.sh <newer app> <newer dmg>`.
+That overwrites `dist/appcast.xml`. Serve the folder with
+`python3 -m http.server <port> --bind 127.0.0.1` and open the older copy.
+
 ## Temporary files
 
 An export writes nothing outside its destination except one

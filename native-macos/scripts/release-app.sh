@@ -4,12 +4,14 @@
 #
 #   scripts/release-app.sh
 #
-# Writes dist/Yapper-Studio-<version>.dmg and a copy at dist/Yapper-Studio.dmg,
-# the name the site links to. Nothing is uploaded.
+# Writes dist/Yapper-Studio-<version>.dmg, a copy at dist/Yapper-Studio.dmg
+# (the name the site links to), and dist/appcast.xml, the signed feed that tells
+# installed copies about this version. Nothing is uploaded.
 #
 # Needs, once per Mac (see README, "Release"):
-#   a "Developer ID Application" certificate in the login keychain, and
-#   notarytool credentials saved under the profile name below.
+#   a "Developer ID Application" certificate in the login keychain,
+#   notarytool credentials saved under the profile name below, and
+#   the Sparkle EdDSA key in the login keychain (account yapper-studio).
 #
 #   YAPPER_SIGN_IDENTITY   the identity to sign with, when the keychain has more
 #                          than one Developer ID Application certificate
@@ -49,6 +51,11 @@ fi
 # Checked before the build, so a missing profile fails in seconds, not minutes.
 if ! xcrun notarytool history --keychain-profile "$notary_profile" >/dev/null 2>&1; then
   fail "No notarytool credentials under \"$notary_profile\". See README, \"Release\"."
+fi
+sparkle_key=$(security find-generic-password -s "https://sparkle-project.org" \
+  -a "${YAPPER_SPARKLE_ACCOUNT:-yapper-studio}" 2>/dev/null || true)
+if [[ -z $sparkle_key ]]; then
+  fail "No Sparkle update key in the keychain. See README, \"Release\"."
 fi
 
 work_dir=$(mktemp -d "${TMPDIR:-/tmp}/yapper-release-XXXXXXXX")
@@ -99,4 +106,6 @@ xcrun stapler validate "$dmg"
 
 rm -f "$dist_dir/Yapper-Studio.dmg"
 cp -c "$dmg" "$dist_dir/Yapper-Studio.dmg"
+"$script_dir/make-appcast.sh" "$app_dir" "$dmg" >/dev/null
 print -r -- "$dmg"
+print -r -- "$dist_dir/appcast.xml"

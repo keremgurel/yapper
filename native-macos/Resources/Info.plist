@@ -96,6 +96,16 @@
 	<string>Yapper Studio uses your microphone for recording and voice idea capture.</string>
 	<key>NSRemovableVolumesUsageDescription</key>
 	<string>Yapper Studio saves projects, recordings and exports to the folders you choose on this drive.</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://github.com/keremgurel/yapper/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>L9t70rk1b1Op2w4GEIJL9YtypmO/yx5HmHurFc6doZs=</string>
+	<key>SURequireSignedFeed</key>
+	<true/>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>

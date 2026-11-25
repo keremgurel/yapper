@@ -26,8 +26,11 @@ bin_dir=$(swift build "${build_flags[@]}" --show-bin-path)
 
 # A build left from another configuration would leave stale files behind.
 rm -rf "$app_dir"
-mkdir -p "$contents_dir/MacOS" "$contents_dir/Resources"
+mkdir -p "$contents_dir/MacOS" "$contents_dir/Resources" "$contents_dir/Frameworks"
 cp "$bin_dir/YapperNative" "$contents_dir/MacOS/YapperNative"
+# Sparkle, the updater. The binary looks for it in Contents/Frameworks. ditto
+# keeps the framework's version symlinks, which a signed framework needs.
+ditto "$bin_dir/Sparkle.framework" "$contents_dir/Frameworks/Sparkle.framework"
 cp "$project_dir/Resources/Info.plist" "$contents_dir/Info.plist"
 cp "$project_dir/Resources/AppIcon.icns" "$contents_dir/Resources/AppIcon.icns"
 # SwiftPM puts the target's resources in their own bundle next to the binary.
@@ -45,11 +48,14 @@ if [[ -n $(git -C "$project_dir" status --porcelain) ]]; then
 fi
 /usr/libexec/PlistBuddy -c "Add :YapperBuildCommit string $build_revision" "$contents_dir/Info.plist"
 (cd "$project_dir/.." && node scripts/analytics/native-config.mjs "$contents_dir/Info.plist")
+# Nested code is signed first, from the inside out: Sparkle and its helpers,
+# then the app. The bundles inside Resources hold no code, so signing the app
+# seals them as resources. --deep is not used: Apple advises against it, and it
+# would strip the entitlements Sparkle's downloader needs.
+"$script_dir/sign-sparkle.sh" "$contents_dir/Frameworks/Sparkle.framework" "$sign_identity"
 if [[ $sign_identity == - ]]; then
-  codesign --force --deep --sign - "$app_dir"
+  codesign --force --sign - "$app_dir"
 else
-  # The bundles inside Resources hold no code, so signing the app seals them
-  # as resources. --deep is not used for Developer ID: Apple advises against it.
   codesign --force --options runtime --timestamp \
     --entitlements "$project_dir/Resources/YapperNative.entitlements" \
     --sign "$sign_identity" "$app_dir"
