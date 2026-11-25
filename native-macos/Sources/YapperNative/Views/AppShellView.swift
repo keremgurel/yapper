@@ -13,7 +13,6 @@ struct AppShellView: View {
     @AppStorage("editorLayoutMode") private var editorLayoutModeRaw = EditorLayoutMode.tallPreview.rawValue
     @AppStorage("editorTallWorkbenchFraction") private var editorTallWorkbenchFraction = 0.0
     @AppStorage("editorLayoutDefaultsVersion") private var editorLayoutDefaultsVersion = 0
-    @AppStorage(EditorMode.storageKey) private var editorModeRaw = EditorMode.simple.rawValue
     @Namespace private var sidebarSelection
     /// The web tab the hidden web view stays parked on while a native tab is in
     /// front. Home used to be the park, so coming back from the editor to the
@@ -74,8 +73,8 @@ struct AppShellView: View {
     var body: some View {
         ZStack {
             studioShell
-            // In Simple mode Chirpy is docked under the preview instead.
-            if isSignedIn, !(destination == .editor && (EditorMode(rawValue: editorModeRaw) ?? .simple) == .simple) {
+            // The same bird in Simple and Pro and on every page: ⌘K anywhere.
+            if isSignedIn {
                 FloatingAssistant(session: session, conversation: chirpyThreads.current ?? session.conversation)
                     // In the editor the bottom of the window is the transport
                     // bar. Chirpy rests above it instead of on top of the

@@ -53,31 +53,13 @@ struct EditorRootView: View {
             }
             if layoutMode == .tallPreview {
                 EditorHorizontalWorkspace(session: session, layoutMode: layoutMode) {
-                    NativeSplitPanes(
-                        isVertical: false,
-                        minimumFirst: 320,
-                        minimumSecond: 230,
-                        defaultFraction: 0.65,
-                        defaultsKey: "editorTallWorkbenchTimelineFraction"
-                    ) {
-                        workbench
-                    } second: {
-                        TimelinePanel(session: session)
-                    }
+                    EditorWorkColumn(session: session)
                 }
             } else {
-                NativeSplitPanes(
-                    isVertical: false,
-                    minimumFirst: 390,
-                    minimumSecond: 230,
-                    defaultFraction: 0.65,
-                    defaultsKey: "editorStandardWorkspaceTimelineFraction"
-                ) {
+                EditorStandardLayout(session: session) {
                     EditorHorizontalWorkspace(session: session, layoutMode: layoutMode) {
                         workbench
                     }
-                } second: {
-                    TimelinePanel(session: session)
                 }
             }
         }

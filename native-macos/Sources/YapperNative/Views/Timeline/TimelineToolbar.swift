@@ -22,6 +22,7 @@ struct TimelineToolbar: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             TimelineZoomControl(viewport: viewport, layout: layout)
+            SimpleTimelineHideButton()
         }
         .padding(.horizontal, 12)
         .frame(height: Self.height)
