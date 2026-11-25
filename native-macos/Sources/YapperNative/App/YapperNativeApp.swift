@@ -71,7 +71,7 @@ struct YapperNativeApp: App {
         // `yapper-studio://auth/callback`, and a WindowGroup answers an incoming
         // URL by opening another window: the creator clicked sign in and got a
         // second copy of the whole editor.
-        Window("Yapper Studio Native", id: "studio") {
+        Window("Yapper Studio", id: "studio") {
             AppShellView(session: session)
                 .frame(minWidth: 1_100, minHeight: 700)
                 .preferredColorScheme(theme.colorScheme)
