@@ -16,7 +16,9 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import MacDownloadButton from "@/components/marketing/mac-download-button";
 import { track } from "@/lib/analytics";
+import { MAC_REQUIREMENTS } from "@/lib/mac-download";
 import { desktopEditorUrl } from "@/lib/studio/editor-handoff";
 
 const BENEFITS = [
@@ -105,11 +107,12 @@ export default function DesktopEditorGate({
                   ? "Edit this recording on Mac"
                   : "Open desktop editor"}
             </Button>
+            <MacDownloadButton size="lg" source="editor_gate" />
           </div>
           <p className="text-muted-foreground mt-3 text-xs">
             {itemId
               ? "Sign in to the same account in the Mac app. Your saved recording will download into a local project."
-              : "Available for macOS."}
+              : `Needs ${MAC_REQUIREMENTS}.`}
           </p>
         </div>
 
