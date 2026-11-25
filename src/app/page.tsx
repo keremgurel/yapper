@@ -7,6 +7,7 @@ import ProjectStack from "@/components/marketing/home/project-stack";
 import HomeGuides from "@/components/marketing/home/home-guides";
 import { StudioStart } from "@/components/marketing/product-sections";
 import StudioCtaButton from "@/components/marketing/studio-cta-button";
+import MacDownloadButton from "@/components/marketing/mac-download-button";
 import { marketingMetadata } from "@/lib/marketing-metadata";
 import HomeJsonLd, { ProductJsonLd } from "@/app/home-json-ld";
 
@@ -37,6 +38,7 @@ export default function HomePage() {
               </p>
               <div className="marketing-actions">
                 <StudioCtaButton size="lg" />
+                <MacDownloadButton size="lg" source="home_hero" />
               </div>
             </div>
             <StudioPreview initialStep="Edit" />
