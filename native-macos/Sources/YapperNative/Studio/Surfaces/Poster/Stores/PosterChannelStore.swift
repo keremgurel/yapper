@@ -8,10 +8,13 @@ final class PosterChannelStore: ObservableObject {
 
     @Published private(set) var lists: [PublishPlatform: PosterPlatformVideos] = [:]
     @Published private(set) var failed: Set<PublishPlatform> = []
+    private var ownerID: String?
+    private var refreshing: [PublishPlatform: UUID] = [:]
     private var fetchedAt: [PublishPlatform: Date] = [:]
 
     func videos(for platform: PublishPlatform) -> [PosterVideo] {
-        (lists[platform]?.videos ?? [])
+        guard ownerID == StudioAuth.shared.account?.userID else { return [] }
+        return (lists[platform]?.videos ?? [])
             .sorted { $0.publishedAt > $1.publishedAt }
             .map { PosterVideo(platform: platform, video: $0) }
     }
@@ -21,13 +24,27 @@ final class PosterChannelStore: ObservableObject {
 
     /// Refreshes when the cached list is older than a minute, or when forced.
     func refresh(_ platform: PublishPlatform, force: Bool = false) async {
+        let owner = StudioAuth.shared.account?.userID
+        if ownerID != owner {
+            ownerID = owner
+            lists.removeAll()
+            failed.removeAll()
+            refreshing.removeAll()
+            fetchedAt.removeAll()
+        }
         if !force, let at = fetchedAt[platform], Date().timeIntervalSince(at) < 60 { return }
+        guard refreshing[platform] == nil else { return }
+        let request = UUID()
+        refreshing[platform] = request
+        defer { if refreshing[platform] == request { refreshing[platform] = nil } }
         do {
             let list: PosterPlatformVideos = try await PosterHTTP.get("api/publish/\(platform.rawValue)/videos")
+            guard owner == StudioAuth.shared.account?.userID, refreshing[platform] == request else { return }
             lists[platform] = list
             fetchedAt[platform] = Date()
             failed.remove(platform)
         } catch {
+            guard owner == StudioAuth.shared.account?.userID, refreshing[platform] == request else { return }
             if lists[platform] == nil || force { failed.insert(platform) }
         }
     }

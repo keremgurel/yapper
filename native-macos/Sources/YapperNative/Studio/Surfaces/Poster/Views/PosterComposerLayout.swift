@@ -4,9 +4,14 @@ struct PosterStepProgress: View {
     let composing: Bool
 
     var body: some View {
-        HStack(spacing: 12) {
-            step("Source", number: 1, current: !composing)
-            step("Post", number: 2, current: composing)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                step("Source", number: 1, current: !composing)
+                step("Post", number: 2, current: composing)
+            }
+            .fixedSize()
+            step(composing ? "Post" : "Source", number: composing ? 2 : 1, current: true)
+                .fixedSize()
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(composing ? "Step 2 of 2: Post" : "Step 1 of 2: Source")
