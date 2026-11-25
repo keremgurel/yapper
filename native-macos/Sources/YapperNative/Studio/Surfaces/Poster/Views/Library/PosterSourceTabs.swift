@@ -1,49 +1,44 @@
 import SwiftUI
 
-/// Where the video comes from. "Made in Yapper" is what you made here; each
-/// platform tab is what you already posted there. A dot marks a connected
-/// channel.
+/// Keep every source visible even when the Studio sidebar is open.
 struct PosterSourceTabs: View {
-    let source: PosterSource
-    let connected: [PublishPlatform]
-    let onChange: (PosterSource) -> Void
+    @Binding var source: PosterSource
+
+    private let firstRow: [PosterSource] = [.all, .yapper, .platform(.instagram)]
+    private let secondRow: [PosterSource] = [.platform(.youtube), .platform(.tiktok), .uploads]
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 4) {
-                tab(.yapper) { Text("Made in Yapper") }
-                tab(.uploads) { Text("Uploads") }
-                ForEach(PublishPlatform.enabledCases) { platform in
-                    tab(.platform(platform)) {
-                        HStack(spacing: 6) {
-                            Image(systemName: platform.symbol).font(.studioLabel)
-                            Text(platform.label)
-                            Circle()
-                                .fill(connected.contains(platform) ? NativeChip.Tone.green.color : Color.secondary.opacity(0.35))
-                                .frame(width: 6, height: 6)
-                        }
-                    }
-                }
-                Spacer(minLength: 0)
+        ViewThatFits(in: .horizontal) {
+            group(firstRow + secondRow)
+            VStack(alignment: .leading, spacing: 5) {
+                group(firstRow)
+                group(secondRow)
             }
-            Rectangle().fill(Color.studioLine).frame(height: 1)
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Video sources")
     }
 
-    private func tab<Label: View>(_ key: PosterSource, @ViewBuilder label: () -> Label) -> some View {
-        let active = key == source
-        return Button { onChange(key) } label: {
-            label()
-                .font(.studioBodyStrong)
-                .foregroundStyle(active ? Color.primary : Color.secondary)
-                .padding(.horizontal, 12)
-                .frame(height: 36)
-                .overlay(alignment: .bottom) {
-                    if active {
-                        Capsule().fill(Color.studioAccent).frame(height: 2).padding(.horizontal, 12)
-                    }
+    private func group(_ sources: [PosterSource]) -> some View {
+        HStack(spacing: 3) {
+            ForEach(sources, id: \.self) { key in
+                Button { source = key } label: {
+                    Text(key.label)
+                        .font(.studioBodyStrong)
+                        .foregroundStyle(source == key ? Color.primary : Color.secondary)
+                        .padding(.horizontal, 9)
+                        .frame(minHeight: 32)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .background(source == key ? Color.raisedBackground : .clear, in: Capsule())
+                        .contentShape(Capsule())
                 }
+                .buttonStyle(.studioPlain)
+                .clickableCursor()
+                .accessibilityAddTraits(source == key ? .isSelected : [])
+            }
         }
-        .buttonStyle(.studioPlain)
+        .padding(3)
+        .background(Color.studioInputBackground, in: Capsule())
+        .fixedSize(horizontal: true, vertical: false)
     }
 }
