@@ -15,6 +15,20 @@ extension EditorProject {
         case .fullFrame:
             for range in ranges { clearLayout(mediaID: range.mediaID, source: range.source) }
             return []
+        case let .card(camera, cameraTop, cornerRadius, popOut, visual):
+            let card = LayoutSpanCard(
+                cameraTop: cameraTop, cornerRadius: cornerRadius, popOut: popOut,
+                visual: OverlayBox(x: visual.x, y: visual.y, width: visual.width, height: visual.height),
+                captionY: plan.captions?.style.y
+            )
+            return ranges.map { range in
+                placeLayoutSpan(
+                    templateID: plan.id,
+                    camera: CameraRegion(x: camera.x, y: camera.y, width: camera.width, height: camera.height),
+                    zoom: 1, focusY: 0.5, inset: 0,
+                    mediaID: range.mediaID, source: range.source, card: card
+                )
+            }
         case let .split(camera, zoom, focusY, top):
             return ranges.map { range in
                 placeLayoutSpan(

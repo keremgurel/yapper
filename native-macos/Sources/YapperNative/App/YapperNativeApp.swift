@@ -125,6 +125,14 @@ struct YapperNativeApp: App {
                 }
                 .keyboardShortcut("a", modifiers: [.command, .shift])
 
+                Divider()
+                ForEach(EditorLayoutMode.allCases) { mode in
+                    Button(mode.title) {
+                        UserDefaults.standard.set(mode.rawValue, forKey: "editorLayoutMode")
+                    }
+                }
+                Divider()
+
                 Button(session.isAssistantOpen ? "Hide Yapper" : "Ask Yapper") {
                     session.toggleAssistant()
                 }

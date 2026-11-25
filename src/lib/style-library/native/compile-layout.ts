@@ -2,6 +2,7 @@ import type { StyleBlock } from "../format/style-block";
 import { resolveOptions } from "../format/resolve-values";
 import { halfOptions } from "../entries/split-half-and-half/options";
 import { DESIGN_FRAME } from "../runtime/design-frame";
+import { compileCard } from "./compile-card";
 import type { NativeLayout } from "./native-plan";
 
 const round = (value: number) => Math.round(value * 10_000) / 10_000;
@@ -31,6 +32,7 @@ export function compileLayout(block: StyleBlock | null): CompiledLayout | null {
           : [],
     };
   }
+  if (block.styleId === "splits.speaker-below") return compileCard(block);
   if (block.styleId !== "splits.half-and-half") return null;
 
   const { values } = resolveOptions(halfOptions, block.options);

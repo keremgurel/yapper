@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// The preview, and in Simple mode Chirpy docked under it and the status
-/// toast over it.
+/// The preview, and in Simple mode Chirpy docked under it.
 struct EditorPreviewColumn: View {
     @ObservedObject var session: EditorSession
     let layoutMode: EditorLayoutMode
@@ -12,7 +11,6 @@ struct EditorPreviewColumn: View {
     var body: some View {
         VStack(spacing: 0) {
             PlayerPanel(session: session, layoutMode: layoutMode)
-                .overlay { if isSimple { StatusToast(session: session) } }
             if isSimple {
                 ChirpyDock(session: session, conversation: session.conversation)
             }

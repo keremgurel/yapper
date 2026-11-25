@@ -26,6 +26,21 @@ struct LayoutSpan: Codable, Equatable, Identifiable, Sendable {
     var visualInset: Double = 0
     /// The overlay filling the area above the camera, once there is one.
     var topOverlayID: UUID?
+    /// For a card layout: where the top of the scaled take sits relative to
+    /// the region's top, as a fraction of the frame height. `nil` frames the
+    /// take by zoom and focus instead.
+    var cameraTop: Double? = nil
+    /// Rounding of the camera region's corners, as a fraction of the frame
+    /// width. `nil` is square.
+    var cornerRadius: Double? = nil
+    /// Draw the speaker's cut-out again over the region's top edge, so a
+    /// raised hand comes out past it.
+    var popOut: Bool? = nil
+    /// For a card layout: the box the visual is shown whole in, as a card.
+    /// `nil` fills the whole area above the camera instead.
+    var visualBox: OverlayBox? = nil
+    /// Where captions spoken inside sit. `nil` puts them just under the seam.
+    var captionY: Double? = nil
 
     func contains(mediaID: UUID, source time: Double) -> Bool {
         self.mediaID == mediaID && time >= sourceStart && time < sourceEnd

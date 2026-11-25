@@ -80,6 +80,8 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
         /// top left, once it is placed. Set on the speaker's footage when a
         /// layout gives the camera only part of the frame. See `CameraRegion`.
         let clip: CGRect?
+        /// Rounds `clip`'s corners, in pixels: a speaker card.
+        let clipRadius: CGFloat
 
         /// The track this layer draws, when it draws one.
         var trackID: CMPersistentTrackID? {
@@ -100,7 +102,8 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
             retouch: ClipRetouch = .none,
             frost: Bool = false,
             fade: LayerFade? = nil,
-            clip: CGRect? = nil
+            clip: CGRect? = nil,
+            clipRadius: CGFloat = 0
         ) {
             self.source = source
             self.transform = transform
@@ -114,6 +117,7 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
             self.retouch = retouch
             self.frost = frost
             self.clip = clip
+            self.clipRadius = clipRadius
             self.fade = fade
         }
 
@@ -323,9 +327,11 @@ final class StudioVideoCompositor: NSObject, AVVideoCompositing {
                 let sourceExtent = image.extent
                 image = image.transformed(by: placement)
                 if let clip = layer.clip {
-                    image = image.cropped(
-                        to: CGRect(x: clip.minX, y: size.height - clip.maxY, width: clip.width, height: clip.height)
-                    )
+                    let area = CGRect(x: clip.minX, y: size.height - clip.maxY, width: clip.width, height: clip.height)
+                    image = image.cropped(to: area)
+                    if layer.clipRadius > 0 {
+                        image = Self.rounded(image, to: area, radius: layer.clipRadius)
+                    }
                 }
 
                 // Rounded and shadowed once the card is at the size it will be
@@ -430,6 +436,19 @@ final class StudioVideoCompositor: NSObject, AVVideoCompositing {
     /// from the card. The placement scales and turns without squashing, so the
     /// card's size is its source's size times whatever the placement scales by,
     /// and turning about the middle leaves the middle where it is.
+    /// Keeps only the part of `image` inside a rounded rectangle.
+    static func rounded(_ image: CIImage, to area: CGRect, radius: CGFloat) -> CIImage {
+        guard let mask = CIFilter(name: "CIRoundedRectangleGenerator", parameters: [
+            "inputExtent": CIVector(cgRect: area),
+            "inputRadius": min(radius, min(area.width, area.height) / 2),
+            "inputColor": CIColor.white,
+        ])?.outputImage else { return image }
+        return image.applyingFilter("CIBlendWithMask", parameters: [
+            kCIInputBackgroundImageKey: CIImage(color: .clear).cropped(to: area),
+            kCIInputMaskImageKey: mask,
+        ])
+    }
+
     private static func cardBox(
         source: CGRect,
         placedBy placement: CGAffineTransform,

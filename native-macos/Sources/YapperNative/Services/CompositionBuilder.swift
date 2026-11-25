@@ -70,13 +70,24 @@ private struct MainSegment {
         if let span, let rect = cameraRect(for: span) {
             let oriented = CGRect(origin: .zero, size: naturalSize).applying(preferredTransform)
             let sourceAspect = oriented.height != 0 ? abs(oriented.width / oriented.height) : 1
-            let framing = CameraRegionFraming.framing(
-                zoom: span.cameraZoom,
-                focusY: span.cameraFocusY,
-                sourceAspect: sourceAspect,
-                region: span.region,
-                frameAspect: renderSize.height > 0 ? renderSize.width / renderSize.height : 9.0 / 16.0
-            )
+            let framing: VideoFraming
+            if let top = span.cameraTop {
+                // A card places the take by its headroom: the scaled take's top
+                // edge sits `top` of the frame's height above or below the card's.
+                let width = abs(oriented.width), height = abs(oriented.height)
+                let cover = max(rect.width / max(1, width), rect.height / max(1, height))
+                let drawnHeight = height * cover
+                let centre = rect.minY + top * renderSize.height + drawnHeight / 2
+                framing = VideoFraming(scale: 1, x: 0, y: (centre - rect.midY) / rect.height)
+            } else {
+                framing = CameraRegionFraming.framing(
+                    zoom: span.cameraZoom,
+                    focusY: span.cameraFocusY,
+                    sourceAspect: sourceAspect,
+                    region: span.region,
+                    frameAspect: renderSize.height > 0 ? renderSize.width / renderSize.height : 9.0 / 16.0
+                )
+            }
             return CompositionBuilder.coveringTransform(
                 naturalSize: naturalSize,
                 preferredTransform: preferredTransform,
@@ -790,6 +801,7 @@ enum CompositionBuilder {
             // looked up at the middle, since both ends touch its neighbours.
             let layout: LayoutSpan? = segment.span(atTimeline: midpoint)
             let cameraClip: CGRect? = segment.cameraRect(for: layout)
+            let cameraRadius: CGFloat = layout?.cornerRadius.map { CGFloat($0) * segment.renderSize.width } ?? 0
             let moves = segment.isKeyed && layout == nil
             let mainStart: CGAffineTransform = moves || layout != nil
                 ? segment.transform(atTimeline: start, span: layout)
@@ -827,7 +839,8 @@ enum CompositionBuilder {
                     // out, with the backdrop showing through what is gone.
                     matte: segment.clip.removesBackground,
                     retouch: segment.clip.resolvedRetouch,
-                    clip: cameraClip
+                    clip: cameraClip,
+                    clipRadius: cameraRadius
                 )
             )
             // The speaker again, cut out, over the overlays that asked to sit
@@ -846,9 +859,26 @@ enum CompositionBuilder {
                         // copy anyone actually sees, so leaving it off here
                         // would make the slider look broken.
                         retouch: segment.clip.resolvedRetouch,
-                        clip: cameraClip
+                        clip: cameraClip,
+                        clipRadius: cameraRadius
                     ),
                     at: matteIndex
+                )
+            }
+            // A card the speaker breaks out of: the cut-out again, on top of
+            // everything, from the top of the frame down to the card's bottom,
+            // so only what reaches past the card's edge shows outside it.
+            if layout?.popOut == true, let card = cameraClip, !isMainTrackHidden {
+                placements.insert(
+                    .init(
+                        source: .track(mainTrack.trackID),
+                        transform: mainStart,
+                        opacity: 1,
+                        matte: true,
+                        retouch: segment.clip.resolvedRetouch,
+                        clip: CGRect(x: 0, y: 0, width: segment.renderSize.width, height: card.maxY)
+                    ),
+                    at: 0
                 )
             }
 

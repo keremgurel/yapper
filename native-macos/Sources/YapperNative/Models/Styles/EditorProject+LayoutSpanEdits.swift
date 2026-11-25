@@ -18,14 +18,22 @@ extension EditorProject {
         focusY: Double,
         inset: Double,
         mediaID: UUID,
-        source: ClosedRange<Double>
+        source: ClosedRange<Double>,
+        card: LayoutSpanCard? = nil
     ) -> LayoutSpan {
         clearLayout(mediaID: mediaID, source: source)
-        let span = LayoutSpan(
+        var span = LayoutSpan(
             templateID: templateID, mediaID: mediaID,
             sourceStart: source.lowerBound, sourceEnd: source.upperBound,
             region: camera, cameraZoom: zoom, cameraFocusY: focusY, visualInset: inset
         )
+        if let card {
+            span.cameraTop = card.cameraTop
+            span.cornerRadius = card.cornerRadius
+            span.popOut = card.popOut
+            span.visualBox = card.visual
+            span.captionY = card.captionY
+        }
         layoutSpans = (layoutSpans ?? []) + [span]
         setSpanCaptionHeight(span)
         updatedAt = Date()
@@ -64,7 +72,11 @@ extension EditorProject {
     mutating func setSplit(_ id: UUID, _ input: StyleSplitInput) {
         guard let index = layoutSpans?.firstIndex(where: { $0.id == id }) else { return }
         var span = layoutSpans![index]
-        if let seam = input.seam { span.region = .below(seam: seam) }
+        if let seam = input.seam {
+            let moved = seam - span.region.y
+            span.region = CameraRegion(x: span.region.x, y: seam, width: span.region.width, height: max(0.15, 1 - seam))
+            span.captionY = span.captionY.map { $0 + moved }
+        }
         if let zoom = input.cameraZoom { span.cameraZoom = zoom }
         if let focus = input.cameraFocusY { span.cameraFocusY = focus }
         if let inset = input.visualInset { span.visualInset = min(0.15, max(0, inset)) }
@@ -76,6 +88,7 @@ extension EditorProject {
 
     /// The area above a span's camera, less its inset.
     func topBox(of span: LayoutSpan) -> OverlayBox? {
+        if let visual = span.visualBox { return visual }
         guard span.region.y > 0.05 else { return nil }
         let insetX = span.visualInset
         let insetY = insetX * resolvedAspectRatio
@@ -86,7 +99,7 @@ extension EditorProject {
     /// caption's own height, so the inspector shows it and a caption moved by
     /// hand can be moved again.
     private mutating func setSpanCaptionHeight(_ span: LayoutSpan) {
-        let y = min(0.95, span.region.y + Self.captionGapUnderSeam)
+        let y = min(0.95, span.captionY ?? (span.region.y + Self.captionGapUnderSeam))
         editCaptions(in: span) { $0.override(with: TextStylePatch(y: y)) }
     }
 

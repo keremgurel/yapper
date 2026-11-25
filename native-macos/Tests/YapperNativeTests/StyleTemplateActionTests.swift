@@ -201,7 +201,7 @@ struct StyleTemplateActionTests {
         await session.runAssistant(instruction: "split screen when I talk about signups")
         let reply = try #require(session.conversation.messages.last)
         let cards = try #require(reply.offer)
-        #expect(cards.templateIDs == ["talking-head", "half-and-half"])
+        #expect(cards.templateIDs == ["talking-head", "half-and-half", "speaker-card", "speaker-below"])
         #expect(session.project.resolvedLayoutSpans.isEmpty)
 
         await session.chooseOfferedStyle("half-and-half", from: cards, in: reply.id)
@@ -213,7 +213,7 @@ struct StyleTemplateActionTests {
         let (project, root) = try await fixture()
         defer { try? FileManager.default.removeItem(at: root) }
         let session = await session(project)
-        let result = try await run(StyleApplyInput(templateID: "speaker-below", at: nil, until: nil, topMediaID: nil), in: session)
+        let result = try await run(StyleApplyInput(templateID: "picture-in-picture", at: nil, until: nil, topMediaID: nil), in: session)
         #expect(result.status == .rejected)
         #expect(result.message.contains("half-and-half"))
         #expect(session.project == project)
@@ -253,5 +253,45 @@ struct StyleTemplateActionTests {
             let after = try pixel(3.5, 0.5, 0.25)
             #expect(after.green > 200 && after.blue < 60, "after the split: \(after)")
         }
+    }
+
+    /// The Kallaway look: the speaker in a rounded card at the bottom, the
+    /// visual whole above it, the backdrop around both.
+    @Test func speakerCardRoundsTheCameraAndShowsTheVisualWhole() async throws {
+        let (base, root) = try await fixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let session = await session(base)
+        let result = try await run(StyleApplyInput(templateID: "speaker-card", at: nil, until: nil, topMediaID: base.media[1].id), in: session)
+        #expect(result.status == .applied, "\(result.message)")
+        let span = try #require(session.project.resolvedLayoutSpans.first)
+        #expect(span.popOut == true && span.cornerRadius != nil && span.visualBox != nil)
+        let top = try #require(session.project.topOverlay(of: span))
+        // Whole, not cropped, and drawn as a card.
+        #expect(top.crop == nil && OverlayFrame.drawsAsCard(top))
+        #expect(abs(captionY(session.project, 1) - 0.5234) < 0.001)
+
+        var project = session.project
+        project.captionsEnabled = false
+        project.overlays = []
+        project.applyStyleBackdrop(ProjectBackdropInput(color: "#0000FF", preset: nil, presetColors: nil))
+        let built = try await CompositionBuilder.build(project: project)
+        let generator = AVAssetImageGenerator(asset: built.asset)
+        generator.videoComposition = built.playbackVideoComposition
+        generator.requestedTimeToleranceBefore = .zero
+        generator.requestedTimeToleranceAfter = .zero
+        let frame = try generator.copyCGImage(at: CMTime(seconds: 1, preferredTimescale: 600), actualTime: nil)
+        func pixel(_ u: Double, _ v: Double) throws -> SampledPixel {
+            try #require(frame.sample(x: Int(u * Double(frame.width)), y: Int(v * Double(frame.height))))
+        }
+        let card = span.region
+        let inside = try pixel(0.5, card.y + card.height * 0.5)
+        #expect(inside.green > 200 && inside.blue < 60, "inside the card: \(inside)")
+        let above = try pixel(0.5, card.y - 0.03)
+        #expect(above.blue > 200, "above the card: \(above)")
+        let beside = try pixel(card.x * 0.5, card.y + card.height * 0.5)
+        #expect(beside.blue > 200, "beside the card: \(beside)")
+        // The top left corner is rounded away.
+        let corner = try pixel(card.x + 0.004, card.y + 0.002)
+        #expect(corner.blue > 200, "the rounded corner: \(corner)")
     }
 }

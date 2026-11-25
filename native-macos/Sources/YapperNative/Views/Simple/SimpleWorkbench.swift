@@ -9,7 +9,7 @@ struct SimpleWorkbench: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            SimpleRail(selection: $item)
+            SimpleRail(session: session, selection: $item)
             Rectangle().fill(Color.studioLine).frame(width: 1)
             pane
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -49,6 +49,7 @@ struct SimpleWorkbench: View {
 
 /// The panes, as icons with short labels.
 private struct SimpleRail: View {
+    @ObservedObject var session: EditorSession
     @Binding var selection: SimpleRailItem
 
     var body: some View {
@@ -73,6 +74,25 @@ private struct SimpleRail: View {
                 .accessibilityAddTraits(selection == item ? .isSelected : [])
             }
             Spacer(minLength: 0)
+            // Always one click away: a second take, a picture for a hook, a
+            // sound. Dropping a file on the timeline works too.
+            Button {
+                ImportPanels.openMedia(for: session)
+            } label: {
+                VStack(spacing: 4) {
+                    StudioGlyph(.plus, size: 17)
+                    Text("Import").font(.system(size: 10, weight: .medium))
+                }
+                .frame(width: 58, height: 52)
+                .foregroundStyle(Color.primary)
+                .background(Color.studioFaintFill)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(session.isBusy)
+            .help("Add video, pictures or sound to this project")
+            .accessibilityLabel("Import media")
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 6)

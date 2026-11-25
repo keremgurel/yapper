@@ -34,6 +34,11 @@ export const splitOptions = {
     max: 120,
     unit: "px",
   }),
+  popOut: booleanOption({
+    label: "Speaker breaks out of the card",
+    help: "A cut-out of the speaker is drawn again over the card, so a raised hand or the top of the head comes out past its edge. Drawn in the Mac editor.",
+    default: false,
+  }),
   edgeLine: booleanOption({
     label: "Edge line",
     help: "A 1.5 px white line inside the speaker card at 16%.",

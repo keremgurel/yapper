@@ -38,6 +38,19 @@ export type NativeLayout =
       /** Which part of the take stays in view: 0 the top, 1 the bottom. */
       cameraFocusY: number;
       top: NativeBox;
+    }
+  | {
+      kind: "card";
+      /** The card, in frame fractions. It runs off the bottom of the frame. */
+      camera: NativeBox;
+      /** Where the top of the scaled take sits, relative to the card's top, as a fraction of the frame height. */
+      cameraTop: number;
+      /** Rounding of the card's corners, as a fraction of the frame width. */
+      cornerRadius: number;
+      /** Draw the speaker's cut-out again over the card's edge. */
+      popOut: boolean;
+      /** The box above, where the visual is shown whole as a card. */
+      visual: NativeBox;
     };
 
 /** The `editor.project.setBackdrop` input. */

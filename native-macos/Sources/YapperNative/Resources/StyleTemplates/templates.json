@@ -65,12 +65,96 @@
         "wordsPerCard": 3
       },
       "unsupported": []
-    }
-  ],
-  "skipped": [
+    },
+    {
+      "id": "speaker-card",
+      "name": "Speaker card",
+      "summary": "The speaker in a rounded card at the bottom, breaking out past its edge, a picture or clip above on the dotted grid.",
+      "layout": {
+        "kind": "card",
+        "camera": {
+          "x": 0.09,
+          "y": 0.5208,
+          "width": 0.82,
+          "height": 0.4792
+        },
+        "cameraTop": -0.1196,
+        "cornerRadius": 0.0444,
+        "popOut": true,
+        "visual": {
+          "x": 0.037,
+          "y": 0.1094,
+          "width": 0.9259,
+          "height": 0.401
+        }
+      },
+      "backdrop": {
+        "preset": "shapeGrid",
+        "presetColors": ["#0A0A0A"]
+      },
+      "captions": {
+        "style": {
+          "x": 0.5,
+          "y": 0.5234,
+          "width": 0.8333,
+          "fontScale": 0.026,
+          "font": "modern",
+          "color": "#FFFFFF",
+          "strokeEnabled": false,
+          "backgroundEnabled": false,
+          "shadowEnabled": true
+        },
+        "wordsPerCard": 3
+      },
+      "unsupported": [
+        "The thin line inside the speaker card is not in the editor yet."
+      ]
+    },
     {
       "id": "speaker-below",
-      "reason": "The splits.speaker-below layout is not in the editor yet."
+      "name": "Speaker below",
+      "summary": "The speaker as a card at the bottom, a glass card on the blurred take above.",
+      "layout": {
+        "kind": "card",
+        "camera": {
+          "x": 0.09,
+          "y": 0.5208,
+          "width": 0.82,
+          "height": 0.4792
+        },
+        "cameraTop": -0.1196,
+        "cornerRadius": 0.0444,
+        "popOut": false,
+        "visual": {
+          "x": 0.037,
+          "y": 0.1094,
+          "width": 0.9259,
+          "height": 0.401
+        }
+      },
+      "backdrop": {
+        "color": "#0A0A0A"
+      },
+      "captions": {
+        "style": {
+          "x": 0.5,
+          "y": 0.5234,
+          "width": 0.8333,
+          "fontScale": 0.026,
+          "font": "modern",
+          "color": "#FFFFFF",
+          "strokeEnabled": false,
+          "backgroundEnabled": false,
+          "shadowEnabled": true
+        },
+        "wordsPerCard": 3
+      },
+      "unsupported": [
+        "The thin line inside the speaker card is not in the editor yet.",
+        "The top holds cards.smoked-glass, which the editor cannot draw yet. It stays empty for a picture or clip.",
+        "The frosted backdrop is a flat colour in the editor for now."
+      ]
     }
-  ]
+  ],
+  "skipped": []
 }

@@ -13,7 +13,7 @@
     {
       "id": "editor.styles.apply",
       "symbol": "styleApply",
-      "description": "Lay a style library template over a stretch of the video, or the whole video when at and until are left out. half-and-half puts the camera in the bottom half, cropped to fill, keeps the top half for a picture or clip, sets a dark grid backdrop and moves the captions spoken in that stretch just under the seam. talking-head gives that stretch the whole frame back. Use it when the creator names a template or picks one; otherwise use editor.styles.offer. topMediaID puts imported media in the top half straight away. Caption style and backdrop become ordinary project values afterwards: change them with editor.captions.setStyle and editor.project.setBackdrop.",
+      "description": "Lay a style library template over a stretch of the video, or the whole video when at and until are left out. half-and-half puts the camera in the bottom half, cropped to fill, keeps the top half for a picture or clip, sets a dark grid backdrop and moves the captions spoken in that stretch just under the seam. speaker-card puts the speaker in a rounded card at the bottom that they break out of, with a picture or clip shown whole above on the grid (the Kallaway look). speaker-below is the same card without the break-out. talking-head gives that stretch the whole frame back. Use it when the creator names a template or picks one; otherwise use editor.styles.offer. topMediaID puts imported media in the top half straight away. Caption style and backdrop become ordinary project values afterwards: change them with editor.captions.setStyle and editor.project.setBackdrop.",
       "input": "StyleApplyInput",
       "effect": "reversibleEdit",
       "requiresRebuild": true
@@ -60,7 +60,7 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 64,
-          "description": "A template id from the bundled catalog: half-and-half or talking-head."
+          "description": "A template id from the bundled catalog: half-and-half, speaker-card, speaker-below or talking-head."
         },
         "at": { "$ref": "#/$defs/TimelineAnchorInput" },
         "until": { "$ref": "#/$defs/TimelineAnchorInput" },

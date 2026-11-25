@@ -50,9 +50,12 @@ struct StyleBoxPlan: Decodable, Equatable, Sendable {
 enum StyleLayoutPlan: Decodable, Equatable, Sendable {
     case fullFrame
     case split(camera: StyleBoxPlan, cameraZoom: Double, cameraFocusY: Double, top: StyleBoxPlan)
+    /// The take in a rounded card at the bottom, placed by its headroom, with
+    /// an optional pop-out, and a box above for a visual shown whole.
+    case card(camera: StyleBoxPlan, cameraTop: Double, cornerRadius: Double, popOut: Bool, visual: StyleBoxPlan)
 
     private enum CodingKeys: String, CodingKey {
-        case kind, camera, cameraZoom, cameraFocusY, top
+        case kind, camera, cameraZoom, cameraFocusY, top, cameraTop, cornerRadius, popOut, visual
     }
 
     init(from decoder: Decoder) throws {
@@ -66,6 +69,14 @@ enum StyleLayoutPlan: Decodable, Equatable, Sendable {
                 cameraZoom: try container.decode(Double.self, forKey: .cameraZoom),
                 cameraFocusY: try container.decode(Double.self, forKey: .cameraFocusY),
                 top: try container.decode(StyleBoxPlan.self, forKey: .top)
+            )
+        case "card":
+            self = .card(
+                camera: try container.decode(StyleBoxPlan.self, forKey: .camera),
+                cameraTop: try container.decode(Double.self, forKey: .cameraTop),
+                cornerRadius: try container.decode(Double.self, forKey: .cornerRadius),
+                popOut: try container.decode(Bool.self, forKey: .popOut),
+                visual: try container.decode(StyleBoxPlan.self, forKey: .visual)
             )
         case let other:
             throw DecodingError.dataCorruptedError(

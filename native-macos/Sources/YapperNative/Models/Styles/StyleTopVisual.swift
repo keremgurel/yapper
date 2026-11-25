@@ -14,6 +14,18 @@ enum StyleTopVisual {
         let height = mediaAspect / boxAspect
         return OverlayCrop(x: 0, y: (1 - height) / 2, width: 1, height: height).clamped
     }
+
+    /// The largest box of the media's shape inside `box`, centred.
+    static func containedBox(_ box: OverlayBox, mediaAspect: Double, frameAspect: Double) -> OverlayBox {
+        guard mediaAspect > 0, frameAspect > 0, box.height > 0 else { return box }
+        let boxAspect = box.width * frameAspect / box.height
+        if mediaAspect > boxAspect {
+            let height = box.width * frameAspect / mediaAspect
+            return OverlayBox(x: box.x, y: box.y + (box.height - height) / 2, width: box.width, height: height)
+        }
+        let width = box.height * mediaAspect / frameAspect
+        return OverlayBox(x: box.x + (box.width - width) / 2, y: box.y, width: width, height: box.height)
+    }
 }
 
 extension EditorProject {
@@ -46,11 +58,22 @@ extension EditorProject {
         let length = extent.upperBound - extent.lowerBound
         if let media = media.first(where: { $0.id == overlay.mediaID }) {
             overlay.duration = media.isImage ? length : min(length, max(0.1, media.duration - overlay.sourceStart))
-            let crop = StyleTopVisual.coverCrop(
-                mediaAspect: CompositionBuilder.aspect(of: media),
-                boxAspect: box.width * resolvedAspectRatio / box.height
-            )
-            overlay.crop = crop.isFull ? nil : crop
+            if span.visualBox != nil {
+                // A card layout shows the visual whole, as a card in its box.
+                let whole = StyleTopVisual.containedBox(box, mediaAspect: CompositionBuilder.aspect(of: media), frameAspect: resolvedAspectRatio)
+                overlay.x = whole.x
+                overlay.y = whole.y
+                overlay.width = whole.width
+                overlay.height = whole.height
+                overlay.flush = nil
+                overlay.crop = nil
+            } else {
+                let crop = StyleTopVisual.coverCrop(
+                    mediaAspect: CompositionBuilder.aspect(of: media),
+                    boxAspect: box.width * resolvedAspectRatio / box.height
+                )
+                overlay.crop = crop.isFull ? nil : crop
+            }
         }
         overlays![index] = overlay
         updatedAt = Date()

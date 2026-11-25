@@ -81,17 +81,36 @@ describe("native style catalog", () => {
     expect(plan.captions?.style.y).toBe(0.425);
   });
 
-  it("leaves out a layout the editor cannot draw and says why", () => {
+  it("compiles every first-party template, the speaker card included", () => {
     const catalog = nativeStyleCatalog();
     expect(catalog.templates.map((item) => item.id)).toEqual([
       "talking-head",
       "half-and-half",
+      "speaker-card",
+      "speaker-below",
     ]);
-    expect(catalog.skipped).toEqual([
-      {
-        id: "speaker-below",
-        reason: "The splits.speaker-below layout is not in the editor yet.",
-      },
-    ]);
+    expect(catalog.skipped).toEqual([]);
+    const below = catalog.templates.find((item) => item.id === "speaker-below");
+    expect(below?.unsupported.join(" ")).toContain("cards.smoked-glass");
+  });
+
+  it("puts the speaker in a rounded card that breaks out of its edge", () => {
+    const card = getTemplate("speaker-card");
+    if (!card) throw new Error("speaker-card is missing");
+    const plan = compileTemplate(card);
+    if ("skipped" in plan) throw new Error(plan.skipped);
+    expect(plan.layout).toMatchObject({
+      kind: "card",
+      camera: { x: 0.09, y: 0.5208, width: 0.82, height: 0.4792 },
+      cameraTop: -0.1196,
+      cornerRadius: 0.0444,
+      popOut: true,
+      visual: { x: 0.037, y: 0.1094, width: 0.9259, height: 0.401 },
+    });
+    expect(plan.backdrop).toEqual({
+      preset: "shapeGrid",
+      presetColors: ["#0A0A0A"],
+    });
+    expect(plan.captions?.style.y).toBe(0.5234);
   });
 });
