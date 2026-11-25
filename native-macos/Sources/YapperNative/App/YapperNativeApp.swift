@@ -13,6 +13,7 @@ final class YapperNativeAppDelegate: NSObject, NSApplicationDelegate {
         // Dock presence. Explicitly promote and activate it so development
         // launches behave like the packaged application.
         NativeAnalytics.shared.start()
+        AppUpdater.shared.start()
         Task.detached(priority: .utility) { await PosterProjectRender.shared.removeStaleRenders() }
         Task.detached(priority: .utility) { StaleExportScratchSweeper.sweep() }
         // Taken now, before any export can start and record a file of its own.
@@ -97,6 +98,9 @@ struct YapperNativeApp: App {
         .defaultSize(width: 1_500, height: 950)
         .windowStyle(.hiddenTitleBar)
         .commands {
+            CommandGroup(after: .appInfo) {
+                CheckForUpdatesCommand(updater: AppUpdater.shared)
+            }
             CommandGroup(replacing: .undoRedo) {
                 Button("Undo") {
                     // A caption or text field being typed in lets go first, so
