@@ -1,0 +1,69 @@
+{
+  "description": "Style library templates on the open project: applying one, and the settings that belong to the template itself.",
+  "runtime": "client",
+  "actions": [
+    {
+      "id": "editor.styles.apply",
+      "symbol": "styleApply",
+      "description": "Apply a style library template to the whole project. half-and-half puts the camera in the bottom half, cropped to fill, keeps the top half for a picture or clip, sets a dark grid backdrop and moves captions just under the seam. talking-head gives the camera the whole frame again and puts captions under the chin. Captions, backdrop and framing become ordinary project values: change them afterwards with editor.captions.setStyle, editor.project.setBackdrop and editor.video.setFraming. topMediaID puts imported media in the top half straight away. Locked and keyframed clips keep their framing.",
+      "input": "StyleApplyInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.styles.setSplit",
+      "symbol": "styleSplit",
+      "description": "Change the split screen a template set up: seam is where the camera starts as a fraction of the frame height from the top (0.5 is the middle, lower gives the camera more room); cameraZoom (1 fills the camera area) and cameraFocusY (0 keeps the top of the take in view, 1 the bottom) reframe every unlocked clip without keyframes; visualInset is the margin around the top visual as a fraction of the frame width. The top visual and the captions follow the seam unless the captions were moved by hand. Send only the fields to change. Only available after editor.styles.apply with half-and-half.",
+      "input": "StyleSplitInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.styles.setTopVisual",
+      "symbol": "styleTopVisual",
+      "description": "Put imported media (a picture, clip or generated overlay from the media list) in the top half of a split screen, cropped to fill it for the whole video. Replaces whatever is there, keeping its timing. Only available after editor.styles.apply with half-and-half.",
+      "input": "StyleTopVisualInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    }
+  ],
+  "$defs": {
+    "StyleApplyInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["templateID"],
+      "properties": {
+        "templateID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "A template id from the bundled catalog: half-and-half or talking-head."
+        },
+        "topMediaID": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Imported media for the top half of a split. Ignored by talking-head."
+        }
+      }
+    },
+    "StyleSplitInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "seam": { "type": "number", "minimum": 0.3, "maximum": 0.72 },
+        "cameraZoom": { "type": "number", "minimum": 1, "maximum": 2 },
+        "cameraFocusY": { "type": "number", "minimum": 0, "maximum": 1 },
+        "visualInset": { "type": "number", "minimum": 0, "maximum": 0.15 }
+      }
+    },
+    "StyleTopVisualInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mediaID"],
+      "properties": {
+        "mediaID": { "type": "string", "format": "uuid" }
+      }
+    }
+  }
+}

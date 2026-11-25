@@ -24,6 +24,7 @@ extension AppActionRegistry {
         registry.registerSoundAt()
         registry.registerFramingAnimation()
         registry.registerStyleActions()
+        registry.registerStyleTemplateActions()
         registry.registerClipPropertyActions()
         registry.registerAudioVolume()
         registry.registerTimelineActions()

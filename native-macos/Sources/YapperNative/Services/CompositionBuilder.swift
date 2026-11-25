@@ -37,6 +37,10 @@ private struct MainSegment {
     let naturalSize: CGSize
     let preferredTransform: CGAffineTransform
     let renderSize: CGSize
+    /// The part of the frame the footage is drawn in, in pixels from the top
+    /// left, when a layout gives it only part of the picture. See
+    /// `CameraRegion`.
+    var cameraRect: CGRect? = nil
     /// Set when this stretch of the timeline is a picture rather than footage.
     /// The video track holds an empty range across it, and the compositor draws
     /// this instead, exactly as it already does for an image overlay.
@@ -55,7 +59,8 @@ private struct MainSegment {
             naturalSize: naturalSize,
             preferredTransform: preferredTransform,
             renderSize: renderSize,
-            framing: framing
+            framing: framing,
+            region: cameraRect
         )
     }
 
@@ -209,6 +214,7 @@ enum CompositionBuilder {
             renderSize = CGSize(width: max(2, floor(renderSize.width * scale / 2) * 2),
                                 height: max(2, floor(renderSize.height * scale / 2) * 2))
         }
+        let cameraRect = project.cameraRegion?.rect(in: renderSize)
         var cursor = CMTime.zero
         var segments: [MainSegment] = []
         var maximumFrameRate: Float = 30
@@ -236,6 +242,7 @@ enum CompositionBuilder {
                         naturalSize: image.extent.size,
                         preferredTransform: .identity,
                         renderSize: renderSize,
+                        cameraRect: cameraRect,
                         still: image
                     )
                 )
@@ -268,7 +275,8 @@ enum CompositionBuilder {
                     clip: clip,
                     naturalSize: source.videoSize,
                     preferredTransform: source.videoTransform,
-                    renderSize: renderSize
+                    renderSize: renderSize,
+                    cameraRect: cameraRect
                 )
             )
 
@@ -773,7 +781,8 @@ enum CompositionBuilder {
                     // The clip with its background thrown away: one copy, cut
                     // out, with the backdrop showing through what is gone.
                     matte: segment.clip.removesBackground,
-                    retouch: segment.clip.resolvedRetouch
+                    retouch: segment.clip.resolvedRetouch,
+                    clip: segment.cameraRect
                 )
             )
             // The speaker again, cut out, over the overlays that asked to sit
@@ -791,7 +800,8 @@ enum CompositionBuilder {
                         // Retouched to match the copy underneath. This is the
                         // copy anyone actually sees, so leaving it off here
                         // would make the slider look broken.
-                        retouch: segment.clip.resolvedRetouch
+                        retouch: segment.clip.resolvedRetouch,
+                        clip: segment.cameraRect
                     ),
                     at: matteIndex
                 )
@@ -1291,8 +1301,17 @@ enum CompositionBuilder {
         naturalSize: CGSize,
         preferredTransform: CGAffineTransform,
         renderSize: CGSize,
-        framing: VideoFraming = .identity
+        framing: VideoFraming = .identity,
+        region: CGRect? = nil
     ) -> CGAffineTransform {
+        if let region {
+            return coveringTransform(
+                naturalSize: naturalSize,
+                preferredTransform: preferredTransform,
+                region: region,
+                framing: framing
+            )
+        }
         let orientedRect = CGRect(origin: .zero, size: naturalSize)
             .applying(preferredTransform)
         let orientedSize = CGSize(
@@ -1345,6 +1364,38 @@ enum CompositionBuilder {
                 CGAffineTransform(
                     translationX: centreX + framing.x * renderSize.width,
                     y: centreY + framing.y * renderSize.height
+                )
+            )
+    }
+
+    /// Places the main track's picture inside a camera region: covering it
+    /// and centred, then turned, zoomed and slid exactly as `fittedTransform`
+    /// does on the whole frame, with the region standing in for the frame.
+    /// The compositor cuts what lands outside the region away. See
+    /// `CameraRegion`.
+    static func coveringTransform(
+        naturalSize: CGSize,
+        preferredTransform: CGAffineTransform,
+        region: CGRect,
+        framing: VideoFraming
+    ) -> CGAffineTransform {
+        let orientedRect = CGRect(origin: .zero, size: naturalSize)
+            .applying(preferredTransform)
+        let width = abs(orientedRect.width)
+        let height = abs(orientedRect.height)
+        guard width > 0, height > 0, region.width > 0, region.height > 0 else {
+            return preferredTransform
+        }
+        let cover = max(region.width / width, region.height / height)
+        return preferredTransform
+            .concatenating(CGAffineTransform(translationX: -orientedRect.minX - width / 2,
+                                             y: -orientedRect.minY - height / 2))
+            .concatenating(CGAffineTransform(rotationAngle: framing.rotationRadians))
+            .concatenating(CGAffineTransform(scaleX: cover * framing.scale, y: cover * framing.scale))
+            .concatenating(
+                CGAffineTransform(
+                    translationX: region.midX + framing.x * region.width,
+                    y: region.midY + framing.y * region.height
                 )
             )
     }

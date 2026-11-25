@@ -76,6 +76,10 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
         let frost: Bool
         /// When this layer eases in, for a backdrop arriving with its card.
         let fade: LayerFade?
+        /// The part of the frame this layer may draw in, in pixels from the
+        /// top left, once it is placed. Set on the speaker's footage when a
+        /// layout gives the camera only part of the frame. See `CameraRegion`.
+        let clip: CGRect?
 
         /// The track this layer draws, when it draws one.
         var trackID: CMPersistentTrackID? {
@@ -95,7 +99,8 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
             cardRotation: Double = 0,
             retouch: ClipRetouch = .none,
             frost: Bool = false,
-            fade: LayerFade? = nil
+            fade: LayerFade? = nil,
+            clip: CGRect? = nil
         ) {
             self.source = source
             self.transform = transform
@@ -108,6 +113,7 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
             self.cardRotation = cardRotation
             self.retouch = retouch
             self.frost = frost
+            self.clip = clip
             self.fade = fade
         }
 
@@ -316,6 +322,11 @@ final class StudioVideoCompositor: NSObject, AVVideoCompositing {
                     .concatenating(backToBottomLeft)
                 let sourceExtent = image.extent
                 image = image.transformed(by: placement)
+                if let clip = layer.clip {
+                    image = image.cropped(
+                        to: CGRect(x: clip.minX, y: size.height - clip.maxY, width: clip.width, height: clip.height)
+                    )
+                }
 
                 // Rounded and shadowed once the card is at the size it will be
                 // seen at, not before: a radius worked out on the source would
