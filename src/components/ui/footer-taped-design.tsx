@@ -61,6 +61,7 @@ export function Component() {
         <div className="site-footer-bottom">
           <p>© {new Date().getFullYear()} OCX Software Inc.</p>
           <div>
+            <Link href="/about">About</Link>
             <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>
             <a

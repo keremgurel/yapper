@@ -88,6 +88,10 @@
       "src/data/feature-details.ts"
     ]
   },
+  "/about": {
+    "product": "studio",
+    "sources": ["src/app/about/page.tsx"]
+  },
   "/blog": {
     "product": "studio",
     "sources": ["src/app/blog/page.tsx"]

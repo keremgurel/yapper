@@ -1,0 +1,35 @@
+# Yapper (ypr.app)
+
+> Yapper Studio is an all-in-one content creation studio for talking-to-camera video, made by OCX Software Inc. It takes one video from idea capture to an AI-assisted script, a teleprompter recording, one-click and transcript-based editing, automatic captions, a content calendar and cross-posting to YouTube, TikTok and Instagram.
+
+Key facts:
+- Platforms: web (ideas, scripts, scheduling and publishing) and the desktop Studio app on Mac (recording and editing). Mobile is coming soon. Windows is not available yet. Yapper is not Mac-only.
+- Price: one Studio membership, $24.99 a month or $199.99 a year, with AI credits. 7-day free trial with 100 credits. Writing, recording and editing by hand use no credits.
+- You record the video yourself. Yapper does not replace you with an AI avatar.
+- Made by OCX Software Inc.; founder Can Gurel. Not affiliated with other apps, sites or tokens named Yapper.
+- Speaking practice moved from ypr.app to its own product, Speaking Practice (speakingpractice.ai), in October 2026.
+
+## Product
+- [About Yapper](https://ypr.app/about): what it is, who makes it, where it runs, FAQ.
+- [Pricing](https://ypr.app/pricing)
+- [All features](https://ypr.app/features)
+- [Idea capture](https://ypr.app/features/idea-capture)
+- [AI script writer](https://ypr.app/features/ai-script-writer)
+- [Teleprompter recorder](https://ypr.app/features/teleprompter-recorder)
+- [Transcript video editor](https://ypr.app/features/transcript-video-editor)
+- [Automatic captions](https://ypr.app/features/automatic-captions)
+- [Social publishing and cross-posting](https://ypr.app/features/social-publishing)
+- [Content calendar](https://ypr.app/features/content-calendar)
+- [Content library](https://ypr.app/features/content-library)
+
+## Guides
+- [Best teleprompter apps (2026)](https://ypr.app/blog/best-teleprompter-apps)
+- [How to write a video script](https://ypr.app/blog/how-to-write-a-video-script)
+- [Video script examples](https://ypr.app/blog/video-script-examples)
+- [YouTube script](https://ypr.app/blog/youtube-script)
+- [TikTok script](https://ypr.app/blog/tiktok-script)
+- [Talking head video](https://ypr.app/blog/talking-head-video)
+- [What is a teleprompter](https://ypr.app/blog/what-is-a-teleprompter)
+- [How to memorize a script](https://ypr.app/blog/how-to-memorize-a-script)
+- [How to generate content ideas](https://ypr.app/blog/how-to-generate-content-ideas)
+- [All guides](https://ypr.app/blog)
