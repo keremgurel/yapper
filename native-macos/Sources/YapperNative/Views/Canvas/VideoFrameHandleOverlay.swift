@@ -38,7 +38,8 @@ struct VideoFrameHandleOverlay: View {
         return VideoFramingGeometry.mediaBox(
             framing: origin,
             sourceAspect: session.framingSourceAspect,
-            stageSize: stageSize
+            stageSize: stageSize,
+            region: session.project.cameraRegion
         )
     }
 

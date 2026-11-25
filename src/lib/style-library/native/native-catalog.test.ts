@@ -24,9 +24,12 @@ const half = () => {
 
 describe("native style catalog", () => {
   it("matches the file bundled with the Mac app", () => {
-    const fresh = `${JSON.stringify(nativeStyleCatalog(), null, 2)}\n`;
-    if (process.env.UPDATE_NATIVE_STYLES) writeFileSync(BUNDLED, fresh);
-    expect(readFileSync(BUNDLED, "utf8")).toBe(fresh);
+    const fresh = nativeStyleCatalog();
+    if (process.env.UPDATE_NATIVE_STYLES) {
+      writeFileSync(BUNDLED, `${JSON.stringify(fresh, null, 2)}\n`);
+    }
+    // Compared as data: the commit hook reformats the file.
+    expect(JSON.parse(readFileSync(BUNDLED, "utf8"))).toEqual(fresh);
   });
 
   it("puts the camera below the seam and the visual above it", () => {

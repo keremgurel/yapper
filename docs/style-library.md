@@ -183,9 +183,33 @@ Hyperframes is the natural second renderer, and its variable declarations (`id`,
 
 Sources, read November 22, 2026: [Remotion licence](https://www.remotion.dev/docs/license), [pricing](https://www.remotion.dev/docs/license/pricing), [licence FAQ](https://www.remotion.dev/docs/license/faq), [telemetry](https://www.remotion.dev/docs/telemetry), [LICENSE.md](https://github.com/remotion-dev/remotion/blob/main/LICENSE.md), [client-side rendering](https://www.remotion.dev/docs/client-side-rendering); [Hyperframes repository and licence](https://github.com/heygen-com/hyperframes), [FAQ](https://hyperframes.heygen.com/faq), [variables](https://hyperframes.heygen.com/concepts/variables.md), [rendering](https://hyperframes.heygen.com/guides/rendering.md), [player](https://hyperframes.heygen.com/packages/player.md), [comparison with Remotion](https://hyperframes.heygen.com/guides/hyperframes-vs-remotion). The remotion.pro pricing page redirected to a dashboard and was not read.
 
-## Not built yet
+## In the Mac editor
 
-The Mac editor cannot draw any of this. That is the main open decision, and there are three ways to close it: render `overlay` blocks to video with an alpha channel and lay them over the take in the existing compositor, render whole styled videos outside the editor, or rebuild each block in Swift from the catalog's options. The catalog was shaped so the third stays possible, with `frosted` and the caption height already matching the editor's own names and defaults.
+Decided November 25, 2026: a template reaches the Mac editor as the editor's own project values, compiled from the React entries. The entries stay the design source and keep drawing the gallery. `src/lib/style-library/native/` turns each template into a plan the editor already knows how to store and draw, and writes the plans to `native-macos/Sources/YapperNative/Resources/StyleTemplates/templates.json`, which ships inside the app. `native-catalog.test.ts` fails when that file is out of date; `UPDATE_NATIVE_STYLES=1 npx vitest run src/lib/style-library/native` rewrites it.
+
+| Template part                         | Becomes in the editor                                                                                                                                                                  |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `splits.half-and-half`                | `cameraRegion` on the project (the camera covers the bottom area and is cut to it), each clip's framing worked out from the zoom and focus, and the split's settings in `appliedStyle` |
+| `overlays.media` in the top slot      | An ordinary overlay over the top area for the whole video, cropped to fill it                                                                                                          |
+| The shared backdrop options           | The project backdrop: the dotted grid is the Grid preset, a flat colour is the colour                                                                                                  |
+| `captions.plain-white`                | The project caption style and words per card, in the same fields `editor.captions.setStyle` takes                                                                                      |
+| Drawn graphics (cards, the seam line) | Overlay scene JSON (`docs/overlay-scene-format.md`). Not compiled yet                                                                                                                  |
+
+Why not overlay scene JSON for everything, which was the first lean: a scene draws shapes, text and pictures inside one overlay's box. A split moves where the camera itself is drawn, which no overlay can do. Captions are timed to words and already have their own style system. The top visual is the creator's own clip or screenshot, and a scene's pictures are limited to `brand.logo` and generated `image:<key>`, with no video. So scene JSON stays the target for drawn graphics only.
+
+Why not render blocks to alpha video: the result is pixels, so nothing in it could be changed afterwards by hand, by Chirpy or over a connector, and every change would mean another render. Why not rewrite each block in Swift: two copies of every design drift apart. Compiling keeps one source, and the editor gains a new primitive only when a block needs something it cannot do yet. The camera region is the first.
+
+Checked before deciding: the player and the export both draw the main track through the same composition instructions and `StudioVideoCompositor`, so cutting the footage to its region in one place reaches both. `StyleTemplateActionTests.splitRendersTheSameInPreviewAndExport` renders a split through the player's composition and through a real export and checks the pixels above and below the seam. A project with a region always uses the editor's own compositor, because AVFoundation's cannot clip a layer after placing it.
+
+Inside a region a clip's `VideoFraming` keeps its meaning, measured against the region: scale 1 covers it, and `x` and `y` slide by fractions of its size. `CameraRegionFraming` converts the gallery's zoom and focus (CSS `object-fit: cover` with `object-position`) into that framing for the take's real shape.
+
+Three client actions carry what belongs to the template itself, in `protocol/actions/editor-styles.json`: `editor.styles.apply`, `editor.styles.setSplit` (seam, camera zoom and focus, margin around the top visual) and `editor.styles.setTopVisual`. Everything else a template sets is an ordinary project value with an action it already had, so "make the captions yellow" after a template is `editor.captions.setStyle` and "change the background" is `editor.project.setBackdrop`. Chirpy plans over all of them. Applying a template is one undo step.
+
+What the editor leaves out today, reported in the action's receipt: the blurred take and your own image or video as a backdrop (a flat colour stands in), the line on the seam, a card in the top slot, the speaker-below layout, and the caption weight (the editor's caption font has one weight).
+
+The connector at `/api/mcp` cannot reach any of this. It runs server actions, and editor actions run inside the Mac app on the open project. Letting Claude or ChatGPT edit an open project needs an MCP server in the Mac app over `AppActionRegistry`, which is not built.
+
+## Not built yet
 
 A template covers one arrangement for as long as it is on screen. A video that cuts between a full frame and a split needs a timeline of templates, which does not exist yet.
 

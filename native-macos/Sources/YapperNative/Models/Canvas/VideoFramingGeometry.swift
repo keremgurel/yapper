@@ -166,8 +166,12 @@ enum VideoFramingGeometry {
     static func mediaBox(
         framing: VideoFraming,
         sourceAspect: Double,
-        stageSize: CGSize
+        stageSize: CGSize,
+        region: CameraRegion? = nil
     ) -> CGRect {
+        if let region {
+            return coveringBox(framing: framing, sourceAspect: sourceAspect, area: region.rect(in: stageSize))
+        }
         let stageWidth = max(1, Double(stageSize.width))
         let stageHeight = max(1, Double(stageSize.height))
         let aspect = sourceAspect > 0 ? sourceAspect : stageWidth / stageHeight
@@ -189,6 +193,26 @@ enum VideoFramingGeometry {
             width: width,
             height: height
         )
+    }
+
+    /// The picture inside a camera region: covering the area, zoomed about
+    /// its middle, then slid by fractions of the area. The same steps as
+    /// `CompositionBuilder.coveringTransform`, in the canvas's own points.
+    static func coveringBox(framing: VideoFraming, sourceAspect: Double, area: CGRect) -> CGRect {
+        let areaWidth = max(1, Double(area.width))
+        let areaHeight = max(1, Double(area.height))
+        let aspect = sourceAspect > 0 ? sourceAspect : areaWidth / areaHeight
+        var width = areaWidth
+        var height = areaWidth / aspect
+        if height < areaHeight {
+            height = areaHeight
+            width = areaHeight * aspect
+        }
+        width *= framing.scale
+        height *= framing.scale
+        let centreX = Double(area.midX) + framing.x * areaWidth
+        let centreY = Double(area.midY) + framing.y * areaHeight
+        return CGRect(x: centreX - width / 2, y: centreY - height / 2, width: width, height: height)
     }
 
     /// How the picture already on screen has to be pushed for a composition

@@ -19,6 +19,12 @@ struct VideoFramingGesture {
     /// Only the pan snaps, so only the pan has anything to say about guides.
     var onGuidesChanged: ([CanvasGuide]) -> Void = { _ in }
 
+    /// What the framing's offsets are fractions of: the stage, or the camera
+    /// area of a split.
+    private var framingUnit: CGSize {
+        session.project.cameraRegion?.rect(in: stageSize).size ?? stageSize
+    }
+
     var pan: some Gesture {
         // Against the stage, which stands still, rather than against the
         // picture, which is what the drag is moving. See CanvasCoordinateSpace.
@@ -28,7 +34,9 @@ struct VideoFramingGesture {
                 let panned = VideoFramingGeometry.panned(
                     framing: origin,
                     translation: value.translation,
-                    canvasSize: stageSize,
+                    // Inside a split the offset is a fraction of the camera
+                    // area, so a drag moves the picture as far as the pointer.
+                    canvasSize: framingUnit,
                     // The shape of the footage, which is where the picture's own
                     // edges are. Without it the edges cannot be settled onto the
                     // frame's, only the middles.
@@ -36,7 +44,9 @@ struct VideoFramingGesture {
                     // Always, like the captions and the overlays: aligning a
                     // picture in the frame is not what the timeline's magnetism
                     // is about. Option bypasses.
-                    snapping: !isSnapBypassed
+                    // The guides are drawn against the whole stage, so they
+                    // would point at the wrong lines inside a split.
+                    snapping: !isSnapBypassed && session.project.cameraRegion == nil
                 )
                 drag.updateFraming(panned.framing)
                 if let clipID = drag.framingClipID {
@@ -55,7 +65,7 @@ struct VideoFramingGesture {
                     framing: origin,
                     translation: value.translation,
                     corner: corner,
-                    canvasSize: stageSize
+                    canvasSize: framingUnit
                 )
                 drag.updateFraming(zoomed)
                 if let clipID = drag.framingClipID {

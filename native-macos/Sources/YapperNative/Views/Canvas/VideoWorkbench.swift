@@ -19,6 +19,8 @@ struct VideoWorkbench: View {
                         .font(.studioBody)
                         .foregroundStyle(.secondary)
                 } else {
+                    StyleLayoutSection(session: session)
+                    Divider().opacity(0.45)
                     TransformInspector(
                         session: session,
                         drag: session.canvasDrag,

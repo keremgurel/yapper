@@ -43,7 +43,8 @@ extension EditorSession {
         VideoFramingGeometry.mediaBox(
             framing: displayedFraming,
             sourceAspect: framingSourceAspect,
-            stageSize: stageSize
+            stageSize: stageSize,
+            region: project.cameraRegion
         )
     }
 
@@ -55,7 +56,10 @@ extension EditorSession {
     /// commit changes what is wanted, the rebuild changes what is rendered, and
     /// the picture is carried across both without ever moving backwards.
     func framingPreview(in stageSize: CGSize) -> FramingPreview? {
-        guard let clip = framingClip, !hasCompositedOverlayOnScreen else { return nil }
+        // In a split the player shows the backdrop and the top visual too, and
+        // pushing it would carry them along with the speaker. The picture
+        // catches up when the composition is rebuilt instead.
+        guard let clip = framingClip, !hasCompositedOverlayOnScreen, project.cameraRegion == nil else { return nil }
         return VideoFramingGeometry.previewTransform(
             // What the composition is showing at this moment, which for a keyed
             // clip is a different answer every frame.
@@ -89,6 +93,8 @@ extension EditorSession {
     /// offers it can stand down.
     var framingFillScale: Double? {
         guard
+            // A split's camera already covers its area at 100%.
+            project.cameraRegion == nil,
             let clip = framingClip,
             let media = project.media.first(where: { $0.id == clip.mediaID })
         else { return nil }
