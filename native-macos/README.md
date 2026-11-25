@@ -118,10 +118,17 @@ password manager, and import it on any other Mac that makes releases:
 Delete the exported file afterwards. The tools appear after the first
 `swift build`.
 
-To try an update without publishing anything, package two builds with
-different build numbers, point the older one's `SUFeedURL` at a feed served
-from `http://127.0.0.1`, and write that feed with
+To try an update without publishing anything, make two copies of a packaged
+app. In each copy's `Info.plist`, set `CFBundleVersion` lower in one than the
+other, point `SUFeedURL` at `http://127.0.0.1:<port>/appcast.xml`, and add
+`NSAppTransportSecurity` with `NSAllowsLocalNetworking` so plain HTTP to this
+Mac is allowed. Give both a bundle ID of their own and remove
+`CFBundleURLTypes`, so neither one picks up Yapper Studio's sign-in links. Then
+re-sign each copy with the app signing command in `scripts/package-app.sh`.
+Put the newer copy in a disk image and write its feed with
 `YAPPER_DOWNLOAD_BASE=http://127.0.0.1:<port> scripts/make-appcast.sh <newer app> <newer dmg>`.
+That overwrites `dist/appcast.xml`. Serve the folder with
+`python3 -m http.server <port> --bind 127.0.0.1` and open the older copy.
 
 ## Temporary files
 

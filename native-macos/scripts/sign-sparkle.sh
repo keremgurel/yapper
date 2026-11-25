@@ -8,7 +8,8 @@
 # of its own, so each gets the hardened runtime and, for Developer ID, a secure
 # timestamp, or notarization rejects the app. The order follows Sparkle's
 # documentation: the XPC services, the installer tools, then the framework.
-# The downloader keeps its entitlements, which let it reach the network.
+# The downloader keeps whatever entitlements Sparkle signed it with, as Sparkle's
+# documentation asks.
 set -euo pipefail
 
 framework=$1
