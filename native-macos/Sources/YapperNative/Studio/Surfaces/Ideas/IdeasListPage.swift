@@ -85,6 +85,8 @@ struct IdeasListBody: View {
                         title: "Nothing here yet",
                         message: "Write or dictate a thought above, or paste a link. It lands here with a first draft."
                     )
+                } else if views.views == nil && !views.failed {
+                    IdeasListSkeleton()
                 } else {
                     list(items)
                 }

@@ -67,6 +67,24 @@ struct IdeasDecodingTests {
         #expect(body["groupBy"] is NSNull)
     }
 
+    @Test @MainActor func defaultsToNotPostedAndKeepsTheSelectedViewOnReload() throws {
+        let response: LibraryViewsResponse = try decode("""
+        {"views":[{"id":"v1","name":"All"},{"id":"v2","name":"Not posted"}]}
+        """)
+        let store = IdeaViewsStore()
+        store.replaceViews(response.views)
+        #expect(store.active?.id == "v2")
+
+        store.activeID = "v1"
+        store.replaceViews(response.views)
+        #expect(store.active?.id == "v1")
+
+        store.replaceViews([])
+        #expect(store.active == nil)
+        store.replaceViews([response.views[0]])
+        #expect(store.active?.id == "v1")
+    }
+
     @Test func decodesEnrichmentReplies() throws {
         let link: ResolvedLink = try decode("""
         {"kind":"video","platform":"instagram","title":"Reel","author":"someone","transcript":"words here","referenceType":"social-video","balance":41}

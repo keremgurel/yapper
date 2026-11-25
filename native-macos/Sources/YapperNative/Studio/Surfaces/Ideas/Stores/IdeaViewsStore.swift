@@ -17,14 +17,20 @@ final class IdeaViewsStore: ObservableObject {
     @Published var activeID: String?
 
     var active: LibraryView? {
-        guard let views else { return nil }
-        return views.first { $0.id == activeID } ?? views.first
+        views?.first { $0.id == activeID }
+    }
+
+    func replaceViews(_ updated: [LibraryView]) {
+        views = updated
+        if active == nil {
+            activeID = (updated.first { $0.name == "Not posted" } ?? updated.first)?.id
+        }
     }
 
     func reload() async {
         do {
             let response: LibraryViewsResponse = try await StudioJSONClient.get(Self.path)
-            views = response.views
+            replaceViews(response.views)
             failed = false
         } catch {
             failed = true
@@ -55,8 +61,7 @@ final class IdeaViewsStore: ObservableObject {
     func remove(_ id: String) async throws {
         try await StudioJSONClient.delete("api/views/\(id)")
         let next = (views ?? []).filter { $0.id != id }
-        views = next
-        if activeID == id { activeID = next.first?.id }
+        replaceViews(next)
         // The server seeds the defaults again once the last one is gone.
         if next.isEmpty { await reload() }
     }
