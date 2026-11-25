@@ -197,7 +197,7 @@ Decided November 25, 2026: a template reaches the Mac editor as the editor's own
 
 Why not overlay scene JSON for everything, which was the first lean: a scene draws shapes, text and pictures inside one overlay's box. A split moves where the camera itself is drawn, which no overlay can do. Captions are timed to words and already have their own style system. The top visual is the creator's own clip or screenshot, and a scene's pictures are limited to `brand.logo` and generated `image:<key>`, with no video. So scene JSON stays the target for drawn graphics only.
 
-Why not render blocks to alpha video: the result is pixels, so nothing in it could be changed afterwards by hand, by Chirpy or over a connector, and every change would mean another render. Why not rewrite each block in Swift: two copies of every design drift apart. Compiling keeps one source, and the editor gains a new primitive only when a block needs something it cannot do yet. The camera region is the first.
+Why not rewrite each block in Swift: two copies of every design drift apart, and a marketplace item written by someone outside could never be rewritten by us for every release. Compiling keeps one source, and the editor gains a new primitive only when a block needs something it cannot do yet. The camera region is the first.
 
 Checked before deciding: the player and the export both draw the main track through the same composition instructions and `StudioVideoCompositor`, so cutting the footage to its region in one place reaches both. `StyleTemplateActionTests.splitRendersTheSameInPreviewAndExport` renders a split through the player's composition and through a real export and checks the pixels above and below the seam. A project with a region always uses the editor's own compositor, because AVFoundation's cannot clip a layer after placing it.
 
@@ -208,6 +208,31 @@ Three client actions carry what belongs to the template itself, in `protocol/act
 What the editor leaves out today, reported in the action's receipt: the blurred take and your own image or video as a backdrop (a flat colour stands in), the line on the seam, a card in the top slot, the speaker-below layout, and the caption weight (the editor's caption font has one weight).
 
 The connector at `/api/mcp` cannot reach any of this. It runs server actions, and editor actions run inside the Mac app on the open project. Letting Claude or ChatGPT edit an open project needs an MCP server in the Mac app over `AppActionRegistry`, which is not built.
+
+### Marketplace items: React rendered to alpha video
+
+Kerem widened the scope on November 25, 2026: not only a style marketplace but marketplaces for overlays, sound effects and music, with whole edits like the Ep. 15 shiplog made by talking to Chirpy or to Claude or ChatGPT over a connector. Items that outside people submit have to be code, and the library's entries already are React with typed options. That changes the answer for overlays, though not for the parts that touch the camera.
+
+|                                                                                   | Overlay scene JSON                                                                               | Rewritten in Swift            | React, live preview, alpha video on export                                                                        |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ----------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Who can write an item                                                             | Us, or a model inside the format's node list                                                     | Only us, one item at a time   | Anyone who can write a React component against `useStyleClock` and the option specs                               |
+| Ep. 15 cards (counting numbers, a comparison that relabels, chips, a rail of ads) | Counters and simple cards fit. A rail of real videos and a card that rebuilds its columns do not | Possible, slow to build       | Already written as React in the Ep. 15 code                                                                       |
+| Edited later by hand, Chirpy or a connector                                       | Yes, the scene is data                                                                           | Yes, options are data         | Yes, as long as the project stores the item id, version and options and treats the rendered video as a cache      |
+| Preview matches export                                                            | Same Core Animation renderer for both                                                            | Same Swift code for both      | Same WebKit engine for both, a better match than the editor's SwiftUI preview against Core Animation export today |
+| Cost                                                                              | None at export                                                                                   | None at export                | A render per changed overlay at export, frame by frame in an offscreen web view                                   |
+| Risk                                                                              | Limits what can be drawn                                                                         | Never scales past first-party | Running outside code, which needs a sandboxed web view with no network and reviewed submissions                   |
+
+Decision: overlays in the library and the marketplace are React items. The Mac editor previews each one in a transparent web view laid over the player and driven by the player's clock. On export it steps the same clock frame by frame, captures the web view with its alpha, writes a short ProRes 4444 or HEVC-with-alpha file, and composites that as an overlay in `StudioVideoCompositor`, which already composites video overlays and already puts an overlay behind the speaker with the person matte. The project keeps the item, its version, its options and its timing anchored to words, so changing a number reruns the render instead of editing pixels. Renders are cached by those values.
+
+What stays native, because it is not a picture laid on top: the layout (the camera region moves the take itself), captions (timed to words, with their own style system and actions), the grade (a LUT on the main track, which the editor's filter path would need to learn), the person matte, and sound. A sound effect or music marketplace is audio files with metadata on the editor's existing audio layers, not code. Overlay scene JSON stays the format Chirpy designs new graphics in; it can later be drawn by the same web view host so that every overlay shares one renderer.
+
+Remotion is not part of this. Blocks reach time and media through `runtime/style-runtime.tsx`, so the web view host supplies its own clock and media, and Remotion's rule against rendering user-submitted Remotion code on our service does not come up.
+
+### An edit is a timeline of beats
+
+Ep. 15 is not one template. It has six split windows that come and go, a backdrop that alternates between the blurred take and the dotted grid from one split to the next, captions that jump to the seam only while a split is on, and floating cards on the full frame in between. Its speaker in a split is the take scaled to 82% with 48 px corners, which is the `speaker-below` shape, not half-and-half.
+
+So the project needs layouts as spans on the timeline, each with its own camera region, fit (cover, or scaled with corners) and backdrop, and overlay items placed at words. `cameraRegion` on the project today is the single-span case of that, and moves into the first span when spans exist. A template then becomes a starting storyboard: a set of spans and items placed against a transcript, which Chirpy or a connector can lay down and then edit beat by beat.
 
 ## Not built yet
 
