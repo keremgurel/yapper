@@ -218,7 +218,8 @@ export default function IdeasPage() {
               </Button>
             }
           />
-        ) : loading ? (
+        ) : loading ||
+          (items.length > 0 && views.views.length === 0 && !views.failed) ? (
           <ItemTableSkeleton columns={LIBRARY_COLUMNS} />
         ) : items.length === 0 ? (
           <EmptyState

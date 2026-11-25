@@ -55,9 +55,6 @@ export function useLibraryViews(stage: ContentStage, enabled: boolean) {
       setViews((rows) => {
         const next = (rows ?? []).filter((r) => r.id !== id);
         empty = next.length === 0;
-        setActiveId((current) =>
-          current === id ? (next[0]?.id ?? null) : current,
-        );
         return next;
       });
       if (empty) {
@@ -72,9 +69,15 @@ export function useLibraryViews(stage: ContentStage, enabled: boolean) {
     [setViews, reloadResource],
   );
 
-  const resolvedActiveId = activeId ?? views?.[0]?.id ?? null;
   const active =
-    (views ?? []).find((view) => view.id === resolvedActiveId) ?? null;
+    views?.find((view) => view.id === activeId) ??
+    (stage === "library"
+      ? views?.find((view) => view.name === "Not posted")
+      : null) ??
+    views?.[0] ??
+    null;
+  // Keep the selected view open if the creator renames it.
+  if (active && active.id !== activeId) setActiveId(active.id);
 
   return {
     views: views ?? [],
