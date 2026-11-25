@@ -1,0 +1,348 @@
+{
+  "site": "yapper",
+  "brand": {
+    "name": "Yapper",
+    "domain": "ypr.app",
+    "patterns": ["ypr\\.app", "(?-i:\\bYapper\\b)(?!\\.so)"]
+  },
+  "location_code": 2840,
+  "competitors": [
+    {
+      "name": "CutAI",
+      "domain": "usecutai.com",
+      "patterns": ["\\bcut ?ai\\b", "usecutai"]
+    },
+    {
+      "name": "Captions",
+      "domain": "captions.ai",
+      "patterns": [
+        "captions\\.ai",
+        "(?-i:\\bCaptions\\b)(?= app| AI|\\.ai| \\(|,)"
+      ]
+    },
+    {
+      "name": "Descript",
+      "domain": "descript.com",
+      "patterns": ["descript"]
+    },
+    {
+      "name": "CapCut",
+      "domain": "capcut.com",
+      "patterns": ["capcut"]
+    },
+    {
+      "name": "BIGVU",
+      "domain": "bigvu.tv",
+      "patterns": ["bigvu"]
+    },
+    {
+      "name": "Teleprompter.com",
+      "domain": "teleprompter.com",
+      "patterns": ["teleprompter\\.com"]
+    },
+    {
+      "name": "PromptSmart",
+      "domain": "promptsmart.com",
+      "patterns": ["promptsmart"]
+    },
+    {
+      "name": "Teleprompter Premium",
+      "domain": "",
+      "patterns": ["teleprompter premium"]
+    },
+    {
+      "name": "Speakflow",
+      "domain": "speakflow.com",
+      "patterns": ["speakflow"]
+    },
+    {
+      "name": "Submagic",
+      "domain": "submagic.co",
+      "patterns": ["submagic"]
+    },
+    {
+      "name": "OpusClip",
+      "domain": "opus.pro",
+      "patterns": ["opus ?clip", "opus\\.pro"]
+    },
+    {
+      "name": "Riverside",
+      "domain": "riverside.fm",
+      "patterns": ["riverside"]
+    },
+    {
+      "name": "VEED",
+      "domain": "veed.io",
+      "patterns": ["\\bveed\\b"]
+    },
+    {
+      "name": "ManyScripts",
+      "domain": "manyscripts.com",
+      "patterns": ["manyscripts"]
+    },
+    {
+      "name": "Virlo",
+      "domain": "virlo.ai",
+      "patterns": ["virlo"]
+    },
+    {
+      "name": "Cutroom",
+      "domain": "cutroom.ai",
+      "patterns": ["cutroom"]
+    },
+    {
+      "name": "Buffer",
+      "domain": "buffer.com",
+      "patterns": ["(?-i:\\bBuffer\\b)"]
+    },
+    {
+      "name": "Later",
+      "domain": "later.com",
+      "patterns": ["later\\.com", "(?-i:\\bLater\\b)(?= \\(|,| app| is)"]
+    },
+    {
+      "name": "Metricool",
+      "domain": "metricool.com",
+      "patterns": ["metricool"]
+    },
+    {
+      "name": "Repurpose.io",
+      "domain": "repurpose.io",
+      "patterns": ["repurpose\\.io"]
+    },
+    {
+      "name": "InVideo",
+      "domain": "invideo.io",
+      "patterns": ["invideo"]
+    },
+    {
+      "name": "Synthesia",
+      "domain": "synthesia.io",
+      "patterns": ["synthesia"]
+    },
+    {
+      "name": "ChatGPT",
+      "domain": "chatgpt.com",
+      "patterns": []
+    },
+    {
+      "name": "Jasper",
+      "domain": "jasper.ai",
+      "patterns": ["\\bjasper\\b"]
+    }
+  ],
+  "prompts": [
+    {
+      "id": "p01",
+      "text": "best teleprompter app",
+      "lang": "en",
+      "source": "gsc",
+      "intent": "buyer"
+    },
+    {
+      "id": "p02",
+      "text": "best teleprompter app for recording talking head videos",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer"
+    },
+    {
+      "id": "p03",
+      "text": "AI script writer for YouTube videos",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer"
+    },
+    {
+      "id": "p04",
+      "text": "AI video script generator",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer"
+    },
+    {
+      "id": "p05",
+      "text": "how to write a video script",
+      "lang": "en",
+      "source": "research",
+      "intent": "info"
+    },
+    {
+      "id": "p06",
+      "text": "video script template",
+      "lang": "en",
+      "source": "research",
+      "intent": "info"
+    },
+    {
+      "id": "p07",
+      "text": "how to structure a talking head video",
+      "lang": "en",
+      "source": "research",
+      "intent": "info"
+    },
+    {
+      "id": "p08",
+      "text": "talking head video tips",
+      "lang": "en",
+      "source": "research",
+      "intent": "info"
+    },
+    {
+      "id": "p09",
+      "text": "how to talk to the camera naturally",
+      "lang": "en",
+      "source": "research",
+      "intent": "info"
+    },
+    {
+      "id": "p10",
+      "text": "how to make eye contact with the camera when recording",
+      "lang": "en",
+      "source": "research",
+      "intent": "info"
+    },
+    {
+      "id": "p11",
+      "text": "how to memorize a script for a video",
+      "lang": "en",
+      "source": "gsc",
+      "intent": "info"
+    },
+    {
+      "id": "p12",
+      "text": "what is a teleprompter",
+      "lang": "en",
+      "source": "gsc",
+      "intent": "info"
+    },
+    {
+      "id": "p13",
+      "text": "app that removes silences and filler words from video automatically",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer"
+    },
+    {
+      "id": "p14",
+      "text": "best app to cut pauses and retakes from talking videos",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer"
+    },
+    {
+      "id": "p15",
+      "text": "CutAI alternative",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer"
+    },
+    {
+      "id": "p16",
+      "text": "Captions app alternative",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer"
+    },
+    {
+      "id": "p17",
+      "text": "how to turn an inspiration video into my own script",
+      "lang": "en",
+      "source": "research",
+      "intent": "info"
+    },
+    {
+      "id": "p18",
+      "text": "video hook ideas for TikTok and Reels",
+      "lang": "en",
+      "source": "research",
+      "intent": "info"
+    },
+    {
+      "id": "p19",
+      "text": "TikTok script template",
+      "lang": "en",
+      "source": "gsc",
+      "intent": "info"
+    },
+    {
+      "id": "p20",
+      "text": "YouTube script template",
+      "lang": "en",
+      "source": "research",
+      "intent": "info"
+    },
+    {
+      "id": "p21",
+      "text": "how to cross-post one video to TikTok, Instagram Reels and YouTube Shorts",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer"
+    },
+    {
+      "id": "p22",
+      "text": "all-in-one content creation app for talking head creators",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer"
+    },
+    {
+      "id": "p23",
+      "text": "random topics to talk about for 1 minute",
+      "lang": "en",
+      "source": "gsc",
+      "intent": "info"
+    },
+    {
+      "id": "p24",
+      "text": "1 minute speech topics",
+      "lang": "en",
+      "source": "gsc",
+      "intent": "info"
+    },
+    {
+      "id": "p25",
+      "text": "how to yap on camera",
+      "lang": "en",
+      "source": "research",
+      "intent": "info"
+    },
+    {
+      "id": "p26",
+      "text": "hook story lesson video format",
+      "lang": "en",
+      "source": "research",
+      "intent": "info"
+    },
+    {
+      "id": "p27",
+      "text": "how to tell a story on camera",
+      "lang": "en",
+      "source": "research",
+      "intent": "info"
+    },
+    {
+      "id": "p28",
+      "text": "best app to capture video ideas",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer"
+    },
+    {
+      "id": "p29",
+      "text": "teleprompter app with AI script writer",
+      "lang": "en",
+      "source": "research",
+      "intent": "buyer"
+    },
+    {
+      "id": "p30",
+      "text": "what is Yapper ypr.app",
+      "lang": "en",
+      "source": "gsc",
+      "intent": "brand"
+    }
+  ],
+  "version": 1,
+  "updatedAt": "2026-11-23"
+}

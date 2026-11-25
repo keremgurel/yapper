@@ -1,4 +1,4 @@
-# Yapper Studio Native
+# Yapper Studio for Mac
 
 Mac-first native video editor prototype built with Swift, AppKit/SwiftUI,
 AVFoundation, Core Media, and Core Animation. It lives beside the current web
@@ -26,7 +26,7 @@ verified before the test passes.
 ./scripts/package-app.sh
 ```
 
-The result is `dist/Yapper Studio Native.app`. The native editor uses one
+The result is `dist/Yapper Studio.app`. The native editor uses one
 continuous composition for playback; it never pause/plays separate video
 elements at clip boundaries.
 
@@ -36,7 +36,8 @@ elements at clip boundaries.
 ./scripts/install-app.sh
 ```
 
-This replaces `/Applications/Yapper Studio Native.app` with the packaged build.
+This replaces `/Applications/Yapper Studio.app` with the packaged build, and
+removes `/Applications/Yapper Studio Native.app`, the app's earlier name.
 If the installed app is open, the script quits it the way Cmd-Q does (so a
 running export can finish or cancel and clean up), swaps the bundle, and opens
 the new one. The old bundle is kept in a `/Applications/.yapper-update-*`
@@ -44,6 +45,90 @@ folder only during the swap. The script removes that folder when it finishes,
 and puts the old app back if the new one fails verification. Do not kill the
 app or move bundles by hand: a killed export leaves its scratch folder in the
 temp directory until the next launch sweeps it a day later.
+
+## Release
+
+A packaged build is signed ad hoc and only opens on the Mac that built it.
+The download other people get comes from:
+
+```bash
+./scripts/release-app.sh
+```
+
+It builds one binary for Apple silicon and Intel, signs it with the Developer
+ID certificate under the hardened runtime, has Apple notarize the app and then
+the disk image, and staples both. The result is
+`dist/Yapper-Studio-<version>.dmg`, with a copy at `dist/Yapper-Studio.dmg`.
+It uploads nothing. It refuses to run with uncommitted changes, so every
+download maps to a commit.
+
+Each Mac that makes releases needs two things once, both done by the account
+holder:
+
+1. A Developer ID Application certificate. In Xcode, open Settings, Accounts,
+   pick the team, Manage Certificates, then add "Developer ID Application".
+2. Notary credentials. Make an app-specific password at account.apple.com
+   (Sign-In and Security), then run the command below with the Apple ID and
+   the team ID from developer.apple.com/account. It asks for the password and
+   keeps it in the keychain.
+
+```bash
+xcrun notarytool store-credentials yapper-notary --apple-id APPLE_ID --team-id TEAM_ID
+```
+
+The hardened runtime blocks the camera and microphone unless the signature
+asks for them, which `Resources/YapperNative.entitlements` does. A new
+capability of that kind (Apple Events, for one) needs its entitlement added
+there, or it fails only in the released build.
+
+### Updates
+
+Installed copies update themselves with [Sparkle](https://sparkle-project.org).
+Once a day, and from "Check for Updates…" in the app menu, the app reads
+`appcast.xml` from the latest GitHub release of keremgurel/yapper. When the
+build number there is higher than its own, it offers the new version,
+downloads the disk image and replaces itself. Copies of 1.0.0 have no updater,
+so their owners have to download the first version that does by hand.
+
+The release script writes `dist/appcast.xml` next to the disk image. A release
+is published by attaching three files to a GitHub release tagged
+`v<version>`: `Yapper-Studio-<version>.dmg`, which the appcast points at,
+`Yapper-Studio.dmg`, which the site links to, and `appcast.xml`. The feed only
+goes live once that release is published and marked latest, so the download
+and the update notice always appear together. A release in this repository
+marked latest without an `appcast.xml` makes every check fail until the next
+one, so mark other releases as pre-releases.
+
+Before each release, raise `CFBundleVersion` in `Resources/Info.plist`, as
+well as `CFBundleShortVersionString`. Sparkle compares the build number, and
+the script refuses one that is not higher than the published build.
+
+Both the disk image and the feed are signed with an EdDSA key. The private
+half lives in the login keychain under the account `yapper-studio`, and the
+public half is `SUPublicEDKey` in `Resources/Info.plist`. Installed copies
+reject any update not signed by that key, so losing it means shipping a
+manual download again. Keep an exported copy somewhere safe, such as a
+password manager, and import it on any other Mac that makes releases:
+
+```bash
+.build/artifacts/sparkle/Sparkle/bin/generate_keys --account yapper-studio -x yapper-sparkle-key
+.build/artifacts/sparkle/Sparkle/bin/generate_keys --account yapper-studio -f yapper-sparkle-key
+```
+
+Delete the exported file afterwards. The tools appear after the first
+`swift build`.
+
+To try an update without publishing anything, make two copies of a packaged
+app. In each copy's `Info.plist`, set `CFBundleVersion` lower in one than the
+other, point `SUFeedURL` at `http://127.0.0.1:<port>/appcast.xml`, and add
+`NSAppTransportSecurity` with `NSAllowsLocalNetworking` so plain HTTP to this
+Mac is allowed. Give both a bundle ID of their own and remove
+`CFBundleURLTypes`, so neither one picks up Yapper Studio's sign-in links. Then
+re-sign each copy with the app signing command in `scripts/package-app.sh`.
+Put the newer copy in a disk image and write its feed with
+`YAPPER_DOWNLOAD_BASE=http://127.0.0.1:<port> scripts/make-appcast.sh <newer app> <newer dmg>`.
+That overwrites `dist/appcast.xml`. Serve the folder with
+`python3 -m http.server <port> --bind 127.0.0.1` and open the older copy.
 
 ## Temporary files
 

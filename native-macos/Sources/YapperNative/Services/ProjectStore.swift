@@ -109,6 +109,8 @@ actor ProjectStore: ProjectPersisting {
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0]
+        // Named when the app was called Yapper Studio Native. It keeps that
+        // name so existing projects are still found.
         return support.appending(path: "Yapper Studio Native", directoryHint: .isDirectory)
     }
 
