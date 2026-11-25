@@ -465,7 +465,7 @@ private struct WorkbenchDropGuide: View {
 /// seeing the tabs fill in behind it — the transcript appearing the moment the
 /// transcribe step lands, the timeline shedding clips as the cuts are made. It
 /// sits in the corner and never takes a click.
-private struct OneClickEditProgressOverlay: View {
+struct OneClickEditProgressOverlay: View {
     let stage: OneClickEditStage
     let pace: OneClickEditPace
 
@@ -569,7 +569,7 @@ private struct ShimmeringStatusText: View {
     }
 }
 
-private struct TextWorkbench: View {
+struct TextWorkbench: View {
     @ObservedObject var session: EditorSession
 
     private var layers: [ProjectTextLayer] { session.project.textLayers ?? [] }

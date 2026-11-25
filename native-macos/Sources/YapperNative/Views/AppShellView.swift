@@ -13,6 +13,7 @@ struct AppShellView: View {
     @AppStorage("editorLayoutMode") private var editorLayoutModeRaw = EditorLayoutMode.tallPreview.rawValue
     @AppStorage("editorTallWorkbenchFraction") private var editorTallWorkbenchFraction = 0.0
     @AppStorage("editorLayoutDefaultsVersion") private var editorLayoutDefaultsVersion = 0
+    @AppStorage(EditorMode.storageKey) private var editorModeRaw = EditorMode.simple.rawValue
     @Namespace private var sidebarSelection
     /// The web tab the hidden web view stays parked on while a native tab is in
     /// front. Home used to be the park, so coming back from the editor to the
@@ -73,7 +74,8 @@ struct AppShellView: View {
     var body: some View {
         ZStack {
             studioShell
-            if isSignedIn {
+            // In Simple mode Chirpy is docked under the preview instead.
+            if isSignedIn, !(destination == .editor && (EditorMode(rawValue: editorModeRaw) ?? .simple) == .simple) {
                 FloatingAssistant(session: session, conversation: chirpyThreads.current ?? session.conversation)
                     // In the editor the bottom of the window is the transport
                     // bar. Chirpy rests above it instead of on top of the
@@ -402,6 +404,11 @@ private struct StudioTopBar: View {
     private var layoutMode: EditorLayoutMode {
         EditorLayoutMode(rawValue: layoutModeRaw) ?? .tallPreview
     }
+    @AppStorage(EditorMode.storageKey) private var editorModeRaw = EditorMode.simple.rawValue
+    /// Simple keeps the bar to where you are, the mode, Import and Export.
+    private var isSimpleEditor: Bool {
+        destination == .editor && (EditorMode(rawValue: editorModeRaw) ?? .simple) == .simple
+    }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -452,9 +459,12 @@ private struct StudioTopBar: View {
             Spacer()
 
             if destination == .editor {
-                EditorLayoutPicker(mode: layoutMode) { mode in
-                    withAnimation(.easeInOut(duration: 0.22)) {
-                        layoutModeRaw = mode.rawValue
+                EditorModePicker()
+                if !isSimpleEditor {
+                    EditorLayoutPicker(mode: layoutMode) { mode in
+                        withAnimation(.easeInOut(duration: 0.22)) {
+                            layoutModeRaw = mode.rawValue
+                        }
                     }
                 }
 
@@ -465,25 +475,31 @@ private struct StudioTopBar: View {
                 // The last thing the editor did. Whole when there is room; it
                 // is the first thing in the bar to shorten, and the tooltip
                 // always has all of it.
-                Text(session.statusMessage)
-                    .font(.studioCaption)
-                    .foregroundStyle(Color.studioTextMuted)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .layoutPriority(-1)
-                    .help(session.statusMessage)
+                // In Simple the status shows for a moment over the preview
+                // instead. See `StatusToast`.
+                if !isSimpleEditor {
+                    Text(session.statusMessage)
+                        .font(.studioCaption)
+                        .foregroundStyle(Color.studioTextMuted)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .layoutPriority(-1)
+                        .help(session.statusMessage)
+                }
                 if session.canCancelCurrentOperation,
                    let operation = session.activeOperation?.operation {
                     Button(operation.cancelLabel) { session.cancelCurrentOperation() }
                         .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                 }
-                Button {
-                    onNavigate(.audio)
-                } label: {
-                    StudioGlyphLabel("Audio library", glyph: .note)
+                if !isSimpleEditor {
+                    Button {
+                        onNavigate(.audio)
+                    } label: {
+                        StudioGlyphLabel("Audio library", glyph: .note)
+                    }
+                    .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+                    .help("Browse music and sound effects, import audio, and set default volumes")
                 }
-                .buttonStyle(EditorSecondaryButtonStyle(size: .small))
-                .help("Browse music and sound effects, import audio, and set default volumes")
 
                 Button {
                     ImportPanels.openMedia(for: session)
@@ -510,7 +526,9 @@ private struct StudioTopBar: View {
             // every tab and across project switches, so its progress does too.
             ExportJobsIndicator(center: session.exportJobs, onNavigate: onNavigate)
 
-            NativeThemeSwitcher(theme: theme, action: toggleTheme)
+            if !isSimpleEditor {
+                NativeThemeSwitcher(theme: theme, action: toggleTheme)
+            }
 
             WorkspaceProfileBadge(
                 name: auth.accountName,

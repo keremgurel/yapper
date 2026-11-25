@@ -67,32 +67,22 @@ struct AssistantTranscript: View {
 /// An empty box with a cursor in it tells you nothing about what it accepts, and
 /// this box accepts far more than its placeholder can fit.
 struct AssistantEmptyState: View {
-    let usesStudioBrain: Bool
+    let content: AssistantEmptyContent
     let onPick: (String) -> Void
-
-    private var examples: [String] {
-        usesStudioBrain
-            ? ["Add context", "Change my voice", "Create an idea"]
-            : ["Trim the silent gaps", "Add captions", "Cut the retakes"]
-    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                if !usesStudioBrain {
+                if content.showsOverlaySuggestion {
                     ImportedOverlaySuggestion(onPick: onPick)
                 }
-                Text(
-                    usesStudioBrain
-                        ? "Change what Yapper knows, or start something anywhere in Studio."
-                        : "Ask for an edit, or say where your overlays go."
-                )
+                Text(content.hint)
                     .font(.studioCaption)
                     .foregroundStyle(Color.primary.opacity(0.75))
                     .fixedSize(horizontal: false, vertical: true)
 
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), alignment: .leading)], alignment: .leading, spacing: 8) {
-                    ForEach(examples, id: \.self) { example in
+                    ForEach(content.examples, id: \.self) { example in
                         Button(example) { onPick(example) }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
