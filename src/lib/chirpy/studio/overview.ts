@@ -5,6 +5,7 @@ import { needsBrain, readBrainOverview } from "./brain/reads";
 import type { StudioNames } from "./executor";
 import { readIdeasOverview } from "./ideas/reads";
 import { readStorageOverview, wantsStorage } from "./storage/reads";
+import { readStylesOverview, wantsStyles } from "./styles/reads";
 import type { StudioOverview } from "./planner";
 import type { StudioTurnInput } from "./wire";
 import { localDay, localTime, upcomingDays, weekdayOf } from "./zoned-time";
@@ -26,17 +27,24 @@ export async function readStudioOverview(
     .map((message) => message.content)
     .join("\n");
   const storageScope = wantsStorage(input.surface, request);
-  const [ideas, brand, storage, automations, brain] = await Promise.all([
-    readIdeasOverview(userId, request, timeZone, input.focus?.ideaID),
-    wantsBrand(input.surface, request) ? readBrandOverview(userId) : undefined,
-    storageScope ? readStorageOverview(userId, storageScope) : undefined,
-    wantsAutomations(input.surface, request)
-      ? readAutomationsOverview(userId)
-      : undefined,
-    needsBrain(input.surface, request)
-      ? readBrainOverview(userId, request)
-      : undefined,
-  ]);
+  const [ideas, brand, storage, automations, brain, styles] = await Promise.all(
+    [
+      readIdeasOverview(userId, request, timeZone, input.focus?.ideaID),
+      wantsBrand(input.surface, request)
+        ? readBrandOverview(userId)
+        : undefined,
+      storageScope ? readStorageOverview(userId, storageScope) : undefined,
+      wantsAutomations(input.surface, request)
+        ? readAutomationsOverview(userId)
+        : undefined,
+      needsBrain(input.surface, request)
+        ? readBrainOverview(userId, request)
+        : undefined,
+      wantsStyles(input.surface, request)
+        ? readStylesOverview(userId)
+        : undefined,
+    ],
+  );
   return {
     ...ideas,
     ...(brand ? { brand } : {}),
@@ -45,6 +53,7 @@ export async function readStudioOverview(
       : {}),
     ...(automations ? { automations } : {}),
     ...(brain ? { brain } : {}),
+    ...(styles ? { styles } : {}),
     today: {
       date: localDay(now, timeZone),
       weekday: weekdayOf(now, timeZone),
@@ -76,5 +85,8 @@ export function namesFrom(overview: StudioOverview): StudioNames {
     ),
     ...overview.storageNames,
     brain: brainNames(overview.brain),
+    looks: Object.fromEntries(
+      (overview.styles?.looks ?? []).map((look) => [look.id, look.name]),
+    ),
   };
 }

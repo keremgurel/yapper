@@ -36,6 +36,9 @@ import type {
   InspirationBrainstormInput,
   StorageDeleteRecordingInput,
   StorageRemoveVideosInput,
+  StyleLookDeleteInput,
+  StyleLookEditInput,
+  StyleLookSaveInput,
 } from "../../../../protocol/app-actions.generated";
 
 export interface StudioActionInputs {
@@ -74,6 +77,9 @@ export interface StudioActionInputs {
   "studio.inspiration.brainstorm": InspirationBrainstormInput;
   "studio.storage.deleteRecording": StorageDeleteRecordingInput;
   "studio.storage.removeVideos": StorageRemoveVideosInput;
+  "studio.styles.delete": StyleLookDeleteInput;
+  "studio.styles.edit": StyleLookEditInput;
+  "studio.styles.save": StyleLookSaveInput;
 }
 export type StudioActionID = keyof StudioActionInputs;
 
@@ -120,4 +126,7 @@ export const STUDIO_ACTIONS: readonly StudioActionDescriptor[] = [
   { id: "studio.inspiration.brainstorm", input: "InspirationBrainstormInput", effect: "paidGeneration", confirm: false },
   { id: "studio.storage.deleteRecording", input: "StorageDeleteRecordingInput", effect: "destructive", confirm: true },
   { id: "studio.storage.removeVideos", input: "StorageRemoveVideosInput", effect: "destructive", confirm: true },
+  { id: "studio.styles.delete", input: "StyleLookDeleteInput", effect: "destructive", confirm: true },
+  { id: "studio.styles.edit", input: "StyleLookEditInput", effect: "serverEdit", confirm: false },
+  { id: "studio.styles.save", input: "StyleLookSaveInput", effect: "serverEdit", confirm: false },
 ];

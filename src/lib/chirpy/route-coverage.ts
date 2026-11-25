@@ -47,6 +47,9 @@ export const ROUTE_ACTIONS: Record<string, readonly string[]> = {
   "POST /api/views": ["studio.ideas.views.create"],
   "PATCH /api/views/[id]": ["studio.ideas.views.update"],
   "DELETE /api/views/[id]": ["studio.ideas.views.delete"],
+  "POST /api/styles/looks": ["studio.styles.save"],
+  "PATCH /api/styles/looks/[id]": ["studio.styles.edit"],
+  "DELETE /api/styles/looks/[id]": ["studio.styles.delete"],
   "PATCH /api/brand": ["studio.brand.colors"],
   "PATCH /api/brand/logos/[id]": ["studio.brand.logos.makePrimary"],
   "DELETE /api/brand/logos/[id]": ["studio.brand.logos.delete"],
@@ -128,6 +131,8 @@ export const EXCLUDED_ROUTES: Record<string, ExclusionReason> = {
   "POST /api/chirpy/plan": "chirpy",
   "POST /api/chirpy/studio": "chirpy",
   "POST /api/chirpy/confirm": "chirpy",
+  // The connector's door onto the same server actions.
+  "POST /api/mcp": "chirpy",
   "POST /api/admin/skills": "admin",
   "PATCH /api/admin/skills/[id]": "admin",
   "DELETE /api/admin/skills/[id]": "admin",

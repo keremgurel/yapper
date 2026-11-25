@@ -7,6 +7,7 @@ import {
   scheduleStatuses,
   type ScheduledPublishInput,
 } from "@/lib/publish/schedule-types";
+import type { TemplateLayer } from "@/lib/style-library/templates/template";
 import {
   bigint,
   boolean,
@@ -1422,4 +1423,34 @@ export const editRuns = pgTable(
     index("edit_runs_user_idx").on(t.userId, t.createdAt),
     uniqueIndex("edit_runs_usage_unique").on(t.usageId),
   ],
+);
+
+/**
+ * A look a creator saved: a template from the style library with their own
+ * changes, kept so they can reuse it on the next video.
+ *
+ * `layers` is the whole arrangement as the library's `TemplateLayer[]`, in
+ * jsonb because it is a tree of blocks the database never queries into. Every
+ * write goes through the library's own edit path, which validates each block
+ * and option, so what is stored here is always something the library can draw.
+ * `baseTemplateId` remembers which first-party template it started from.
+ */
+export const styleLooks = pgTable(
+  "style_looks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    baseTemplateId: text("base_template_id"),
+    layers: jsonb("layers").$type<TemplateLayer[]>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("style_looks_user_idx").on(t.userId, t.updatedAt)],
 );

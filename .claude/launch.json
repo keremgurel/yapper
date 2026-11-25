@@ -20,6 +20,16 @@
       ],
       "port": 3112,
       "autoPort": false
+    },
+    {
+      "name": "style-studio",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "source ~/.nvm/nvm.sh && nvm use 22 && cd style-runner && npx remotion studio --port 3123 --no-open"
+      ],
+      "port": 3123,
+      "autoPort": false
     }
   ]
 }
