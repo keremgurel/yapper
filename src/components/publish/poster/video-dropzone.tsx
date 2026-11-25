@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  createContext,
   useCallback,
+  useContext,
   useRef,
   useState,
   type DragEvent,
@@ -10,6 +12,13 @@ import {
 import { Upload } from "lucide-react";
 import { videoTypeFor } from "@/hooks/use-add-video";
 
+const DraggingContext = createContext(false);
+
+/** Whether a file is being dragged over the surrounding `VideoDropzone`. */
+export function useFileDragging(): boolean {
+  return useContext(DraggingContext);
+}
+
 /**
  * Drop a video anywhere on the Poster to add it.
  *
@@ -17,13 +26,16 @@ import { videoTypeFor } from "@/hooks/use-add-video";
  * slowest possible way to get a finished video into the tool. Dragging is how
  * people actually move a file they just exported, so the whole workspace is
  * the target and the overlay only appears once something is genuinely being
- * dragged over it.
+ * dragged over it. A screen with its own drop target turns the overlay off and
+ * reads `useFileDragging()` to light that target up instead.
  */
 export default function VideoDropzone({
   onFiles,
+  overlay = true,
   children,
 }: {
   onFiles: (files: File[]) => void;
+  overlay?: boolean;
   children: ReactNode;
 }) {
   const [over, setOver] = useState(false);
@@ -73,9 +85,11 @@ export default function VideoDropzone({
       onDragOver={onDragOver}
       onDrop={onDrop}
     >
-      {children}
+      <DraggingContext.Provider value={over}>
+        {children}
+      </DraggingContext.Provider>
 
-      {over && (
+      {over && overlay && (
         <div
           aria-hidden
           className="bg-background/85 pointer-events-none absolute inset-0 z-50 grid place-items-center rounded-2xl border-2 border-dashed border-[color:var(--sg-accent)] backdrop-blur-sm"

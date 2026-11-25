@@ -24,6 +24,7 @@ export function usePlatformVideos(
   platform: PublishPlatform,
   enabled: boolean,
   sort: VideoSort,
+  { poll = true }: { poll?: boolean } = {},
 ) {
   const [refreshing, setRefreshing] = useState(false);
 
@@ -56,7 +57,10 @@ export function usePlatformVideos(
 
   // Posts are often published in Instagram, TikTok or YouTube while Poster
   // stays open. Refresh on return and periodically while visible, without
-  // clearing the existing cards or shifting the layout.
+  // clearing the existing cards or shifting the layout. Screens that list
+  // several channels at once skip the timer: each tick past the server cache
+  // is a paid provider call per channel, and returning to the tab still
+  // refreshes them.
   useEffect(() => {
     if (!enabled) return;
     const refreshIfVisible = () => {
@@ -64,13 +68,13 @@ export function usePlatformVideos(
     };
     window.addEventListener("focus", refreshIfVisible);
     document.addEventListener("visibilitychange", refreshIfVisible);
-    const timer = window.setInterval(refreshIfVisible, 60_000);
+    const timer = poll ? window.setInterval(refreshIfVisible, 60_000) : 0;
     return () => {
       window.removeEventListener("focus", refreshIfVisible);
       document.removeEventListener("visibilitychange", refreshIfVisible);
-      window.clearInterval(timer);
+      if (timer) window.clearInterval(timer);
     };
-  }, [enabled, refresh]);
+  }, [enabled, poll, refresh]);
 
   const sorted: PlatformVideo[] | null = data
     ? [...data.videos].sort((a, b) =>
