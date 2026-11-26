@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { studioEntryHref } from "@/lib/routing/studio-host";
 import { isPanel, siteContextFor, siteNavigation } from "./site-navigation";
 
 describe("Studio public site", () => {
@@ -22,7 +23,7 @@ describe("Studio public site", () => {
     expect(links).toContainEqual({ label: "Blog", href: "/blog" });
     expect(siteNavigation.studio.cta).toEqual({
       label: "Access Studio",
-      href: "/studio/home",
+      href: studioEntryHref(),
     });
     expect(siteNavigation.studio.switchTo).toBeUndefined();
     expect(siteNavigation.studio.product).toBeUndefined();
