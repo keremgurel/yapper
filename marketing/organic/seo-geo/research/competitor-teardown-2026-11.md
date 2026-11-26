@@ -225,7 +225,7 @@ Bing (`serp/bing/organic/live/advanced`) returned unrelated results (sports scor
 
 ## Beat-it plan
 
-1. **Entity (done):** /about, llms.txt, footer link. Next: fix stale "Yapper Train" product in home JSON-LD (proposal).
+1. **Entity (done):** /about, llms.txt, footer link. The old "Yapper Train" entry in src/app/home-json-ld.tsx is dead code (only `studio` is rendered; /products/train 301s to speakingpractice.ai), so it is a cleanup, not a live schema issue.
 2. **Roundups:** teleprompter apps (done); next "Captions alternatives" and "best talking-head video apps", sourced from each product page.
 3. **Depth:** a script-writing guide to compete with Canva's (creator topic, no overlap with SpeakingPractice).
 
@@ -238,7 +238,7 @@ Bing (`serp/bing/organic/live/advanced`) returned unrelated results (sports scor
 
 ## Proposals that need Can's OK
 
-- Remove or update the stale "Yapper Train" product (/products/train) in src/components/home-json-ld.tsx.
+- Optional cleanup: delete the unused `train` entry in src/app/home-json-ld.tsx (not rendered anywhere today).
 - A "Captions alternatives" comparison page.
 
 ## DataForSEO spend for this teardown (all four sites)
