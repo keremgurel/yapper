@@ -72,3 +72,6 @@ scripts/chirpy-eval/results/
 
 # Generated audio and results for scripts/cut-testset (rebuild with synth.mjs)
 /.cut-testset-work/
+
+# Advanced edit benchmark frames and runs (creator footage, never commit)
+/.advanced-edit-benchmark/
