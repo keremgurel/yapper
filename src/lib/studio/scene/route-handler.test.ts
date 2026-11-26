@@ -9,11 +9,17 @@ const mocks = vi.hoisted(() => ({
   refund: vi.fn(),
   model: vi.fn(),
   image: vi.fn(),
+  delivered: vi.fn(),
 }));
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }));
 vi.mock("@/lib/provider-rate-limit", () => ({
   guardProviderIngress: mocks.ingress,
   guardProviderSpend: mocks.spend,
+}));
+vi.mock("@/lib/billing/overlay-drop-refund", () => ({
+  ownPlanningCharge: async (_user: string, run?: string) =>
+    run === "00000000-0000-4000-8000-000000000009" ? undefined : run,
+  recordDeliveredOverlays: mocks.delivered,
 }));
 vi.mock("@/lib/billing/actions", () => ({
   preflightPaidActionOrResponse: mocks.preflight,
@@ -233,6 +239,15 @@ describe("generated overlay routes", () => {
     expect(mocks.reserve).toHaveBeenCalledWith("user", "design_overlay", {
       quantity: 1,
       metadata: { run },
+    });
+    expect(mocks.delivered).toHaveBeenCalledWith("user", "test", ["one"]);
+    // A run that is not this user's planning charge is not recorded.
+    await handleSceneRequest(
+      request({ ...design, run: "00000000-0000-4000-8000-000000000009" }),
+      "design",
+    );
+    expect(mocks.reserve).toHaveBeenLastCalledWith("user", "design_overlay", {
+      quantity: 1,
     });
     expect(
       (await handleSceneRequest(request({ ...design, run: "x" }), "design"))

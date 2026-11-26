@@ -37,6 +37,10 @@ import {
   type RevisionPlan,
 } from "./revision-plan";
 import { validateScene } from "./scene-validate";
+import {
+  ownPlanningCharge,
+  recordDeliveredOverlays,
+} from "@/lib/billing/overlay-drop-refund";
 
 type Mode = "direct" | "design" | "revise";
 
@@ -91,9 +95,10 @@ export async function handleSceneRequest(
         : "revise-overlay",
   );
   if (limited) return limited;
+  const run = await ownPlanningCharge(userId, design?.run);
   const access = await reservePaidActionOrResponse(userId, action, {
     quantity,
-    ...(design?.run ? { metadata: { run: design.run } } : {}),
+    ...(run ? { metadata: { run } } : {}),
   });
   if (access.response) return access.response;
   const reservation = access.reservation;
@@ -149,6 +154,11 @@ export async function handleSceneRequest(
             amount: result.failed.length * PAID_ACTIONS.design_overlay.credits,
           },
         );
+      await recordDelivered(
+        userId,
+        reservation.usageId,
+        result.scenes.map((scene) => scene.id),
+      );
       return Response.json({
         ...result,
         brand,
@@ -252,6 +262,7 @@ export async function handleSceneRequest(
       if (preciseRevision) {
         await refundPlanOnlyRemainder(userId, reservation, "precise_edit");
       }
+      await recordDelivered(userId, reservation.usageId, ["revision"]);
       return Response.json({
         ...result.scene,
         brand,
@@ -302,6 +313,22 @@ async function refundPlanOnlyRemainder(
   await refundCreditReservation(userId, reservation, reason, {
     amount: remainder,
   });
+}
+
+/** Delivery is already paid for; a ledger hiccup only costs a later refund. */
+async function recordDelivered(
+  userId: string,
+  usageId: string,
+  ids: string[],
+): Promise<void> {
+  try {
+    await recordDeliveredOverlays(userId, usageId, ids);
+  } catch (error) {
+    console.error("[billing] could not record delivered overlays", {
+      usageId,
+      error,
+    });
+  }
 }
 
 /** Existing references survive restyling; they remain local to the asset. */

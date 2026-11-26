@@ -18,6 +18,52 @@ export interface OverlayDropRefund {
 }
 
 const DROPPABLE = ["design_overlay", "revise_overlay"] as const;
+
+/**
+ * Most dropped cards one account is refunded for in 24 hours. The check runs
+ * on frames the client renders, so a client could force a failure; this bounds
+ * what that can return. An honest heavy day is two or three runs of six cards.
+ */
+export const DAILY_DROP_REFUNDS = 20;
+
+/**
+ * Record which cards a design or revision charge actually delivered. Only
+ * these ids can be refunded later, so a client cannot invent card ids.
+ */
+export async function recordDeliveredOverlays(
+  userId: string,
+  usageId: string,
+  ids: readonly string[],
+): Promise<void> {
+  if (!ids.length) return;
+  await getDb().execute(sql`
+    update credit_ledger set metadata = metadata || ${JSON.stringify({
+      delivered: ids,
+    })}::jsonb
+    where user_id = ${userId} and reason = 'deduction'
+      and metadata->>'usageId' = ${usageId}
+  `);
+}
+
+/**
+ * The planning charge a design batch may be tagged with: this user's own
+ * direct_overlays deduction from the last 24 hours, or nothing.
+ */
+export async function ownPlanningCharge(
+  userId: string,
+  run: string | undefined,
+): Promise<string | undefined> {
+  if (!run) return undefined;
+  const found = await getDb().execute(sql`
+    select 1 from credit_ledger
+    where user_id = ${userId} and reason = 'deduction' and delta < 0
+      and metadata->>'usageId' = ${run}
+      and metadata->>'action' = 'direct_overlays'
+      and created_at > now() - interval '24 hours'
+    limit 1
+  `);
+  return found.rows.length ? run : undefined;
+}
 type Droppable = (typeof DROPPABLE)[number];
 
 interface ChargeRow {
@@ -25,6 +71,7 @@ interface ChargeRow {
   refunded: number;
   action: string;
   run: string | null;
+  delivered: string[];
 }
 
 /**
@@ -47,7 +94,12 @@ export async function refundDroppedOverlay(
   return getDb().transaction(async (tx) => {
     await tx.execute(sql`select id from users where id = ${userId} for update`);
     const row = await chargeRow(tx, userId, charge.usageId, DROPPABLE);
-    if (!row) return { credits: 0, run: 0 };
+    if (!row || !row.delivered.includes(charge.id))
+      return { credits: 0, run: 0 };
+    if ((await dropRefundsToday(tx, userId)) >= DAILY_DROP_REFUNDS) {
+      console.warn("[billing] overlay drop refund cap reached", { userId });
+      return { credits: 0, run: 0 };
+    }
     const unit = PAID_ACTIONS[row.action as Droppable].credits;
     const credits = await refundOnce(tx, userId, {
       amount: Math.min(unit, row.cost - row.refunded),
@@ -59,6 +111,16 @@ export async function refundDroppedOverlay(
     if (!credits || !row.run) return { credits, run: 0 };
     return { credits, run: await refundEmptyRun(tx, userId, row.run) };
   });
+}
+
+async function dropRefundsToday(tx: DbTx, userId: string): Promise<number> {
+  const result = await tx.execute(sql`
+    select count(*)::integer as n from credit_ledger
+    where user_id = ${userId} and reason = 'refund'
+      and stripe_ref like 'overlay_drop_%'
+      and created_at > now() - interval '24 hours'
+  `);
+  return Number((result.rows[0] as { n?: number } | undefined)?.n ?? 0);
 }
 
 async function refundEmptyRun(
@@ -96,7 +158,7 @@ async function chargeRow(
 ): Promise<ChargeRow | null> {
   const result = await tx.execute(sql`
     select -c.delta as cost, c.metadata->>'action' as action,
-      c.metadata->>'run' as run,
+      c.metadata->>'run' as run, c.metadata->'delivered' as delivered,
       coalesce((select sum(r.delta) from credit_ledger r
         where r.user_id = c.user_id and r.reason = 'refund' and r.delta > 0
           and r.metadata->>'usageId' = c.metadata->>'usageId'), 0) as refunded
@@ -119,6 +181,9 @@ async function chargeRow(
     refunded: Number(row.refunded),
     action: String(row.action),
     run: typeof row.run === "string" ? row.run : null,
+    delivered: Array.isArray(row.delivered)
+      ? row.delivered.filter((id): id is string => typeof id === "string")
+      : [],
   };
 }
 

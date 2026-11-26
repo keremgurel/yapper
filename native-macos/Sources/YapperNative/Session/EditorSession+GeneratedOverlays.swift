@@ -285,7 +285,7 @@ extension EditorSession {
                     }
                 }
             }
-            if sceneChanged, let charge = GeneratedOverlayCharge(usageId: response["usageId"], id: media.id.uuidString) {
+            if sceneChanged, let charge = GeneratedOverlayCharge(usageId: response["usageId"], id: "revision") {
                 log.charges[media.id] = charge
             }
             if let hold = response["openingHoldSeconds"] as? Double {

@@ -7,7 +7,12 @@ import * as schema from "@/lib/db/schema";
 const client = new PGlite();
 const db = drizzle(client, { schema });
 vi.mock("@/lib/db/client", () => ({ getDb: () => db }));
-import { refundDroppedOverlay } from "./overlay-drop-refund";
+import {
+  DAILY_DROP_REFUNDS,
+  ownPlanningCharge,
+  recordDeliveredOverlays,
+  refundDroppedOverlay,
+} from "./overlay-drop-refund";
 
 const RUN = "00000000-0000-4000-8000-000000000001";
 const BATCH = "00000000-0000-4000-8000-000000000002";
@@ -41,6 +46,8 @@ async function charge(
     balanceAfter: 0,
     metadata: { action, usageId, billingVersion: 2, ...extra },
   });
+  if (action !== "direct_overlays")
+    await recordDeliveredOverlays("owner", usageId, ["a", "b", "c"]);
 }
 const balance = async (id = "owner") =>
   (await db.select().from(schema.users).where(eq(schema.users.id, id)))[0]
@@ -152,4 +159,29 @@ it("ignores charges that are someone else's, old, or not a design", async () => 
   ).toEqual({ credits: 0, run: 0 });
   expect(await balance()).toBe(0);
   expect(await balance("other")).toBe(0);
+});
+
+it("refunds only cards the charge actually delivered", async () => {
+  await charge(BATCH, "design_overlay", 90, { quantity: 3 });
+  expect(
+    await refundDroppedOverlay("owner", { usageId: BATCH, id: "made-up" }, "x"),
+  ).toEqual({ credits: 0, run: 0 });
+  expect(await balance()).toBe(0);
+});
+
+it("stops refunding dropped cards past the daily cap", async () => {
+  for (let i = 0; i < DAILY_DROP_REFUNDS + 1; i++) {
+    const usageId = `00000000-0000-4000-8000-${String(100 + i).padStart(12, "0")}`;
+    await charge(usageId, "design_overlay", 30, { quantity: 1 });
+    await refundDroppedOverlay("owner", { usageId, id: "a" }, "x");
+  }
+  expect(await balance()).toBe(DAILY_DROP_REFUNDS * 30);
+});
+
+it("accepts only this user's recent planning charge as a run", async () => {
+  await charge(RUN, "direct_overlays", 10);
+  expect(await ownPlanningCharge("owner", RUN)).toBe(RUN);
+  expect(await ownPlanningCharge("other", RUN)).toBeUndefined();
+  expect(await ownPlanningCharge("owner", BATCH)).toBeUndefined();
+  expect(await ownPlanningCharge("owner", undefined)).toBeUndefined();
 });
