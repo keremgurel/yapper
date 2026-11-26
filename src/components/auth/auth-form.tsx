@@ -5,6 +5,7 @@ import { shadcn } from "@clerk/ui/themes";
 import type { ComponentProps } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import styles from "./auth.module.css";
+import { studioEntryHref } from "@/lib/routing/studio-host";
 
 const appearance: NonNullable<ComponentProps<typeof SignIn>["appearance"]> = {
   theme: shadcn,
@@ -63,8 +64,8 @@ export default function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
       routing="path"
       path="/sign-in"
       signUpUrl="/sign-up"
-      fallbackRedirectUrl="/studio/home"
-      signUpFallbackRedirectUrl="/studio/home"
+      fallbackRedirectUrl={studioEntryHref()}
+      signUpFallbackRedirectUrl={studioEntryHref()}
       appearance={appearance}
       fallback={fallback}
     />
@@ -73,8 +74,8 @@ export default function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
       routing="path"
       path="/sign-up"
       signInUrl="/sign-in"
-      fallbackRedirectUrl="/studio/home"
-      signInFallbackRedirectUrl="/studio/home"
+      fallbackRedirectUrl={studioEntryHref()}
+      signInFallbackRedirectUrl={studioEntryHref()}
       appearance={appearance}
       fallback={fallback}
     />
