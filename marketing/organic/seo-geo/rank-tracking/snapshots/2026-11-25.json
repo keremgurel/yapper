@@ -1,0 +1,771 @@
+{
+  "date": "2026-11-25",
+  "site": "yapper",
+  "domain": "ypr.app",
+  "location_code": 2840,
+  "endpoint": "serp/google/organic/live/advanced",
+  "depth": 20,
+  "load_async_ai_overview": true,
+  "cost_usd": 0.044,
+  "keywords": [
+    {
+      "id": "y01",
+      "keyword": "teleprompter app",
+      "lang": "en",
+      "location_code": 2840,
+      "ok": true,
+      "cost": 0.0035,
+      "cached": true,
+      "error": null,
+      "rank": null,
+      "rank_absolute": null,
+      "url": null,
+      "title": null,
+      "ai_overview": true,
+      "cited_in_aio": false,
+      "aio_source_count": 9,
+      "aio_source_domains": [
+        "apps.apple.com",
+        "teleprompter.com",
+        "cueprompter.com",
+        "app.teleprompterpad.com",
+        "reddit.com",
+        "youtube.com",
+        "instagram.com",
+        "youtube.com",
+        "voiceprompter.app"
+      ],
+      "featured_snippet": null,
+      "features": [
+        "ai_overview",
+        "organic",
+        "people_also_ask",
+        "related_searches"
+      ],
+      "paa": [
+        "Is there a free teleprompter app?",
+        "Does Google have a teleprompter?",
+        "How do I record a video with a teleprompter?",
+        "Is there a teleprompter that follows my voice?"
+      ],
+      "top3": [
+        {
+          "rank": 1,
+          "domain": "insiderbits.com",
+          "url": "https://insiderbits.com/best-apps/the-best-teleprompter-apps/",
+          "title": "The best teleprompter apps for recording videos"
+        },
+        {
+          "rank": 2,
+          "domain": "regendus.com",
+          "url": "https://www.regendus.com",
+          "title": "9 Best Teleprompter Apps for Android and iOS - REGENDUS"
+        },
+        {
+          "rank": 3,
+          "domain": "teleprompter.com",
+          "url": "https://www.teleprompter.com",
+          "title": "Best Online Teleprompters for Smooth Presentations (2026)"
+        }
+      ],
+      "item_types": [
+        "ai_overview",
+        "organic",
+        "people_also_ask",
+        "related_searches"
+      ],
+      "se_results_count": 89
+    },
+    {
+      "id": "y02",
+      "keyword": "best teleprompter app",
+      "lang": "en",
+      "location_code": 2840,
+      "ok": true,
+      "cost": 0.0035,
+      "cached": true,
+      "error": null,
+      "rank": null,
+      "rank_absolute": null,
+      "url": null,
+      "title": null,
+      "ai_overview": true,
+      "cited_in_aio": false,
+      "aio_source_count": 5,
+      "aio_source_domains": [
+        "teleprompterpro.com",
+        "teleprompter.com",
+        "youtube.com",
+        "apps.apple.com",
+        "google.com"
+      ],
+      "featured_snippet": null,
+      "features": [
+        "ai_overview",
+        "organic"
+      ],
+      "paa": [],
+      "top3": [
+        {
+          "rank": 1,
+          "domain": "awzware.com",
+          "url": "https://www.awzware.com/news/best-teleprompter-app",
+          "title": "Best 5 Teleprompter Apps Offline & Online: Free to Read ..."
+        },
+        {
+          "rank": 2,
+          "domain": "toolsmart ai",
+          "url": "https://www.toolsmart.ai",
+          "title": "Top 4 Teleprompter Apps in 2026 | Toolsmart Blog"
+        },
+        {
+          "rank": 3,
+          "domain": "freeappsforme",
+          "url": "https://freeappsforme.com",
+          "title": "15 Free Teleprompter Apps & Websites in 2026"
+        }
+      ],
+      "item_types": [
+        "ai_overview",
+        "organic"
+      ],
+      "se_results_count": 61
+    },
+    {
+      "id": "y03",
+      "keyword": "free teleprompter",
+      "lang": "en",
+      "location_code": 2840,
+      "ok": true,
+      "cost": 0.0035,
+      "cached": true,
+      "error": null,
+      "rank": null,
+      "rank_absolute": null,
+      "url": null,
+      "title": null,
+      "ai_overview": true,
+      "cited_in_aio": false,
+      "aio_source_count": 6,
+      "aio_source_domains": [
+        "cueprompter.com",
+        "speakflow.com",
+        "voiceprompter.app",
+        "veed.io",
+        "bigvu.tv",
+        "youtube.com"
+      ],
+      "featured_snippet": null,
+      "features": [
+        "organic",
+        "ai_overview",
+        "people_also_ask",
+        "related_searches"
+      ],
+      "paa": [
+        "Does the iPhone have a built-in teleprompter?",
+        "Is CapCut teleprompter free?",
+        "What is the best free teleprompter app for Windows?",
+        "What is the best free teleprompter app for iPhone?"
+      ],
+      "top3": [
+        {
+          "rank": 1,
+          "domain": "cueprompter.com",
+          "url": "https://cueprompter.com/",
+          "title": "CuePrompter: Free Teleprompter - Read Scripts on Screen"
+        },
+        {
+          "rank": 2,
+          "domain": "speakflow",
+          "url": "https://www.speakflow.com",
+          "title": "Free Online Teleprompter"
+        },
+        {
+          "rank": 3,
+          "domain": "promptr",
+          "url": "https://www.promptr.co",
+          "title": "Free teleprompter online for content creators, YouTubers ..."
+        }
+      ],
+      "item_types": [
+        "organic",
+        "ai_overview",
+        "people_also_ask",
+        "related_searches"
+      ],
+      "se_results_count": 218
+    },
+    {
+      "id": "y04",
+      "keyword": "teleprompter online",
+      "lang": "en",
+      "location_code": 2840,
+      "ok": true,
+      "cost": 0.0035,
+      "cached": true,
+      "error": null,
+      "rank": null,
+      "rank_absolute": null,
+      "url": null,
+      "title": null,
+      "ai_overview": true,
+      "cited_in_aio": false,
+      "aio_source_count": 7,
+      "aio_source_domains": [
+        "cueprompter.com",
+        "teleprompter-online.com",
+        "veed.io",
+        "speakflow.com",
+        "easyprompter.com",
+        "youtube.com",
+        "youtube.com"
+      ],
+      "featured_snippet": null,
+      "features": [
+        "organic",
+        "ai_overview"
+      ],
+      "paa": [],
+      "top3": [
+        {
+          "rank": 1,
+          "domain": "democreator.wondershare.com",
+          "url": "https://democreator.wondershare.com/screen-recorder/teleprompter-tool.html",
+          "title": "7 Best Online Teleprompter Tools for Professional Video ..."
+        },
+        {
+          "rank": 2,
+          "domain": "poyo.ai",
+          "url": "https://poyo.ai",
+          "title": "Free Online Teleprompter - Mirror Mode"
+        },
+        {
+          "rank": 3,
+          "domain": "online-prompter.com",
+          "url": "https://online-prompter.com",
+          "title": "Online Prompter - Professional Browser-Based Teleprompter"
+        }
+      ],
+      "item_types": [
+        "organic",
+        "ai_overview"
+      ],
+      "se_results_count": 55
+    },
+    {
+      "id": "y05",
+      "keyword": "AI script writer for YouTube",
+      "lang": "en",
+      "location_code": 2840,
+      "ok": true,
+      "cost": 0.0035,
+      "cached": true,
+      "error": null,
+      "rank": null,
+      "rank_absolute": null,
+      "url": null,
+      "title": null,
+      "ai_overview": true,
+      "cited_in_aio": false,
+      "aio_source_count": 10,
+      "aio_source_domains": [
+        "facebook.com",
+        "vidiq.com",
+        "youtube.com",
+        "tubelab.net",
+        "youtube.com",
+        "youtube.com",
+        "veed.io",
+        "playplay.com",
+        "powtoon.com",
+        "reddit.com"
+      ],
+      "featured_snippet": null,
+      "features": [
+        "ai_overview",
+        "organic",
+        "video"
+      ],
+      "paa": [],
+      "top3": [
+        {
+          "rank": 1,
+          "domain": "hitpaw.com",
+          "url": "https://www.hitpaw.com/ai-video/youtube-script-generator.html",
+          "title": "Top 8 Free AI YouTube Script Generators for Engaging ..."
+        },
+        {
+          "rank": 2,
+          "domain": "topstreamingreview.com",
+          "url": "https://www.topstreamingreview.com",
+          "title": "9 Best AI Script Generators for YouTube in 2026"
+        },
+        {
+          "rank": 3,
+          "domain": "oflox.com",
+          "url": "https://www.oflox.com",
+          "title": "10+ AI YouTube Script Generator: All-in-One Guide for Creators!"
+        }
+      ],
+      "item_types": [
+        "ai_overview",
+        "organic",
+        "video"
+      ],
+      "se_results_count": 79
+    },
+    {
+      "id": "y06",
+      "keyword": "AI video script generator",
+      "lang": "en",
+      "location_code": 2840,
+      "ok": true,
+      "cost": 0.0035,
+      "cached": true,
+      "error": null,
+      "rank": null,
+      "rank_absolute": null,
+      "url": null,
+      "title": null,
+      "ai_overview": true,
+      "cited_in_aio": false,
+      "aio_source_count": 8,
+      "aio_source_domains": [
+        "veed.io",
+        "kapwing.com",
+        "canva.com",
+        "pictory.ai",
+        "playplay.com",
+        "invideo.io",
+        "creatify.ai",
+        "powtoon.com"
+      ],
+      "featured_snippet": null,
+      "features": [
+        "organic",
+        "ai_overview",
+        "related_searches"
+      ],
+      "paa": [],
+      "top3": [
+        {
+          "rank": 1,
+          "domain": "shortgenius.com",
+          "url": "https://shortgenius.com/blog/ai-video-script-generator",
+          "title": "Your Guide to AI Video Script Generators"
+        },
+        {
+          "rank": 2,
+          "domain": "sendspark",
+          "url": "https://blog.sendspark.com",
+          "title": "Best AI Script Generators for Sales Videos | Sendspark"
+        },
+        {
+          "rank": 3,
+          "domain": "youtube · pictory",
+          "url": "https://www.google.com/goto?url=CAESZwHEIkXX4b2BvLuqgwthdwm-DH19suWlwxBBbNHEX-nLc8SLr9Y93cabLBkoi9J9IyqJ554dRBdpmmlrHY3dLrB13dZ-UvQjNrGIQCk-6dYXtlOR8RYAeL07lbMJ84_ApytdUsRkFUo&gsessionid=pkbthrpALq87U5J0Lqrj6ZtezWXNuGqKHtSDkIDkzI8-Mf9i67mVAw",
+          "title": "The Best AI Script Generators For Creating Video Content!"
+        }
+      ],
+      "item_types": [
+        "organic",
+        "ai_overview",
+        "related_searches"
+      ],
+      "se_results_count": 58
+    },
+    {
+      "id": "y07",
+      "keyword": "how to write a video script",
+      "lang": "en",
+      "location_code": 2840,
+      "ok": true,
+      "cost": 0.0035,
+      "cached": true,
+      "error": null,
+      "rank": null,
+      "rank_absolute": null,
+      "url": null,
+      "title": null,
+      "ai_overview": true,
+      "cited_in_aio": false,
+      "aio_source_count": 10,
+      "aio_source_domains": [
+        "reddit.com",
+        "techsmith.com",
+        "canva.com",
+        "adobe.com",
+        "copyposse.com",
+        "ctl.columbia.edu",
+        "linkedin.com",
+        "youtube.com",
+        "guides.library.cornell.edu",
+        "google.com"
+      ],
+      "featured_snippet": null,
+      "features": [
+        "ai_overview",
+        "organic",
+        "video",
+        "images",
+        "people_also_ask"
+      ],
+      "paa": [
+        "How much do YouTube script writers get paid?",
+        "Can ChatGPT make scripts?",
+        "How long is a 3 minute video script?",
+        "Can I sell my script to Netflix?"
+      ],
+      "top3": [
+        {
+          "rank": 1,
+          "domain": "mattcallian.com",
+          "url": "https://mattcallian.com/how-to-write-a-video-script/",
+          "title": "How to write a video script in 5 steps"
+        },
+        {
+          "rank": 2,
+          "domain": "quora",
+          "url": "https://www.google.com/goto?url=CAESgAEBxCJF1zy1PZ7HzNS-mdwjXpUEkoULRWcAB1dGCkCpsVQzjPrC4Bz0ihLd4DSis0THz3Waty0qmYSEKUtSXViPaEbZx77ftfjmC2dhcdc1kMiTDOUwY6qpJFcDcmmQP4PJdwlE4VRA9bJ-ECuqqRyu9H0ijlZp8Utg_576uQIm3Q&gsessionid=9Gp5mf4MCkXWoNd4DiUhyMpcKIsHq0a3peV-vg579qloA31hZuRRdw",
+          "title": "What are the best tips to write a video script?"
+        },
+        {
+          "rank": 3,
+          "domain": "youtube · client machines",
+          "url": "https://www.google.com/goto?url=CAESZwHEIkXX99jBGu9NCIwRlJJr84i8RmwRuwoxNzNiATyc8BChepyP5KvzVt4Oaoizr9cCBIQKQdeiR5gAY0cA9_buwcGtA6mYR37WLqs6atStSsT-u8wLAbB6lFtHBJ-L-MQkFf2sVXA&gsessionid=9Gp5mf4MCkXWoNd4DiUhyMpcKIsHq0a3peV-vg579qloA31hZuRRdw",
+          "title": "How to Write Video Scripts - 1 Minute Video Tip #27"
+        }
+      ],
+      "item_types": [
+        "ai_overview",
+        "organic",
+        "video",
+        "images",
+        "people_also_ask"
+      ],
+      "se_results_count": 69
+    },
+    {
+      "id": "y08",
+      "keyword": "video script template",
+      "lang": "en",
+      "location_code": 2840,
+      "ok": true,
+      "cost": 0.0035,
+      "cached": true,
+      "error": null,
+      "rank": null,
+      "rank_absolute": null,
+      "url": null,
+      "title": null,
+      "ai_overview": true,
+      "cited_in_aio": false,
+      "aio_source_count": 3,
+      "aio_source_domains": [
+        "canva.com",
+        "leadde.ai",
+        "copyposse.com"
+      ],
+      "featured_snippet": null,
+      "features": [
+        "images",
+        "organic",
+        "ai_overview"
+      ],
+      "paa": [],
+      "top3": [
+        {
+          "rank": 1,
+          "domain": "framesurfer.com",
+          "url": "https://framesurfer.com/blogs/video-script-template",
+          "title": "Your Ultimate Video Script Template Guide for Viral Content"
+        },
+        {
+          "rank": 2,
+          "domain": "quora",
+          "url": "https://www.google.com/goto?url=CAEShwEBxCJF1wk_rtyVBiCM8zk0APMgDXbkaMMyrcsOVxXVIVjqD2u_jT4cUTbW0k7WGkxwO02Fhbi0mq_COp2ivrtOF9ujkwmXHeS05BgOccNvxDJNOGelqJq877jt-iBKhEOvonz2R41Mlm8QT-4igo4LZCNPDyabhsI6SrES9nznGiGD-v5Qz5U&gsessionid=tq3CLjmspKoRhny3RIsj66clXFvFAeOZHbGxeER-DMlVut99uEhH6A",
+          "title": "Where can I get a very detailed video script template?"
+        },
+        {
+          "rank": 3,
+          "domain": "boast.io",
+          "url": "https://boast.io",
+          "title": "How to Make a Video Script (With Templates!) | Boast Blog"
+        }
+      ],
+      "item_types": [
+        "images",
+        "organic",
+        "ai_overview"
+      ],
+      "se_results_count": 71
+    },
+    {
+      "id": "y09",
+      "keyword": "talking head video tips",
+      "lang": "en",
+      "location_code": 2840,
+      "ok": true,
+      "cost": 0.0055,
+      "cached": true,
+      "error": null,
+      "rank": null,
+      "rank_absolute": null,
+      "url": null,
+      "title": null,
+      "ai_overview": true,
+      "cited_in_aio": false,
+      "aio_source_count": 7,
+      "aio_source_domains": [
+        "facebook.com",
+        "instagram.com",
+        "instagram.com",
+        "bsquarevisuals.com",
+        "videoeditingcompany.com",
+        "jupitrr.com",
+        "clearcommunicationacademy.com"
+      ],
+      "featured_snippet": null,
+      "features": [
+        "ai_overview",
+        "organic",
+        "video",
+        "people_also_ask"
+      ],
+      "paa": [
+        "How to film a talking head video?",
+        "How to speak confidently to a camera?",
+        "What does \"talking head\" mean in slang?",
+        "Can you give me some examples of talking heads?"
+      ],
+      "top3": [
+        {
+          "rank": 1,
+          "domain": "linkedin.com",
+          "url": "https://www.linkedin.com/advice/0/how-can-you-avoid-talking-heads-syndrome-documentary",
+          "title": "How to Avoid Talking Heads in Your Documentary"
+        },
+        {
+          "rank": 2,
+          "domain": "instagram",
+          "url": "https://www.google.com/goto?url=CAEShAEBxCJF1zfjn5nh9VrbJua9jONW9DUVbeKx8LM9CBUUIFOOyGjzhblXE0_ZB5In1G_m8MKcelTQkY5lc2KEQBpB1MHwPxgC6u8fx4N4vh6SrzWkCyNf2OrVaHFMAN1Cl1Ppu0HNoKelzAk4da0h3gHUE8q5E86zZKN1R0WUPEqU6ZhuUF4&gsessionid=NFw8jFCHSesx5P6UOgyDHkt2uRRIhcJ8TV6_9EPvO5bq4lYTfD57TA",
+          "title": "Talking Head Video Ideas For Podcasts"
+        },
+        {
+          "rank": 3,
+          "domain": "videobrand.com",
+          "url": "https://videobrand.com",
+          "title": "Talking Head & Video Podcast Setup"
+        }
+      ],
+      "item_types": [
+        "ai_overview",
+        "organic",
+        "video",
+        "people_also_ask"
+      ],
+      "se_results_count": 96
+    },
+    {
+      "id": "y10",
+      "keyword": "what is a teleprompter",
+      "lang": "en",
+      "location_code": 2840,
+      "ok": true,
+      "cost": 0.0035,
+      "cached": true,
+      "error": null,
+      "rank": null,
+      "rank_absolute": null,
+      "url": null,
+      "title": null,
+      "ai_overview": true,
+      "cited_in_aio": false,
+      "aio_source_count": 9,
+      "aio_source_domains": [
+        "en.wikipedia.org",
+        "merriam-webster.com",
+        "cueprompter.io",
+        "scriptscroller.com",
+        "neewer.com",
+        "youtube.com",
+        "dictionary.cambridge.org",
+        "youtube.com",
+        "youtube.com"
+      ],
+      "featured_snippet": null,
+      "features": [
+        "ai_overview",
+        "images",
+        "people_also_ask",
+        "video",
+        "organic",
+        "perspectives"
+      ],
+      "paa": [
+        "What is a teleprompter and how does it work?",
+        "What are the clear screens in front of speakers?",
+        "What's another word for teleprompter?",
+        "Do presidents use teleprompters?"
+      ],
+      "top3": [
+        {
+          "rank": 1,
+          "domain": "youtube.com",
+          "url": "https://www.youtube.com/watch?v=L0BtAWkmWZ0",
+          "title": "How to Choose a Teleprompter Episode I The Basics ..."
+        },
+        {
+          "rank": 2,
+          "domain": "expandore biz",
+          "url": "https://www.expandore.biz",
+          "title": "The Purpose and Advantages of Using a Teleprompter |"
+        },
+        {
+          "rank": 3,
+          "domain": "quora",
+          "url": "https://www.google.com/goto?url=CAESbwHEIkXXWIHT2jbsV1C6KIWzlD5tM1O4PUCQ0ADZLxTKyozPAsHHmAR8uqLmmbON1Dfd2ai5B3AmmWXBO3RroG31DB7lFqUjg3ctMc24WAWtGAcsrcuV5o_lyDqhZOfYytPGm3RvGc2HuZSSrtbetQ&gsessionid=7ZMyi1MLq5LG24R9H6bYa5Vlm32dC5vsg3rlBBc5P2wU6PQ2IjNkfg",
+          "title": "How do you use a teleprompter?"
+        }
+      ],
+      "item_types": [
+        "ai_overview",
+        "images",
+        "people_also_ask",
+        "video",
+        "organic",
+        "perspectives"
+      ],
+      "se_results_count": 68
+    },
+    {
+      "id": "y11",
+      "keyword": "random topic generator",
+      "lang": "en",
+      "location_code": 2840,
+      "ok": true,
+      "cost": 0.0035,
+      "cached": true,
+      "error": null,
+      "rank": null,
+      "rank_absolute": null,
+      "url": null,
+      "title": null,
+      "ai_overview": true,
+      "cited_in_aio": false,
+      "aio_source_count": 3,
+      "aio_source_domains": [
+        "randomtopics.app",
+        "codebeautify.org",
+        "capitalizemytitle.com"
+      ],
+      "featured_snippet": null,
+      "features": [
+        "organic",
+        "ai_overview",
+        "related_searches",
+        "images"
+      ],
+      "paa": [],
+      "top3": [
+        {
+          "rank": 1,
+          "domain": "thedigiteachers.com",
+          "url": "https://thedigiteachers.com/random-topic-generator/",
+          "title": "Free Random Topic Generator to use in your classroom."
+        },
+        {
+          "rank": 2,
+          "domain": "perchance.org",
+          "url": "https://perchance.org",
+          "title": "Real Impromptu Topic Generator"
+        },
+        {
+          "rank": 3,
+          "domain": "youtube · rosemargaret",
+          "url": "https://www.youtube.com",
+          "title": "Let the Generator Choose a random topic. #EnglishSpeaking ..."
+        }
+      ],
+      "item_types": [
+        "organic",
+        "ai_overview",
+        "related_searches",
+        "images"
+      ],
+      "se_results_count": 71
+    },
+    {
+      "id": "y12",
+      "keyword": "teleprompter for recording",
+      "lang": "en",
+      "location_code": 2840,
+      "ok": true,
+      "cost": 0.0035,
+      "cached": true,
+      "error": null,
+      "rank": null,
+      "rank_absolute": null,
+      "url": null,
+      "title": null,
+      "ai_overview": true,
+      "cited_in_aio": false,
+      "aio_source_count": 14,
+      "aio_source_domains": [
+        "kommodo.ai",
+        "veed.io",
+        "google.com",
+        "apps.apple.com",
+        "riverside.com",
+        "cueprompter.com",
+        "youtube.com",
+        "google.com",
+        "google.com",
+        "google.com",
+        "google.com",
+        "google.com"
+      ],
+      "featured_snippet": null,
+      "features": [
+        "ai_overview",
+        "video",
+        "organic",
+        "people_also_ask"
+      ],
+      "paa": [
+        "How can I read my script while recording?",
+        "How much to buy a teleprompter?",
+        "Does Instagram have a built-in teleprompter?",
+        "Does Google have a teleprompter?"
+      ],
+      "top3": [
+        {
+          "rank": 1,
+          "domain": "youtube.com",
+          "url": "https://www.youtube.com/watch?v=hQ0MsLat0l4",
+          "title": "How to Set Up Your TELEPROMPTER!"
+        },
+        {
+          "rank": 2,
+          "domain": "youtube · joe rojas (jnp multimedia)",
+          "url": "https://www.google.com/goto?url=CAESZwHEIkXXk2FlMFbGESX2215YFv4Ia6KYp-CZx2Q-dCeQaUfb2PGh0I6-dKQmEWs8VlzX3tyuwEqmr5IkfAVx7HFUbK1z9EGBYxv_sX594Dt3H-s4s9HknI5T75aNjEtPZYOnHkSDTAg&gsessionid=nieiHOo7WS8whd8CGeGYAYTe9HONPV86FHdy0-dPLPatlF_yP6r4GQ",
+          "title": "Read Scripts LIKE a Pro with THIS Teleprompter App!"
+        },
+        {
+          "rank": 3,
+          "domain": "google play",
+          "url": "https://play.google.com",
+          "title": "Teleprompter: Vlog & Scripts – Apps on Google Play"
+        }
+      ],
+      "item_types": [
+        "ai_overview",
+        "video",
+        "organic",
+        "people_also_ask"
+      ],
+      "se_results_count": 70
+    }
+  ]
+}

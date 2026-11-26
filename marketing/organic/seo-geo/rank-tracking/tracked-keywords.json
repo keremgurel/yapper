@@ -1,0 +1,80 @@
+{
+  "site": "yapper",
+  "domain": "ypr.app",
+  "location_code": 2840,
+  "updated": "2026-11-25",
+  "keywords": [
+    {
+      "id": "y01",
+      "keyword": "teleprompter app",
+      "lang": "en",
+      "vol_oct2026": 8100
+    },
+    {
+      "id": "y02",
+      "keyword": "best teleprompter app",
+      "lang": "en",
+      "vol_oct2026": null
+    },
+    {
+      "id": "y03",
+      "keyword": "free teleprompter",
+      "lang": "en",
+      "vol_oct2026": 5400
+    },
+    {
+      "id": "y04",
+      "keyword": "teleprompter online",
+      "lang": "en",
+      "vol_oct2026": 6600
+    },
+    {
+      "id": "y05",
+      "keyword": "AI script writer for YouTube",
+      "lang": "en",
+      "vol_oct2026": null
+    },
+    {
+      "id": "y06",
+      "keyword": "AI video script generator",
+      "lang": "en",
+      "vol_oct2026": null
+    },
+    {
+      "id": "y07",
+      "keyword": "how to write a video script",
+      "lang": "en",
+      "vol_oct2026": 2900
+    },
+    {
+      "id": "y08",
+      "keyword": "video script template",
+      "lang": "en",
+      "vol_oct2026": null
+    },
+    {
+      "id": "y09",
+      "keyword": "talking head video tips",
+      "lang": "en",
+      "vol_oct2026": null
+    },
+    {
+      "id": "y10",
+      "keyword": "what is a teleprompter",
+      "lang": "en",
+      "vol_oct2026": 2400
+    },
+    {
+      "id": "y11",
+      "keyword": "random topic generator",
+      "lang": "en",
+      "vol_oct2026": 6600
+    },
+    {
+      "id": "y12",
+      "keyword": "teleprompter for recording",
+      "lang": "en",
+      "vol_oct2026": null
+    }
+  ]
+}
