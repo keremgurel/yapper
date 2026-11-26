@@ -7,6 +7,10 @@ const mocks = vi.hoisted(() => ({
   spend: vi.fn(),
   model: vi.fn(),
   design: vi.fn(),
+  refund: vi.fn(),
+}));
+vi.mock("@/lib/billing/overlay-drop-refund", () => ({
+  refundDroppedOverlay: mocks.refund,
 }));
 vi.mock("@/lib/billing/gate", () => ({ canUsePremium: mocks.entitled }));
 vi.mock("@/lib/billing/included-overlay-review", () => ({
@@ -90,6 +94,7 @@ beforeEach(() => {
   mocks.spend.mockResolvedValue(null);
   mocks.model.mockResolvedValue({ content: '{"passed":true,"issues":[]}' });
   mocks.design.mockResolvedValue(JSON.stringify({ scene, images: [] }));
+  mocks.refund.mockResolvedValue({ credits: 30, run: 0 });
 });
 it("passes only a consistent explicit verdict", () => {
   for (const value of [
@@ -182,4 +187,72 @@ it("requires a remaining review allowance from a paid action", async () => {
   mocks.claim.mockResolvedValue(false);
   expect((await handleRenderedReview(request())).status).toBe(429);
   expect(mocks.model).not.toHaveBeenCalled();
+});
+
+const charge = { usageId: "00000000-0000-4000-8000-000000000002", id: "a" };
+
+it("refunds a paid card when its final check fails", async () => {
+  mocks.model.mockResolvedValue({
+    content: '{"passed":false,"issues":["Clipped"]}',
+  });
+  const response = await handleRenderedReview(
+    request({ ...body, repair: false, charge }),
+  );
+  expect(await response.json()).toEqual({
+    passed: false,
+    issues: ["Clipped"],
+    refunded: { credits: 30, run: 0 },
+  });
+  expect(mocks.refund).toHaveBeenCalledWith("user", charge, "review_failed");
+});
+
+it("does not refund a card that passed or is still being repaired", async () => {
+  await handleRenderedReview(request({ ...body, repair: false, charge }));
+  mocks.model.mockResolvedValue({
+    content: '{"passed":false,"issues":["Clipped"]}',
+  });
+  const repairing = await handleRenderedReview(request({ ...body, charge }));
+  expect((await repairing.json()).repaired).toBeTruthy();
+  expect(mocks.refund).not.toHaveBeenCalled();
+});
+
+it("answers a failed check with the refund when the check itself breaks", async () => {
+  mocks.model.mockRejectedValue(new Error("upstream"));
+  const response = await handleRenderedReview(request({ ...body, charge }));
+  expect(response.status).toBe(200);
+  const result = await response.json();
+  expect(result).toMatchObject({
+    passed: false,
+    unchecked: true,
+    refunded: { credits: 30, run: 0 },
+  });
+  expect(result.issues).toHaveLength(1);
+});
+
+it("keeps the old answers for a client that sends no charge", async () => {
+  mocks.model.mockRejectedValue(new Error("upstream"));
+  expect((await handleRenderedReview(request())).status).toBe(502);
+  expect(mocks.refund).not.toHaveBeenCalled();
+});
+
+it("rejects a malformed charge before any provider work", async () => {
+  const response = await handleRenderedReview(
+    request({ ...body, charge: { usageId: "nope", id: "a" } }),
+  );
+  expect(response.status).toBe(400);
+  expect(mocks.model).not.toHaveBeenCalled();
+});
+
+it("still answers when the refund itself fails", async () => {
+  mocks.model.mockResolvedValue({
+    content: '{"passed":false,"issues":["Clipped"]}',
+  });
+  mocks.refund.mockRejectedValue(new Error("db down"));
+  const response = await handleRenderedReview(
+    request({ ...body, repair: false, charge }),
+  );
+  expect(await response.json()).toMatchObject({
+    passed: false,
+    refunded: { credits: 0, run: 0 },
+  });
 });

@@ -223,6 +223,22 @@ describe("generated overlay routes", () => {
     expect(body.brand.palette.primary).toBe("#ff0000");
     expect(mocks.refund).not.toHaveBeenCalled();
   });
+  it("tags designs with their planning charge and returns the charge id", async () => {
+    const run = "00000000-0000-4000-8000-000000000001";
+    const response = await handleSceneRequest(
+      request({ ...design, run }),
+      "design",
+    );
+    expect((await response.json()).usageId).toBe("test");
+    expect(mocks.reserve).toHaveBeenCalledWith("user", "design_overlay", {
+      quantity: 1,
+      metadata: { run },
+    });
+    expect(
+      (await handleSceneRequest(request({ ...design, run: "x" }), "design"))
+        .status,
+    ).toBe(400);
+  });
   it("refunds failed designs", async () => {
     mocks.model.mockResolvedValue({ content: "not json" });
     const body = await (
@@ -257,7 +273,9 @@ describe("generated overlay routes", () => {
       "direct",
     );
     expect(response.status).toBe(200);
-    expect((await response.json()).moments).toEqual([]);
+    const plan = await response.json();
+    expect(plan.moments).toEqual([]);
+    expect(plan.usageId).toBe("test");
     expect(mocks.model).toHaveBeenCalledWith(
       expect.objectContaining({
         model: "claude-opus-4.7",

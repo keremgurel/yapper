@@ -1,5 +1,9 @@
 import { canUsePremium } from "@/lib/billing/gate";
 import { claimIncludedOverlayReview } from "@/lib/billing/included-overlay-review";
+import {
+  refundDroppedOverlay,
+  type OverlayCharge,
+} from "@/lib/billing/overlay-drop-refund";
 import { auth } from "@clerk/nextjs/server";
 import {
   guardProviderIngress,
@@ -25,6 +29,23 @@ import {
 import { parseDesignReply } from "./design-reply";
 import { validateScene } from "./scene-validate";
 import type { ScenePalette } from "./scene-colors";
+import { USAGE_ID } from "./design-input";
+
+/** Optional: which paid design or revision this card came from. A client that
+ * sends it drops the card when the check fails, so the card is refunded then. */
+function parseCharge(value: unknown): OverlayCharge | null | undefined {
+  if (value === undefined) return undefined;
+  const raw = record(value);
+  if (
+    !raw ||
+    typeof raw.usageId !== "string" ||
+    !USAGE_ID.test(raw.usageId) ||
+    typeof raw.id !== "string" ||
+    !/^[A-Za-z0-9_-]{1,40}$/.test(raw.id)
+  )
+    return null;
+  return { usageId: raw.usageId, id: raw.id };
+}
 
 function parseRenderPalette(value: unknown): ScenePalette | null {
   const raw = record(value);
@@ -76,6 +97,29 @@ const REPAIR_SYSTEM = [
   DESIGN_OUTPUT_SHAPE,
 ].join("\n\n");
 
+/** A ledger failure must not turn a review answer into a 500. */
+async function refundDropped(
+  userId: string,
+  charge: OverlayCharge,
+  reason: string,
+) {
+  try {
+    return await refundDroppedOverlay(userId, charge, reason);
+  } catch (error) {
+    console.error("[billing] overlay drop refund failed", {
+      usageId: charge.usageId,
+      error,
+    });
+    return { credits: 0, run: 0 };
+  }
+}
+
+const UNCHECKED: Record<string, string> = {
+  invalid_repair: "The automatic repair did not produce a usable visual.",
+  invalid_review: "The visual check returned an unreadable answer.",
+  default: "The visual check could not be completed.",
+};
+
 /** Internal generation QA: no additional creator credit charge; authenticated
  * with a finite allowance earned by a paid design, revision or timing action. */
 export async function handleRenderedReview(req: Request): Promise<Response> {
@@ -96,8 +140,10 @@ export async function handleRenderedReview(req: Request): Promise<Response> {
   const inspection = parseTimelineInspection(body?.inspection);
   const placement = record(body?.placement);
   const renderPalette = parseRenderPalette(body?.renderPalette);
+  const charge = parseCharge(body?.charge);
   if (
     !body ||
+    charge === null ||
     !input ||
     input.op !== "restyle" ||
     !inspection ||
@@ -162,7 +208,16 @@ export async function handleRenderedReview(req: Request): Promise<Response> {
     });
     const review = parseRenderedReview(content);
     if (!review) throw new Error("invalid_review");
-    if (review.passed || !body.repair) return Response.json(review);
+    if (review.passed) return Response.json(review);
+    if (!body.repair)
+      return Response.json(
+        charge
+          ? {
+              ...review,
+              refunded: await refundDropped(userId, charge, "review_failed"),
+            }
+          : review,
+      );
 
     // Existing pictures may be reused, but automated QA cannot buy new images
     // or silently replace the visual concept. Native renders and rechecks this
@@ -218,13 +273,21 @@ export async function handleRenderedReview(req: Request): Promise<Response> {
       },
     });
   } catch (error) {
-    console.warn("[scene] rendered review failed", {
-      reason:
-        error instanceof Error &&
-        ["invalid_review", "invalid_repair"].includes(error.message)
-          ? error.message
-          : sceneModelFailureReason(error),
-    });
+    const reason =
+      error instanceof Error &&
+      ["invalid_review", "invalid_repair"].includes(error.message)
+        ? error.message
+        : sceneModelFailureReason(error);
+    console.warn("[scene] rendered review failed", { reason });
+    // A client that sent its charge drops a card it could not get checked or
+    // repaired. Answer as a failed check so it can say why and what came back.
+    if (charge && !req.signal.aborted)
+      return Response.json({
+        passed: false,
+        issues: [UNCHECKED[reason] ?? UNCHECKED.default],
+        unchecked: true,
+        refunded: await refundDropped(userId, charge, reason),
+      });
     return Response.json(
       { error: sceneModelFailureReason(error) },
       { status: 502 },

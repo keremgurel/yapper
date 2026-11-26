@@ -93,6 +93,7 @@ export async function handleSceneRequest(
   if (limited) return limited;
   const access = await reservePaidActionOrResponse(userId, action, {
     quantity,
+    ...(design?.run ? { metadata: { run: design.run } } : {}),
   });
   if (access.response) return access.response;
   const reservation = access.reservation;
@@ -122,10 +123,13 @@ export async function handleSceneRequest(
           : "claude-opus-4.7");
     if (direct) {
       const reviewed = await directChecked(direct, brand, model, req.signal);
+      // usageId lets the client tie its designs to this charge, so a run in
+      // which every card is dropped can be refunded whole (overlay-drop-refund).
       return Response.json({
         ...reviewed,
         brand,
         model,
+        usageId: reservation.usageId,
       });
     }
     if (design) {
@@ -145,7 +149,12 @@ export async function handleSceneRequest(
             amount: result.failed.length * PAID_ACTIONS.design_overlay.credits,
           },
         );
-      return Response.json({ ...result, brand, model });
+      return Response.json({
+        ...result,
+        brand,
+        model,
+        usageId: reservation.usageId,
+      });
     }
     if (revise?.op === "retime") {
       const { content } = await callSceneModel({
@@ -247,6 +256,7 @@ export async function handleSceneRequest(
         ...result.scene,
         brand,
         model,
+        usageId: reservation.usageId,
         sceneChanged: true,
         ...(revisionPlan
           ? {
