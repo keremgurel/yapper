@@ -1,20 +1,22 @@
 import SwiftUI
 
-/// The edit itself: the steps in one row, and the transcript under them with
-/// every point of height left, because cutting by words is the edit. Chirpy
-/// is the bird, the same as on every other pane. An empty project starts with
-/// the one thing it needs, the take.
+/// The edit itself: 1-Click Edit on top, and the transcript under it with
+/// every point of height left, because cutting by words is the edit. Captions,
+/// text and sounds have their own tabs on the rail, which tick off as each is
+/// done. An empty project starts with the one thing it needs, the take.
 struct SimpleEditPane: View {
     @ObservedObject var session: EditorSession
-    let open: (SimpleRailItem) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
-            if session.project.clips.isEmpty {
-                addTake
-            } else {
-                SimpleEditSteps(session: session, open: open)
+            Group {
+                if session.project.clips.isEmpty {
+                    addTake
+                } else {
+                    OneClickEditCard(session: session)
+                }
             }
+            .padding(14)
             Rectangle().fill(Color.studioLine).frame(height: 1)
             TranscriptWorkbench(session: session, cursor: session.playbackCursor, seekReveal: session.timelineSeekReveal)
         }
@@ -24,7 +26,7 @@ struct SimpleEditPane: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Add your take").font(.studioBodyStrong)
-                Text("The video you recorded, to cut by its words.").font(.studioCaption).foregroundStyle(.secondary)
+                Text("Or drop a video on the timeline.").font(.studioCaption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
             Button {
@@ -35,6 +37,5 @@ struct SimpleEditPane: View {
             .buttonStyle(EditorPrimaryButtonStyle(size: .small))
             .disabled(session.isBusy)
         }
-        .padding(16)
     }
 }

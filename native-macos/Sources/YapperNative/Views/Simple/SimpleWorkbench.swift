@@ -36,9 +36,7 @@ struct SimpleWorkbench: View {
     private var pane: some View {
         switch item {
         case .quick:
-            SimpleEditPane(session: session) { next in
-                withAnimation(.easeOut(duration: 0.14)) { item = next }
-            }
+            SimpleEditPane(session: session)
         case .captions:
             CaptionWorkbenchView(session: session)
         case .text:
@@ -68,11 +66,23 @@ private struct SimpleRail: View {
                     .foregroundStyle(selection == item ? Color.primary : Color.studioTextMuted)
                     .background(selection == item ? Color.studioSelectedFill : Color.clear)
                     .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    // A tick once that part of the video is done, so the rail
+                    // itself says how far along the edit is.
+                    .overlay(alignment: .topTrailing) {
+                        if item.isDone(in: session) {
+                            StudioGlyph(.check, size: 8)
+                                .foregroundStyle(Color.studioSuccess)
+                                .frame(width: 14, height: 14)
+                                .background(Circle().fill(Color.sidebarBackground))
+                                .offset(x: -5, y: 5)
+                        }
+                    }
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .help(item.purpose)
                 .accessibilityLabel(item.title)
+                .accessibilityValue(item.isDone(in: session) ? "Done" : "")
                 .accessibilityAddTraits(selection == item ? .isSelected : [])
             }
             Spacer(minLength: 0)
