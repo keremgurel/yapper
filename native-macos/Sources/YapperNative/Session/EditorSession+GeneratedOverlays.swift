@@ -19,10 +19,14 @@ extension EditorSession {
         }
         defer { endPreparedTimelineEdit() }
         do {
-            let notes = try await revising.isEmpty
-                ? createGeneratedOverlays(instruction: instruction)
-                : reviseGeneratedOverlays(revising, instruction: instruction)
-            try await verifyGeneratedChanges(since: rollback.project, instruction: instruction)
+            var log = GeneratedOverlayLog()
+            if revising.isEmpty {
+                try await createGeneratedOverlays(instruction: instruction, log: &log)
+            } else {
+                try await reviseGeneratedOverlays(revising, instruction: instruction, log: &log)
+            }
+            let review = try await verifyGeneratedChanges(since: rollback.project, instruction: instruction, charges: log.charges)
+            let notes = log.notes(dropping: review.dropped) + review.notes
             try Task.checkCancellation()
             if project == rollback.project {
                 setOverlayPlacement(.generated(notes: notes, changed: 0))
@@ -64,7 +68,7 @@ extension EditorSession {
 
     private func transcriptBody() -> [[String: String]] { placeableWords.map { ["text": $0.text] } }
 
-    private func createGeneratedOverlays(instruction: String) async throws -> [String] {
+    private func createGeneratedOverlays(instruction: String, log: inout GeneratedOverlayLog) async throws {
         setStatus("Inspecting the edited video…")
         let evidence = try await TimelineInspectionService.overview(project: project)
         setStatus("Finding the moments a visual would help…")
@@ -85,7 +89,6 @@ extension EditorSession {
         }
         let direction = try await generatedOverlayRequest("direct-overlays", body)
         let moments = direction["moments"] as? [[String: Any]] ?? []
-        var notes: [String] = []
         let words = placeableWords
         let timedWords = TimelineInspectionService.timelineWords(project: project)
         // Reserve every placement before starting concurrent design. The next
@@ -96,7 +99,7 @@ extension EditorSession {
             try Task.checkCancellation()
             guard let quote = moment["quote"] as? String,
                   let span = OverlayPlan.quoteSpan(in: words, quote: quote) else {
-                notes.append("Skipped a visual because its words did not match the transcript.")
+                log.note("Skipped a visual because its words did not match the transcript.")
                 continue
             }
             let anchor = OverlayCue.anchor(in: words, span: span, cue: moment["cue"] as? String ?? "") ?? span.lowerBound
@@ -142,9 +145,13 @@ extension EditorSession {
             try Task.checkCancellation()
             do {
                 setStatus("Creating \(batch.count) visual\(batch.count == 1 ? "" : "s")…")
-                let response = try await generatedOverlayRequest("design-overlays", [
+                var request: [String: Any] = [
                     "instruction": instruction, "frameAspect": project.resolvedAspectRatio,
-                    "frameHeightPx": 1080, "moments": batch.map(\.design)])
+                    "frameHeightPx": 1080, "moments": batch.map(\.design)]
+                // Ties these designs to the planning charge, so a run that
+                // keeps nothing can be refunded whole.
+                if let run = direction["usageId"] as? String { request["run"] = run }
+                let response = try await generatedOverlayRequest("design-overlays", request)
                 for item in batch {
                     try Task.checkCancellation()
                     guard let result = (response["scenes"] as? [[String: Any]])?.first(where: { $0["id"] as? String == item.design["id"] as? String }) else {
@@ -152,7 +159,7 @@ extension EditorSession {
                         // the reason left the creator nothing to act on.
                         let reason = (response["failed"] as? [[String: Any]])?
                             .first { $0["id"] as? String == item.design["id"] as? String }?["reason"] as? String
-                        notes.append(OverlayWorkflowOutcome.skippedDesign(
+                        log.note(OverlayWorkflowOutcome.skippedDesign(
                             name: item.moment["name"] as? String ?? "that visual", reason: reason))
                         continue
                     }
@@ -167,26 +174,28 @@ extension EditorSession {
                             project.media.append(media)
                             project.overlays = (project.overlays ?? []) + [overlay]
                         }
-                        notes.append("\(media.name) · \(formatTime(item.start)) · @-mention it to request changes")
+                        log.card(media.id, "\(media.name) · \(formatTime(item.start)) · @-mention it to request changes")
+                        if let id = item.design["id"] as? String,
+                           let charge = GeneratedOverlayCharge(usageId: response["usageId"], id: id) {
+                            log.charges[media.id] = charge
+                        }
                         // Renderer repair diagnostics belong in the asset's version record,
                         // not repeated as successful user-facing actions in Chirpy.
                     } catch is CancellationError { throw CancellationError() }
-                      catch { notes.append("Couldn’t save \(item.moment["name"] as? String ?? "that visual"): \(error.localizedDescription)") }
+                      catch { log.note("Couldn’t save \(item.moment["name"] as? String ?? "that visual"): \(error.localizedDescription)") }
                 }
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
                 // Keep earlier successful designs in this batch; a later
                 // provider failure must not discard media already delivered.
-                notes.append("Couldn’t finish this batch of visuals: \(error.localizedDescription)")
+                log.note("Couldn’t finish this batch of visuals: \(error.localizedDescription)")
             }
         }
-        if notes.isEmpty { notes = [direction["passedOn"] as? String ?? "No moments needed another visual."] }
-        return notes
+        if log.isEmpty { log.note(direction["passedOn"] as? String ?? "No moments needed another visual.") }
     }
 
-    private func reviseGeneratedOverlays(_ assets: [ProjectMedia], instruction: String) async throws -> [String] {
-        var notes: [String] = []
+    private func reviseGeneratedOverlays(_ assets: [ProjectMedia], instruction: String, log: inout GeneratedOverlayLog) async throws {
         // Remove mention text before interpreting verbs: a name containing
         // "growth" or "remove" must not change the requested operation.
         var command = instruction.lowercased()
@@ -195,7 +204,7 @@ extension EditorSession {
             try Task.checkCancellation()
             if GeneratedOverlayCommand.removesWholeAsset(command) {
                 updateProject { project in project.overlays?.removeAll { $0.mediaID == media.id } }
-                notes.append("Removed \(media.name) from the video; it remains in Media.")
+                log.card(media.id, "Removed \(media.name) from the video; it remains in Media.")
                 continue
             }
             let instances = overlays.filter { $0.mediaID == media.id }
@@ -215,7 +224,7 @@ extension EditorSession {
                     let words = placeableWords
                     guard let quote = response["quote"] as? String,
                           let span = OverlayPlan.quoteSpan(in: words, quote: quote) else {
-                        notes.append("Couldn’t find that moment; no copy of \(media.name) was added.")
+                        log.note("Couldn’t find that moment; no copy of \(media.name) was added.")
                         continue
                     }
                     let anchor = OverlayCue.anchor(in: words, span: span, cue: response["cue"] as? String ?? "") ?? span.lowerBound
@@ -225,7 +234,7 @@ extension EditorSession {
                 guard duration >= 0.5 else { continue }
                 let copy = introducedOverlay(media: media, timelineStart: start, duration: duration)
                 updateProject { $0.overlays = ($0.overlays ?? []) + [copy] }
-                notes.append("Reused \(media.name) at \(formatTime(start)).")
+                log.card(media.id, "Reused \(media.name) at \(formatTime(start)).")
                 continue
             }
             setStatus("Updating \(media.name)…")
@@ -276,13 +285,30 @@ extension EditorSession {
                     }
                 }
             }
-            if let hold = response["openingHoldSeconds"] as? Double {
-                notes.append("\(updated.name): holds the earlier values for \(hold.formatted()) seconds, then animates to the new values.")
-            } else if sceneChanged {
-                notes.append("Updated \(updated.name) everywhere it appears · ⌘Z to undo")
+            if sceneChanged, let charge = GeneratedOverlayCharge(usageId: response["usageId"], id: "revision") {
+                log.charges[media.id] = charge
             }
-            if let newStart { notes.append("Moved \(media.name) to \(formatTime(newStart)).") }
+            if let hold = response["openingHoldSeconds"] as? Double {
+                log.card(media.id, "\(updated.name): holds the earlier values for \(hold.formatted()) seconds, then animates to the new values.")
+            } else if sceneChanged {
+                log.card(media.id, "Updated \(updated.name) everywhere it appears · ⌘Z to undo")
+            }
+            if let newStart { log.card(media.id, "Moved \(media.name) to \(formatTime(newStart)).") }
         }
-        return notes
+    }
+}
+
+/// What one overlay run says when it finishes. Lines about a specific card are
+/// kept apart so a card the rendered check drops takes its line with it.
+struct GeneratedOverlayLog {
+    private var entries: [(card: UUID?, text: String)] = []
+    /// The paid design or revision behind each card, sent with its check.
+    var charges: [UUID: GeneratedOverlayCharge] = [:]
+
+    var isEmpty: Bool { entries.isEmpty }
+    mutating func note(_ text: String) { entries.append((nil, text)) }
+    mutating func card(_ id: UUID, _ text: String) { entries.append((id, text)) }
+    func notes(dropping dropped: Set<UUID>) -> [String] {
+        entries.filter { $0.card.map { !dropped.contains($0) } ?? true }.map(\.text)
     }
 }

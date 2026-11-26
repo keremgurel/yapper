@@ -41,7 +41,7 @@ struct OverlayInspectionTests {
             session.updateProject { $0 = loaded }
             var previous = loaded
             previous.media.removeAll { $0.id == target.id }
-            try await session.verifyGeneratedChanges(since: previous, instruction: "Check the signup and payments counter for readability, its earlier-number hold and transition to the new numbers. Preserve its existing design and placement.")
+            _ = try await session.verifyGeneratedChanges(since: previous, instruction: "Check the signup and payments counter for readability, its earlier-number hold and transition to the new numbers. Preserve its existing design and placement.")
             try JSONEncoder().encode(session.project).write(to: folder.appending(path: "verified-project.json"), options: .atomic)
             try await ExportService.export(project: session.project, to: folder.appending(path: "verified.mp4"), maximumRenderDimension: 960)
             return
@@ -65,7 +65,7 @@ struct OverlayInspectionTests {
                 project.media.append(blank)
                 project.overlays = [.init(mediaID: blank.id, timelineStart: 0.2, duration: 7, x: 0.1, y: 0.1, width: 0.8, height: 0.26)]
             }
-            try await session.verifyGeneratedChanges(since: previous, instruction: instruction)
+            _ = try await session.verifyGeneratedChanges(since: previous, instruction: instruction)
             #expect(session.project.media.first(where: { $0.isScene })?.generated?.versions.count ?? 0 > 1)
         } else {
             await session.performGeneratedOverlays(instruction: instruction, revising: [])
@@ -234,7 +234,18 @@ struct OverlayInspectionTests {
         #expect(designBatchSizes == [3])
         if failReview {
             #expect(session.project == previous)
-            #expect(reviewCount == 1)
+            if !cancelReview {
+                // Each card is dropped on its own; none was repaired.
+                #expect(reviewCount == 3)
+                guard case let .generated(notes, changed) = session.overlayPlacement else {
+                    Issue.record("expected a finished run, got \(session.overlayPlacement)"); return
+                }
+                #expect(changed == 0)
+                #expect(notes.count == 3)
+                #expect(notes.allSatisfy { $0.hasPrefix("Left out Panel") && $0.contains("Unreadable visual") })
+            } else {
+                #expect(reviewCount == 1)
+            }
         } else {
             #expect(reviewCount == 6) // All three rechecked against the new render.
             #expect(session.project.media.filter(\.isScene).count == 3)
