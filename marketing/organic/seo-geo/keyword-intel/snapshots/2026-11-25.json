@@ -9,15 +9,11 @@
     "by_keyword": {
       "teleprompter app": {
         "main_intent": "navigational",
-        "secondary": [
-          "transactional"
-        ]
+        "secondary": ["transactional"]
       },
       "best teleprompter app": {
         "main_intent": "commercial",
-        "secondary": [
-          "informational"
-        ]
+        "secondary": ["informational"]
       },
       "free teleprompter": {
         "main_intent": "informational",
@@ -1807,591 +1803,377 @@
             "date_to": "2025-11-29",
             "timestamp": 1763856000,
             "missing_data": false,
-            "values": [
-              57,
-              null,
-              30
-            ]
+            "values": [57, null, 30]
           },
           {
             "date_from": "2025-11-30",
             "date_to": "2025-12-06",
             "timestamp": 1764460800,
             "missing_data": false,
-            "values": [
-              64,
-              23,
-              42
-            ]
+            "values": [64, 23, 42]
           },
           {
             "date_from": "2025-12-07",
             "date_to": "2025-12-13",
             "timestamp": 1765065600,
             "missing_data": false,
-            "values": [
-              63,
-              16,
-              28
-            ]
+            "values": [63, 16, 28]
           },
           {
             "date_from": "2025-12-14",
             "date_to": "2025-12-20",
             "timestamp": 1765670400,
             "missing_data": false,
-            "values": [
-              60,
-              9,
-              28
-            ]
+            "values": [60, 9, 28]
           },
           {
             "date_from": "2025-12-21",
             "date_to": "2025-12-27",
             "timestamp": 1766275200,
             "missing_data": false,
-            "values": [
-              40,
-              13,
-              32
-            ]
+            "values": [40, 13, 32]
           },
           {
             "date_from": "2025-12-28",
             "date_to": "2026-01-03",
             "timestamp": 1766880000,
             "missing_data": false,
-            "values": [
-              61,
-              17,
-              26
-            ]
+            "values": [61, 17, 26]
           },
           {
             "date_from": "2026-01-04",
             "date_to": "2026-01-10",
             "timestamp": 1767484800,
             "missing_data": false,
-            "values": [
-              56,
-              14,
-              32
-            ]
+            "values": [56, 14, 32]
           },
           {
             "date_from": "2026-01-11",
             "date_to": "2026-01-17",
             "timestamp": 1768089600,
             "missing_data": false,
-            "values": [
-              58,
-              11,
-              36
-            ]
+            "values": [58, 11, 36]
           },
           {
             "date_from": "2026-01-18",
             "date_to": "2026-01-24",
             "timestamp": 1768694400,
             "missing_data": false,
-            "values": [
-              76,
-              19,
-              39
-            ]
+            "values": [76, 19, 39]
           },
           {
             "date_from": "2026-01-25",
             "date_to": "2026-01-31",
             "timestamp": 1769299200,
             "missing_data": false,
-            "values": [
-              72,
-              15,
-              37
-            ]
+            "values": [72, 15, 37]
           },
           {
             "date_from": "2026-02-01",
             "date_to": "2026-02-07",
             "timestamp": 1769904000,
             "missing_data": false,
-            "values": [
-              66,
-              22,
-              30
-            ]
+            "values": [66, 22, 30]
           },
           {
             "date_from": "2026-02-08",
             "date_to": "2026-02-14",
             "timestamp": 1770508800,
             "missing_data": false,
-            "values": [
-              58,
-              17,
-              37
-            ]
+            "values": [58, 17, 37]
           },
           {
             "date_from": "2026-02-15",
             "date_to": "2026-02-21",
             "timestamp": 1771113600,
             "missing_data": false,
-            "values": [
-              74,
-              20,
-              41
-            ]
+            "values": [74, 20, 41]
           },
           {
             "date_from": "2026-02-22",
             "date_to": "2026-02-28",
             "timestamp": 1771718400,
             "missing_data": false,
-            "values": [
-              75,
-              19,
-              36
-            ]
+            "values": [75, 19, 36]
           },
           {
             "date_from": "2026-03-01",
             "date_to": "2026-03-07",
             "timestamp": 1772323200,
             "missing_data": false,
-            "values": [
-              77,
-              21,
-              58
-            ]
+            "values": [77, 21, 58]
           },
           {
             "date_from": "2026-03-08",
             "date_to": "2026-03-14",
             "timestamp": 1772928000,
             "missing_data": false,
-            "values": [
-              97,
-              23,
-              46
-            ]
+            "values": [97, 23, 46]
           },
           {
             "date_from": "2026-03-15",
             "date_to": "2026-03-21",
             "timestamp": 1773532800,
             "missing_data": false,
-            "values": [
-              100,
-              36,
-              46
-            ]
+            "values": [100, 36, 46]
           },
           {
             "date_from": "2026-03-22",
             "date_to": "2026-03-28",
             "timestamp": 1774137600,
             "missing_data": false,
-            "values": [
-              92,
-              24,
-              57
-            ]
+            "values": [92, 24, 57]
           },
           {
             "date_from": "2026-03-29",
             "date_to": "2026-04-04",
             "timestamp": 1774742400,
             "missing_data": false,
-            "values": [
-              80,
-              30,
-              45
-            ]
+            "values": [80, 30, 45]
           },
           {
             "date_from": "2026-04-05",
             "date_to": "2026-04-11",
             "timestamp": 1775347200,
             "missing_data": false,
-            "values": [
-              85,
-              24,
-              30
-            ]
+            "values": [85, 24, 30]
           },
           {
             "date_from": "2026-04-12",
             "date_to": "2026-04-18",
             "timestamp": 1775952000,
             "missing_data": false,
-            "values": [
-              94,
-              22,
-              46
-            ]
+            "values": [94, 22, 46]
           },
           {
             "date_from": "2026-04-19",
             "date_to": "2026-04-25",
             "timestamp": 1776556800,
             "missing_data": false,
-            "values": [
-              81,
-              18,
-              34
-            ]
+            "values": [81, 18, 34]
           },
           {
             "date_from": "2026-04-26",
             "date_to": "2026-05-02",
             "timestamp": 1777161600,
             "missing_data": false,
-            "values": [
-              63,
-              15,
-              33
-            ]
+            "values": [63, 15, 33]
           },
           {
             "date_from": "2026-05-03",
             "date_to": "2026-05-09",
             "timestamp": 1777766400,
             "missing_data": false,
-            "values": [
-              58,
-              15,
-              35
-            ]
+            "values": [58, 15, 35]
           },
           {
             "date_from": "2026-05-10",
             "date_to": "2026-05-16",
             "timestamp": 1778371200,
             "missing_data": false,
-            "values": [
-              60,
-              18,
-              36
-            ]
+            "values": [60, 18, 36]
           },
           {
             "date_from": "2026-05-17",
             "date_to": "2026-05-23",
             "timestamp": 1778976000,
             "missing_data": false,
-            "values": [
-              76,
-              25,
-              29
-            ]
+            "values": [76, 25, 29]
           },
           {
             "date_from": "2026-05-24",
             "date_to": "2026-05-30",
             "timestamp": 1779580800,
             "missing_data": false,
-            "values": [
-              64,
-              29,
-              36
-            ]
+            "values": [64, 29, 36]
           },
           {
             "date_from": "2026-05-31",
             "date_to": "2026-06-06",
             "timestamp": 1780185600,
             "missing_data": false,
-            "values": [
-              73,
-              24,
-              39
-            ]
+            "values": [73, 24, 39]
           },
           {
             "date_from": "2026-06-07",
             "date_to": "2026-06-13",
             "timestamp": 1780790400,
             "missing_data": false,
-            "values": [
-              66,
-              29,
-              31
-            ]
+            "values": [66, 29, 31]
           },
           {
             "date_from": "2026-06-14",
             "date_to": "2026-06-20",
             "timestamp": 1781395200,
             "missing_data": false,
-            "values": [
-              58,
-              20,
-              41
-            ]
+            "values": [58, 20, 41]
           },
           {
             "date_from": "2026-06-21",
             "date_to": "2026-06-27",
             "timestamp": 1782000000,
             "missing_data": false,
-            "values": [
-              65,
-              27,
-              45
-            ]
+            "values": [65, 27, 45]
           },
           {
             "date_from": "2026-06-28",
             "date_to": "2026-07-04",
             "timestamp": 1782604800,
             "missing_data": false,
-            "values": [
-              73,
-              28,
-              34
-            ]
+            "values": [73, 28, 34]
           },
           {
             "date_from": "2026-07-05",
             "date_to": "2026-07-11",
             "timestamp": 1783209600,
             "missing_data": false,
-            "values": [
-              56,
-              24,
-              36
-            ]
+            "values": [56, 24, 36]
           },
           {
             "date_from": "2026-07-12",
             "date_to": "2026-07-18",
             "timestamp": 1783814400,
             "missing_data": false,
-            "values": [
-              56,
-              16,
-              27
-            ]
+            "values": [56, 16, 27]
           },
           {
             "date_from": "2026-07-19",
             "date_to": "2026-07-25",
             "timestamp": 1784419200,
             "missing_data": false,
-            "values": [
-              63,
-              17,
-              27
-            ]
+            "values": [63, 17, 27]
           },
           {
             "date_from": "2026-07-26",
             "date_to": "2026-08-01",
             "timestamp": 1785024000,
             "missing_data": false,
-            "values": [
-              39,
-              null,
-              23
-            ]
+            "values": [39, null, 23]
           },
           {
             "date_from": "2026-08-02",
             "date_to": "2026-08-08",
             "timestamp": 1785628800,
             "missing_data": false,
-            "values": [
-              56,
-              null,
-              24
-            ]
+            "values": [56, null, 24]
           },
           {
             "date_from": "2026-08-09",
             "date_to": "2026-08-15",
             "timestamp": 1786233600,
             "missing_data": false,
-            "values": [
-              42,
-              13,
-              19
-            ]
+            "values": [42, 13, 19]
           },
           {
             "date_from": "2026-08-16",
             "date_to": "2026-08-22",
             "timestamp": 1786838400,
             "missing_data": false,
-            "values": [
-              52,
-              13,
-              19
-            ]
+            "values": [52, 13, 19]
           },
           {
             "date_from": "2026-08-23",
             "date_to": "2026-08-29",
             "timestamp": 1787443200,
             "missing_data": false,
-            "values": [
-              42,
-              null,
-              12
-            ]
+            "values": [42, null, 12]
           },
           {
             "date_from": "2026-08-30",
             "date_to": "2026-09-05",
             "timestamp": 1788048000,
             "missing_data": false,
-            "values": [
-              34,
-              null,
-              21
-            ]
+            "values": [34, null, 21]
           },
           {
             "date_from": "2026-09-06",
             "date_to": "2026-09-12",
             "timestamp": 1788652800,
             "missing_data": false,
-            "values": [
-              40,
-              null,
-              16
-            ]
+            "values": [40, null, 16]
           },
           {
             "date_from": "2026-09-13",
             "date_to": "2026-09-19",
             "timestamp": 1789257600,
             "missing_data": false,
-            "values": [
-              45,
-              10,
-              20
-            ]
+            "values": [45, 10, 20]
           },
           {
             "date_from": "2026-09-20",
             "date_to": "2026-09-26",
             "timestamp": 1789862400,
             "missing_data": false,
-            "values": [
-              47,
-              null,
-              15
-            ]
+            "values": [47, null, 15]
           },
           {
             "date_from": "2026-09-27",
             "date_to": "2026-10-03",
             "timestamp": 1790467200,
             "missing_data": false,
-            "values": [
-              49,
-              null,
-              23
-            ]
+            "values": [49, null, 23]
           },
           {
             "date_from": "2026-10-04",
             "date_to": "2026-10-10",
             "timestamp": 1791072000,
             "missing_data": false,
-            "values": [
-              33,
-              11,
-              24
-            ]
+            "values": [33, 11, 24]
           },
           {
             "date_from": "2026-10-11",
             "date_to": "2026-10-17",
             "timestamp": 1791676800,
             "missing_data": false,
-            "values": [
-              33,
-              null,
-              16
-            ]
+            "values": [33, null, 16]
           },
           {
             "date_from": "2026-10-18",
             "date_to": "2026-10-24",
             "timestamp": 1792281600,
             "missing_data": false,
-            "values": [
-              44,
-              null,
-              23
-            ]
+            "values": [44, null, 23]
           },
           {
             "date_from": "2026-10-25",
             "date_to": "2026-10-31",
             "timestamp": 1792886400,
             "missing_data": false,
-            "values": [
-              34,
-              9,
-              22
-            ]
+            "values": [34, 9, 22]
           },
           {
             "date_from": "2026-11-01",
             "date_to": "2026-11-07",
             "timestamp": 1793491200,
             "missing_data": false,
-            "values": [
-              43,
-              null,
-              25
-            ]
+            "values": [43, null, 25]
           },
           {
             "date_from": "2026-11-08",
             "date_to": "2026-11-14",
             "timestamp": 1794096000,
             "missing_data": false,
-            "values": [
-              42,
-              3,
-              13
-            ]
+            "values": [42, 3, 13]
           },
           {
             "date_from": "2026-11-15",
             "date_to": "2026-11-21",
             "timestamp": 1794700800,
             "missing_data": false,
-            "values": [
-              42,
-              6,
-              21
-            ]
+            "values": [42, 6, 21]
           },
           {
             "date_from": "2026-11-22",
             "date_to": "2026-11-25",
             "timestamp": 1795305600,
             "missing_data": true,
-            "values": [
-              35,
-              5,
-              17
-            ]
+            "values": [35, 5, 17]
           }
         ]
       }
     ],
     "related": [],
-    "item_types": [
-      "google_trends_graph"
-    ]
+    "item_types": ["google_trends_graph"]
   },
   "dfs_trends": {
     "ok": true,
@@ -2417,529 +2199,319 @@
             "date_from": "2025-11-30",
             "date_to": "2025-12-06",
             "timestamp": 1764460800,
-            "values": [
-              7,
-              3,
-              6
-            ]
+            "values": [7, 3, 6]
           },
           {
             "date_from": "2025-12-07",
             "date_to": "2025-12-13",
             "timestamp": 1765065600,
-            "values": [
-              6,
-              1,
-              3
-            ]
+            "values": [6, 1, 3]
           },
           {
             "date_from": "2025-12-14",
             "date_to": "2025-12-20",
             "timestamp": 1765670400,
-            "values": [
-              8,
-              3,
-              2
-            ]
+            "values": [8, 3, 2]
           },
           {
             "date_from": "2025-12-21",
             "date_to": "2025-12-27",
             "timestamp": 1766275200,
-            "values": [
-              4,
-              1,
-              2
-            ]
+            "values": [4, 1, 2]
           },
           {
             "date_from": "2025-12-28",
             "date_to": "2026-01-03",
             "timestamp": 1766880000,
-            "values": [
-              3,
-              2,
-              3
-            ]
+            "values": [3, 2, 3]
           },
           {
             "date_from": "2026-01-04",
             "date_to": "2026-01-10",
             "timestamp": 1767484800,
-            "values": [
-              9,
-              2,
-              1
-            ]
+            "values": [9, 2, 1]
           },
           {
             "date_from": "2026-01-11",
             "date_to": "2026-01-17",
             "timestamp": 1768089600,
-            "values": [
-              6,
-              1,
-              1
-            ]
+            "values": [6, 1, 1]
           },
           {
             "date_from": "2026-01-18",
             "date_to": "2026-01-24",
             "timestamp": 1768694400,
-            "values": [
-              10,
-              1,
-              2
-            ]
+            "values": [10, 1, 2]
           },
           {
             "date_from": "2026-01-25",
             "date_to": "2026-01-31",
             "timestamp": 1769299200,
-            "values": [
-              8,
-              1,
-              3
-            ]
+            "values": [8, 1, 3]
           },
           {
             "date_from": "2026-02-01",
             "date_to": "2026-02-07",
             "timestamp": 1769904000,
-            "values": [
-              34,
-              2,
-              6
-            ]
+            "values": [34, 2, 6]
           },
           {
             "date_from": "2026-02-08",
             "date_to": "2026-02-14",
             "timestamp": 1770508800,
-            "values": [
-              15,
-              1,
-              2
-            ]
+            "values": [15, 1, 2]
           },
           {
             "date_from": "2026-02-15",
             "date_to": "2026-02-21",
             "timestamp": 1771113600,
-            "values": [
-              8,
-              2,
-              4
-            ]
+            "values": [8, 2, 4]
           },
           {
             "date_from": "2026-02-22",
             "date_to": "2026-02-28",
             "timestamp": 1771718400,
-            "values": [
-              12,
-              3,
-              2
-            ]
+            "values": [12, 3, 2]
           },
           {
             "date_from": "2026-03-01",
             "date_to": "2026-03-07",
             "timestamp": 1772323200,
-            "values": [
-              13,
-              2,
-              2
-            ]
+            "values": [13, 2, 2]
           },
           {
             "date_from": "2026-03-08",
             "date_to": "2026-03-14",
             "timestamp": 1772928000,
-            "values": [
-              10,
-              2,
-              2
-            ]
+            "values": [10, 2, 2]
           },
           {
             "date_from": "2026-03-15",
             "date_to": "2026-03-21",
             "timestamp": 1773532800,
-            "values": [
-              6,
-              3,
-              2
-            ]
+            "values": [6, 3, 2]
           },
           {
             "date_from": "2026-03-22",
             "date_to": "2026-03-28",
             "timestamp": 1774137600,
-            "values": [
-              12,
-              0,
-              3
-            ]
+            "values": [12, 0, 3]
           },
           {
             "date_from": "2026-03-29",
             "date_to": "2026-04-04",
             "timestamp": 1774742400,
-            "values": [
-              6,
-              1,
-              4
-            ]
+            "values": [6, 1, 4]
           },
           {
             "date_from": "2026-04-05",
             "date_to": "2026-04-11",
             "timestamp": 1775347200,
-            "values": [
-              5,
-              1,
-              3
-            ]
+            "values": [5, 1, 3]
           },
           {
             "date_from": "2026-04-12",
             "date_to": "2026-04-18",
             "timestamp": 1775952000,
-            "values": [
-              6,
-              0,
-              0
-            ]
+            "values": [6, 0, 0]
           },
           {
             "date_from": "2026-04-19",
             "date_to": "2026-04-25",
             "timestamp": 1776556800,
-            "values": [
-              7,
-              2,
-              6
-            ]
+            "values": [7, 2, 6]
           },
           {
             "date_from": "2026-04-26",
             "date_to": "2026-05-02",
             "timestamp": 1777161600,
-            "values": [
-              6,
-              1,
-              2
-            ]
+            "values": [6, 1, 2]
           },
           {
             "date_from": "2026-05-03",
             "date_to": "2026-05-09",
             "timestamp": 1777766400,
-            "values": [
-              10,
-              1,
-              3
-            ]
+            "values": [10, 1, 3]
           },
           {
             "date_from": "2026-05-10",
             "date_to": "2026-05-16",
             "timestamp": 1778371200,
-            "values": [
-              8,
-              0,
-              4
-            ]
+            "values": [8, 0, 4]
           },
           {
             "date_from": "2026-05-17",
             "date_to": "2026-05-23",
             "timestamp": 1778976000,
-            "values": [
-              8,
-              2,
-              2
-            ]
+            "values": [8, 2, 2]
           },
           {
             "date_from": "2026-05-24",
             "date_to": "2026-05-30",
             "timestamp": 1779580800,
-            "values": [
-              12,
-              1,
-              2
-            ]
+            "values": [12, 1, 2]
           },
           {
             "date_from": "2026-05-31",
             "date_to": "2026-06-06",
             "timestamp": 1780185600,
-            "values": [
-              2,
-              0,
-              2
-            ]
+            "values": [2, 0, 2]
           },
           {
             "date_from": "2026-06-07",
             "date_to": "2026-06-13",
             "timestamp": 1780790400,
-            "values": [
-              5,
-              5,
-              9
-            ]
+            "values": [5, 5, 9]
           },
           {
             "date_from": "2026-06-14",
             "date_to": "2026-06-20",
             "timestamp": 1781395200,
-            "values": [
-              4,
-              1,
-              2
-            ]
+            "values": [4, 1, 2]
           },
           {
             "date_from": "2026-06-21",
             "date_to": "2026-06-27",
             "timestamp": 1782000000,
-            "values": [
-              10,
-              3,
-              3
-            ]
+            "values": [10, 3, 3]
           },
           {
             "date_from": "2026-06-28",
             "date_to": "2026-07-04",
             "timestamp": 1782604800,
-            "values": [
-              8,
-              1,
-              2
-            ]
+            "values": [8, 1, 2]
           },
           {
             "date_from": "2026-07-05",
             "date_to": "2026-07-11",
             "timestamp": 1783209600,
-            "values": [
-              1,
-              2,
-              4
-            ]
+            "values": [1, 2, 4]
           },
           {
             "date_from": "2026-07-12",
             "date_to": "2026-07-18",
             "timestamp": 1783814400,
-            "values": [
-              6,
-              0,
-              4
-            ]
+            "values": [6, 0, 4]
           },
           {
             "date_from": "2026-07-19",
             "date_to": "2026-07-25",
             "timestamp": 1784419200,
-            "values": [
-              7,
-              0,
-              7
-            ]
+            "values": [7, 0, 7]
           },
           {
             "date_from": "2026-07-26",
             "date_to": "2026-08-01",
             "timestamp": 1785024000,
-            "values": [
-              6,
-              1,
-              4
-            ]
+            "values": [6, 1, 4]
           },
           {
             "date_from": "2026-08-02",
             "date_to": "2026-08-08",
             "timestamp": 1785628800,
-            "values": [
-              6,
-              1,
-              5
-            ]
+            "values": [6, 1, 5]
           },
           {
             "date_from": "2026-08-09",
             "date_to": "2026-08-15",
             "timestamp": 1786233600,
-            "values": [
-              7,
-              1,
-              2
-            ]
+            "values": [7, 1, 2]
           },
           {
             "date_from": "2026-08-16",
             "date_to": "2026-08-22",
             "timestamp": 1786838400,
-            "values": [
-              12,
-              0,
-              5
-            ]
+            "values": [12, 0, 5]
           },
           {
             "date_from": "2026-08-23",
             "date_to": "2026-08-29",
             "timestamp": 1787443200,
-            "values": [
-              13,
-              3,
-              4
-            ]
+            "values": [13, 3, 4]
           },
           {
             "date_from": "2026-08-30",
             "date_to": "2026-09-05",
             "timestamp": 1788048000,
-            "values": [
-              9,
-              15,
-              36
-            ]
+            "values": [9, 15, 36]
           },
           {
             "date_from": "2026-09-06",
             "date_to": "2026-09-12",
             "timestamp": 1788652800,
-            "values": [
-              5,
-              4,
-              8
-            ]
+            "values": [5, 4, 8]
           },
           {
             "date_from": "2026-09-13",
             "date_to": "2026-09-19",
             "timestamp": 1789257600,
-            "values": [
-              4,
-              2,
-              7
-            ]
+            "values": [4, 2, 7]
           },
           {
             "date_from": "2026-09-20",
             "date_to": "2026-09-26",
             "timestamp": 1789862400,
-            "values": [
-              92,
-              11,
-              19
-            ]
+            "values": [92, 11, 19]
           },
           {
             "date_from": "2026-09-27",
             "date_to": "2026-10-03",
             "timestamp": 1790467200,
-            "values": [
-              46,
-              4,
-              10
-            ]
+            "values": [46, 4, 10]
           },
           {
             "date_from": "2026-10-04",
             "date_to": "2026-10-10",
             "timestamp": 1791072000,
-            "values": [
-              29,
-              2,
-              7
-            ]
+            "values": [29, 2, 7]
           },
           {
             "date_from": "2026-10-11",
             "date_to": "2026-10-17",
             "timestamp": 1791676800,
-            "values": [
-              11,
-              2,
-              3
-            ]
+            "values": [11, 2, 3]
           },
           {
             "date_from": "2026-10-18",
             "date_to": "2026-10-24",
             "timestamp": 1792281600,
-            "values": [
-              4,
-              2,
-              3
-            ]
+            "values": [4, 2, 3]
           },
           {
             "date_from": "2026-10-25",
             "date_to": "2026-10-31",
             "timestamp": 1792886400,
-            "values": [
-              5,
-              1,
-              1
-            ]
+            "values": [5, 1, 1]
           },
           {
             "date_from": "2026-11-01",
             "date_to": "2026-11-07",
             "timestamp": 1793491200,
-            "values": [
-              100,
-              10,
-              18
-            ]
+            "values": [100, 10, 18]
           },
           {
             "date_from": "2026-11-08",
             "date_to": "2026-11-14",
             "timestamp": 1794096000,
-            "values": [
-              22,
-              2,
-              5
-            ]
+            "values": [22, 2, 5]
           },
           {
             "date_from": "2026-11-15",
             "date_to": "2026-11-21",
             "timestamp": 1794700800,
-            "values": [
-              13,
-              3,
-              2
-            ]
+            "values": [13, 3, 2]
           },
           {
             "date_from": "2026-11-22",
             "date_to": "2026-11-25",
             "timestamp": 1795305600,
-            "values": [
-              7,
-              5,
-              5
-            ]
+            "values": [7, 5, 5]
           }
         ]
       }
     ],
     "related": [],
-    "item_types": [
-      "dataforseo_trends_graph"
-    ]
+    "item_types": ["dataforseo_trends_graph"]
   },
   "youtube": [
     {
@@ -3040,9 +2612,7 @@
           "timestamp": "2021-11-25 23:54:14 +00:00"
         }
       ],
-      "item_types": [
-        "youtube_video"
-      ]
+      "item_types": ["youtube_video"]
     },
     {
       "ok": true,
@@ -3142,9 +2712,7 @@
           "timestamp": "2026-07-25 23:54:20 +00:00"
         }
       ],
-      "item_types": [
-        "youtube_video"
-      ]
+      "item_types": ["youtube_video"]
     },
     {
       "ok": true,
@@ -3244,10 +2812,7 @@
           "timestamp": "2023-11-25 23:54:23 +00:00"
         }
       ],
-      "item_types": [
-        "youtube_playlist",
-        "youtube_video"
-      ]
+      "item_types": ["youtube_playlist", "youtube_video"]
     },
     {
       "ok": true,
@@ -3347,9 +2912,7 @@
           "timestamp": "2024-11-25 23:54:32 +00:00"
         }
       ],
-      "item_types": [
-        "youtube_video"
-      ]
+      "item_types": ["youtube_video"]
     },
     {
       "ok": true,
@@ -3449,9 +3012,7 @@
           "timestamp": "2023-11-25 23:54:36 +00:00"
         }
       ],
-      "item_types": [
-        "youtube_video"
-      ]
+      "item_types": ["youtube_video"]
     },
     {
       "ok": true,
@@ -3551,10 +3112,7 @@
           "timestamp": "2025-11-25 23:54:48 +00:00"
         }
       ],
-      "item_types": [
-        "youtube_playlist",
-        "youtube_video"
-      ]
+      "item_types": ["youtube_playlist", "youtube_video"]
     }
   ],
   "cost_usd": 0,

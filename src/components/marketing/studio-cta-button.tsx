@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ComponentProps } from "react";
 import { Button } from "@/components/ui/button";
+import { studioEntryHref } from "@/lib/routing/studio-host";
 
 /** One consistent entry point into Studio from the public website. */
 export default function StudioCtaButton({
@@ -16,7 +17,7 @@ export default function StudioCtaButton({
 }) {
   return (
     <Button asChild variant="titanium" size={size} className={className}>
-      <Link href="/studio/home" onClick={onClick}>
+      <Link href={studioEntryHref()} onClick={onClick}>
         Access Studio
       </Link>
     </Button>

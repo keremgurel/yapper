@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 // @ts-expect-error untyped module
 import { pathToRegexp } from "next/dist/compiled/path-to-regexp";
 import {
+  studioEntryHref,
   studioHost,
   studioHostHeaders,
   studioHostRedirects,
@@ -78,5 +79,20 @@ describe("Studio on its own host", () => {
     expect(header.headers).toEqual([
       { key: "X-Robots-Tag", value: "noindex, nofollow" },
     ]);
+  });
+});
+
+describe("studioEntryHref", () => {
+  it("stays on the same origin until a Studio host is configured", () => {
+    expect(studioEntryHref("/studio/home", {})).toBe("/studio/home");
+    expect(studioEntryHref("/studio/home", { STUDIO_HOST: "  " })).toBe(
+      "/studio/home",
+    );
+  });
+
+  it("points marketing CTAs at the Studio host when it is set", () => {
+    expect(
+      studioEntryHref("/studio/home", { STUDIO_HOST: "studio.ypr.app" }),
+    ).toBe("https://studio.ypr.app/studio/home");
   });
 });

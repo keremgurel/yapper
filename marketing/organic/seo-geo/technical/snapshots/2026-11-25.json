@@ -87,9 +87,7 @@
       "total_dom_size": 1463,
       "title": "Yapper Studio: your all-in-one content creation studio",
       "description": "Everything you need to create content in one place. Ideas that sound like you, a teleprompter, one-click video editing and cross-posting. Try Yapper Studio.",
-      "h1": [
-        "Everything you need\nto create content."
-      ],
+      "h1": ["Everything you need\nto create content."],
       "canonical": "https://ypr.app/",
       "internal_links_count": 23,
       "failed_checks": {
@@ -115,19 +113,14 @@
       "total_dom_size": 427,
       "title": "Teleprompter for Mac with video recording | Yapper",
       "description": "Record on your Mac with a scrolling teleprompter, adjustable pace and camera controls. Keep your script, take and edit together in Yapper Studio.",
-      "h1": [
-        "A teleprompter for Mac. Still sound like yourself."
-      ],
+      "h1": ["A teleprompter for Mac. Still sound like yourself."],
       "canonical": "https://ypr.app/features/teleprompter-recorder",
       "internal_links_count": 14,
       "failed_checks": {
         "has_render_blocking_resources": true,
         "low_content_rate": true
       },
-      "onclick_failed": [
-        "has_render_blocking_resources",
-        "low_content_rate"
-      ]
+      "onclick_failed": ["has_render_blocking_resources", "low_content_rate"]
     },
     {
       "ok": true,
@@ -141,19 +134,14 @@
       "total_dom_size": 392,
       "title": "AI video script generator for Reels & Shorts | Yapper",
       "description": "Generate short-form video hooks, outlines, talking points, and teleprompter scripts from your own content ideas with Yapper.",
-      "h1": [
-        "An AI video script generator that starts with your ideas."
-      ],
+      "h1": ["An AI video script generator that starts with your ideas."],
       "canonical": "https://ypr.app/features/ai-script-writer",
       "internal_links_count": 15,
       "failed_checks": {
         "has_render_blocking_resources": true,
         "low_content_rate": true
       },
-      "onclick_failed": [
-        "has_render_blocking_resources",
-        "low_content_rate"
-      ]
+      "onclick_failed": ["has_render_blocking_resources", "low_content_rate"]
     },
     {
       "ok": true,
@@ -167,17 +155,13 @@
       "total_dom_size": 2119,
       "title": "How to write a video script: template and example | Yapper",
       "description": "Write a video script you can read naturally on camera: a 5-step method, word counts for 30-second to 3-minute videos, a filled-in example and a copyable template.",
-      "h1": [
-        "How to write a video script: template and example"
-      ],
+      "h1": ["How to write a video script: template and example"],
       "canonical": "https://ypr.app/blog/how-to-write-a-video-script",
       "internal_links_count": 23,
       "failed_checks": {
         "has_render_blocking_resources": true
       },
-      "onclick_failed": [
-        "has_render_blocking_resources"
-      ]
+      "onclick_failed": ["has_render_blocking_resources"]
     }
   ]
 }

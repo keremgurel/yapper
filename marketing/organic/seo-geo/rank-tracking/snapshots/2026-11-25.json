@@ -100,10 +100,7 @@
         "google.com"
       ],
       "featured_snippet": null,
-      "features": [
-        "ai_overview",
-        "organic"
-      ],
+      "features": ["ai_overview", "organic"],
       "paa": [],
       "top3": [
         {
@@ -125,10 +122,7 @@
           "title": "15 Free Teleprompter Apps & Websites in 2026"
         }
       ],
-      "item_types": [
-        "ai_overview",
-        "organic"
-      ],
+      "item_types": ["ai_overview", "organic"],
       "se_results_count": 61
     },
     {
@@ -222,10 +216,7 @@
         "youtube.com"
       ],
       "featured_snippet": null,
-      "features": [
-        "organic",
-        "ai_overview"
-      ],
+      "features": ["organic", "ai_overview"],
       "paa": [],
       "top3": [
         {
@@ -247,10 +238,7 @@
           "title": "Online Prompter - Professional Browser-Based Teleprompter"
         }
       ],
-      "item_types": [
-        "organic",
-        "ai_overview"
-      ],
+      "item_types": ["organic", "ai_overview"],
       "se_results_count": 55
     },
     {
@@ -282,11 +270,7 @@
         "reddit.com"
       ],
       "featured_snippet": null,
-      "features": [
-        "ai_overview",
-        "organic",
-        "video"
-      ],
+      "features": ["ai_overview", "organic", "video"],
       "paa": [],
       "top3": [
         {
@@ -308,11 +292,7 @@
           "title": "10+ AI YouTube Script Generator: All-in-One Guide for Creators!"
         }
       ],
-      "item_types": [
-        "ai_overview",
-        "organic",
-        "video"
-      ],
+      "item_types": ["ai_overview", "organic", "video"],
       "se_results_count": 79
     },
     {
@@ -342,11 +322,7 @@
         "powtoon.com"
       ],
       "featured_snippet": null,
-      "features": [
-        "organic",
-        "ai_overview",
-        "related_searches"
-      ],
+      "features": ["organic", "ai_overview", "related_searches"],
       "paa": [],
       "top3": [
         {
@@ -368,11 +344,7 @@
           "title": "The Best AI Script Generators For Creating Video Content!"
         }
       ],
-      "item_types": [
-        "organic",
-        "ai_overview",
-        "related_searches"
-      ],
+      "item_types": ["organic", "ai_overview", "related_searches"],
       "se_results_count": 58
     },
     {
@@ -462,17 +434,9 @@
       "ai_overview": true,
       "cited_in_aio": false,
       "aio_source_count": 3,
-      "aio_source_domains": [
-        "canva.com",
-        "leadde.ai",
-        "copyposse.com"
-      ],
+      "aio_source_domains": ["canva.com", "leadde.ai", "copyposse.com"],
       "featured_snippet": null,
-      "features": [
-        "images",
-        "organic",
-        "ai_overview"
-      ],
+      "features": ["images", "organic", "ai_overview"],
       "paa": [],
       "top3": [
         {
@@ -494,11 +458,7 @@
           "title": "How to Make a Video Script (With Templates!) | Boast Blog"
         }
       ],
-      "item_types": [
-        "images",
-        "organic",
-        "ai_overview"
-      ],
+      "item_types": ["images", "organic", "ai_overview"],
       "se_results_count": 71
     },
     {
@@ -527,12 +487,7 @@
         "clearcommunicationacademy.com"
       ],
       "featured_snippet": null,
-      "features": [
-        "ai_overview",
-        "organic",
-        "video",
-        "people_also_ask"
-      ],
+      "features": ["ai_overview", "organic", "video", "people_also_ask"],
       "paa": [
         "How to film a talking head video?",
         "How to speak confidently to a camera?",
@@ -559,12 +514,7 @@
           "title": "Talking Head & Video Podcast Setup"
         }
       ],
-      "item_types": [
-        "ai_overview",
-        "organic",
-        "video",
-        "people_also_ask"
-      ],
+      "item_types": ["ai_overview", "organic", "video", "people_also_ask"],
       "se_results_count": 96
     },
     {
@@ -661,12 +611,7 @@
         "capitalizemytitle.com"
       ],
       "featured_snippet": null,
-      "features": [
-        "organic",
-        "ai_overview",
-        "related_searches",
-        "images"
-      ],
+      "features": ["organic", "ai_overview", "related_searches", "images"],
       "paa": [],
       "top3": [
         {
@@ -688,12 +633,7 @@
           "title": "Let the Generator Choose a random topic. #EnglishSpeaking ..."
         }
       ],
-      "item_types": [
-        "organic",
-        "ai_overview",
-        "related_searches",
-        "images"
-      ],
+      "item_types": ["organic", "ai_overview", "related_searches", "images"],
       "se_results_count": 71
     },
     {
@@ -727,12 +667,7 @@
         "google.com"
       ],
       "featured_snippet": null,
-      "features": [
-        "ai_overview",
-        "video",
-        "organic",
-        "people_also_ask"
-      ],
+      "features": ["ai_overview", "video", "organic", "people_also_ask"],
       "paa": [
         "How can I read my script while recording?",
         "How much to buy a teleprompter?",
@@ -759,12 +694,7 @@
           "title": "Teleprompter: Vlog & Scripts – Apps on Google Play"
         }
       ],
-      "item_types": [
-        "ai_overview",
-        "video",
-        "organic",
-        "people_also_ask"
-      ],
+      "item_types": ["ai_overview", "video", "organic", "people_also_ask"],
       "se_results_count": 70
     }
   ]
