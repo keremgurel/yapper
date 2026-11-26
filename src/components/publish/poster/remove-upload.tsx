@@ -9,9 +9,12 @@ export default function RemoveUpload({
   title,
   onRemoved,
   inline = false,
+  compact = false,
 }: {
   id: string;
   inline?: boolean;
+  /** A small corner button for a narrow tile. */
+  compact?: boolean;
   title: string;
   onRemoved: (id: string) => void;
 }) {
@@ -47,16 +50,16 @@ export default function RemoveUpload({
     <>
       <Button
         variant={inline ? "ghost" : "outline"}
-        size={inline ? "sm" : "icon"}
+        size={inline ? "sm" : compact ? "icon-xs" : "icon"}
         aria-label={`Remove ${title}`}
         className={
           inline
             ? "text-muted-foreground hover:text-destructive"
-            : "bg-background dark:bg-background text-destructive hover:text-destructive absolute top-2 right-2 z-10"
+            : `bg-background dark:bg-background text-destructive hover:text-destructive absolute z-10 ${compact ? "top-1.5 right-1.5" : "top-2 right-2"}`
         }
         onClick={() => setOpen(true)}
       >
-        <X aria-hidden className="size-4" />
+        <X aria-hidden className={compact ? "size-3.5" : "size-4"} />
       </Button>
       <AlertDialog.Root
         open={open}

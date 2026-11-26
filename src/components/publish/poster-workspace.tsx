@@ -3,10 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { RefreshCw } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
-import { EmptyState, PageHeader } from "@/components/studio-ui";
+import { PageHeader } from "@/components/studio-ui";
 import CrossPostSheet from "@/components/publish/cross-post-sheet";
 import ScheduleIntentNote from "@/components/publish/schedule/schedule-intent-note";
 import {
@@ -44,21 +43,13 @@ import {
   needsOriginal,
   type PosterVideo,
 } from "@/components/publish/poster/poster-video";
-import SourceOptions from "@/components/publish/poster/sources/source-options";
-import ConnectTile from "@/components/publish/poster/sources/connect-tile";
-import { isPlatformEnabled } from "@/lib/publish/availability";
-import { PLATFORMS } from "@/lib/publish/platforms";
+import SourcePicker from "@/components/publish/poster/sources/source-picker";
 import { useOpenVideo } from "@/components/publish/poster/sources/use-open-video";
 import { useRequestedVideo } from "@/components/publish/poster/sources/use-requested-video";
-import {
-  useSourceVideos,
-  type PosterSource,
-} from "@/components/publish/poster/sources/use-source-videos";
 import UploadProgress from "@/components/publish/poster/upload-progress";
 import { usePublishPrep } from "@/components/publish/poster/use-publish-prep";
 import { useVideoFiles } from "@/components/publish/poster/use-video-files";
 import VideoDropzone from "@/components/publish/poster/video-dropzone";
-import VideoRail from "@/components/publish/poster/video-rail";
 import { useConnections } from "@/hooks/use-connections";
 import { useContentList } from "@/hooks/use-content-list";
 import type { PublishPlatform } from "@/lib/db/schema";
@@ -66,10 +57,7 @@ import { beginConnect } from "@/lib/publish/begin-connect";
 import { DEFAULT_CAPTION_BRIEF } from "@/lib/publish/caption-prompt";
 import type { CaptionSet } from "@/components/publish/captions/caption-draft";
 import type { PlatformCaption } from "@/lib/publish/caption-format";
-import {
-  postableVideos,
-  posterLibraryVideos,
-} from "@/lib/publish/postable-videos";
+import { postableVideos } from "@/lib/publish/postable-videos";
 import type { ContentDetail } from "@/lib/content/client";
 
 const CoverEditor = dynamic(
@@ -97,21 +85,6 @@ export default function PosterWorkspace() {
     [connections],
   );
 
-  const [source, setSource] = useState<PosterSource>(() => {
-    const requestedSource = params.get("source");
-    return requestedSource && isPlatformEnabled(requestedSource)
-      ? requestedSource
-      : "uploads";
-  });
-  const sourceVideos = useSourceVideos(
-    source,
-    {
-      videos:
-        source === "uploads" ? posterLibraryVideos(items, source) : library,
-      loading: items === null,
-    },
-    !!isSignedIn,
-  );
   const bench = useOpenVideo();
   const attachedVideos = useRef(new Map<string, PosterVideo>());
   const openVideo = (video: PosterVideo) => {
@@ -198,7 +171,6 @@ export default function PosterWorkspace() {
         scheduledFor: null,
         transcriptStatus: "pending",
       });
-      setSource("uploads");
     },
     [bench],
   );
@@ -346,7 +318,10 @@ export default function PosterWorkspace() {
   };
 
   return (
-    <VideoDropzone onFiles={publishLocked ? () => undefined : addFiles}>
+    <VideoDropzone
+      onFiles={publishLocked ? () => undefined : addFiles}
+      overlay={Boolean(active && cover)}
+    >
       <div className="w-full max-w-4xl">
         <PageHeader
           title="Poster"
@@ -390,76 +365,21 @@ export default function PosterWorkspace() {
         )}
 
         {!active || !cover ? (
-          <section
-            aria-labelledby="poster-source-heading"
-            className="space-y-4"
-          >
-            <h2 id="poster-source-heading" className="text-lg font-semibold">
-              Choose a source
-            </h2>
-            <SourceOptions
-              selected={source}
-              connected={connectedPlatforms}
-              uploadBusy={
-                uploadState === "uploading" || uploadState === "preparing"
-              }
-              onUpload={() => {
-                setSource("uploads");
-                openFilePicker();
-              }}
-              onChoose={setSource}
-            />
-            {source !== "uploads" &&
-            connections !== null &&
-            !connectedPlatforms.includes(source) ? (
-              <ConnectTile platform={source} />
-            ) : sourceVideos.error ||
-              (source === "uploads" && items === null && loadFailed) ? (
-              <EmptyState
-                icon={RefreshCw}
-                title="Videos couldn’t be loaded"
-                description="Try loading this source again."
-                action={
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      void (source === "uploads"
-                        ? refresh()
-                        : sourceVideos.refresh())
-                    }
-                  >
-                    Try again
-                  </Button>
-                }
-              />
-            ) : sourceVideos.loading ? (
-              <p
-                role="status"
-                className="border-border text-muted-foreground border-t py-4 text-sm"
-              >
-                Loading videos…
-              </p>
-            ) : sourceVideos.videos.length ? (
-              <div className="border-border border-t pt-3">
-                <h3 className="mb-2 text-sm font-semibold">
-                  {source === "uploads"
-                    ? "Ready to post"
-                    : `Recent ${PLATFORMS[source].label} posts`}
-                </h3>
-                <VideoRail
-                  videos={sourceVideos.videos}
-                  onOpen={openVideo}
-                  onRemoved={source === "uploads" ? removeRow : undefined}
-                />
-              </div>
-            ) : (
-              <p className="border-border text-muted-foreground border-t py-4 text-sm">
-                {source === "uploads"
-                  ? "Upload a video or pick a platform to reuse one of your posts."
-                  : "Your recent videos will appear here."}
-              </p>
-            )}
-          </section>
+          <SourcePicker
+            items={items}
+            libraryFailed={loadFailed}
+            connected={connectedPlatforms}
+            connectionsLoaded={connections !== null}
+            connectionsUnavailable={connections === null && !!connectionsError}
+            uploadBusy={
+              uploadState === "uploading" || uploadState === "preparing"
+            }
+            focus={params.get("source")}
+            onChooseFile={openFilePicker}
+            onRetryLibrary={() => void refresh()}
+            onOpen={openVideo}
+            onRemoved={removeRow}
+          />
         ) : (
           <section aria-labelledby="poster-post-heading">
             <h2

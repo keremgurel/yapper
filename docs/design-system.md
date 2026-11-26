@@ -479,14 +479,22 @@ marks, independent of the supported time range, plus a compact preset menu.
 
 ## Poster and local project media
 
-Poster opens on real video thumbnails. Keep source selection in a compact,
-left-aligned strip within the shared page container, followed by the selected
-library. Desktop starts with Made in Yapper; web starts with uploads. Do not add
-an intermediate source-selection page or a separate View uploads action.
-Use existing system typography, semantic graphite/light surfaces, neutral edges,
-13px source names and 11–12px secondary status. Selected sources have both a check
-and a stronger neutral outline. No navigation animation. Upload removal uses a
-red X with an accessible name, a confirmation and an inline recoverable error.
+Poster on the web opens with a drop zone and horizontal shelves for recent
+videos, starting with your uploads and Made in Yapper, then enabled channels.
+Any thumbnail opens the post step directly; there is no separate source tab to
+pick first. A file dropped anywhere on the step uploads, and the drop zone (a
+stone well with a dashed edge) turns ink while a file is over the page. A shelf
+that cannot show videos says why in a stone well with one action: connect,
+reconnect, try again, or that nothing is posted yet. Loading keeps the shelf's
+shape with tile skeletons. Shelves load only connected channels and never poll
+on a timer, since each list past the server cache is a paid provider call.
+Thumbnails are 16px media corners with a 2px ink ring on hover. Upload removal
+uses a red X with an accessible name, a confirmation and an inline recoverable
+error.
+
+The Mac app opens a recent-video browser with title search, source tabs and an
+upload drop zone in All. The selected video opens the post step from the
+browser.
 
 Editor imports save into their project package in the background. Keep saving
 status visible until the live player and saved project use the owned file.
