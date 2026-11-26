@@ -40,6 +40,11 @@ struct EditorRootView: View {
         EditorLayoutMode(rawValue: layoutModeRaw) ?? .tallPreview
     }
 
+    /// Simple swaps the tab strip for a slim rail; Pro keeps every tab. A view
+    /// of its own, because the split view hosts it once and only a view that
+    /// watches the mode itself redraws when it changes.
+    private var workbench: some View { EditorWorkbench(session: session) }
+
     var body: some View {
         VStack(spacing: 0) {
             if !embedded {
@@ -55,7 +60,7 @@ struct EditorRootView: View {
                         defaultFraction: 0.65,
                         defaultsKey: "editorTallWorkbenchTimelineFraction"
                     ) {
-                        WorkbenchPanel(session: session)
+                        workbench
                     } second: {
                         TimelinePanel(session: session)
                     }
@@ -69,7 +74,7 @@ struct EditorRootView: View {
                     defaultsKey: "editorStandardWorkspaceTimelineFraction"
                 ) {
                     EditorHorizontalWorkspace(session: session, layoutMode: layoutMode) {
-                        WorkbenchPanel(session: session)
+                        workbench
                     }
                 } second: {
                     TimelinePanel(session: session)
@@ -151,7 +156,7 @@ private struct NativeEditorSplitView<LeftContent: View>: NSViewRepresentable {
 
         let workbench = NSHostingView(rootView: leftContent)
         let preview = NSHostingView(
-            rootView: PlayerPanel(session: session, layoutMode: layoutMode)
+            rootView: EditorPreviewColumn(session: session, layoutMode: layoutMode)
         )
         workbench.identifier = NSUserInterfaceItemIdentifier("YapperEditorWorkbench")
         preview.identifier = NSUserInterfaceItemIdentifier("YapperEditorPreview")

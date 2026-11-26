@@ -19,7 +19,7 @@ let package = Package(
                 .product(name: "Sparkle", package: "Sparkle"),
             ],
             path: "Sources/YapperNative",
-            resources: [.copy("Resources/SoundEffects"), .copy("Resources/SceneIcons"), .copy("Resources/Backdrops")],
+            resources: [.copy("Resources/SoundEffects"), .copy("Resources/SceneIcons"), .copy("Resources/Backdrops"), .copy("Resources/StyleTemplates")],
             swiftSettings: [
                 .unsafeFlags(["-Xfrontend", "-strict-concurrency=minimal"]),
             ],

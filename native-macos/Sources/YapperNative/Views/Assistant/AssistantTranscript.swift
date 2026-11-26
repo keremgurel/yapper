@@ -7,6 +7,8 @@ import SwiftUI
 /// appearing at the end of a list you then have to go and find.
 struct AssistantTranscript: View {
     @ObservedObject var conversation: AssistantConversation
+    /// For the template cards a reply can carry. See `StyleOfferCards`.
+    var session: EditorSession?
 
     /// What the last row is called, so the scroller has something to aim at.
     private static let bottom = "assistant.transcript.bottom"
@@ -16,7 +18,7 @@ struct AssistantTranscript: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(conversation.messages) { message in
-                        AssistantMessageRow(message: message)
+                        AssistantMessageRow(message: message, session: session)
                             // Rises into place from below, which is the
                             // direction the transcript itself is moving.
                             .transition(
@@ -65,32 +67,22 @@ struct AssistantTranscript: View {
 /// An empty box with a cursor in it tells you nothing about what it accepts, and
 /// this box accepts far more than its placeholder can fit.
 struct AssistantEmptyState: View {
-    let usesStudioBrain: Bool
+    let content: AssistantEmptyContent
     let onPick: (String) -> Void
-
-    private var examples: [String] {
-        usesStudioBrain
-            ? ["Add context", "Change my voice", "Create an idea"]
-            : ["Trim the silent gaps", "Add captions", "Cut the retakes"]
-    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                if !usesStudioBrain {
+                if content.showsOverlaySuggestion {
                     ImportedOverlaySuggestion(onPick: onPick)
                 }
-                Text(
-                    usesStudioBrain
-                        ? "Change what Yapper knows, or start something anywhere in Studio."
-                        : "Ask for an edit, or say where your overlays go."
-                )
+                Text(content.hint)
                     .font(.studioCaption)
                     .foregroundStyle(Color.primary.opacity(0.75))
                     .fixedSize(horizontal: false, vertical: true)
 
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), alignment: .leading)], alignment: .leading, spacing: 8) {
-                    ForEach(examples, id: \.self) { example in
+                    ForEach(content.examples, id: \.self) { example in
                         Button(example) { onPick(example) }
                             .buttonStyle(.bordered)
                             .controlSize(.small)

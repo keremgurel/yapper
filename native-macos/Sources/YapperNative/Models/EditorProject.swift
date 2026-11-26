@@ -308,6 +308,10 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
     /// What fills the frame behind the card while it is up. `nil` draws
     /// nothing, which is every overlay saved before this existed.
     var backdrop: OverlayBackdrop?
+    /// True when the overlay is part of a layout rather than a card laid on
+    /// the picture: the top half of a split. Drawn with square corners and no
+    /// shadow, like an overlay cut to the whole frame. `nil` reads as off.
+    var flush: Bool?
 
     init(
         id: UUID = UUID(),
@@ -382,6 +386,12 @@ enum TextLayerFont: String, Codable, CaseIterable, Identifiable, Sendable {
     case modern
     case rounded
     case editorial
+    case impact
+    case condensed
+    case geometric
+    case slab
+    case marker
+    case typewriter
 
     var id: String { rawValue }
 
@@ -390,6 +400,12 @@ enum TextLayerFont: String, Codable, CaseIterable, Identifiable, Sendable {
         case .modern: "Modern"
         case .rounded: "Rounded"
         case .editorial: "Editorial"
+        case .impact: "Impact"
+        case .condensed: "Condensed"
+        case .geometric: "Geometric"
+        case .slab: "Slab"
+        case .marker: "Marker"
+        case .typewriter: "Typewriter"
         }
     }
 }
@@ -641,6 +657,10 @@ struct EditorProject: Codable, Equatable, Sendable {
     /// The preset's colours where the creator changed them. See
     /// `OverlayBackdrop.colors`.
     var backdropPresetColors: [String]?
+    /// Stretches laid out by a style library template, such as a split with
+    /// the camera in the bottom half. Outside them the take fills the frame.
+    /// See `LayoutSpan`.
+    var layoutSpans: [LayoutSpan]?
 
     init(
         id: UUID = UUID(),
@@ -783,6 +803,9 @@ struct EditorProject: Codable, Equatable, Sendable {
             || hasOverlayBackdrops
             || retouchesAnyClip
             || hasImageClip
+            // The footage is cut to its area after it is placed, which only
+            // the editor's own compositor knows how to do.
+            || !resolvedLayoutSpans.isEmpty
             || (overlays ?? []).contains { overlay in
                 media.first(where: { $0.id == overlay.mediaID })?.isImage == false
                     && OverlayKeyTrack.hasAnimatedCrop(overlay)

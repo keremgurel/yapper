@@ -55,7 +55,9 @@ extension EditorSession {
     /// commit changes what is wanted, the rebuild changes what is rendered, and
     /// the picture is carried across both without ever moving backwards.
     func framingPreview(in stageSize: CGSize) -> FramingPreview? {
-        guard let clip = framingClip, !hasCompositedOverlayOnScreen else { return nil }
+        // Inside a split the player also shows the backdrop and the top
+        // visual, and pushing it would carry them along with the speaker.
+        guard let clip = framingClip, !hasCompositedOverlayOnScreen, !isLayoutSpanAtPlayhead else { return nil }
         return VideoFramingGeometry.previewTransform(
             // What the composition is showing at this moment, which for a keyed
             // clip is a different answer every frame.
@@ -89,6 +91,7 @@ extension EditorSession {
     /// offers it can stand down.
     var framingFillScale: Double? {
         guard
+            !isLayoutSpanAtPlayhead,
             let clip = framingClip,
             let media = project.media.first(where: { $0.id == clip.mediaID })
         else { return nil }

@@ -37,6 +37,9 @@ private struct MainSegment {
     let naturalSize: CGSize
     let preferredTransform: CGAffineTransform
     let renderSize: CGSize
+    /// The layout spans on this clip's take. While one is on screen the
+    /// footage covers its camera region and is cut to it. See `LayoutSpan`.
+    var spans: [LayoutSpan] = []
     /// Set when this stretch of the timeline is a picture rather than footage.
     /// The video track holds an empty range across it, and the compositor draws
     /// this instead, exactly as it already does for an image overlay.
@@ -44,8 +47,54 @@ private struct MainSegment {
 
     var isKeyed: Bool { VideoFramingTrack.isKeyed(clip) }
 
+    /// The span on screen at one moment of the finished video, if any.
+    func span(atTimeline time: Double) -> LayoutSpan? {
+        guard !spans.isEmpty else { return nil }
+        let source = clip.sourceTime(atOffset: max(0, time - range.start.seconds))
+        return spans.first { $0.contains(mediaID: clip.mediaID, source: source) }
+    }
+
+    /// Where the camera may draw while `span` is on screen.
+    func cameraRect(for span: LayoutSpan?) -> CGRect? {
+        span?.region.rect(in: renderSize)
+    }
+
     /// Where the picture sits at one moment of the finished video.
     func transform(atTimeline time: Double) -> CGAffineTransform {
+        transform(atTimeline: time, span: span(atTimeline: time))
+    }
+
+    /// The same, inside a span already looked up: covering its region at the
+    /// span's zoom and focus, in place of the clip's own framing.
+    func transform(atTimeline time: Double, span: LayoutSpan?) -> CGAffineTransform {
+        if let span, let rect = cameraRect(for: span) {
+            let oriented = CGRect(origin: .zero, size: naturalSize).applying(preferredTransform)
+            let sourceAspect = oriented.height != 0 ? abs(oriented.width / oriented.height) : 1
+            let framing: VideoFraming
+            if let top = span.cameraTop {
+                // A card places the take by its headroom: the scaled take's top
+                // edge sits `top` of the frame's height above or below the card's.
+                let width = abs(oriented.width), height = abs(oriented.height)
+                let cover = max(rect.width / max(1, width), rect.height / max(1, height))
+                let drawnHeight = height * cover
+                let centre = rect.minY + top * renderSize.height + drawnHeight / 2
+                framing = VideoFraming(scale: 1, x: 0, y: (centre - rect.midY) / rect.height)
+            } else {
+                framing = CameraRegionFraming.framing(
+                    zoom: span.cameraZoom,
+                    focusY: span.cameraFocusY,
+                    sourceAspect: sourceAspect,
+                    region: span.region,
+                    frameAspect: renderSize.height > 0 ? renderSize.width / renderSize.height : 9.0 / 16.0
+                )
+            }
+            return CompositionBuilder.coveringTransform(
+                naturalSize: naturalSize,
+                preferredTransform: preferredTransform,
+                region: rect,
+                framing: framing
+            )
+        }
         let intoClip = max(0, time - range.start.seconds)
         let framing = VideoFramingTrack.framing(
             of: clip,
@@ -209,6 +258,7 @@ enum CompositionBuilder {
             renderSize = CGSize(width: max(2, floor(renderSize.width * scale / 2) * 2),
                                 height: max(2, floor(renderSize.height * scale / 2) * 2))
         }
+        let layoutSpans = project.resolvedLayoutSpans
         var cursor = CMTime.zero
         var segments: [MainSegment] = []
         var maximumFrameRate: Float = 30
@@ -236,6 +286,7 @@ enum CompositionBuilder {
                         naturalSize: image.extent.size,
                         preferredTransform: .identity,
                         renderSize: renderSize,
+                        spans: layoutSpans.filter { $0.mediaID == clip.mediaID },
                         still: image
                     )
                 )
@@ -268,7 +319,8 @@ enum CompositionBuilder {
                     clip: clip,
                     naturalSize: source.videoSize,
                     preferredTransform: source.videoTransform,
-                    renderSize: renderSize
+                    renderSize: renderSize,
+                    spans: layoutSpans.filter { $0.mediaID == clip.mediaID }
                 )
             )
 
@@ -349,7 +401,8 @@ enum CompositionBuilder {
             matteQuality: .accurate,
             backdrop: backdrop,
             backdropImage: backdropImage,
-            backdropSpans: backdropSpans
+            backdropSpans: backdropSpans,
+            layoutBoundaries: project.layoutSpanBoundaries
         )
 
         // Stated, not inferred: see CompositionColorSpace. Taken from the take
@@ -404,7 +457,8 @@ enum CompositionBuilder {
                 matteQuality: .fast,
                 backdrop: backdrop,
                 backdropImage: backdropImage,
-                backdropSpans: backdropSpans
+                backdropSpans: backdropSpans,
+                layoutBoundaries: project.layoutSpanBoundaries
             )
             : instructions
         if purpose.needsVisualLayers {
@@ -535,7 +589,7 @@ enum CompositionBuilder {
                     naturalSize = image.extent.size
                     preferredTransform = .identity
                     stills[overlay.id] = image
-                    if !OverlayFrame.isFullFrame(overlay) {
+                    if OverlayFrame.drawsAsCard(overlay) {
                         cards[overlay.id] = .standard(
                             cornerRadius: OverlayFrame.cornerRadius(in: renderSize)
                         )
@@ -659,15 +713,18 @@ enum CompositionBuilder {
         matteQuality: MatteQuality,
         backdrop: CIColor,
         backdropImage: CIImage? = nil,
-        backdropSpans: [OverlayBackdropSpan] = []
+        backdropSpans: [OverlayBackdropSpan] = [],
+        layoutBoundaries: [Double] = []
     ) -> [any AVVideoCompositionInstructionProtocol] {
+        var keyframes: [Double] = segments.flatMap(\.keyframeTimes)
+        keyframes += lanes.flatMap { $0.motion.values.flatMap(\.keyframeTimes) }
+        keyframes += backdropSpans.flatMap(\.boundaries).filter { $0 > 0 && $0 < duration }
+        keyframes += layoutBoundaries.filter { $0 > 0 && $0 < duration }
         let boundaries = OverlayCompositionPlan.boundaries(
             clipEnds: segments.map(\.range.end.seconds),
             overlays: lanes.flatMap(\.overlays),
             duration: duration,
-            keyframes: segments.flatMap(\.keyframeTimes)
-                + lanes.flatMap { $0.motion.values.flatMap(\.keyframeTimes) }
-                + backdropSpans.flatMap(\.boundaries).filter { $0 > 0 && $0 < duration }
+            keyframes: keyframes
         )
         guard boundaries.count > 1 else { return [] }
 
@@ -740,8 +797,16 @@ enum CompositionBuilder {
             // ends and whichever compositor is running interpolates between
             // them. Every key is a boundary, so the move inside one instruction
             // is always a straight line.
-            let mainStart = segment.isKeyed ? segment.transform(atTimeline: start) : segment.transform
-            let mainEnd = segment.isKeyed ? segment.transform(atTimeline: end) : nil
+            // A span holds the camera still in its region, keys or not; it is
+            // looked up at the middle, since both ends touch its neighbours.
+            let layout: LayoutSpan? = segment.span(atTimeline: midpoint)
+            let cameraClip: CGRect? = segment.cameraRect(for: layout)
+            let cameraRadius: CGFloat = layout?.cornerRadius.map { CGFloat($0) * segment.renderSize.width } ?? 0
+            let moves = segment.isKeyed && layout == nil
+            let mainStart: CGAffineTransform = moves || layout != nil
+                ? segment.transform(atTimeline: start, span: layout)
+                : segment.transform
+            let mainEnd: CGAffineTransform? = moves ? segment.transform(atTimeline: end, span: nil) : nil
             // What sits behind the cards, in front of the speaker: the frame
             // frosted or a preset, easing in with the card. See
             // `OverlayBackdrop`.
@@ -773,7 +838,9 @@ enum CompositionBuilder {
                     // The clip with its background thrown away: one copy, cut
                     // out, with the backdrop showing through what is gone.
                     matte: segment.clip.removesBackground,
-                    retouch: segment.clip.resolvedRetouch
+                    retouch: segment.clip.resolvedRetouch,
+                    clip: cameraClip,
+                    clipRadius: cameraRadius
                 )
             )
             // The speaker again, cut out, over the overlays that asked to sit
@@ -791,9 +858,27 @@ enum CompositionBuilder {
                         // Retouched to match the copy underneath. This is the
                         // copy anyone actually sees, so leaving it off here
                         // would make the slider look broken.
-                        retouch: segment.clip.resolvedRetouch
+                        retouch: segment.clip.resolvedRetouch,
+                        clip: cameraClip,
+                        clipRadius: cameraRadius
                     ),
                     at: matteIndex
+                )
+            }
+            // A card the speaker breaks out of: the cut-out again, on top of
+            // everything, from the top of the frame down to the card's bottom,
+            // so only what reaches past the card's edge shows outside it.
+            if layout?.popOut == true, let card = cameraClip, !isMainTrackHidden {
+                placements.insert(
+                    .init(
+                        source: .track(mainTrack.trackID),
+                        transform: mainStart,
+                        opacity: 1,
+                        matte: true,
+                        retouch: segment.clip.resolvedRetouch,
+                        clip: CGRect(x: 0, y: 0, width: segment.renderSize.width, height: card.maxY)
+                    ),
+                    at: 0
                 )
             }
 
@@ -1005,7 +1090,7 @@ enum CompositionBuilder {
             // A card on top of the picture is rounded and casts a shadow. A
             // graphic cut to the whole frame is part of the picture, so it gets
             // neither.
-            if !OverlayFrame.isFullFrame(overlay) {
+            if OverlayFrame.drawsAsCard(overlay) {
                 layer.cornerRadius = OverlayFrame.cornerRadius(in: renderSize)
                 layer.shadowColor = NSColor.black.cgColor
                 layer.shadowOpacity = 0.28
@@ -1345,6 +1430,38 @@ enum CompositionBuilder {
                 CGAffineTransform(
                     translationX: centreX + framing.x * renderSize.width,
                     y: centreY + framing.y * renderSize.height
+                )
+            )
+    }
+
+    /// Places the main track's picture inside a camera region: covering it
+    /// and centred, then turned, zoomed and slid exactly as `fittedTransform`
+    /// does on the whole frame, with the region standing in for the frame.
+    /// The compositor cuts what lands outside the region away. See
+    /// `CameraRegion`.
+    static func coveringTransform(
+        naturalSize: CGSize,
+        preferredTransform: CGAffineTransform,
+        region: CGRect,
+        framing: VideoFraming
+    ) -> CGAffineTransform {
+        let orientedRect = CGRect(origin: .zero, size: naturalSize)
+            .applying(preferredTransform)
+        let width = abs(orientedRect.width)
+        let height = abs(orientedRect.height)
+        guard width > 0, height > 0, region.width > 0, region.height > 0 else {
+            return preferredTransform
+        }
+        let cover = max(region.width / width, region.height / height)
+        return preferredTransform
+            .concatenating(CGAffineTransform(translationX: -orientedRect.minX - width / 2,
+                                             y: -orientedRect.minY - height / 2))
+            .concatenating(CGAffineTransform(rotationAngle: framing.rotationRadians))
+            .concatenating(CGAffineTransform(scaleX: cover * framing.scale, y: cover * framing.scale))
+            .concatenating(
+                CGAffineTransform(
+                    translationX: region.midX + framing.x * region.width,
+                    y: region.midY + framing.y * region.height
                 )
             )
     }

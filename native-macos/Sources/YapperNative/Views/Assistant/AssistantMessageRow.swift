@@ -8,6 +8,7 @@ import SwiftUI
 /// a speech bubble.
 struct AssistantMessageRow: View {
     let message: AssistantMessage
+    var session: EditorSession? = nil
 
     var body: some View {
         switch message.author {
@@ -62,6 +63,11 @@ struct AssistantMessageRow: View {
                         .font(.studioCaption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if let offer = message.offer, let session {
+                    StyleOfferCards(session: session, offer: offer, messageID: message.id)
+                        .padding(.top, 4)
                 }
             }
             Spacer(minLength: 24)

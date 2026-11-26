@@ -48,6 +48,23 @@ export const TEMPLATES: readonly Template[] = [
     ],
   },
   {
+    id: "speaker-card",
+    name: "Speaker card",
+    summary:
+      "The speaker in a rounded card at the bottom, breaking out past its edge, a picture or clip above on the dotted grid.",
+    layers: [
+      layout({
+        styleId: "splits.speaker-below",
+        options: { backdrop: "dots", popOut: true },
+        slots: {
+          visual: { styleId: "overlays.media", content: { src: SAMPLE_CLIP } },
+        },
+      }),
+      overlay(),
+      captions,
+    ],
+  },
+  {
     id: "speaker-below",
     name: "Speaker below",
     summary:

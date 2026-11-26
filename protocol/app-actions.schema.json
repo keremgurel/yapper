@@ -468,6 +468,42 @@
       "runtime": "client"
     },
     {
+      "id": "editor.styles.apply",
+      "symbol": "styleApply",
+      "description": "Lay a style library template over a stretch of the video, or the whole video when at and until are left out. half-and-half puts the camera in the bottom half, cropped to fill, keeps the top half for a picture or clip, sets a dark grid backdrop and moves the captions spoken in that stretch just under the seam. speaker-card puts the speaker in a rounded card at the bottom that they break out of, with a picture or clip shown whole above on the grid (the Kallaway look). speaker-below is the same card without the break-out. talking-head gives that stretch the whole frame back. Use it when the creator names a template or picks one; otherwise use editor.styles.offer. topMediaID puts imported media in the top half straight away. Caption style and backdrop become ordinary project values afterwards: change them with editor.captions.setStyle and editor.project.setBackdrop.",
+      "input": "StyleApplyInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.styles.offer",
+      "symbol": "styleOffer",
+      "description": "Show the creator the templates that fit a stretch of the video as cards they can tap, instead of choosing for them. Use it when they ask for a look (\"split screen when I talk about pricing\", \"make this part look like Kallaway\") without naming a template, or ask what is available. at and until are the same phrase anchors editor.overlays.add takes; leave both out for the whole video. templateIDs narrows the cards to those templates. Changes nothing until the creator taps a card, which runs editor.styles.apply.",
+      "input": "StyleOfferInput",
+      "effect": "read",
+      "requiresRebuild": false,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.styles.setSplit",
+      "symbol": "styleSplit",
+      "description": "Change one laid-out stretch (spanID from layoutSpans in the context): seam is where the camera starts as a fraction of the frame height from the top (0.5 is the middle, lower gives the camera more room); cameraZoom (1 fills the camera area) and cameraFocusY (0 keeps the top of the take in view, 1 the bottom) reframe the speaker in it; visualInset is the margin around the top visual as a fraction of the frame width. The top visual and that stretch's captions follow the seam. Send only the fields to change.",
+      "input": "StyleSplitInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
+      "id": "editor.styles.setTopVisual",
+      "symbol": "styleTopVisual",
+      "description": "Put imported media (a picture, clip or generated overlay from the media list) in the top half of one laid-out stretch (spanID from layoutSpans), cropped to fill it for as long as the stretch is on screen. Replaces whatever is there.",
+      "input": "StyleTopVisualInput",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true,
+      "runtime": "client"
+    },
+    {
       "id": "editor.text.add",
       "symbol": "textLayerAdd",
       "input": "TextLayerAddInput",
@@ -1593,7 +1629,13 @@
       "enum": [
         "modern",
         "rounded",
-        "editorial"
+        "editorial",
+        "impact",
+        "condensed",
+        "geometric",
+        "slab",
+        "marker",
+        "typewriter"
       ]
     },
     "TextCaseChoice": {
@@ -2571,6 +2613,106 @@
           }
         },
         "fromItemID": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "StyleOfferInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        },
+        "until": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        },
+        "templateIDs": {
+          "type": "array",
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        }
+      }
+    },
+    "StyleApplyInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "templateID"
+      ],
+      "properties": {
+        "templateID": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "A template id from the bundled catalog: half-and-half, speaker-card, speaker-below or talking-head."
+        },
+        "at": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        },
+        "until": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        },
+        "topMediaID": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Imported media for the top half of a split. Ignored by talking-head."
+        }
+      }
+    },
+    "StyleSplitInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spanID"
+      ],
+      "properties": {
+        "spanID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "seam": {
+          "type": "number",
+          "minimum": 0.3,
+          "maximum": 0.72
+        },
+        "cameraZoom": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 2
+        },
+        "cameraFocusY": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "visualInset": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.15
+        }
+      }
+    },
+    "StyleTopVisualInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spanID",
+        "mediaID"
+      ],
+      "properties": {
+        "spanID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mediaID": {
           "type": "string",
           "format": "uuid"
         }

@@ -58,6 +58,9 @@ final class EditorSession: ObservableObject {
     /// than a clip selection: the timeline keeps a clip selected almost all the
     /// time, and the framing handles must only appear when they were asked for.
     @Published var isVideoFrameSelected = false
+    /// Templates an `editor.styles.offer` put up during the Chirpy turn in
+    /// flight, handed to that turn's reply as tappable cards. See `StyleOffer`.
+    var pendingStyleOffer: StyleOffer?
     /// What the crop editor is open on, or nil when it is closed. See
     /// `CropRequest`.
     @Published var cropRequest: CropRequest?
@@ -1361,6 +1364,32 @@ final class EditorSession: ObservableObject {
         } catch {
             show(error)
         }
+    }
+
+    /// Plays an effect from part-way in, for scrubbing its waveform before
+    /// adding it. `fraction` is how far into the sound, 0 to 1.
+    func previewSoundEffect(_ effect: SoundEffectDescriptor, from fraction: Double) async {
+        if previewingSoundID != effect.id || soundPreview == nil {
+            await previewSoundEffect(effect)
+        }
+        guard let sound = soundPreview else { return }
+        let start = min(max(0, fraction), 0.999) * sound.duration
+        sound.currentTime = start
+        if !sound.isPlaying { sound.play() }
+        soundPreviewEnd?.cancel()
+        soundPreviewEnd = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(Int((sound.duration - start) * 1000) + 120))
+            guard !Task.isCancelled, let self, previewingSoundID == effect.id else { return }
+            previewingSoundID = nil
+            soundPreview = nil
+        }
+    }
+
+    /// How far the sound being previewed has played, 0 to 1. Read by the card
+    /// on each frame while it plays, so nothing is published per tick.
+    var soundPreviewProgress: Double {
+        guard let sound = soundPreview, sound.duration > 0 else { return 0 }
+        return sound.currentTime / sound.duration
     }
 
     /// Stops whatever is being previewed, now.

@@ -19,7 +19,7 @@ struct VideoFrameCanvasLayer: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                if session.isVideoFrameSelected {
+                if session.isVideoFrameSelected, !session.isLayoutSpanAtPlayhead {
                     panArea(canvasSize: proxy.size)
                 }
                 CanvasGuideOverlay(guides: guides.guides, canvasSize: proxy.size)

@@ -31,123 +31,51 @@ struct CaptionInspectorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            essentials
-
+            scope
             Group {
-                sectionDivider
-                AppearancePositionSection(editor: editor, showsCoordinates: false)
-                sectionDivider
-                AppearanceStrokeSection(editor: editor)
-                sectionDivider
-                AppearanceBackgroundSection(editor: editor)
-                sectionDivider
-                AppearanceShadowSection(editor: editor)
+                InspectorFoldSection("Look", id: "captions.look", summary: TextTemplate.active(for: style.appearance)?.name) {
+                    CaptionLookGrid(session: session, current: style.appearance) { session.applyCaptionTemplate($0) }
+                }
+                Divider().opacity(0.45)
+                InspectorFoldSection("Adjust", id: "captions.adjust", summary: "Words, size, position, case, colour") {
+                    CaptionAdjustSection(session: session, editor: editor)
+                }
+                Divider().opacity(0.45)
+                CaptionMoreStyling(editor: editor)
             }
             .disabled(noTarget)
             .opacity(noTarget ? 0.45 : 1)
         }
     }
 
-    private var sectionDivider: some View {
-        Divider().opacity(0.45)
-    }
-
-    /// What gets touched on nearly every caption pass: what the cards say, what
-    /// they are set in, and who the change lands on. None of it is folded away,
-    /// because folding the things people came here for is how a panel ends up
-    /// feeling like a filing cabinet.
-    private var essentials: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            if !session.selectedCaptionIDs.isEmpty {
-                let items = Set(session.selectedCaptionIDs.map { TimelineSelectionItem.caption($0) })
-                let locked = items.allSatisfy { session.isLocked($0) }
-                InspectorRow("Lock") {
-                    Button {
-                        Task { await session.setTimelineItemsLocked(!locked, items: items) }
-                    } label: {
-                        Label(locked ? "Unlock selected captions" : "Lock selected captions", systemImage: locked ? "lock.open" : "lock.fill")
-                    }
-                    .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
-                    .disabled(!session.appActions.availability(.timelineLock, in: session).isAvailable)
-                }
-            }
-            InspectorCheckbox(
-                title: "Apply to all captions",
-                isOn: Binding(
-                    get: { session.captionApplyToAll },
-                    set: { session.captionApplyToAll = $0 }
-                ),
-                detail: scopeDetail
-            )
-
-            InspectorRow("Words") {
+    /// Who a change lands on. Only shown once captions are picked; with none
+    /// picked every change goes to all of them, which needs no saying.
+    @ViewBuilder
+    private var scope: some View {
+        if !session.selectedCaptionIDs.isEmpty {
+            let count = session.selectedCaptionIDs.count
+            let items = Set(session.selectedCaptionIDs.map { TimelineSelectionItem.caption($0) })
+            let locked = items.allSatisfy { session.isLocked($0) }
+            VStack(alignment: .leading, spacing: 8) {
                 InspectorSegmentedControl(
-                    options: CaptionWordsPerCard.options.map {
-                        .init(value: $0, label: CaptionWordsPerCard.label($0))
-                    },
-                    selection: session.captionWordsPerCard,
-                    onSelect: session.setCaptionWordsPerCard
+                    options: [
+                        .init(value: true, label: "All captions"),
+                        .init(value: false, label: "\(count) selected"),
+                    ],
+                    selection: session.captionApplyToAll,
+                    onSelect: { session.captionApplyToAll = $0 }
                 )
+                .environment(\.inspectorFillsWidth, true)
+                Button {
+                    Task { await session.setTimelineItemsLocked(!locked, items: items) }
+                } label: {
+                    Label(locked ? "Unlock selected" : "Lock selected", systemImage: locked ? "lock.open" : "lock.fill")
+                }
+                .buttonStyle(EditorGhostButtonStyle(size: .mini))
+                .disabled(!session.appActions.availability(.timelineLock, in: session).isAvailable)
             }
-            .help(
-                "Full cards hold exactly this many spoken words, including across edit cuts. Only the final card at the end of a source can be shorter. Changing it rebuilds every card."
-            )
-
-            Group {
-                AppearanceCoordinates(editor: editor)
-
-                InspectorRow("Look", alignment: .top) {
-                    InspectorLookRail(
-                        templates: TextTemplate.all,
-                        selection: TextTemplate.all.first { $0.matches(style.appearance) }?.id,
-                        onSelect: { session.applyCaptionTemplate($0) }
-                    )
-                }
-
-                InspectorRow("Font") {
-                    InspectorSegmentedControl(
-                        options: TextLayerFont.allCases.map {
-                            .init(value: $0, label: $0.title, font: $0.previewFont())
-                        },
-                        selection: editor.appearance.font,
-                        onSelect: { editor.set(TextStylePatch(font: $0)) }
-                    )
-                }
-
-                InspectorRow("Size") {
-                    InspectorSlider(
-                        value: editor.displaySize,
-                        range: editor.displaySizeRange,
-                        onChange: { editor.set(TextStylePatch(fontScale: $0 / 1000), live: true) }
-                    )
-                }
-
-                InspectorRow("Case") {
-                    InspectorSegmentedControl(
-                        options: TextCasing.inspectorOptions,
-                        selection: editor.appearance.textCase,
-                        onSelect: { editor.set(TextStylePatch(textCase: $0)) }
-                    )
-                    .help("As typed, lowercase, or UPPERCASE")
-                }
-
-                InspectorRow("Fill") {
-                    InspectorColorWell(color: editor.appearance.color) { color, live in
-                        editor.set(TextStylePatch(color: color), live: live)
-                    }
-                }
-            }
-            .disabled(noTarget)
-            .opacity(noTarget ? 0.45 : 1)
+            .padding(.vertical, 12)
+            Divider().opacity(0.45)
         }
-        .padding(.vertical, 10)
-    }
-
-    private var scopeDetail: String? {
-        guard !session.captionApplyToAll else { return nil }
-        let count = session.selectedCaptionIDs.count
-        return count == 0
-            ? "Pick captions in the list or on the video to restyle just those."
-            : "Changes land on \(count) caption\(count == 1 ? "" : "s")."
     }
 }

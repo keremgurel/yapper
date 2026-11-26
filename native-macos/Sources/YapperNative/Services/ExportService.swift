@@ -67,6 +67,11 @@ enum ExportService {
             }
         }
         let expectedDuration = range?.duration.seconds ?? fullDuration
+        // A part of the timeline only has to come out with sound if there is
+        // sound in that part. A take whose audio stops before its picture
+        // left the last seconds silent, and a check of just those seconds
+        // was refused for missing a track that had nothing to carry.
+        let expectsAudio = built.hasRenderedAudio && CompositionAudio.hasSound(in: built.asset, during: range)
         let durationTolerance = max(
             0.25,
             (built.videoComposition?.frameDuration.seconds ?? 1.0 / 30.0) * 2
@@ -135,7 +140,7 @@ enum ExportService {
                         break
                     }
                 }
-                if built.hasRenderedAudio, !containsAudio {
+                if expectsAudio, !containsAudio {
                     throw NativeEditorError.exportFailed(
                         "The rendered file did not contain an audio track. Nothing was delivered."
                     )

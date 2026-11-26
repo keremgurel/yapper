@@ -234,6 +234,8 @@ struct WorkbenchPanel: View {
             MediaWorkbench(session: session)
         case .quick:
             QuickEditWorkbench(session: session)
+        case .styles:
+            StylesWorkbench(session: session)
         case .transcript:
             TranscriptWorkbench(
                 session: session,
@@ -328,7 +330,7 @@ struct WorkbenchPanel: View {
     /// The tab that pairs naturally with another: the one you reach for next.
     private func companionTab(for tab: WorkbenchTab) -> WorkbenchTab {
         switch tab {
-        case .quick, .media, .filters: .transcript
+        case .quick, .media, .filters, .styles: .transcript
         case .transcript, .captions, .audio, .text, .overlays, .video: .quick
         }
     }
@@ -463,7 +465,7 @@ private struct WorkbenchDropGuide: View {
 /// seeing the tabs fill in behind it — the transcript appearing the moment the
 /// transcribe step lands, the timeline shedding clips as the cuts are made. It
 /// sits in the corner and never takes a click.
-private struct OneClickEditProgressOverlay: View {
+struct OneClickEditProgressOverlay: View {
     let stage: OneClickEditStage
     let pace: OneClickEditPace
 
@@ -567,7 +569,7 @@ private struct ShimmeringStatusText: View {
     }
 }
 
-private struct TextWorkbench: View {
+struct TextWorkbench: View {
     @ObservedObject var session: EditorSession
 
     private var layers: [ProjectTextLayer] { session.project.textLayers ?? [] }
@@ -643,7 +645,7 @@ private struct TextWorkbench: View {
                 }
             }
             .padding(16)
-            .frame(maxWidth: 680, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .inspectorPane(maxWidth: 680)
     }

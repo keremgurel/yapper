@@ -73,6 +73,7 @@ struct AppShellView: View {
     var body: some View {
         ZStack {
             studioShell
+            // The same bird in Simple and Pro and on every page: ⌘K anywhere.
             if isSignedIn {
                 FloatingAssistant(session: session, conversation: chirpyThreads.current ?? session.conversation)
                     // In the editor the bottom of the window is the transport
@@ -139,7 +140,13 @@ struct AppShellView: View {
                     destination: destination,
                     expanded: sidebarExpanded,
                     selectionNamespace: sidebarSelection,
-                    onNavigate: navigate
+                    theme: theme,
+                    onNavigate: navigate,
+                    toggleTheme: {
+                        withAnimation(.smooth(duration: 0.2)) {
+                            themeRaw = theme.next.rawValue
+                        }
+                    }
                 )
                 .frame(width: sidebarExpanded ? 238 : 66)
                 .animation(.smooth(duration: 0.24), value: sidebarExpanded)
@@ -266,7 +273,11 @@ private struct StudioSidebar: View {
     let destination: StudioDestination
     let expanded: Bool
     let selectionNamespace: Namespace.ID
+    let theme: StudioTheme
     let onNavigate: (StudioDestination) -> Void
+    /// The light and dark switch lives here, with the account, rather than in
+    /// the top bar, which is kept for the page you are on.
+    let toggleTheme: () -> Void
 
     /// The groups minus what this server cannot run. Automations stays out
     /// while it is off, as on the web, unless it is the page already open.
@@ -372,6 +383,7 @@ private struct StudioSidebar: View {
                             .lineLimit(1)
                     }
                     Spacer(minLength: 0)
+                    NativeThemeSwitcher(theme: theme, action: toggleTheme)
                 }
             }
             .padding(.horizontal, expanded ? 14 : 18)
@@ -398,10 +410,6 @@ private struct StudioTopBar: View {
     let onNavigate: (StudioDestination) -> Void
     let toggleSidebar: () -> Void
     let toggleTheme: () -> Void
-    @AppStorage("editorLayoutMode") private var layoutModeRaw = EditorLayoutMode.tallPreview.rawValue
-    private var layoutMode: EditorLayoutMode {
-        EditorLayoutMode(rawValue: layoutModeRaw) ?? .tallPreview
-    }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -452,47 +460,7 @@ private struct StudioTopBar: View {
             Spacer()
 
             if destination == .editor {
-                EditorLayoutPicker(mode: layoutMode) { mode in
-                    withAnimation(.easeInOut(duration: 0.22)) {
-                        layoutModeRaw = mode.rawValue
-                    }
-                }
-
-                if session.isBusy {
-                    ProgressView().controlSize(.small)
-                }
-                ManagedMediaNotice(session: session)
-                // The last thing the editor did. Whole when there is room; it
-                // is the first thing in the bar to shorten, and the tooltip
-                // always has all of it.
-                Text(session.statusMessage)
-                    .font(.studioCaption)
-                    .foregroundStyle(Color.studioTextMuted)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .layoutPriority(-1)
-                    .help(session.statusMessage)
-                if session.canCancelCurrentOperation,
-                   let operation = session.activeOperation?.operation {
-                    Button(operation.cancelLabel) { session.cancelCurrentOperation() }
-                        .buttonStyle(EditorSecondaryButtonStyle(size: .small))
-                }
-                Button {
-                    onNavigate(.audio)
-                } label: {
-                    StudioGlyphLabel("Audio library", glyph: .note)
-                }
-                .buttonStyle(EditorSecondaryButtonStyle(size: .small))
-                .help("Browse music and sound effects, import audio, and set default volumes")
-
-                Button {
-                    ImportPanels.openMedia(for: session)
-                } label: {
-                    StudioGlyphLabel("Import", glyph: .plus)
-                }
-                .buttonStyle(EditorSecondaryButtonStyle(size: .small))
-                .disabled(session.isBusy)
-                .help("Add video, pictures or sound to this project")
+                EditorModePicker()
                 Button {
                     ImportPanels.saveExport(for: session)
                 } label: {
@@ -503,14 +471,11 @@ private struct StudioTopBar: View {
                 .buttonStyle(EditorPrimaryButtonStyle(size: .small))
                 .help("Save the finished video")
                 .disabled(session.project.clips.isEmpty || session.isBusy)
-
             }
 
             // Outside the editor's own controls: an export keeps running on
             // every tab and across project switches, so its progress does too.
             ExportJobsIndicator(center: session.exportJobs, onNavigate: onNavigate)
-
-            NativeThemeSwitcher(theme: theme, action: toggleTheme)
 
             WorkspaceProfileBadge(
                 name: auth.accountName,
@@ -525,6 +490,15 @@ private struct StudioTopBar: View {
         }
         .padding(.horizontal, 10)
         .frame(height: 46)
+        // What the editor is doing, in the middle of the bar, where it never
+        // pushes a button aside. The same in Simple and Pro, so switching
+        // modes moves nothing.
+        .overlay {
+            if destination == .editor {
+                EditorStatusLine(session: session)
+                    .frame(maxWidth: 420)
+            }
+        }
         // The same tone as the sidebar, not a material: chrome is one
         // continuous surface across the top of the window, and `.regularMaterial`
         // resolved to a grey that belongs to no token in the ramp.

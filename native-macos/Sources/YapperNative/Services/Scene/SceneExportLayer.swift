@@ -74,7 +74,7 @@ enum SceneExportLayer {
         // does. A scene drawn straight over the video, or cut to the whole
         // frame, is part of the picture and gets none. The scene's own corners
         // are its background's, so no radius is imposed from outside.
-        if scene.background != nil, !OverlayFrame.isFullFrame(overlay) {
+        if scene.background != nil, OverlayFrame.drawsAsCard(overlay) {
             container.shadowColor = NSColor.black.cgColor
             container.shadowOpacity = 0.28
             container.shadowRadius = 12

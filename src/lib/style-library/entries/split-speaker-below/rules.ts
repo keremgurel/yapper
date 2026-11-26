@@ -2,6 +2,10 @@ import type { StyleRule } from "../../format/style-definition";
 
 export const splitRules: StyleRule[] = [
   {
+    rule: "With the pop-out on, the speaker's cut-out is drawn over the card from the top of the frame down to the card's bottom, so only what reaches past the card's edge shows outside it.",
+    why: "Kerem's reference, a Kallaway Marketing reel, 25 November 2026: a hand raised out of the speaker card.",
+  },
+  {
     rule: "The speaker is scaled to 0.82 with its top edge at y 1000 and 48 px top corners. The visual gets a 1000 x 770 box at (40, 210).",
     why: "The measured values of the reference edit.",
   },

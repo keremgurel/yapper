@@ -30,17 +30,22 @@ struct TextOutlineFillTests {
                 "Outline damaged \(damagedPixels) of \(solidPixels) solid fill pixels")
     }
 
-    @Test("Export uses the same heavy system face as the canvas",
+    @Test("Export uses the same face as the canvas",
           arguments: TextLayerFont.allCases)
     func exportFontMatchesCanvas(font: TextLayerFont) throws {
+        let actual = TextAppearanceLayer.font(for: font, size: 73.728)
+        if let face = font.faceName {
+            // A face every Mac ships, by its own name.
+            #expect(actual.fontName == face)
+            return
+        }
         let base = NSFont.systemFont(ofSize: 73.728, weight: .heavy)
         let design: NSFontDescriptor.SystemDesign = switch font {
-        case .modern: .default
         case .rounded: .rounded
         case .editorial: .serif
+        default: .default
         }
         let expected = try #require(NSFont(descriptor: base.fontDescriptor.withDesign(design)!, size: 73.728))
-        let actual = TextAppearanceLayer.font(for: font, size: 73.728)
         #expect(actual.fontName == expected.fontName)
     }
 

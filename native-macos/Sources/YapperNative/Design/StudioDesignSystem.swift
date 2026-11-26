@@ -243,14 +243,12 @@ extension View {
 }
 
 extension View {
-    /// Pins an inspector tab's content to the top-left at a readable measure,
-    /// so every workbench pane lines up no matter how wide the panel gets.
+    /// Pins an inspector tab's content to the top-left and lets it use the
+    /// whole pane. Panes used to stop at a fixed measure, which left half a
+    /// wide panel empty; grids now add columns and forms sit side by side
+    /// instead. `maxWidth` is kept for call sites and no longer caps anything.
     func inspectorPane(maxWidth: CGFloat) -> some View {
-        HStack(spacing: 0) {
-            self.frame(maxWidth: maxWidth, maxHeight: .infinity, alignment: .topLeading)
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 

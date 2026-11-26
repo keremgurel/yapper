@@ -4,6 +4,8 @@ import SwiftUI
 enum WorkbenchTab: String, CaseIterable, Identifiable {
     case media = "Media"
     case quick = "Quick Edit"
+    /// Ready-made looks from the style library, applied in one tap.
+    case styles = "Styles"
     case transcript = "Transcript"
     /// The speaker's own picture: how it sits in the frame, and how it moves.
     case video = "Video"
@@ -19,6 +21,7 @@ enum WorkbenchTab: String, CaseIterable, Identifiable {
         switch self {
         case .media: .media
         case .quick: .quickEdit
+        case .styles: .splitPane
         case .transcript: .transcript
         case .video: .video
         case .audio: .audio
@@ -34,6 +37,7 @@ enum WorkbenchTab: String, CaseIterable, Identifiable {
         switch self {
         case .media: "Everything imported into this project"
         case .quick: "One-click edits: remove pauses and retakes, add captions"
+        case .styles: "Ready-made looks, such as a split screen, for the whole video or one sentence"
         case .transcript: "Edit the video by editing its words"
         case .video: "Speed, framing and background for the clip under the playhead"
         case .audio: "Music and sound effects on the timeline"

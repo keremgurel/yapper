@@ -13,6 +13,10 @@ struct CaptionListView: View {
     /// that began empty stays present across that hand-off instead of briefly
     /// vanishing between the AppKit field resigning focus and the model commit.
     @State private var pendingVisibleCaptionIDs: Set<UUID> = []
+    /// The row under the pointer, which is the only one that shows its play
+    /// and delete handles besides the selected ones. Every row showing both
+    /// made the list read as a column of buttons.
+    @State private var hoveredCaptionID: UUID?
 
     init(session: EditorSession, onSeek: @escaping (Double) -> Void) {
         self.session = session
@@ -113,6 +117,7 @@ struct CaptionListView: View {
 
     private func row(_ caption: ProjectCaption, number: Int, text: String) -> some View {
         let isSelected = session.isCaptionSelected(caption.id)
+        let showsHandles = isSelected || hoveredCaptionID == caption.id
         return HStack(spacing: 8) {
             Text("\(number)")
                 .font(.studioCaption)
@@ -134,9 +139,10 @@ struct CaptionListView: View {
                 })
                 .accessibilityHidden(true)
 
-            Image(systemName: "play.circle")
-                .font(.studioCaption)
+            Image(systemName: "play.fill")
+                .font(.system(size: 9))
                 .foregroundStyle(.secondary)
+                .opacity(showsHandles ? 1 : 0)
                 .frame(width: 20, height: 24)
                 .contentShape(Rectangle())
                 .highPriorityGesture(TapGesture().onEnded { seek(to: caption) })
@@ -190,6 +196,7 @@ struct CaptionListView: View {
             Image(systemName: "trash")
                 .font(.system(size: 10))
                 .foregroundStyle(.secondary)
+                .opacity(showsHandles ? 1 : 0)
                 .frame(width: 20, height: 24)
                 .contentShape(Rectangle())
                 .highPriorityGesture(TapGesture().onEnded {
@@ -208,6 +215,9 @@ struct CaptionListView: View {
         // Anywhere in the row that is not the text, the number or the bin still
         // selects the card and seeks to it, so the whole row is a target.
         .contentShape(Rectangle())
+        .onHover { inside in
+            if inside { hoveredCaptionID = caption.id } else if hoveredCaptionID == caption.id { hoveredCaptionID = nil }
+        }
         .onTapGesture { pickAndSeek(caption) }
         .accessibilityAction(named: "Select and jump to caption \(number)") {
             pickAndSeek(caption)

@@ -64,7 +64,7 @@ struct AppearanceText: View {
 
     private var label: some View {
         Text(appearance.displayText(text))
-            .font(.system(size: fontSize, weight: .heavy, design: appearance.font.canvasDesign))
+            .font(appearance.font.canvasFont(size: fontSize))
             .multilineTextAlignment(.center)
             .lineLimit(lineLimit)
             .minimumScaleFactor(minimumScaleFactor)
@@ -99,22 +99,3 @@ extension StudioColor {
     }
 }
 
-extension TextLayerFont {
-    /// The face used when drawing on the canvas and burning into the export.
-    var canvasDesign: Font.Design {
-        switch self {
-        case .modern: .default
-        case .rounded: .rounded
-        case .editorial: .serif
-        }
-    }
-
-    /// The face itself, so a picker can show what each option looks like.
-    func previewFont(size: CGFloat = 11) -> Font {
-        switch self {
-        case .modern: .system(size: size, weight: .bold)
-        case .rounded: .system(size: size, weight: .bold, design: .rounded)
-        case .editorial: .system(size: size, weight: .semibold, design: .serif)
-        }
-    }
-}
