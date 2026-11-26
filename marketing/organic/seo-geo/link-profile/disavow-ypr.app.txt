@@ -1,0 +1,83 @@
+# Google Search Console disavow list for ypr.app
+#
+# Written 2026-11-25 (America/Vancouver). Source: DataForSEO Backlinks
+# referring_domains + backlinks export for target ypr.app (66 referring
+# domains / 69 backlinks in the index). 65 of those domains are PBN or
+# "buy backlinks" / "premium niche edit" / SiteToSocial spam. The one
+# referring domain left out on purpose is champsignal.com, a real
+# competitor comparison page with the anchor "Yapper".
+#
+# Do not submit this file in Search Console until Can reviews it in the
+# browser. The ypr.app Search Console property, confirmed via the GSC
+# sites.list API on 2026-11-25, is the Domain property sc-domain:ypr.app
+# (not a URL-prefix property).
+#
+# Each line is a domain: entry, which disavows the domain and all
+# subdomains. Re-check the index before a later refresh; new spam
+# domains should be appended, not assumed from this snapshot alone.
+#
+domain:888ph.online
+domain:archive-hu.com
+domain:bestenglishonlinecasino.online
+domain:bestnz-poker-casinoslot.com
+domain:bestonlinecasinogamescanada.online
+domain:bestseoquill.site
+domain:betulcrime.com
+domain:betwinnermirror.com
+domain:bitproperty.online
+domain:brilko.shop
+domain:bunto.shop
+domain:bureatag.com
+domain:bymaya.shop
+domain:cartermanageus.com
+domain:casinogamingsites.online
+domain:clifflisting.com
+domain:clonidine01mg.store
+domain:colonrejuvenatorsite.com
+domain:connectedcannabis.shop
+domain:cvillico.com
+domain:dapoxetine.cyou
+domain:dbike-us.com
+domain:dupurgeniefr.com
+domain:fashionclothingnews.com
+domain:forvi.shop
+domain:gameeffect.xyz
+domain:ggmap.us.com
+domain:gumushaneescorton.shop
+domain:homesforsaleoldgreenwichct.com
+domain:kernelpanicpodcast.com
+domain:ku3933net22.click
+domain:lemvi.shop
+domain:lompa.shop
+domain:lorentius.com
+domain:matrivo.shop
+domain:mediaboooster.com
+domain:merrigoldfinance.com
+domain:newsrapt.com
+domain:nokvio.shop
+domain:onlinecasinogamesforrealmoneyusa.online
+domain:onlinegamblingbonus.online
+domain:onvaxs.com
+domain:otorented.com
+domain:pamto.shop
+domain:pecah77gacor.site
+domain:peska.shop
+domain:pixelsi.shop
+domain:plendo.shop
+domain:polva.shop
+domain:quiblo.shop
+domain:quotesblom.com
+domain:russellcommission.org
+domain:sahammurah.com
+domain:seonix.agency
+domain:sidarma88gacor.shop
+domain:slots-online-machine.online
+domain:stromectol-europe.site
+domain:sylexsoftware.xyz
+domain:ta88vn.one
+domain:techbumppy.com
+domain:thcradar.com
+domain:thedocmag.com
+domain:theforbestimes.com
+domain:uncledspizza.com
+domain:websquemolan.com

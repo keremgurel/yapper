@@ -76,6 +76,21 @@ struct PosterDecodingTests {
         #expect(short.canOpen && short.needsOriginal && !short.readyToPublish)
     }
 
+    @Test func recentVideosMergeSourcesAndSearchTheirTitles() throws {
+        let upload: PosterContentItem = try decode("""
+        {"id":"upload","title":"Café walkthrough","status":"ready","submissionId":"s1",
+         "sourceUrl":"yapper://poster-upload","updatedAt":"2026-11-25T17:00:00.000Z"}
+        """)
+        let reel: PosterPlatformVideo = try decode("""
+        {"id":"reel","title":"Cafe review","viewCount":0,"publishedAt":"2026-11-25T09:30:00-0800",
+         "url":"https://www.instagram.com/reel/abc/"}
+        """)
+        let videos = [PosterVideo(item: upload), PosterVideo(platform: .instagram, video: reel)]
+        #expect(PosterVideo.browse(videos, in: .all, matching: "  CAFE ").map(\.id) == ["instagram:reel", "upload"])
+        #expect(PosterVideo.browse(videos, in: .platform(.instagram), matching: "CAFE").map(\.id) == ["instagram:reel"])
+        #expect(PosterVideo.browse(videos, in: .uploads, matching: "review").isEmpty)
+    }
+
     @Test func connectionsWithAccountIDs() throws {
         let response: PosterConnections = try decode("""
         {"connections":[

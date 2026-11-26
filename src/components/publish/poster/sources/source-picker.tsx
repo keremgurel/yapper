@@ -21,6 +21,7 @@ export default function SourcePicker({
   libraryFailed,
   connected,
   connectionsLoaded,
+  connectionsUnavailable,
   uploadBusy,
   focus,
   onChooseFile,
@@ -32,6 +33,7 @@ export default function SourcePicker({
   libraryFailed: boolean;
   connected: PublishPlatform[];
   connectionsLoaded: boolean;
+  connectionsUnavailable: boolean;
   uploadBusy: boolean;
   /** A shelf to bring into view, for example after connecting its account. */
   focus: string | null;
@@ -55,7 +57,7 @@ export default function SourcePicker({
       document
         .getElementById(`poster-shelf-${focus}`)
         ?.scrollIntoView({ block: "start" });
-  }, [focus]);
+  }, [connectionsUnavailable, focus]);
 
   return (
     <section aria-labelledby="poster-source-heading" className="space-y-8">
@@ -88,15 +90,16 @@ export default function SourcePicker({
         onRetry={onRetryLibrary}
         onOpen={onOpen}
       />
-      {enabledPublishPlatforms.map((platform) => (
-        <ChannelShelf
-          key={platform}
-          platform={platform}
-          connected={connected.includes(platform)}
-          connectionsLoaded={connectionsLoaded}
-          onOpen={onOpen}
-        />
-      ))}
+      {!connectionsUnavailable &&
+        enabledPublishPlatforms.map((platform) => (
+          <ChannelShelf
+            key={platform}
+            platform={platform}
+            connected={connected.includes(platform)}
+            connectionsLoaded={connectionsLoaded}
+            onOpen={onOpen}
+          />
+        ))}
     </section>
   );
 }

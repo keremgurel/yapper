@@ -369,9 +369,8 @@ export default function PosterWorkspace() {
             items={items}
             libraryFailed={loadFailed}
             connected={connectedPlatforms}
-            connectionsLoaded={
-              connections !== null || Boolean(connectionsError)
-            }
+            connectionsLoaded={connections !== null}
+            connectionsUnavailable={connections === null && !!connectionsError}
             uploadBusy={
               uploadState === "uploading" || uploadState === "preparing"
             }

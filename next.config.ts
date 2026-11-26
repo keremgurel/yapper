@@ -12,6 +12,12 @@ const fakeAuth =
   process.env.YAPPER_FAKE_AUTH === "1" && process.env.NODE_ENV !== "production";
 
 const nextConfig: NextConfig = {
+  // The Studio hostname is public. Inlining it lets marketing CTAs (client
+  // components) link to it directly instead of prefetching /studio/* on
+  // ypr.app, which redirects cross-origin and logs a CORS error.
+  env: {
+    STUDIO_HOST: process.env.STUDIO_HOST ?? "",
+  },
   ...(fakeAuth
     ? {
         turbopack: {

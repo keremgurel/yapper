@@ -1,5 +1,6 @@
 import { featureGroups } from "@/data/marketing-navigation";
 import { marketingFeatures } from "@/data/marketing-features";
+import { studioEntryHref } from "@/lib/routing/studio-host";
 
 /**
  * Yapper is the content creation product. Training lives at speakingpractice.ai.
@@ -81,6 +82,6 @@ export const siteNavigation: Record<SiteContext, SiteNavigation> = {
       { label: "Pricing", href: "/pricing" },
       { label: "Blog", href: "/blog" },
     ],
-    cta: { label: "Access Studio", href: "/studio/home" },
+    cta: { label: "Access Studio", href: studioEntryHref() },
   },
 };

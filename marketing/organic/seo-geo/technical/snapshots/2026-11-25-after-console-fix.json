@@ -1,0 +1,167 @@
+{
+  "date": "2026-11-25",
+  "site": "yapper",
+  "domain": "ypr.app",
+  "cost_usd": 0.0056,
+  "lighthouse": {
+    "ok": true,
+    "cost": 0.005,
+    "cached": false,
+    "error": null,
+    "url": "https://ypr.app/",
+    "scores": {
+      "performance": 98,
+      "accessibility": 100,
+      "best_practices": 96,
+      "seo": 100
+    },
+    "vitals": {
+      "largest-contentful-paint": {
+        "title": "Largest Contentful Paint",
+        "display": "0.8 s",
+        "score": 0.98
+      },
+      "cumulative-layout-shift": {
+        "title": "Cumulative Layout Shift",
+        "display": "0",
+        "score": 1
+      },
+      "total-blocking-time": {
+        "title": "Total Blocking Time",
+        "display": "0 ms",
+        "score": 1
+      },
+      "first-contentful-paint": {
+        "title": "First Contentful Paint",
+        "display": "0.7 s",
+        "score": 0.96
+      },
+      "speed-index": {
+        "title": "Speed Index",
+        "display": "1.3 s",
+        "score": 0.89
+      },
+      "interactive": {
+        "title": "Time to Interactive",
+        "display": "0.8 s",
+        "score": 1
+      }
+    },
+    "failed_audits": [
+      {
+        "id": "errors-in-console",
+        "title": "Browser errors were logged to the console",
+        "score": 0,
+        "display": null
+      },
+      {
+        "id": "bf-cache",
+        "title": "Page prevented back/forward cache restoration",
+        "score": 0,
+        "display": "2 failure reasons"
+      },
+      {
+        "id": "forced-reflow-insight",
+        "title": "Forced reflow",
+        "score": 0,
+        "display": null
+      },
+      {
+        "id": "network-dependency-tree-insight",
+        "title": "Network dependency tree",
+        "score": 0,
+        "display": null
+      }
+    ]
+  },
+  "pages": [
+    {
+      "ok": true,
+      "cost": 0.00015,
+      "cached": false,
+      "error": null,
+      "url": "https://ypr.app/",
+      "status_code": 200,
+      "size": 156326,
+      "encoded_size": 0,
+      "total_dom_size": 1463,
+      "title": "Yapper Studio: your all-in-one content creation studio",
+      "description": "Everything you need to create content in one place. Ideas that sound like you, a teleprompter, one-click video editing and cross-posting. Try Yapper Studio.",
+      "h1": ["Everything you need\nto create content."],
+      "canonical": "https://ypr.app/",
+      "internal_links_count": 23,
+      "failed_checks": {
+        "has_render_blocking_resources": true,
+        "low_content_rate": true,
+        "no_image_alt": true
+      },
+      "onclick_failed": [
+        "has_render_blocking_resources",
+        "low_content_rate",
+        "no_image_alt"
+      ]
+    },
+    {
+      "ok": true,
+      "cost": 0.00015,
+      "cached": false,
+      "error": null,
+      "url": "https://ypr.app/features/teleprompter-recorder",
+      "status_code": 200,
+      "size": 65983,
+      "encoded_size": 0,
+      "total_dom_size": 427,
+      "title": "Teleprompter for Mac with video recording | Yapper",
+      "description": "Record on your Mac with a scrolling teleprompter, adjustable pace and camera controls. Keep your script, take and edit together in Yapper Studio.",
+      "h1": ["A teleprompter for Mac. Still sound like yourself."],
+      "canonical": "https://ypr.app/features/teleprompter-recorder",
+      "internal_links_count": 14,
+      "failed_checks": {
+        "has_render_blocking_resources": true,
+        "low_content_rate": true
+      },
+      "onclick_failed": ["has_render_blocking_resources", "low_content_rate"]
+    },
+    {
+      "ok": true,
+      "cost": 0.00015,
+      "cached": false,
+      "error": null,
+      "url": "https://ypr.app/features/ai-script-writer",
+      "status_code": 200,
+      "size": 60790,
+      "encoded_size": 0,
+      "total_dom_size": 392,
+      "title": "AI video script generator for Reels & Shorts | Yapper",
+      "description": "Generate short-form video hooks, outlines, talking points, and teleprompter scripts from your own content ideas with Yapper.",
+      "h1": ["An AI video script generator that starts with your ideas."],
+      "canonical": "https://ypr.app/features/ai-script-writer",
+      "internal_links_count": 15,
+      "failed_checks": {
+        "has_render_blocking_resources": true,
+        "low_content_rate": true
+      },
+      "onclick_failed": ["has_render_blocking_resources", "low_content_rate"]
+    },
+    {
+      "ok": true,
+      "cost": 0.00015,
+      "cached": false,
+      "error": null,
+      "url": "https://ypr.app/blog/how-to-write-a-video-script",
+      "status_code": 200,
+      "size": 96867,
+      "encoded_size": 0,
+      "total_dom_size": 2119,
+      "title": "How to write a video script: template and example | Yapper",
+      "description": "Write a video script you can read naturally on camera: a 5-step method, word counts for 30-second to 3-minute videos, a filled-in example and a copyable template.",
+      "h1": ["How to write a video script: template and example"],
+      "canonical": "https://ypr.app/blog/how-to-write-a-video-script",
+      "internal_links_count": 24,
+      "failed_checks": {
+        "has_render_blocking_resources": true
+      },
+      "onclick_failed": ["has_render_blocking_resources"]
+    }
+  ]
+}

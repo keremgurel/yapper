@@ -21,6 +21,12 @@ export const MAX_RESERVATION_QUANTITY = 8;
 export interface ReservationOptions {
   /** Units of the action. Up to 8, or 20 three-minute transcription blocks. */
   quantity?: number;
+  /**
+   * Extra ledger fields for the deduction. The overlay designer records the
+   * planning charge it belongs to, so a run that delivers nothing can be
+   * refunded whole.
+   */
+  metadata?: Record<string, string>;
 }
 
 function reservationQuantity(
@@ -100,7 +106,13 @@ export async function reservePaidAction(
   const usageId = crypto.randomUUID();
   try {
     const balance = await deductCredits(userId, cost, {
-      metadata: { action, usageId, quantity, billingVersion: 2 },
+      metadata: {
+        ...options.metadata,
+        action,
+        usageId,
+        quantity,
+        billingVersion: 2,
+      },
     });
     return { action, cost, quantity, balance, usageId };
   } catch (error) {

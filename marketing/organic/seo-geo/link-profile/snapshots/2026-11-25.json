@@ -1,0 +1,389 @@
+{
+  "date": "2026-11-25",
+  "site": "yapper",
+  "domain": "ypr.app",
+  "summary": {
+    "ok": true,
+    "cost": 0,
+    "cached": true,
+    "error": null,
+    "data": {
+      "target": "ypr.app",
+      "first_seen": "2026-08-04 19:29:20 +00:00",
+      "lost_date": null,
+      "rank": 0,
+      "backlinks": 70,
+      "backlinks_spam_score": 64,
+      "crawled_pages": 0,
+      "info": {
+        "server": null,
+        "cms": null,
+        "platform_type": null,
+        "ip_address": null,
+        "country": null,
+        "is_ip": false,
+        "target_spam_score": 0
+      },
+      "internal_links_count": 0,
+      "external_links_count": 0,
+      "broken_backlinks": 0,
+      "broken_pages": 0,
+      "referring_domains": 69,
+      "referring_domains_nofollow": 2,
+      "referring_main_domains": 66,
+      "referring_main_domains_nofollow": 2,
+      "referring_ips": 66,
+      "referring_subnets": 56,
+      "referring_pages": 69,
+      "referring_pages_nofollow": 2,
+      "referring_links_tld": {
+        "com": 32,
+        "shop": 17,
+        "online": 8,
+        "site": 3,
+        "xyz": 2,
+        "cyou": 1,
+        "org": 1,
+        "click": 1,
+        "one": 1,
+        "us.com": 1
+      },
+      "referring_links_types": {
+        "anchor": 69
+      },
+      "referring_links_attributes": {
+        "noopener": 68,
+        "nofollow": 2
+      },
+      "referring_links_platform_types": {
+        "unknown": 67,
+        "blogs": 1,
+        "cms": 1,
+        "organization": 1
+      },
+      "referring_links_semantic_locations": {
+        "main": 35,
+        "": 33,
+        "article": 1
+      },
+      "referring_links_countries": {
+        "": 66,
+        "US": 3
+      }
+    },
+    "in_index": true
+  },
+  "timeseries": {
+    "ok": true,
+    "cost": 0.024144,
+    "cached": false,
+    "error": null,
+    "date_from": null,
+    "items": [
+      {
+        "type": "backlinks_timeseries_new_lost_summary",
+        "date": "2026-08-31 00:00:00 +00:00",
+        "new_backlinks": 9,
+        "lost_backlinks": 0,
+        "new_referring_domains": 9,
+        "lost_referring_domains": 0,
+        "new_referring_main_domains": 9,
+        "lost_referring_main_domains": 0
+      },
+      {
+        "type": "backlinks_timeseries_new_lost_summary",
+        "date": "2026-09-30 00:00:00 +00:00",
+        "new_backlinks": 19,
+        "lost_backlinks": 0,
+        "new_referring_domains": 19,
+        "lost_referring_domains": 0,
+        "new_referring_main_domains": 18,
+        "lost_referring_main_domains": 0
+      },
+      {
+        "type": "backlinks_timeseries_new_lost_summary",
+        "date": "2026-10-31 00:00:00 +00:00",
+        "new_backlinks": 30,
+        "lost_backlinks": 0,
+        "new_referring_domains": 29,
+        "lost_referring_domains": 0,
+        "new_referring_main_domains": 28,
+        "lost_referring_main_domains": 0
+      },
+      {
+        "type": "backlinks_timeseries_new_lost_summary",
+        "date": "2026-11-30 00:00:00 +00:00",
+        "new_backlinks": 13,
+        "lost_backlinks": 1,
+        "new_referring_domains": 13,
+        "lost_referring_domains": 1,
+        "new_referring_main_domains": 12,
+        "lost_referring_main_domains": 1
+      }
+    ]
+  },
+  "referring_domains": {
+    "ok": true,
+    "cost": 0,
+    "cached": true,
+    "error": null,
+    "total_count": 66,
+    "items": [
+      {
+        "domain": "quiblo.shop",
+        "rank": 0,
+        "backlinks": 1,
+        "first_seen": "2026-11-19 13:50:48 +00:00",
+        "lost_date": null,
+        "dofollow": null,
+        "spam_score": 60
+      },
+      {
+        "domain": "merrigoldfinance.com",
+        "rank": 0,
+        "backlinks": 2,
+        "first_seen": "2026-11-17 02:10:26 +00:00",
+        "lost_date": null,
+        "dofollow": null,
+        "spam_score": 70
+      },
+      {
+        "domain": "colonrejuvenatorsite.com",
+        "rank": 0,
+        "backlinks": 1,
+        "first_seen": "2026-11-16 11:47:20 +00:00",
+        "lost_date": null,
+        "dofollow": null,
+        "spam_score": 70
+      },
+      {
+        "domain": "lorentius.com",
+        "rank": 0,
+        "backlinks": 1,
+        "first_seen": "2026-11-14 06:09:17 +00:00",
+        "lost_date": null,
+        "dofollow": null,
+        "spam_score": 60
+      },
+      {
+        "domain": "otorented.com",
+        "rank": 0,
+        "backlinks": 1,
+        "first_seen": "2026-11-10 21:36:46 +00:00",
+        "lost_date": null,
+        "dofollow": null,
+        "spam_score": 60
+      },
+      {
+        "domain": "lompa.shop",
+        "rank": 0,
+        "backlinks": 1,
+        "first_seen": "2026-11-10 08:25:27 +00:00",
+        "lost_date": null,
+        "dofollow": null,
+        "spam_score": 60
+      },
+      {
+        "domain": "dapoxetine.cyou",
+        "rank": 0,
+        "backlinks": 1,
+        "first_seen": "2026-11-05 05:52:44 +00:00",
+        "lost_date": null,
+        "dofollow": null,
+        "spam_score": 70
+      },
+      {
+        "domain": "gameeffect.xyz",
+        "rank": 0,
+        "backlinks": 1,
+        "first_seen": "2026-11-05 05:16:10 +00:00",
+        "lost_date": null,
+        "dofollow": null,
+        "spam_score": 90
+      },
+      {
+        "domain": "sylexsoftware.xyz",
+        "rank": 0,
+        "backlinks": 1,
+        "first_seen": "2026-11-05 00:48:37 +00:00",
+        "lost_date": null,
+        "dofollow": null,
+        "spam_score": 90
+      },
+      {
+        "domain": "onlinecasinogamesforrealmoneyusa.online",
+        "rank": 0,
+        "backlinks": 1,
+        "first_seen": "2026-11-02 06:55:41 +00:00",
+        "lost_date": null,
+        "dofollow": null,
+        "spam_score": 70
+      },
+      {
+        "domain": "champsignal.com",
+        "rank": 0,
+        "backlinks": 1,
+        "first_seen": "2026-11-01 07:00:37 +00:00",
+        "lost_date": null,
+        "dofollow": null,
+        "spam_score": 0
+      },
+      {
+        "domain": "cartermanageus.com",
+        "rank": 0,
+        "backlinks": 1,
+        "first_seen": "2026-11-01 06:11:45 +00:00",
+        "lost_date": null,
+        "dofollow": null,
+        "spam_score": 60
+      },
+      {
+        "domain": "peska.shop",
+        "rank": 0,
+        "backlinks": 1,
+        "first_seen": "2026-10-30 03:58:02 +00:00",
+        "lost_date": null,
+        "dofollow": null,
+        "spam_score": 60
+      },
+      {
+        "domain": "gumushaneescorton.shop",
+        "rank": 0,
+        "backlinks": 1,
+        "first_seen": "2026-10-29 06:34:43 +00:00",
+        "lost_date": null,
+        "dofollow": null,
+        "spam_score": 70
+      },
+      {
+        "domain": "websquemolan.com",
+        "rank": 0,
+        "backlinks": 1,
+        "first_seen": "2026-10-29 05:24:10 +00:00",
+        "lost_date": null,
+        "dofollow": null,
+        "spam_score": 60
+      }
+    ]
+  },
+  "recent": {
+    "ok": true,
+    "cost": 0,
+    "cached": true,
+    "error": null,
+    "total_count": 69,
+    "items": [
+      {
+        "url_from": "https://quiblo.shop/dofollow-index/effective-guest-post-service-to-boost-domain-authority-outrank-your-competitors-with-full-placement-reporting-42fff5.html",
+        "domain_from": "quiblo.shop",
+        "url_to": "https://ypr.app/",
+        "anchor": "Premium Niche Edit Links for ypr.app to Strengthen Your Link Profile. Increase Organic Visibility, Across Every Niche and Market.",
+        "first_seen": "2026-11-19 13:50:48 +00:00",
+        "last_seen": "2026-11-19 13:50:48 +00:00",
+        "dofollow": true,
+        "item_type": "anchor",
+        "rank": 0
+      },
+      {
+        "url_from": "https://www.merrigoldfinance.com/all/3306/18.html",
+        "domain_from": "www.merrigoldfinance.com",
+        "url_to": "https://ypr.app/",
+        "anchor": "High Quality Dofollow Backlinks DA 50 PA 40 Premium PBN Network Service ypr.app Rank First Page Google Fast SEO Link Building Buy Backlinks Online Cheap",
+        "first_seen": "2026-11-18 18:26:17 +00:00",
+        "last_seen": "2026-11-18 18:26:17 +00:00",
+        "dofollow": true,
+        "item_type": "anchor",
+        "rank": 93
+      },
+      {
+        "url_from": "https://merrigoldfinance.com/all/3306/18.html",
+        "domain_from": "merrigoldfinance.com",
+        "url_to": "https://ypr.app/",
+        "anchor": "High Quality Dofollow Backlinks DA 50 PA 40 Premium PBN Network Service ypr.app Rank First Page Google Fast SEO Link Building Buy Backlinks Online Cheap",
+        "first_seen": "2026-11-17 02:10:26 +00:00",
+        "last_seen": "2026-11-17 02:10:26 +00:00",
+        "dofollow": true,
+        "item_type": "anchor",
+        "rank": 93
+      },
+      {
+        "url_from": "https://colonrejuvenatorsite.com/all/3306/18.html",
+        "domain_from": "colonrejuvenatorsite.com",
+        "url_to": "https://ypr.app/",
+        "anchor": "High Quality Dofollow Backlinks DA 50 PA 40 Premium PBN Network Service ypr.app Rank First Page Google Fast SEO Link Building Buy Backlinks Online Cheap",
+        "first_seen": "2026-11-16 11:47:20 +00:00",
+        "last_seen": "2026-11-16 11:47:20 +00:00",
+        "dofollow": true,
+        "item_type": "anchor",
+        "rank": 127
+      },
+      {
+        "url_from": "https://lorentius.com/all/3306/18.html",
+        "domain_from": "lorentius.com",
+        "url_to": "https://ypr.app/",
+        "anchor": "High Quality Dofollow Backlinks DA 50 PA 40 Premium PBN Network Service ypr.app Rank First Page Google Fast SEO Link Building Buy Backlinks Online Cheap",
+        "first_seen": "2026-11-14 06:09:17 +00:00",
+        "last_seen": "2026-11-14 06:09:17 +00:00",
+        "dofollow": true,
+        "item_type": "anchor",
+        "rank": 0
+      },
+      {
+        "url_from": "https://otorented.com/all/1095/2.html",
+        "domain_from": "otorented.com",
+        "url_to": "https://ypr.app/",
+        "anchor": "Premium Niche Edit Links to Strengthen Your Link Profile. Increase Organic Visibility, Across Every Niche and Market.",
+        "first_seen": "2026-11-10 21:36:46 +00:00",
+        "last_seen": "2026-11-10 21:36:46 +00:00",
+        "dofollow": true,
+        "item_type": "anchor",
+        "rank": 1
+      },
+      {
+        "url_from": "https://lompa.shop/pbn-directory/trusted-white-hat-seo-links-for-higher-da-and-dr-scores-build-lasting-authority-with-safe-link-velocity-ffac2e.html",
+        "domain_from": "lompa.shop",
+        "url_to": "https://ypr.app/",
+        "anchor": "Premium Niche Edit Links for ypr.app to Strengthen Your Link Profile. Increase Organic Visibility, Across Every Niche and Market.",
+        "first_seen": "2026-11-10 08:25:27 +00:00",
+        "last_seen": "2026-11-10 08:25:27 +00:00",
+        "dofollow": true,
+        "item_type": "anchor",
+        "rank": 0
+      },
+      {
+        "url_from": "https://dapoxetine.cyou/all/107/2/",
+        "domain_from": "dapoxetine.cyou",
+        "url_to": "https://ypr.app/?utm_source=dapoxetine.cyou",
+        "anchor": "Best Pinterest Tool SiteToSocial.com to Grow Your Website Traffic Fully Automated",
+        "first_seen": "2026-11-05 05:52:44 +00:00",
+        "last_seen": "2026-11-05 05:52:44 +00:00",
+        "dofollow": true,
+        "item_type": "anchor",
+        "rank": 51
+      },
+      {
+        "url_from": "https://gameeffect.xyz/all/55/22/",
+        "domain_from": "gameeffect.xyz",
+        "url_to": "https://ypr.app/?utm_source=gameeffect.xyz",
+        "anchor": "Best Pinterest Tool SiteToSocial.com to Grow Your Website Traffic Fully Automated",
+        "first_seen": "2026-11-05 05:16:10 +00:00",
+        "last_seen": "2026-11-05 05:16:10 +00:00",
+        "dofollow": true,
+        "item_type": "anchor",
+        "rank": 181
+      },
+      {
+        "url_from": "https://sylexsoftware.xyz/all/30/20/",
+        "domain_from": "sylexsoftware.xyz",
+        "url_to": "https://ypr.app/?utm_source=sylexsoftware.xyz",
+        "anchor": "Best Pinterest Tool SiteToSocial.com to Grow Your Website Traffic Fully Automated",
+        "first_seen": "2026-11-05 00:48:37 +00:00",
+        "last_seen": "2026-11-05 00:48:37 +00:00",
+        "dofollow": true,
+        "item_type": "anchor",
+        "rank": 0
+      }
+    ]
+  },
+  "cost_usd": 0.024144
+}

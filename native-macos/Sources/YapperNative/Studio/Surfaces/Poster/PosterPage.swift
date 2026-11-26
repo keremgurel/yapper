@@ -14,25 +14,29 @@ struct PosterPage: View {
     @ObservedObject private var prep = PosterPublishPrep.shared
     @ObservedObject private var commands = StudioWebCommands.shared
     @ObservedObject private var handoff = PosterHandoff.shared
+    @State private var source: PosterSource = .all
+    @State private var query = ""
+    @State private var selectedID: String?
     @State private var dropTargeted = false
 
     var body: some View {
         NativePage {
             VStack(alignment: .leading, spacing: 0) {
-                NativePageHeader(title: "Poster") { PosterStepProgress(composing: currentActive != nil) }
+                NativePageHeader(title: currentActive == nil ? "Choose a video" : "Poster") { PosterStepProgress(composing: currentActive != nil) }
                 VStack(alignment: .leading, spacing: 16) {
                     PosterBanners(upload: upload, bench: bench, prep: prep, connections: connections)
                     if let active = currentActive {
                         PosterBenchView(video: active, bench: bench, upload: upload, drafts: drafts, connections: connections)
                             .id(active.id)
                     } else {
-                        PosterSourcePicker(session: session, library: library, channels: channels, connections: connections,
-                                           upload: upload, bench: bench, dragging: dropTargeted) { listing in
-                            Task {
-                                await session.performAppAction(ProjectTrashInput(projectID: listing.summary.id))
-                                await library.refresh()
-                            }
-                        }
+                        PosterSourcePicker(
+                            source: $source, query: $query, selectedID: $selectedID,
+                            library: library, channels: channels, connections: connections,
+                            dragging: dropTargeted, uploadBusy: upload.busy, onChooseFile: upload.choose,
+                            onOpen: { video in Task { await bench.open(video) } },
+                            onTrashProject: trashProject
+                        )
+                        if source == .yapper { ManagedMediaNotice(session: session) }
                     }
                 }
             }
@@ -40,8 +44,7 @@ struct PosterPage: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .overlay {
-            // The source step's own drop zone lights up instead.
-            if dropTargeted && currentActive != nil {
+            if dropTargeted && (source != .all || currentActive != nil) {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(Color.studioAccent, lineWidth: 2)
                     .padding(12)
@@ -50,15 +53,22 @@ struct PosterPage: View {
         }
         .onDrop(of: [.fileURL], isTargeted: $dropTargeted, perform: drop)
         .task { await start() }
-        .task(id: connections.connected) { await refreshChannels(force: false) }
+        .task(id: connections.connected) { await refreshChannels() }
         .onChange(of: commands.posterGeneration) { _, _ in takeHandoff() }
         .onChange(of: library.items) { _, _ in handoff.openIfReady(in: library, bench: bench) }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
             Task {
                 await connections.refresh()
                 await library.refresh()
-                await refreshChannels(force: false)
+                await refreshChannels()
             }
+        }
+    }
+
+    private func trashProject(_ listing: ProjectListing) {
+        Task {
+            await session.performAppAction(ProjectTrashInput(projectID: listing.summary.id))
+            await library.refresh()
         }
     }
 
@@ -75,10 +85,7 @@ struct PosterPage: View {
             bench.close()
             bench.active = video
         }
-        upload.onAdded = { item in
-            library.upsert(item)
-
-        }
+        upload.onAdded = { library.upsert($0) }
         upload.onUpdated = { item in
             library.upsert(item)
             bench.apply(item)
@@ -98,17 +105,16 @@ struct PosterPage: View {
         }
     }
 
-    /// Each connected channel's shelf. The store keeps a list for a minute
-    /// and the server caches it too, so this costs no extra provider calls.
-    private func refreshChannels(force: Bool) async {
+    private func refreshChannels() async {
         await withTaskGroup(of: Void.self) { group in
             for platform in connections.connected {
-                group.addTask { await channels.refresh(platform, force: force) }
+                group.addTask { await channels.refresh(platform) }
             }
         }
     }
 
     private func drop(_ providers: [NSItemProvider]) -> Bool {
+        guard !upload.busy else { return false }
         let files = providers.filter { $0.canLoadObject(ofClass: URL.self) }
         guard !files.isEmpty else { return false }
         Task {

@@ -1,0 +1,3123 @@
+{
+  "date": "2026-11-25",
+  "site": "yapper",
+  "domain": "ypr.app",
+  "location_code": 2840,
+  "intent": {
+    "ok": true,
+    "cost": 0,
+    "by_keyword": {
+      "teleprompter app": {
+        "main_intent": "navigational",
+        "secondary": ["transactional"]
+      },
+      "best teleprompter app": {
+        "main_intent": "commercial",
+        "secondary": ["informational"]
+      },
+      "free teleprompter": {
+        "main_intent": "informational",
+        "secondary": []
+      },
+      "teleprompter online": {
+        "main_intent": "navigational",
+        "secondary": []
+      },
+      "AI script writer for YouTube": {
+        "main_intent": "navigational",
+        "secondary": []
+      },
+      "AI video script generator": {
+        "main_intent": "informational",
+        "secondary": []
+      },
+      "how to write a video script": {
+        "main_intent": "informational",
+        "secondary": []
+      },
+      "video script template": {
+        "main_intent": "informational",
+        "secondary": []
+      },
+      "talking head video tips": {
+        "main_intent": "commercial",
+        "secondary": []
+      },
+      "what is a teleprompter": {
+        "main_intent": "informational",
+        "secondary": []
+      },
+      "random topic generator": {
+        "main_intent": "informational",
+        "secondary": []
+      },
+      "teleprompter for recording": {
+        "main_intent": "transactional",
+        "secondary": []
+      }
+    },
+    "error": null
+  },
+  "clickstream": {
+    "ok": true,
+    "cost": 0,
+    "cached": true,
+    "error": null,
+    "by_keyword": {
+      "speech topics": {
+        "search_volume": 1114,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 1114
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 1063
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 1367
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 1417
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 1367
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 1367
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 1265
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 1721
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 1772
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 1873
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 2278
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 2278
+          }
+        ]
+      },
+      "teleprompter app": {
+        "search_volume": 9773,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 9773
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 10279
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 11039
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 11241
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 11393
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 11596
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 12052
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 12305
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 11798
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 11950
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 12001
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 12052
+          }
+        ]
+      },
+      "random topic generator": {
+        "search_volume": 11697,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 11697
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 11545
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 11545
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 11140
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 10583
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 10634
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 10431
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 10836
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 10482
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 10583
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 11393
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 11393
+          }
+        ]
+      },
+      "how to write a video script": {
+        "search_volume": 253,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 253
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 253
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 253
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 253
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 253
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 253
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 151
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 151
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 151
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 151
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 101
+          }
+        ]
+      },
+      "english conversation practice": {
+        "search_volume": 405,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 405
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 405
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 354
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 354
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 303
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 303
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 506
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 708
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 759
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 911
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 1012
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 1114
+          }
+        ]
+      },
+      "public speaking coach": {
+        "search_volume": 354,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 354
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 354
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 506
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 607
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 557
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 607
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 557
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 607
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 557
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 557
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 607
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 607
+          }
+        ]
+      },
+      "yoodli alternative": {
+        "search_volume": null,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 50
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 50
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 50
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 50
+          }
+        ]
+      },
+      "what is a teleprompter": {
+        "search_volume": 607,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 607
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 557
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 506
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 506
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 506
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 455
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 354
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 303
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 354
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 303
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 354
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 405
+          }
+        ]
+      },
+      "ai video script generator": {
+        "search_volume": 50,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 50
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 253
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 253
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 253
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 303
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 354
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 405
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 455
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 607
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 759
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 860
+          }
+        ]
+      },
+      "ai speaking practice": {
+        "search_volume": 50,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 50
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 50
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 151
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 151
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 151
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 151
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 151
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 151
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 151
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 151
+          }
+        ]
+      },
+      "presentation practice ai": {
+        "search_volume": 151,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 151
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 151
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 151
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 151
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 151
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 50
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 101
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 101
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 101
+          }
+        ]
+      },
+      "free teleprompter": {
+        "search_volume": 7849,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 7849
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 8709
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 10077
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 10786
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 11089
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 11393
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 12406
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 13621
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 13824
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 14026
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 13672
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 13469
+          }
+        ]
+      },
+      "persuasive speech topics": {
+        "search_volume": 12507,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 12507
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 12609
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 13064
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 13723
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 13469
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 13824
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 14330
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 14584
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 14432
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 14685
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 15343
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 15444
+          }
+        ]
+      },
+      "practice reading aloud": {
+        "search_volume": 101,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 0
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 0
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 0
+          }
+        ]
+      },
+      "best teleprompter app": {
+        "search_volume": 658,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 658
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 708
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 708
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 759
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 759
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 708
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 759
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 810
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 810
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 759
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 759
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 860
+          }
+        ]
+      },
+      "english speaking practice with ai": {
+        "search_volume": 405,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 405
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 405
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 303
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 303
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 303
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 303
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 303
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 253
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 253
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 202
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 303
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 253
+          }
+        ]
+      },
+      "impromptu speech topics": {
+        "search_volume": 1823,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 1823
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 1721
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 1873
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 1873
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 1924
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 1924
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 1823
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 1721
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 1620
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 1519
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 1417
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 1671
+          }
+        ]
+      },
+      "teleprompter online": {
+        "search_volume": 32712,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 32712
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 32560
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 32560
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 32105
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 32307
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 31851
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 32003
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 30788
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 30282
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 31142
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 31497
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 31851
+          }
+        ]
+      },
+      "ai public speaking coach": {
+        "search_volume": 50,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 50
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 50
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 50
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 50
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 101
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 101
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 101
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 101
+          }
+        ]
+      },
+      "video script template": {
+        "search_volume": 607,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 607
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 708
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 708
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 759
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 607
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 708
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 708
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 759
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 759
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 860
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 810
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 810
+          }
+        ]
+      },
+      "best ai speaking practice app": {
+        "search_volume": null,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 0
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 0
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 0
+          }
+        ]
+      },
+      "ai script writer for youtube": {
+        "search_volume": null,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 0
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 0
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 0
+          }
+        ]
+      },
+      "talking head video tips": {
+        "search_volume": null,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 0
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 0
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 0
+          }
+        ]
+      },
+      "teleprompter for recording": {
+        "search_volume": null,
+        "monthly_searches": [
+          {
+            "year": 2026,
+            "month": 10,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 9,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 8,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 7,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 6,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 5,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 4,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 3,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 2,
+            "search_volume": 0
+          },
+          {
+            "year": 2026,
+            "month": 1,
+            "search_volume": 0
+          },
+          {
+            "year": 2025,
+            "month": 12,
+            "search_volume": 0
+          },
+          {
+            "year": 2025,
+            "month": 11,
+            "search_volume": 0
+          }
+        ]
+      }
+    }
+  },
+  "ai_volume": {
+    "ok": true,
+    "cost": 0.0124,
+    "cached": false,
+    "error": null,
+    "by_keyword": {
+      "ai speaking practice": {
+        "ai_search_volume": 75,
+        "raw": {
+          "ai_search_volume": 75
+        }
+      },
+      "best ai speaking practice app": {
+        "ai_search_volume": 8,
+        "raw": {
+          "ai_search_volume": 8
+        }
+      },
+      "english speaking practice with ai": {
+        "ai_search_volume": 40,
+        "raw": {
+          "ai_search_volume": 40
+        }
+      },
+      "ai public speaking coach": {
+        "ai_search_volume": 2,
+        "raw": {
+          "ai_search_volume": 2
+        }
+      },
+      "public speaking coach": {
+        "ai_search_volume": 83,
+        "raw": {
+          "ai_search_volume": 83
+        }
+      },
+      "yoodli alternative": {
+        "ai_search_volume": null,
+        "raw": {
+          "ai_search_volume": 0
+        }
+      },
+      "english conversation practice": {
+        "ai_search_volume": 143,
+        "raw": {
+          "ai_search_volume": 143
+        }
+      },
+      "practice reading aloud": {
+        "ai_search_volume": 10,
+        "raw": {
+          "ai_search_volume": 10
+        }
+      },
+      "speech topics": {
+        "ai_search_volume": 5271,
+        "raw": {
+          "ai_search_volume": 5271
+        }
+      },
+      "persuasive speech topics": {
+        "ai_search_volume": 293,
+        "raw": {
+          "ai_search_volume": 293
+        }
+      },
+      "impromptu speech topics": {
+        "ai_search_volume": 68,
+        "raw": {
+          "ai_search_volume": 68
+        }
+      },
+      "presentation practice ai": {
+        "ai_search_volume": null,
+        "raw": {
+          "ai_search_volume": 0
+        }
+      },
+      "teleprompter app": {
+        "ai_search_volume": 768,
+        "raw": {
+          "ai_search_volume": 768
+        }
+      },
+      "best teleprompter app": {
+        "ai_search_volume": 356,
+        "raw": {
+          "ai_search_volume": 356
+        }
+      },
+      "free teleprompter": {
+        "ai_search_volume": 511,
+        "raw": {
+          "ai_search_volume": 511
+        }
+      },
+      "teleprompter online": {
+        "ai_search_volume": 28,
+        "raw": {
+          "ai_search_volume": 28
+        }
+      },
+      "ai script writer for youtube": {
+        "ai_search_volume": null,
+        "raw": {
+          "ai_search_volume": 0
+        }
+      },
+      "ai video script generator": {
+        "ai_search_volume": 49,
+        "raw": {
+          "ai_search_volume": 49
+        }
+      },
+      "how to write a video script": {
+        "ai_search_volume": 96,
+        "raw": {
+          "ai_search_volume": 96
+        }
+      },
+      "video script template": {
+        "ai_search_volume": null,
+        "raw": {
+          "ai_search_volume": 0
+        }
+      },
+      "talking head video tips": {
+        "ai_search_volume": null,
+        "raw": {
+          "ai_search_volume": 0
+        }
+      },
+      "what is a teleprompter": {
+        "ai_search_volume": 753,
+        "raw": {
+          "ai_search_volume": 753
+        }
+      },
+      "random topic generator": {
+        "ai_search_volume": 26,
+        "raw": {
+          "ai_search_volume": 26
+        }
+      },
+      "teleprompter for recording": {
+        "ai_search_volume": 74,
+        "raw": {
+          "ai_search_volume": 74
+        }
+      }
+    }
+  },
+  "google_trends": {
+    "ok": true,
+    "cost": 0,
+    "cached": true,
+    "error": null,
+    "path": "keywords_data/google_trends/explore/live",
+    "keywords": [
+      "teleprompter app",
+      "AI video script generator",
+      "talking head video"
+    ],
+    "series": [
+      {
+        "type": "google_trends_graph",
+        "keywords": [
+          "teleprompter app",
+          "AI video script generator",
+          "talking head video"
+        ],
+        "data": [
+          {
+            "date_from": "2025-11-23",
+            "date_to": "2025-11-29",
+            "timestamp": 1763856000,
+            "missing_data": false,
+            "values": [57, null, 30]
+          },
+          {
+            "date_from": "2025-11-30",
+            "date_to": "2025-12-06",
+            "timestamp": 1764460800,
+            "missing_data": false,
+            "values": [64, 23, 42]
+          },
+          {
+            "date_from": "2025-12-07",
+            "date_to": "2025-12-13",
+            "timestamp": 1765065600,
+            "missing_data": false,
+            "values": [63, 16, 28]
+          },
+          {
+            "date_from": "2025-12-14",
+            "date_to": "2025-12-20",
+            "timestamp": 1765670400,
+            "missing_data": false,
+            "values": [60, 9, 28]
+          },
+          {
+            "date_from": "2025-12-21",
+            "date_to": "2025-12-27",
+            "timestamp": 1766275200,
+            "missing_data": false,
+            "values": [40, 13, 32]
+          },
+          {
+            "date_from": "2025-12-28",
+            "date_to": "2026-01-03",
+            "timestamp": 1766880000,
+            "missing_data": false,
+            "values": [61, 17, 26]
+          },
+          {
+            "date_from": "2026-01-04",
+            "date_to": "2026-01-10",
+            "timestamp": 1767484800,
+            "missing_data": false,
+            "values": [56, 14, 32]
+          },
+          {
+            "date_from": "2026-01-11",
+            "date_to": "2026-01-17",
+            "timestamp": 1768089600,
+            "missing_data": false,
+            "values": [58, 11, 36]
+          },
+          {
+            "date_from": "2026-01-18",
+            "date_to": "2026-01-24",
+            "timestamp": 1768694400,
+            "missing_data": false,
+            "values": [76, 19, 39]
+          },
+          {
+            "date_from": "2026-01-25",
+            "date_to": "2026-01-31",
+            "timestamp": 1769299200,
+            "missing_data": false,
+            "values": [72, 15, 37]
+          },
+          {
+            "date_from": "2026-02-01",
+            "date_to": "2026-02-07",
+            "timestamp": 1769904000,
+            "missing_data": false,
+            "values": [66, 22, 30]
+          },
+          {
+            "date_from": "2026-02-08",
+            "date_to": "2026-02-14",
+            "timestamp": 1770508800,
+            "missing_data": false,
+            "values": [58, 17, 37]
+          },
+          {
+            "date_from": "2026-02-15",
+            "date_to": "2026-02-21",
+            "timestamp": 1771113600,
+            "missing_data": false,
+            "values": [74, 20, 41]
+          },
+          {
+            "date_from": "2026-02-22",
+            "date_to": "2026-02-28",
+            "timestamp": 1771718400,
+            "missing_data": false,
+            "values": [75, 19, 36]
+          },
+          {
+            "date_from": "2026-03-01",
+            "date_to": "2026-03-07",
+            "timestamp": 1772323200,
+            "missing_data": false,
+            "values": [77, 21, 58]
+          },
+          {
+            "date_from": "2026-03-08",
+            "date_to": "2026-03-14",
+            "timestamp": 1772928000,
+            "missing_data": false,
+            "values": [97, 23, 46]
+          },
+          {
+            "date_from": "2026-03-15",
+            "date_to": "2026-03-21",
+            "timestamp": 1773532800,
+            "missing_data": false,
+            "values": [100, 36, 46]
+          },
+          {
+            "date_from": "2026-03-22",
+            "date_to": "2026-03-28",
+            "timestamp": 1774137600,
+            "missing_data": false,
+            "values": [92, 24, 57]
+          },
+          {
+            "date_from": "2026-03-29",
+            "date_to": "2026-04-04",
+            "timestamp": 1774742400,
+            "missing_data": false,
+            "values": [80, 30, 45]
+          },
+          {
+            "date_from": "2026-04-05",
+            "date_to": "2026-04-11",
+            "timestamp": 1775347200,
+            "missing_data": false,
+            "values": [85, 24, 30]
+          },
+          {
+            "date_from": "2026-04-12",
+            "date_to": "2026-04-18",
+            "timestamp": 1775952000,
+            "missing_data": false,
+            "values": [94, 22, 46]
+          },
+          {
+            "date_from": "2026-04-19",
+            "date_to": "2026-04-25",
+            "timestamp": 1776556800,
+            "missing_data": false,
+            "values": [81, 18, 34]
+          },
+          {
+            "date_from": "2026-04-26",
+            "date_to": "2026-05-02",
+            "timestamp": 1777161600,
+            "missing_data": false,
+            "values": [63, 15, 33]
+          },
+          {
+            "date_from": "2026-05-03",
+            "date_to": "2026-05-09",
+            "timestamp": 1777766400,
+            "missing_data": false,
+            "values": [58, 15, 35]
+          },
+          {
+            "date_from": "2026-05-10",
+            "date_to": "2026-05-16",
+            "timestamp": 1778371200,
+            "missing_data": false,
+            "values": [60, 18, 36]
+          },
+          {
+            "date_from": "2026-05-17",
+            "date_to": "2026-05-23",
+            "timestamp": 1778976000,
+            "missing_data": false,
+            "values": [76, 25, 29]
+          },
+          {
+            "date_from": "2026-05-24",
+            "date_to": "2026-05-30",
+            "timestamp": 1779580800,
+            "missing_data": false,
+            "values": [64, 29, 36]
+          },
+          {
+            "date_from": "2026-05-31",
+            "date_to": "2026-06-06",
+            "timestamp": 1780185600,
+            "missing_data": false,
+            "values": [73, 24, 39]
+          },
+          {
+            "date_from": "2026-06-07",
+            "date_to": "2026-06-13",
+            "timestamp": 1780790400,
+            "missing_data": false,
+            "values": [66, 29, 31]
+          },
+          {
+            "date_from": "2026-06-14",
+            "date_to": "2026-06-20",
+            "timestamp": 1781395200,
+            "missing_data": false,
+            "values": [58, 20, 41]
+          },
+          {
+            "date_from": "2026-06-21",
+            "date_to": "2026-06-27",
+            "timestamp": 1782000000,
+            "missing_data": false,
+            "values": [65, 27, 45]
+          },
+          {
+            "date_from": "2026-06-28",
+            "date_to": "2026-07-04",
+            "timestamp": 1782604800,
+            "missing_data": false,
+            "values": [73, 28, 34]
+          },
+          {
+            "date_from": "2026-07-05",
+            "date_to": "2026-07-11",
+            "timestamp": 1783209600,
+            "missing_data": false,
+            "values": [56, 24, 36]
+          },
+          {
+            "date_from": "2026-07-12",
+            "date_to": "2026-07-18",
+            "timestamp": 1783814400,
+            "missing_data": false,
+            "values": [56, 16, 27]
+          },
+          {
+            "date_from": "2026-07-19",
+            "date_to": "2026-07-25",
+            "timestamp": 1784419200,
+            "missing_data": false,
+            "values": [63, 17, 27]
+          },
+          {
+            "date_from": "2026-07-26",
+            "date_to": "2026-08-01",
+            "timestamp": 1785024000,
+            "missing_data": false,
+            "values": [39, null, 23]
+          },
+          {
+            "date_from": "2026-08-02",
+            "date_to": "2026-08-08",
+            "timestamp": 1785628800,
+            "missing_data": false,
+            "values": [56, null, 24]
+          },
+          {
+            "date_from": "2026-08-09",
+            "date_to": "2026-08-15",
+            "timestamp": 1786233600,
+            "missing_data": false,
+            "values": [42, 13, 19]
+          },
+          {
+            "date_from": "2026-08-16",
+            "date_to": "2026-08-22",
+            "timestamp": 1786838400,
+            "missing_data": false,
+            "values": [52, 13, 19]
+          },
+          {
+            "date_from": "2026-08-23",
+            "date_to": "2026-08-29",
+            "timestamp": 1787443200,
+            "missing_data": false,
+            "values": [42, null, 12]
+          },
+          {
+            "date_from": "2026-08-30",
+            "date_to": "2026-09-05",
+            "timestamp": 1788048000,
+            "missing_data": false,
+            "values": [34, null, 21]
+          },
+          {
+            "date_from": "2026-09-06",
+            "date_to": "2026-09-12",
+            "timestamp": 1788652800,
+            "missing_data": false,
+            "values": [40, null, 16]
+          },
+          {
+            "date_from": "2026-09-13",
+            "date_to": "2026-09-19",
+            "timestamp": 1789257600,
+            "missing_data": false,
+            "values": [45, 10, 20]
+          },
+          {
+            "date_from": "2026-09-20",
+            "date_to": "2026-09-26",
+            "timestamp": 1789862400,
+            "missing_data": false,
+            "values": [47, null, 15]
+          },
+          {
+            "date_from": "2026-09-27",
+            "date_to": "2026-10-03",
+            "timestamp": 1790467200,
+            "missing_data": false,
+            "values": [49, null, 23]
+          },
+          {
+            "date_from": "2026-10-04",
+            "date_to": "2026-10-10",
+            "timestamp": 1791072000,
+            "missing_data": false,
+            "values": [33, 11, 24]
+          },
+          {
+            "date_from": "2026-10-11",
+            "date_to": "2026-10-17",
+            "timestamp": 1791676800,
+            "missing_data": false,
+            "values": [33, null, 16]
+          },
+          {
+            "date_from": "2026-10-18",
+            "date_to": "2026-10-24",
+            "timestamp": 1792281600,
+            "missing_data": false,
+            "values": [44, null, 23]
+          },
+          {
+            "date_from": "2026-10-25",
+            "date_to": "2026-10-31",
+            "timestamp": 1792886400,
+            "missing_data": false,
+            "values": [34, 9, 22]
+          },
+          {
+            "date_from": "2026-11-01",
+            "date_to": "2026-11-07",
+            "timestamp": 1793491200,
+            "missing_data": false,
+            "values": [43, null, 25]
+          },
+          {
+            "date_from": "2026-11-08",
+            "date_to": "2026-11-14",
+            "timestamp": 1794096000,
+            "missing_data": false,
+            "values": [42, 3, 13]
+          },
+          {
+            "date_from": "2026-11-15",
+            "date_to": "2026-11-21",
+            "timestamp": 1794700800,
+            "missing_data": false,
+            "values": [42, 6, 21]
+          },
+          {
+            "date_from": "2026-11-22",
+            "date_to": "2026-11-25",
+            "timestamp": 1795305600,
+            "missing_data": true,
+            "values": [35, 5, 17]
+          }
+        ]
+      }
+    ],
+    "related": [],
+    "item_types": ["google_trends_graph"]
+  },
+  "dfs_trends": {
+    "ok": true,
+    "cost": 0,
+    "cached": true,
+    "error": null,
+    "path": "keywords_data/dataforseo_trends/explore/live",
+    "keywords": [
+      "teleprompter app",
+      "AI video script generator",
+      "talking head video"
+    ],
+    "series": [
+      {
+        "type": "dataforseo_trends_graph",
+        "keywords": [
+          "teleprompter app",
+          "AI video script generator",
+          "talking head video"
+        ],
+        "data": [
+          {
+            "date_from": "2025-11-30",
+            "date_to": "2025-12-06",
+            "timestamp": 1764460800,
+            "values": [7, 3, 6]
+          },
+          {
+            "date_from": "2025-12-07",
+            "date_to": "2025-12-13",
+            "timestamp": 1765065600,
+            "values": [6, 1, 3]
+          },
+          {
+            "date_from": "2025-12-14",
+            "date_to": "2025-12-20",
+            "timestamp": 1765670400,
+            "values": [8, 3, 2]
+          },
+          {
+            "date_from": "2025-12-21",
+            "date_to": "2025-12-27",
+            "timestamp": 1766275200,
+            "values": [4, 1, 2]
+          },
+          {
+            "date_from": "2025-12-28",
+            "date_to": "2026-01-03",
+            "timestamp": 1766880000,
+            "values": [3, 2, 3]
+          },
+          {
+            "date_from": "2026-01-04",
+            "date_to": "2026-01-10",
+            "timestamp": 1767484800,
+            "values": [9, 2, 1]
+          },
+          {
+            "date_from": "2026-01-11",
+            "date_to": "2026-01-17",
+            "timestamp": 1768089600,
+            "values": [6, 1, 1]
+          },
+          {
+            "date_from": "2026-01-18",
+            "date_to": "2026-01-24",
+            "timestamp": 1768694400,
+            "values": [10, 1, 2]
+          },
+          {
+            "date_from": "2026-01-25",
+            "date_to": "2026-01-31",
+            "timestamp": 1769299200,
+            "values": [8, 1, 3]
+          },
+          {
+            "date_from": "2026-02-01",
+            "date_to": "2026-02-07",
+            "timestamp": 1769904000,
+            "values": [34, 2, 6]
+          },
+          {
+            "date_from": "2026-02-08",
+            "date_to": "2026-02-14",
+            "timestamp": 1770508800,
+            "values": [15, 1, 2]
+          },
+          {
+            "date_from": "2026-02-15",
+            "date_to": "2026-02-21",
+            "timestamp": 1771113600,
+            "values": [8, 2, 4]
+          },
+          {
+            "date_from": "2026-02-22",
+            "date_to": "2026-02-28",
+            "timestamp": 1771718400,
+            "values": [12, 3, 2]
+          },
+          {
+            "date_from": "2026-03-01",
+            "date_to": "2026-03-07",
+            "timestamp": 1772323200,
+            "values": [13, 2, 2]
+          },
+          {
+            "date_from": "2026-03-08",
+            "date_to": "2026-03-14",
+            "timestamp": 1772928000,
+            "values": [10, 2, 2]
+          },
+          {
+            "date_from": "2026-03-15",
+            "date_to": "2026-03-21",
+            "timestamp": 1773532800,
+            "values": [6, 3, 2]
+          },
+          {
+            "date_from": "2026-03-22",
+            "date_to": "2026-03-28",
+            "timestamp": 1774137600,
+            "values": [12, 0, 3]
+          },
+          {
+            "date_from": "2026-03-29",
+            "date_to": "2026-04-04",
+            "timestamp": 1774742400,
+            "values": [6, 1, 4]
+          },
+          {
+            "date_from": "2026-04-05",
+            "date_to": "2026-04-11",
+            "timestamp": 1775347200,
+            "values": [5, 1, 3]
+          },
+          {
+            "date_from": "2026-04-12",
+            "date_to": "2026-04-18",
+            "timestamp": 1775952000,
+            "values": [6, 0, 0]
+          },
+          {
+            "date_from": "2026-04-19",
+            "date_to": "2026-04-25",
+            "timestamp": 1776556800,
+            "values": [7, 2, 6]
+          },
+          {
+            "date_from": "2026-04-26",
+            "date_to": "2026-05-02",
+            "timestamp": 1777161600,
+            "values": [6, 1, 2]
+          },
+          {
+            "date_from": "2026-05-03",
+            "date_to": "2026-05-09",
+            "timestamp": 1777766400,
+            "values": [10, 1, 3]
+          },
+          {
+            "date_from": "2026-05-10",
+            "date_to": "2026-05-16",
+            "timestamp": 1778371200,
+            "values": [8, 0, 4]
+          },
+          {
+            "date_from": "2026-05-17",
+            "date_to": "2026-05-23",
+            "timestamp": 1778976000,
+            "values": [8, 2, 2]
+          },
+          {
+            "date_from": "2026-05-24",
+            "date_to": "2026-05-30",
+            "timestamp": 1779580800,
+            "values": [12, 1, 2]
+          },
+          {
+            "date_from": "2026-05-31",
+            "date_to": "2026-06-06",
+            "timestamp": 1780185600,
+            "values": [2, 0, 2]
+          },
+          {
+            "date_from": "2026-06-07",
+            "date_to": "2026-06-13",
+            "timestamp": 1780790400,
+            "values": [5, 5, 9]
+          },
+          {
+            "date_from": "2026-06-14",
+            "date_to": "2026-06-20",
+            "timestamp": 1781395200,
+            "values": [4, 1, 2]
+          },
+          {
+            "date_from": "2026-06-21",
+            "date_to": "2026-06-27",
+            "timestamp": 1782000000,
+            "values": [10, 3, 3]
+          },
+          {
+            "date_from": "2026-06-28",
+            "date_to": "2026-07-04",
+            "timestamp": 1782604800,
+            "values": [8, 1, 2]
+          },
+          {
+            "date_from": "2026-07-05",
+            "date_to": "2026-07-11",
+            "timestamp": 1783209600,
+            "values": [1, 2, 4]
+          },
+          {
+            "date_from": "2026-07-12",
+            "date_to": "2026-07-18",
+            "timestamp": 1783814400,
+            "values": [6, 0, 4]
+          },
+          {
+            "date_from": "2026-07-19",
+            "date_to": "2026-07-25",
+            "timestamp": 1784419200,
+            "values": [7, 0, 7]
+          },
+          {
+            "date_from": "2026-07-26",
+            "date_to": "2026-08-01",
+            "timestamp": 1785024000,
+            "values": [6, 1, 4]
+          },
+          {
+            "date_from": "2026-08-02",
+            "date_to": "2026-08-08",
+            "timestamp": 1785628800,
+            "values": [6, 1, 5]
+          },
+          {
+            "date_from": "2026-08-09",
+            "date_to": "2026-08-15",
+            "timestamp": 1786233600,
+            "values": [7, 1, 2]
+          },
+          {
+            "date_from": "2026-08-16",
+            "date_to": "2026-08-22",
+            "timestamp": 1786838400,
+            "values": [12, 0, 5]
+          },
+          {
+            "date_from": "2026-08-23",
+            "date_to": "2026-08-29",
+            "timestamp": 1787443200,
+            "values": [13, 3, 4]
+          },
+          {
+            "date_from": "2026-08-30",
+            "date_to": "2026-09-05",
+            "timestamp": 1788048000,
+            "values": [9, 15, 36]
+          },
+          {
+            "date_from": "2026-09-06",
+            "date_to": "2026-09-12",
+            "timestamp": 1788652800,
+            "values": [5, 4, 8]
+          },
+          {
+            "date_from": "2026-09-13",
+            "date_to": "2026-09-19",
+            "timestamp": 1789257600,
+            "values": [4, 2, 7]
+          },
+          {
+            "date_from": "2026-09-20",
+            "date_to": "2026-09-26",
+            "timestamp": 1789862400,
+            "values": [92, 11, 19]
+          },
+          {
+            "date_from": "2026-09-27",
+            "date_to": "2026-10-03",
+            "timestamp": 1790467200,
+            "values": [46, 4, 10]
+          },
+          {
+            "date_from": "2026-10-04",
+            "date_to": "2026-10-10",
+            "timestamp": 1791072000,
+            "values": [29, 2, 7]
+          },
+          {
+            "date_from": "2026-10-11",
+            "date_to": "2026-10-17",
+            "timestamp": 1791676800,
+            "values": [11, 2, 3]
+          },
+          {
+            "date_from": "2026-10-18",
+            "date_to": "2026-10-24",
+            "timestamp": 1792281600,
+            "values": [4, 2, 3]
+          },
+          {
+            "date_from": "2026-10-25",
+            "date_to": "2026-10-31",
+            "timestamp": 1792886400,
+            "values": [5, 1, 1]
+          },
+          {
+            "date_from": "2026-11-01",
+            "date_to": "2026-11-07",
+            "timestamp": 1793491200,
+            "values": [100, 10, 18]
+          },
+          {
+            "date_from": "2026-11-08",
+            "date_to": "2026-11-14",
+            "timestamp": 1794096000,
+            "values": [22, 2, 5]
+          },
+          {
+            "date_from": "2026-11-15",
+            "date_to": "2026-11-21",
+            "timestamp": 1794700800,
+            "values": [13, 3, 2]
+          },
+          {
+            "date_from": "2026-11-22",
+            "date_to": "2026-11-25",
+            "timestamp": 1795305600,
+            "values": [7, 5, 5]
+          }
+        ]
+      }
+    ],
+    "related": [],
+    "item_types": ["dataforseo_trends_graph"]
+  },
+  "youtube": [
+    {
+      "ok": true,
+      "cost": 0,
+      "cached": true,
+      "error": null,
+      "keyword": "how to use a teleprompter",
+      "videos": [
+        {
+          "type": "youtube_video",
+          "rank": 1,
+          "title": "How I Use My Phone as a Teleprompter (And What I Do When I Can't Read It)",
+          "url": "https://www.youtube.com/watch?v=bPO9SGTsTGA&pp=ygUZaG93IHRvIHVzZSBhIHRlbGVwcm9tcHRlcg%3D%3D",
+          "channel": null,
+          "views": 13853,
+          "timestamp": "2026-11-24 23:54:14 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 2,
+          "title": "How to Use a Teleprompter Like a PRO!",
+          "url": "https://www.youtube.com/watch?v=mbRthOiX15Q&pp=ygUZaG93IHRvIHVzZSBhIHRlbGVwcm9tcHRlcg%3D%3D",
+          "channel": null,
+          "views": 28363,
+          "timestamp": "2024-11-25 23:54:14 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 3,
+          "title": "How to use a Teleprompter & Record on your phone",
+          "url": "https://www.youtube.com/watch?v=nO5XhO3roms&pp=ygUZaG93IHRvIHVzZSBhIHRlbGVwcm9tcHRlcg%3D%3D",
+          "channel": null,
+          "views": 60118,
+          "timestamp": "2022-11-25 23:54:14 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 4,
+          "title": "How teleprompter works",
+          "url": "https://www.youtube.com/watch?v=SD77YwLuQQU&pp=ygUZaG93IHRvIHVzZSBhIHRlbGVwcm9tcHRlcg%3D%3D",
+          "channel": null,
+          "views": 117903,
+          "timestamp": "2023-11-25 23:54:14 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 5,
+          "title": "How to Read a Teleprompter without Looking Creepy",
+          "url": "https://www.youtube.com/watch?v=tjfyM2k6Gg4&t=183s&pp=ygUZaG93IHRvIHVzZSBhIHRlbGVwcm9tcHRlcg%3D%3D",
+          "channel": null,
+          "views": 580330,
+          "timestamp": "2022-11-25 23:54:14 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 6,
+          "title": "SECRETS to reading a teleprompter - From Awkward to Natural!",
+          "url": "https://www.youtube.com/watch?v=7BswSByjOXM&pp=ygUZaG93IHRvIHVzZSBhIHRlbGVwcm9tcHRlcg%3D%3D",
+          "channel": null,
+          "views": 115013,
+          "timestamp": "2024-11-25 23:54:14 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 7,
+          "title": "How To Use Teleprompters Like A Pro In Just 12 Minutes",
+          "url": "https://www.youtube.com/watch?v=-jzq0JNmxsk&pp=ygUZaG93IHRvIHVzZSBhIHRlbGVwcm9tcHRlcg%3D%3D",
+          "channel": null,
+          "views": 110737,
+          "timestamp": "2021-11-25 23:54:14 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 8,
+          "title": "How to use a Teleprompter for Videos!",
+          "url": "https://www.youtube.com/watch?v=PgEgOZuaNgA&pp=ygUZaG93IHRvIHVzZSBhIHRlbGVwcm9tcHRlctIHCQkQCAGHKiGM7w%3D%3D",
+          "channel": null,
+          "views": 100210,
+          "timestamp": "2016-11-25 23:54:14 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 9,
+          "title": "5 TIPS to be a TELEPROMPTER PRO",
+          "url": "https://www.youtube.com/watch?v=J8emiRKLgsI&pp=ygUZaG93IHRvIHVzZSBhIHRlbGVwcm9tcHRlcg%3D%3D",
+          "channel": null,
+          "views": 1004,
+          "timestamp": "2023-11-25 23:54:14 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 10,
+          "title": "How To Use PromptSmart Pro with an iPhone",
+          "url": "https://www.youtube.com/watch?v=H644ylmAMPQ&pp=ygUZaG93IHRvIHVzZSBhIHRlbGVwcm9tcHRlcg%3D%3D",
+          "channel": null,
+          "views": 16409,
+          "timestamp": "2021-11-25 23:54:14 +00:00"
+        }
+      ],
+      "item_types": ["youtube_video"]
+    },
+    {
+      "ok": true,
+      "cost": 0,
+      "cached": true,
+      "error": null,
+      "keyword": "talking head video tips",
+      "videos": [
+        {
+          "type": "youtube_video",
+          "rank": 1,
+          "title": "How to Create Captivating Talking Head Videos | 5 Top Tips",
+          "url": "https://www.youtube.com/watch?v=SdTuy3DtiCY&pp=ygUXdGFsa2luZyBoZWFkIHZpZGVvIHRpcHM%3D",
+          "channel": null,
+          "views": 108600,
+          "timestamp": "2023-11-25 23:54:20 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 2,
+          "title": "The Ultimate Guide to Talking Head Videos for Beginners",
+          "url": "https://www.youtube.com/watch?v=Qqt0hBDTzCo&pp=ygUXdGFsa2luZyBoZWFkIHZpZGVvIHRpcHM%3D",
+          "channel": null,
+          "views": 19219,
+          "timestamp": "2024-11-25 23:54:20 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 3,
+          "title": "How to Film Yourself With Your Phone (Like a Pro)",
+          "url": "https://www.youtube.com/watch?v=4PaehE_7zsk&pp=ygUXdGFsa2luZyBoZWFkIHZpZGVvIHRpcHM%3D",
+          "channel": null,
+          "views": 577162,
+          "timestamp": "2026-11-04 23:54:20 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 4,
+          "title": "How to Film Talking Head Videos That People *Actually* Watch | TALKING HEAD 101",
+          "url": "https://www.youtube.com/watch?v=aLPqVr5zdmA&pp=ygUXdGFsa2luZyBoZWFkIHZpZGVvIHRpcHM%3D",
+          "channel": null,
+          "views": 65342,
+          "timestamp": "2025-11-25 23:54:20 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 5,
+          "title": "How to Edit Talking Head Videos: 5 Video Editing Tips & Tricks",
+          "url": "https://www.youtube.com/watch?v=xCl_zqJdjAc&pp=ygUXdGFsa2luZyBoZWFkIHZpZGVvIHRpcHM%3D",
+          "channel": null,
+          "views": 195950,
+          "timestamp": "2020-11-25 23:54:20 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 6,
+          "title": "5 Simple Tips for Better Talking Head Videos (Beginner Guide)",
+          "url": "https://www.youtube.com/watch?v=jIG2TZwFwtE&pp=ygUXdGFsa2luZyBoZWFkIHZpZGVvIHRpcHM%3D",
+          "channel": null,
+          "views": 4012,
+          "timestamp": "2026-01-25 23:54:20 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 7,
+          "title": "GET BETTER at TALKING On-Camera in 10 Mins",
+          "url": "https://www.youtube.com/watch?v=hvrLd5KKm0s&pp=ygUXdGFsa2luZyBoZWFkIHZpZGVvIHRpcHM%3D",
+          "channel": null,
+          "views": 514879,
+          "timestamp": "2023-11-25 23:54:20 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 8,
+          "title": "Easy ways to do talking head videos",
+          "url": "https://www.youtube.com/watch?v=P4E2ombAIUs&pp=ygUXdGFsa2luZyBoZWFkIHZpZGVvIHRpcHM%3D",
+          "channel": null,
+          "views": 21204,
+          "timestamp": "2024-11-25 23:54:20 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 9,
+          "title": "How to Edit Professional Talking Head Videos in DaVinci Resolve w/ Gavin Herman",
+          "url": "https://www.youtube.com/watch?v=-LYs3h2RyeU&pp=ygUXdGFsa2luZyBoZWFkIHZpZGVvIHRpcHM%3D",
+          "channel": null,
+          "views": 6678,
+          "timestamp": "2026-04-25 23:54:20 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 10,
+          "title": "How to Make Your First YouTube Video (Talking Head Guide)",
+          "url": "https://www.youtube.com/watch?v=KEfTleAmsdc&pp=ygUXdGFsa2luZyBoZWFkIHZpZGVvIHRpcHM%3D",
+          "channel": null,
+          "views": 5757,
+          "timestamp": "2026-07-25 23:54:20 +00:00"
+        }
+      ],
+      "item_types": ["youtube_video"]
+    },
+    {
+      "ok": true,
+      "cost": 0,
+      "cached": true,
+      "error": null,
+      "keyword": "how to write a youtube script",
+      "videos": [
+        {
+          "type": "youtube_video",
+          "rank": 1,
+          "title": "How to write a KILLER script for a Youtube Video (made easy!)",
+          "url": "https://www.youtube.com/watch?v=-WZJXT4uGlg&pp=ygUdaG93IHRvIHdyaXRlIGEgeW91dHViZSBzY3JpcHQ%3D",
+          "channel": null,
+          "views": 18057,
+          "timestamp": "2026-09-25 23:54:23 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 2,
+          "title": "How to Write a Script for a YouTube Video (Made Easy!)",
+          "url": "https://www.youtube.com/watch?v=8s0i1LutAc4&pp=ygUdaG93IHRvIHdyaXRlIGEgeW91dHViZSBzY3JpcHTSBwkJEAgBhyohjO8%3D",
+          "channel": null,
+          "views": 1180797,
+          "timestamp": "2020-11-25 23:54:23 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 3,
+          "title": "How To Write A Killer Script That Keeps Viewers Hooked",
+          "url": "https://www.youtube.com/watch?v=7I50PECz7SU&pp=ygUdaG93IHRvIHdyaXRlIGEgeW91dHViZSBzY3JpcHQ%3D",
+          "channel": null,
+          "views": 708222,
+          "timestamp": "2025-11-25 23:54:23 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 4,
+          "title": "How to Write Scripts for YouTube Videos",
+          "url": "https://www.youtube.com/watch?v=thhIUq_fevU&pp=ygUdaG93IHRvIHdyaXRlIGEgeW91dHViZSBzY3JpcHQ%3D",
+          "channel": null,
+          "views": 375617,
+          "timestamp": "2023-11-25 23:54:23 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 5,
+          "title": "How I Script Every YouTube Video (My Exact Process)",
+          "url": "https://www.youtube.com/watch?v=AALFi1mZb1o&pp=ygUdaG93IHRvIHdyaXRlIGEgeW91dHViZSBzY3JpcHQ%3D",
+          "channel": null,
+          "views": 93965,
+          "timestamp": "2026-08-25 23:54:23 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 6,
+          "title": "How I Actually Write Viral Scripts",
+          "url": "https://www.youtube.com/watch?v=cX8c3R2LFd4&pp=ygUdaG93IHRvIHdyaXRlIGEgeW91dHViZSBzY3JpcHQ%3D",
+          "channel": null,
+          "views": 320732,
+          "timestamp": "2026-03-25 23:54:23 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 7,
+          "title": "How to Write SCRIPTS for YouTube Videos | In Telugu | ASK Things",
+          "url": "https://www.youtube.com/watch?v=eEFV-MIsdT0&pp=ygUdaG93IHRvIHdyaXRlIGEgeW91dHViZSBzY3JpcHQ%3D",
+          "channel": null,
+          "views": 13507,
+          "timestamp": "2023-11-25 23:54:23 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 8,
+          "title": "Full YouTube Script Writing Course (1+ Hour)",
+          "url": "https://www.youtube.com/watch?v=YrQvEUZVXy8&pp=ygUdaG93IHRvIHdyaXRlIGEgeW91dHViZSBzY3JpcHTSBwkJEAgBhyohjO8%3D",
+          "channel": null,
+          "views": 324525,
+          "timestamp": "2024-11-25 23:54:23 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 9,
+          "title": "How to Write a YouTube Script that Gets More Views!",
+          "url": "https://www.youtube.com/watch?v=RNXpLNcl6mo&pp=ygUdaG93IHRvIHdyaXRlIGEgeW91dHViZSBzY3JpcHQ%3D",
+          "channel": null,
+          "views": 50076,
+          "timestamp": "2025-11-25 23:54:23 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 10,
+          "title": "How I Write & Use SCRIPTS for YouTube Videos",
+          "url": "https://www.youtube.com/watch?v=htx9gLbBzjA&pp=ygUdaG93IHRvIHdyaXRlIGEgeW91dHViZSBzY3JpcHQ%3D",
+          "channel": null,
+          "views": 106501,
+          "timestamp": "2023-11-25 23:54:23 +00:00"
+        }
+      ],
+      "item_types": ["youtube_playlist", "youtube_video"]
+    },
+    {
+      "ok": true,
+      "cost": 0,
+      "cached": true,
+      "error": null,
+      "keyword": "best teleprompter app",
+      "videos": [
+        {
+          "type": "youtube_video",
+          "rank": 1,
+          "title": "Best Teleprompter Apps For iPhone & Android in 2026",
+          "url": "https://www.youtube.com/watch?v=Oy-bKu-54Ts&pp=ygUVYmVzdCB0ZWxlcHJvbXB0ZXIgYXBw",
+          "channel": null,
+          "views": 48752,
+          "timestamp": "2026-06-25 23:54:32 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 2,
+          "title": "Best Teleprompter App For iPad, iPhone & Android (UPDATED!)",
+          "url": "https://www.youtube.com/watch?v=Q2asN1dihK4&pp=ygUVYmVzdCB0ZWxlcHJvbXB0ZXIgYXBw",
+          "channel": null,
+          "views": 188821,
+          "timestamp": "2023-11-25 23:54:32 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 3,
+          "title": "Best FREE Teleprompter Apps For YouTube Videos in 2025 (TikTok, Reels and More)",
+          "url": "https://www.youtube.com/watch?v=r0RU07RkjXk&pp=ygUVYmVzdCB0ZWxlcHJvbXB0ZXIgYXBw",
+          "channel": null,
+          "views": 103222,
+          "timestamp": "2024-11-25 23:54:32 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 4,
+          "title": "Best 100% free teleprompter app with voice scrolling in 2026 just got better",
+          "url": "https://www.youtube.com/watch?v=AFw-cO8qsEM&pp=ygUVYmVzdCB0ZWxlcHJvbXB0ZXIgYXBw0gcJCRAIAYcqIYzv",
+          "channel": null,
+          "views": 38977,
+          "timestamp": "2026-04-25 23:54:32 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 5,
+          "title": "Best Teleprompter Apps For All Devices",
+          "url": "https://www.youtube.com/watch?v=Ay99Za-mY9Q&pp=ygUVYmVzdCB0ZWxlcHJvbXB0ZXIgYXBw",
+          "channel": null,
+          "views": 70863,
+          "timestamp": "2024-11-25 23:54:32 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 6,
+          "title": "The BEST Teleprompter App for Mac (2026) - With Automatic Voice Scrolling and Recording",
+          "url": "https://www.youtube.com/watch?v=P3LrVec8aX4&pp=ygUVYmVzdCB0ZWxlcHJvbXB0ZXIgYXBw",
+          "channel": null,
+          "views": 11139,
+          "timestamp": "2026-04-25 23:54:32 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 7,
+          "title": "The Best Teleprompter for iPhone and iPad with voice scrolling in 2026",
+          "url": "https://www.youtube.com/watch?v=50SDhn2N-bU&pp=ygUVYmVzdCB0ZWxlcHJvbXB0ZXIgYXBw",
+          "channel": null,
+          "views": 6322,
+          "timestamp": "2026-10-25 23:54:32 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 8,
+          "title": "The BEST teleprompter for Mac with auto voice scrolling in 2026.",
+          "url": "https://www.youtube.com/watch?v=07Xnj7q2c9Y&pp=ygUVYmVzdCB0ZWxlcHJvbXB0ZXIgYXBw",
+          "channel": null,
+          "views": 8048,
+          "timestamp": "2026-06-25 23:54:32 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 9,
+          "title": "What's the Best Teleprompter App for iPhone?",
+          "url": "https://www.youtube.com/watch?v=Wg7b59EiTiE&pp=ygUVYmVzdCB0ZWxlcHJvbXB0ZXIgYXBw",
+          "channel": null,
+          "views": 2015,
+          "timestamp": "2026-05-25 23:54:32 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 10,
+          "title": "Best Free Video Teleprompter App for iPhone and iPad (2026)",
+          "url": "https://www.youtube.com/watch?v=fyoibE3fCAM&pp=ygUVYmVzdCB0ZWxlcHJvbXB0ZXIgYXBw",
+          "channel": null,
+          "views": 1687320,
+          "timestamp": "2024-11-25 23:54:32 +00:00"
+        }
+      ],
+      "item_types": ["youtube_video"]
+    },
+    {
+      "ok": true,
+      "cost": 0,
+      "cached": true,
+      "error": null,
+      "keyword": "how to talk to the camera",
+      "videos": [
+        {
+          "type": "youtube_video",
+          "rank": 1,
+          "title": "📸 How to Talk to a Camera (Even if You've Never Done it Before!)",
+          "url": "https://www.youtube.com/watch?v=AYcqLymo6M4&pp=ygUZaG93IHRvIHRhbGsgdG8gdGhlIGNhbWVyYQ%3D%3D",
+          "channel": null,
+          "views": 580875,
+          "timestamp": "2021-11-25 23:54:36 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 2,
+          "title": "Give Me 5 Minutes and I'll Help You Sound More \"Natural\" on Camera",
+          "url": "https://www.youtube.com/watch?v=DcrWVdEABq8&pp=ygUZaG93IHRvIHRhbGsgdG8gdGhlIGNhbWVyYQ%3D%3D",
+          "channel": null,
+          "views": 244493,
+          "timestamp": "2025-11-25 23:54:36 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 3,
+          "title": "GET BETTER at TALKING On-Camera in 10 Mins",
+          "url": "https://www.youtube.com/watch?v=hvrLd5KKm0s&pp=ygUZaG93IHRvIHRhbGsgdG8gdGhlIGNhbWVyYQ%3D%3D",
+          "channel": null,
+          "views": 514879,
+          "timestamp": "2023-11-25 23:54:36 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 4,
+          "title": "How To Talk To Camera: The 3 FUNDAMENTALS",
+          "url": "https://www.youtube.com/watch?v=VNkaGh7wQt0&pp=ygUZaG93IHRvIHRhbGsgdG8gdGhlIGNhbWVyYQ%3D%3D",
+          "channel": null,
+          "views": 103084,
+          "timestamp": "2023-11-25 23:54:36 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 5,
+          "title": "How to talk to a Camera (even if you’ve never done it before)",
+          "url": "https://www.youtube.com/watch?v=OVqYRd8mzf0&pp=ygUZaG93IHRvIHRhbGsgdG8gdGhlIGNhbWVyYQ%3D%3D",
+          "channel": null,
+          "views": 2709,
+          "timestamp": "2025-11-25 23:54:36 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 6,
+          "title": "How to talk to a camera (as an introvert)",
+          "url": "https://www.youtube.com/watch?v=oCemjm6Cpm8&pp=ygUZaG93IHRvIHRhbGsgdG8gdGhlIGNhbWVyYdIHCQkQCAGHKiGM7w%3D%3D",
+          "channel": null,
+          "views": 1454,
+          "timestamp": "2025-11-25 23:54:36 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 7,
+          "title": "How to Talk to the Camera!",
+          "url": "https://www.youtube.com/watch?v=nQ2QF5Oa0bk&pp=ygUZaG93IHRvIHRhbGsgdG8gdGhlIGNhbWVyYQ%3D%3D",
+          "channel": null,
+          "views": 499353,
+          "timestamp": "2019-11-25 23:54:36 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 8,
+          "title": "Talking to camera is easy",
+          "url": "https://www.youtube.com/watch?v=VZRV0o_F_gE&pp=ygUZaG93IHRvIHRhbGsgdG8gdGhlIGNhbWVyYdIHCQkQCAGHKiGM7w%3D%3D",
+          "channel": null,
+          "views": 28497,
+          "timestamp": "2026-02-25 23:54:36 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 9,
+          "title": "BEGINNER’S GUIDE to CAMERA CONFIDENCE | How to talk to a camera for YouTube",
+          "url": "https://www.youtube.com/watch?v=Qun62mlegJE&pp=ygUZaG93IHRvIHRhbGsgdG8gdGhlIGNhbWVyYQ%3D%3D",
+          "channel": null,
+          "views": 34250,
+          "timestamp": "2023-11-25 23:54:36 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 10,
+          "title": "Master the camera: 5 tips on looking and sounding natural on video",
+          "url": "https://www.youtube.com/watch?v=3nn4vZseLC8&pp=ygUZaG93IHRvIHRhbGsgdG8gdGhlIGNhbWVyYdIHCQkQCAGHKiGM7w%3D%3D",
+          "channel": null,
+          "views": 9580,
+          "timestamp": "2023-11-25 23:54:36 +00:00"
+        }
+      ],
+      "item_types": ["youtube_video"]
+    },
+    {
+      "ok": true,
+      "cost": 0,
+      "cached": true,
+      "error": null,
+      "keyword": "youtube script tutorial",
+      "videos": [
+        {
+          "type": "youtube_video",
+          "rank": 1,
+          "title": "How to Write a Script for a YouTube Video (Made Easy!)",
+          "url": "https://www.youtube.com/watch?v=8s0i1LutAc4&pp=ygUXeW91dHViZSBzY3JpcHQgdHV0b3JpYWw%3D",
+          "channel": null,
+          "views": 1180793,
+          "timestamp": "2020-11-25 23:54:48 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 2,
+          "title": "How to Write Scripts for YouTube Videos",
+          "url": "https://www.youtube.com/watch?v=thhIUq_fevU&pp=ygUXeW91dHViZSBzY3JpcHQgdHV0b3JpYWw%3D",
+          "channel": null,
+          "views": 375617,
+          "timestamp": "2023-11-25 23:54:48 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 3,
+          "title": "How I Script Every YouTube Video (My Exact Process)",
+          "url": "https://www.youtube.com/watch?v=AALFi1mZb1o&pp=ygUXeW91dHViZSBzY3JpcHQgdHV0b3JpYWw%3D",
+          "channel": null,
+          "views": 93965,
+          "timestamp": "2026-08-25 23:54:48 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 4,
+          "title": "How to Script a YouTube Video That Keep 'Em hooked",
+          "url": "https://www.youtube.com/watch?v=Yv8lpauoBYo&pp=ygUXeW91dHViZSBzY3JpcHQgdHV0b3JpYWw%3D",
+          "channel": null,
+          "views": 101939,
+          "timestamp": "2023-11-25 23:54:48 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 5,
+          "title": "How I Write & Use SCRIPTS for YouTube Videos",
+          "url": "https://www.youtube.com/watch?v=htx9gLbBzjA&pp=ygUXeW91dHViZSBzY3JpcHQgdHV0b3JpYWzSBwkJEAgBhyohjO8%3D",
+          "channel": null,
+          "views": 106501,
+          "timestamp": "2023-11-25 23:54:48 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 6,
+          "title": "How To Use a Script for Videos and Still Sound Natural",
+          "url": "https://www.youtube.com/watch?v=YpWn1wl-j7w&pp=ygUXeW91dHViZSBzY3JpcHQgdHV0b3JpYWw%3D",
+          "channel": null,
+          "views": 123798,
+          "timestamp": "2025-11-25 23:54:48 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 7,
+          "title": "How To Write A Killer Script That Keeps Viewers Hooked",
+          "url": "https://www.youtube.com/watch?v=7I50PECz7SU&pp=ygUXeW91dHViZSBzY3JpcHQgdHV0b3JpYWw%3D",
+          "channel": null,
+          "views": 708222,
+          "timestamp": "2025-11-25 23:54:48 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 8,
+          "title": "How to Easily Script YouTube Videos to Get More Views",
+          "url": "https://www.youtube.com/watch?v=2rzzRxixzq4&pp=ygUXeW91dHViZSBzY3JpcHQgdHV0b3JpYWw%3D",
+          "channel": null,
+          "views": 177836,
+          "timestamp": "2024-11-25 23:54:48 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 9,
+          "title": "How to write a KILLER script for a Youtube Video (made easy!)",
+          "url": "https://www.youtube.com/watch?v=-WZJXT4uGlg&pp=ygUXeW91dHViZSBzY3JpcHQgdHV0b3JpYWw%3D",
+          "channel": null,
+          "views": 18057,
+          "timestamp": "2026-09-25 23:54:48 +00:00"
+        },
+        {
+          "type": "youtube_video",
+          "rank": 10,
+          "title": "How to Write a YouTube Script that Gets More Views!",
+          "url": "https://www.youtube.com/watch?v=RNXpLNcl6mo&pp=ygUXeW91dHViZSBzY3JpcHQgdHV0b3JpYWw%3D",
+          "channel": null,
+          "views": 50076,
+          "timestamp": "2025-11-25 23:54:48 +00:00"
+        }
+      ],
+      "item_types": ["youtube_playlist", "youtube_video"]
+    }
+  ],
+  "cost_usd": 0,
+  "shared_location_costs": {
+    "clickstream": 0,
+    "ai_volume": 0.0124
+  }
+}

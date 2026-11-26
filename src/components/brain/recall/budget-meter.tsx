@@ -37,7 +37,7 @@ export default function BudgetMeter({
       </div>
       <div className="bg-muted h-1 overflow-hidden rounded-full">
         <div
-          className={`h-full rounded-full transition-[width] duration-[--sg-dur-base] ${
+          className={`h-full rounded-full transition-[width] duration-[var(--sg-dur-base)] ${
             tight
               ? "bg-[color:var(--sg-yellow-500)]"
               : "bg-[color:var(--sg-cyan-500)]"

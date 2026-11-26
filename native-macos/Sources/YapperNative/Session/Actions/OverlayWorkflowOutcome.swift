@@ -33,6 +33,21 @@ enum OverlayWorkflowOutcome {
         return "Couldn’t generate \(name): \(why(reason))."
     }
 
+    /// One card the rendered check took back out, and what came back for it.
+    static func droppedCard(name: String, revised: Bool, issues: [String], refunded: Int) -> String {
+        let what = revised ? "Kept the previous version of \(name)" : "Left out \(name)"
+        let reason = issues.prefix(2).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }.joined(separator: " ")
+        let because = reason.isEmpty ? " because it did not pass the visual check." : " because it did not pass the visual check: \(reason)"
+        let credit = refunded > 0 ? " \(refunded) credits were refunded." : ""
+        return what + (because.hasSuffix(".") ? because : because + ".") + credit
+    }
+
+    /// Nothing from the run reached the video, so its planning charge came back.
+    static func refundedPlan(credits: Int) -> String {
+        "No visual made it into the video, so the \(credits) credit planning charge was refunded too."
+    }
+
     private static func why(_ code: String) -> String {
         switch code {
         case "answer_truncated": "the designer ran out of room before finishing it"

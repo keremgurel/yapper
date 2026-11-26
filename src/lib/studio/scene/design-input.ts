@@ -39,10 +39,14 @@ export interface DesignInput {
   frameAspect: number;
   frameHeightPx: number;
   moments: DesignMoment[];
+  /** The planning charge (direct pass usageId) these designs belong to. */
+  run?: string;
 }
 
 export const MAX_DESIGN_MOMENTS = 6;
 const ID = /^[A-Za-z0-9_-]{1,40}$/;
+export const USAGE_ID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const FRAME_ASPECT = { min: 0.2, max: 5 };
 const FRAME_HEIGHT = { min: 240, max: 4320 };
@@ -173,5 +177,15 @@ export function parseDesignInput(value: unknown): DesignInput | null {
     ids.add(moment.id);
     moments.push(moment);
   }
-  return { instruction: instruction ?? "", ...frame, moments };
+  const run =
+    typeof body.run === "string" && USAGE_ID.test(body.run)
+      ? body.run
+      : undefined;
+  if (body.run !== undefined && !run) return null;
+  return {
+    instruction: instruction ?? "",
+    ...frame,
+    moments,
+    ...(run ? { run } : {}),
+  };
 }

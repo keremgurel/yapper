@@ -3,9 +3,19 @@ import Foundation
 /// Where the Poster's videos come from: made in Yapper, or already posted on
 /// a connected channel.
 enum PosterSource: Hashable {
+    case all
     case yapper
     case uploads
     case platform(PublishPlatform)
+
+    var label: String {
+        switch self {
+        case .all: "All"
+        case .yapper: "Made in Yapper"
+        case .uploads: "Uploads"
+        case let .platform(platform): platform.label
+        }
+    }
 }
 
 /// Anything the Poster can open. A Yapper take resolves its master through
@@ -22,6 +32,7 @@ struct PosterVideo: Identifiable, Equatable {
     let id: String
     var title: String
     var origin: Origin
+    let sourceDate: Date?
     var previewURL: URL? = nil
     var noSpeech = false
     var preparedTranscriptStatus: String? = nil
@@ -32,12 +43,14 @@ struct PosterVideo: Identifiable, Equatable {
         id = "project:\(project.summary.id.uuidString)"
         title = project.summary.name
         origin = .project(project)
+        sourceDate = project.summary.updatedAt
     }
 
     init(file: URL) {
         id = "file:\(UUID().uuidString)"
         title = file.deletingPathExtension().lastPathComponent
         origin = .file(file)
+        sourceDate = nil
         previewURL = file
     }
 
@@ -45,6 +58,7 @@ struct PosterVideo: Identifiable, Equatable {
         let title = item.title.trimmingCharacters(in: .whitespacesAndNewlines)
         id = item.id
         self.title = title.isEmpty ? "Untitled" : title
+        sourceDate = PosterFormat.date(item.updatedAt)
         noSpeech = item.noSpeech == true || (item.transcriptStatus == "ready" && item.recordedTranscript == "")
         origin = .yapper(
             submissionID: item.submissionId ?? "",
@@ -59,6 +73,7 @@ struct PosterVideo: Identifiable, Equatable {
         let title = video.title.trimmingCharacters(in: .whitespacesAndNewlines)
         id = "\(platform.rawValue):\(video.id)"
         self.title = title.isEmpty ? "Untitled" : title
+        sourceDate = PosterFormat.date(video.publishedAt)
         previewURL = video.sourceFileUrl.flatMap(URL.init(string:))
         origin = .platform(
             platform,
@@ -71,6 +86,26 @@ struct PosterVideo: Identifiable, Equatable {
             mediaKey: video.mediaKey,
             importable: (platform == .instagram || platform == .tiktok) && (video.sourceFileUrl?.isEmpty == false || !video.url.isEmpty)
         )
+    }
+
+    var source: PosterSource {
+        switch origin {
+        case .project: .yapper
+        case .file, .yapper: .uploads
+        case let .platform(platform, _, _, _, _, _, _, _, _): .platform(platform)
+        }
+    }
+
+    static func browse(_ videos: [PosterVideo], in source: PosterSource, matching query: String) -> [PosterVideo] {
+        let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        return videos.filter { video in
+            (source == .all || video.source == source) &&
+                (term.isEmpty || video.title.localizedStandardContains(term))
+        }.sorted {
+            let first = $0.sourceDate ?? .distantPast
+            let second = $1.sourceDate ?? .distantPast
+            return first == second ? $0.id < $1.id : first > second
+        }
     }
 
     var submissionID: String? {

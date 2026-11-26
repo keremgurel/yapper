@@ -91,3 +91,21 @@ export function studioHostHeaders(studio: string | null): Header[] {
     },
   ];
 }
+
+/** Marketing entry URL for the signed-in Studio.
+ *
+ * Absolute when `STUDIO_HOST` is set, so public pages do not prefetch a
+ * same-origin `/studio/...` path that then redirects to the Studio host and
+ * trips a CORS error in the browser. Relative while the host is unset, so
+ * local and preview builds keep working on one origin. The Mac app is
+ * unaffected: it still loads `ypr.app/studio/...` and is excluded from the
+ * host redirect.
+ */
+export function studioEntryHref(
+  path = "/studio/home",
+  env: Record<string, string | undefined> = process.env,
+) {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  const host = studioHost(env);
+  return host ? `https://${host}${normalized}` : normalized;
+}
